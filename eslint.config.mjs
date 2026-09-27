@@ -13,6 +13,35 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    files: ["src/domain/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "^@/(?!domain/|lib/)",
+              message: "src/domain may only import from @/domain and @/lib.",
+            },
+            {
+              regex: "^(react|react-dom|next|drizzle-orm|pg|postgres|dexie|zod)(/|$)",
+              message: "src/domain is pure TypeScript: no frameworks, IO or DB.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/components/**/*.{ts,tsx}", "src/offline/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        { patterns: [{ regex: "^@/server(/|$)", message: "UI and offline code must not import server code." }] },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;
