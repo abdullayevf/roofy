@@ -197,7 +197,7 @@ Based on current Claude Code guidance (explore → plan → implement → verify
 
 **Order of work — design before logic, logic before wiring**
 1. **Specs** (these three files) — approved.
-2. **Design phase** (full process and gates: `04-design-process.md`): `docs/design/brief.md` (users, context, tone), design tokens in code (colours light/dark, type scale, spacing, radius, tap sizes), component primitives, then **every screen in the inventory built as real Next.js routes against a fake in-memory data layer** that implements the same service interfaces as the real one. Deployed to `preview` so it can be tapped through on a real iPhone and Android phone. **Screens are approved before any backend work.** Approved screenshots become visual baselines. The prototype code *is* the production UI — nothing is thrown away.
+2. **Design phase** (full process and gates: `04-design-process.md`): `docs/design/brief.md` (users, context, tone), design tokens in code (colours light/dark, type scale, spacing, radius, tap sizes), component primitives, then **every screen in the inventory built as real Next.js routes against a fake in-memory data layer** that implements the same service interfaces as the real one. Deployed to `preview` (owner can look any time, but is not a required gate). **Screens pass the self-checking design loop — automated checks + independent critic agents — before any backend work.** Passing screenshots become visual baselines. The prototype code *is* the production UI — nothing is thrown away.
 3. **Domain core:** `src/domain` written test-first from `02-pay-rules.md`.
 4. **Vertical slices:** each slice swaps the fake data layer for real services for a group of screens, with DB, permissions, tests and e2e — see the implementation plan.
 

@@ -1,90 +1,95 @@
-# Roofy — UX/UI Design Process
+# Roofy — UX/UI Design Process (self-checking)
 
 **Status:** Draft for review · **Date:** 2026-09-28
-Goal: the UI is designed, tested with real people and approved **before** backend logic is built, and it cannot drift afterwards.
+**Design system:** `docs/design/DESIGN.md` ("Galvanised").
 
-Nothing in this process is "Claude says it looks fine". Every step ends with something the owner **sees on their own phone** and approves, or a check a machine runs.
+Goal: the UI is designed, checked and locked **before** backend logic is built, and it cannot drift afterwards.
+
+The owner is **not** a required gate. Quality is enforced by automated checks and independent critic agents that never see the builder's reasoning — only the result, the design system, the spec and reference benchmarks. The owner can look at the preview any time; the only escalation to the owner is when a loop fails to converge (§3).
 
 ---
 
-## Gates at a glance
+## 1. Steps and gates
 
-| # | Step | Owner sees | Gate |
+| # | Step | Output | Gate (all automatic) |
 |---|---|---|---|
-| D1 | Inputs & brief | 1-page brief | Owner approves brief |
-| D2 | Visual direction | 2–3 styles of the same 2 screens, on phone | Owner picks one |
-| D3 | Design system | Live "kitchen sink" page: colours, type, buttons, inputs, sheets, lists — light + dark | Owner approves |
-| D4 | Flows | Step-by-step flow per core job with tap counts | Owner approves |
-| D5 | Clickable prototype | Every MVP screen, fake realistic data, all states, installed on phone | Owner approves per screen group |
-| D6 | Usability test | Design partner does 5 real tasks while we watch | Fix issues found → re-approve |
-| D7 | Lock | Approved screenshots become baselines | Any later visual change must be approved |
+| D1 | Brief | `docs/design/brief.md` — users, context (sun, gloves, one hand, patchy signal), tone, UX targets | Critic confirms it matches product spec; no contradictions |
+| D2 | Prove the direction | Home + Log crew-day built in **Galvanised** and in one deliberately different challenger direction | Blind A/B by critics; Galvanised must win or be revised (DESIGN.md updated, decision logged) |
+| D3 | Design system | Tokens in code + `/design` page showing every component in every state, light + dark | Contrast script passes · design lint passes · critic ≥ 90 |
+| D4 | Flows | `docs/design/flows.md` — numbered steps per core job, tap counts, offline behaviour, errors | Every UX target has a flow; each flow becomes a tap-budget test |
+| D5 | Clickable prototype | Every screen in the inventory on the fake data layer, all states | Design loop (§2) passes per screen group |
+| D6 | Usability | Simulated task runs (tap-budget + time tests) now; real design-partner test before pilot | Tap budgets pass; partner findings fixed before pilot |
+| D7 | Lock | Screenshot baselines committed | From here, any visual diff fails CI until fixed or re-run through the loop |
 
-Backend work (beyond the pure pay-rules code) does not start until D7 is passed for the screens a slice touches.
+Backend wiring for a screen group starts only after its D5 loop passes.
 
-## D1 — Inputs and brief
+## 2. The design loop (per screen group)
 
-**From the owner:** 3–5 apps whose look/feel you like (any category — banking, delivery, etc.) and what you like about each; any logo/colour preferences; anything you hate.
+```
+build → run → capture → automated checks → critics → fix → (repeat)
+```
 
-**Brief (`docs/design/brief.md`, 1 page):** who uses it (owner, office manager, foreman), where (ute, office, rooftop, sun, gloves, one hand, patchy signal), tone (calm, trustworthy, plain words — "Log today", not "Create work entry"), and the UX targets below.
+1. **Build** the screens from DESIGN.md + flows, with realistic seeded roofing data.
+2. **Run** the app (preview build, not dev mode).
+3. **Capture** with Playwright: every screen × every state (normal, empty, loading, error, offline/waiting, foreman view) × 3 viewports (iPhone 390×844 WebKit, Android 412×915 Chromium, desktop 1440×900) × light/dark.
+4. **Automated checks** — any failure = P0/P1:
+   - **Design lint** (`pnpm lint:design`): banned fonts, gradients, purple hues, `uppercase`/`tracking-*` on labels, `→`/`›` in button text, `·`-joined UI strings, non-token colours, Lucide imports, shadow on level-1 surfaces, hard-coded px outside the scale.
+   - **Contrast script**: every token pair used in the DOM meets its WCAG ratio.
+   - **axe-core**: no serious/critical violations.
+   - **Layout guards**: no horizontal overflow at any viewport; all interactive elements ≥ 48 px on phone; nothing hidden under safe areas or the keyboard (checked with an on-screen-keyboard viewport).
+   - **Console**: no errors or warnings.
+   - **Tap-budget tests**: each core task completed by script within its tap budget (brief UX targets).
+5. **Critics** — two fresh subagents, each given only: screenshots, DESIGN.md, the flows, the product spec, and the reference atlas (§4). They score the rubric (§3) and list issues by severity:
+   - **Design critic** — senior product designer: craft, hierarchy, consistency, distinctiveness, fidelity to DESIGN.md.
+   - **Field critic** — plays a roofing manager at 7 a.m. in a ute and a foreman on a roof in glare with gloves: can they do each task, is the next action obvious, is every word plain?
+   The two scores are averaged; either critic's P0/P1 blocks.
+6. **Fix** the highest-severity issues first, then repeat from step 2.
 
-**UX targets (measurable):**
-| Job | Target |
-|---|---|
-| Log a normal crew-day on one job | ≤ 30 s, ≤ 6 taps when nothing changes from usual |
-| "Same as yesterday" | ≤ 3 taps |
-| Enter progress with equal split | ≤ 20 s |
-| Add expense with receipt photo | ≤ 45 s |
-| Find why a job is over budget | ≤ 3 taps from Home to the log lines behind it |
-| Review + approve a clean weekly pay run | ≤ 2 min |
+**Exit:** average score ≥ 90/100 · zero P0/P1 · all automated checks green.
+**Cap:** 6 iterations per screen group. If not converged, stop, log why in `docs/design/loop/DECISIONS.md`, and publish the current screenshots + open issues to the owner as a private link (the only time the owner is asked).
 
-## D2 — Visual direction
+**Severity:** P0 broken (crash, unusable, data wrong) · P1 major (fails a task, fails contrast/target size, breaks layout on a viewport, off-system styling) · P2 moderate (inconsistent spacing, weak hierarchy) · P3 polish.
 
-2–3 distinct visual directions applied to the **same two screens**: Home (Monday screen) and Log crew-day. Built as real pages at phone size and published to a private link the owner opens on their phone. Owner picks one (or mixes). No other screen is designed before this.
+## 3. Rubric (100 points)
 
-## D3 — Design system
+| Criterion | Pts | What earns full marks |
+|---|---|---|
+| Task efficiency | 25 | Every core task within tap budget; next action always obvious; no dead ends |
+| Visual craft & fidelity | 25 | Tokens only; type scale and spacing exact; clear hierarchy; one key number per screen; matches DESIGN.md |
+| Field legibility | 15 | Readable in glare (contrast AA+, key figures AAA), 48 px targets, one-thumb reach for primary actions |
+| Responsive & platform | 15 | Phone, tablet, desktop, installed mode, safe areas, keyboard, landscape all correct |
+| Content & states | 10 | Plain sentence-case words; real roofing data; every state designed (empty, loading, error, offline, foreman) |
+| Distinctiveness | 10 | Reads as Roofy, not a template; none of the DESIGN.md §7 tells |
 
-Built in code, so it's exactly what ships:
-- **Tokens:** colour (light + dark, all text/background pairs WCAG AA; status colours red/amber/green usable in bright sun), type scale (min body 16 px), spacing, radius, shadows, motion.
-- **Components:** button (primary/secondary/destructive, min 48 px tall), input + number input (right keyboard type), select/picker, toggle, crew chip, status chip, money cell, list row, card, bottom sheet (phone) / dialog (desktop), tabs, bottom tab bar / sidebar, toast, empty state, skeleton loader, offline banner, outbox badge.
-- A `/design` page in the preview app shows every component in every state, light and dark. Owner approves this page.
+## 4. Reference atlas (benchmarks the critics compare against)
 
-## D4 — Flows
+Used for quality bar, not for copying. For each, the critic asks "is ours at least this clear/fast/precise for the equivalent job?"
+- **Wise** (DESIGN.md from awesome-design-md) — clarity of money, amounts and statuses.
+- **Linear** (DESIGN.md from awesome-design-md) — typographic precision, restraint, density on desktop.
+- **Apple Human Interface Guidelines** — touch targets, sheets, tab bars, safe areas, Dynamic Type behaviour.
+- **Material 3 guidance** — Android touch and navigation expectations.
+- **Things 3** (public screenshots) — calm lists, one primary action, quick entry.
 
-For each core job (onboarding, log crew-day, progress + split, pause/resume/done + lump sum, add expense, pay run review → approve → export → share statement, record payout, find over-budget cause): a short numbered flow in `docs/design/flows.md` with screens, taps, what happens offline, and error cases. Owner approves.
+## 5. Usability beyond the machine
 
-## D5 — Clickable prototype
+- **Simulated:** the tap-budget tests (D6) run on every change.
+- **Real people:** before the pilot, the design partner does 5 tasks on their own phone, unassisted (log yesterday's crew; record 120 m² split between two people; pause a job for rain; add a receipt a crew member paid for; find which job is losing money and why). Time, taps and hesitations are recorded; any failure against a UX target is fixed through the loop.
 
-- Every screen in the inventory (product spec §6), built as real Next.js routes on the **fake data layer** (realistic seeded roofing data: 12 crew, 5 jobs, 2 years of history).
-- Every screen shows all its states: normal, empty, loading, error, offline / waiting to send, no permission (foreman view).
-- Deployed to the preview site; owner installs it to the home screen on iPhone and/or Android and taps through.
-- Reviewed in groups (Home · Logging · Jobs & stages · Crew · Expenses · Pay · Reports · Settings). Feedback → fix → re-review until approved.
+## 6. Records
 
-## D6 — Usability test (the real proof)
+- `docs/design/loop/ISSUES.md` — open/closed issues with severity and screenshot references.
+- `docs/design/loop/DECISIONS.md` — design decisions and why (including D2 outcome).
+- `tests/visual/` — approved baselines.
 
-With the design partner (a real roofing owner/manager), on their phone, 30 minutes, no help from us:
-1. Log yesterday's crew on the Smith job.
-2. Record 120 m² of sheeting split between two people.
-3. Pause the Ryde job for rain.
-4. Add a receipt Dima paid for.
-5. Tell us which job is losing money and why.
+## 7. Quality checklist (every screen, every slice)
 
-We record time, taps, and where they hesitate. Anything that fails a UX target or confuses them gets fixed before D7.
-
-## D7 — Lock
-
-- Approved screens → Playwright screenshots at iPhone (WebKit), Android (Chromium) and desktop sizes, light + dark = **visual baselines** in the repo.
-- From then on, every slice runs visual comparison; any difference must be either fixed or shown to the owner and re-approved. The UI cannot silently degrade while logic is wired in.
-- Accessibility (axe) and performance checks run on every slice (architecture §10).
-
-## Quality checklist (every screen, every slice)
-
-- Works one-handed on a 6.1" phone; primary action in thumb reach.
+- One-handed on a 6.1" phone; primary action in thumb reach.
 - Tap targets ≥ 48 px; no hover-only actions.
-- Correct keyboard for each field (numeric, decimal, phone, email).
-- Safe areas respected (notch, home bar) in installed mode.
-- Readable in sunlight (contrast AA minimum, AAA for key numbers).
-- No layout jump when data loads (skeletons sized like content).
-- Every state designed: empty, loading, error, offline, no permission.
+- Correct keyboard for each field.
+- Safe areas respected in installed mode.
+- Contrast AA minimum; key figures AAA.
+- No layout jump when data loads.
+- Every state designed.
 - Money figures tap through to their source lines.
-- Plain words; no jargon (no "entity", "mutation", "sync conflict").
-- Same component used for the same thing everywhere.
+- Plain words; no jargon.
+- Same component for the same thing everywhere.

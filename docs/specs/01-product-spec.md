@@ -172,7 +172,7 @@ Job profitability · Crew (days/hours, units, earnings, cost per m² by stage ty
 3. **Phone:** bottom tab bar (Home · Log · Jobs · Crew · More), bottom sheets for forms. **Desktop:** left sidebar, dialogs, wider tables. Same components, adaptive layout.
 4. **Every screen designs all states:** empty, loading, error, offline / waiting to send, no permission.
 5. **Money always traceable:** every dollar figure taps through to the logs or receipts behind it.
-6. **Design is approved before backend work starts** — gates D1–D7 in `04-design-process.md`.
+6. **Design passes before backend work starts** — self-checking gates D1–D7 in `04-design-process.md`; visual system in `docs/design/DESIGN.md`.
 
 ### Screen inventory (MVP)
 1. Sign in / sign up · 2. Onboarding wizard · 3. Install guide · 4. Home (manager) · 5. Home (foreman) · 6. Log crew-day (grid) · 7. Progress entry · 8. No-work marker · 9. Jobs list · 10. New/edit job · 11. Job detail · 12. Stage detail (pause/resume/done, segments, progress history) · 13. Stage Done + lump-sum split · 14. Crew list · 15. Crew member detail (rates, logs, balance, statements) · 16. Expenses list · 17. Add/edit expense · 18. Pay runs list · 19. Pay run review (flags, lines, approve, export) · 20. Record payout · 21. Crew statement (PDF + public link page) · 22. Reports (5) · 23. Settings: business, pay period & working days, on-cost, levels & floor rates, templates, expense categories, members & roles, project assignments for foremen · 24. Outbox / sync status · 25. Record history (audit) · 26. Workspace export.
