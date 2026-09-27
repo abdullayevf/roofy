@@ -6,6 +6,7 @@
     "node": ">=24"
   },
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks",
     "dev": "next dev -p 3100 -H 127.0.0.1",
     "build": "next build",
     "start": "next start -p 3100 -H 127.0.0.1",
