@@ -29,7 +29,7 @@
     "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitest/coverage-v8": "^5.0.2",
@@ -41,7 +41,6 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3",
-    "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^5.0.2"
   },
   "packageManager": "pnpm@10.28.2"

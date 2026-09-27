@@ -1,5 +1,7 @@
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
+# Claude harness working notes — local to this agent's workspace, not product docs.
+/.superpowers/
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies

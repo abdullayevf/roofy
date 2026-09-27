@@ -1,6 +1,7 @@
 // PostToolUse hook: format and lint the file Claude just edited. Exit 2 shows problems to Claude.
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
+import { isAbsolute, relative, resolve } from "node:path";
 
 let input;
 try {
@@ -12,6 +13,12 @@ try {
 const file = input?.tool_input?.file_path;
 if (!file || !existsSync(file) || file.includes("/graft/") || file.includes("/node_modules/"))
   process.exit(0);
+
+// Only ever touch files inside the project — never format/lint arbitrary paths on disk.
+const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+const resolvedFile = resolve(file);
+const rel = relative(resolve(projectDir), resolvedFile);
+if (rel.startsWith("..") || isAbsolute(rel)) process.exit(0);
 
 const run = (args) => execFileSync("pnpm", ["exec", ...args], { stdio: "pipe", encoding: "utf8" });
 try {
