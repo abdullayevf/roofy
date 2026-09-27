@@ -1,0 +1,6 @@
+/* Design tokens. Generated from docs/design/DESIGN.md in Phase 2. Only file allowed to contain raw colours. */
+:root {
+  --galv: #edefed;
+  --surface: #ffffff;
+  --ink: #2f3133;
+}
