@@ -11,6 +11,7 @@
     "start": "next start -p 3100 -H 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
+    "lint:design": "tsx scripts/lint-design.ts",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "test:coverage": "vitest run --coverage",
