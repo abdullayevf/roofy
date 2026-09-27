@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:design": "tsx scripts/lint-design.ts",
+    "verify": "pnpm typecheck && pnpm lint && pnpm lint:design && pnpm test:unit",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "test:coverage": "vitest run --coverage",
