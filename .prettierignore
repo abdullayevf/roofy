@@ -1,0 +1,5 @@
+graft/
+pnpm-lock.yaml
+.next/
+test-results/
+playwright-report/
