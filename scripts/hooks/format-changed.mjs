@@ -2,9 +2,16 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 
-const input = JSON.parse(readFileSync(0, "utf8") || "{}");
+let input;
+try {
+  const raw = readFileSync(0, "utf8").trim();
+  input = raw ? JSON.parse(raw) : {};
+} catch {
+  process.exit(0); // malformed/empty stdin: nothing to act on
+}
 const file = input?.tool_input?.file_path;
-if (!file || !existsSync(file) || file.includes("/graft/") || file.includes("/node_modules/")) process.exit(0);
+if (!file || !existsSync(file) || file.includes("/graft/") || file.includes("/node_modules/"))
+  process.exit(0);
 
 const run = (args) => execFileSync("pnpm", ["exec", ...args], { stdio: "pipe", encoding: "utf8" });
 try {
