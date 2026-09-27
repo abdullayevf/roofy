@@ -8,10 +8,10 @@ Every rule here has a worked example. **The examples are acceptance tests**: the
 ## 0. Conventions
 
 - **Money** is stored as integer cents. Never floating point. Decimal maths via an exact decimal library.
-- **Rounding:** half-up to the cent, applied once per computed line amount (not on intermediate steps).
+- **Rounding:** half away from zero to the cent (so a reversal is exactly the negative of the original), applied once per computed line amount (not on intermediate steps).
 - **Quantities:** 2 decimal places (m², lm); "each" is whole numbers. **Hours:** 0.25 steps. **Days:** 1 or 0.5.
 - **Rates** are money per unit (per hour, per day, per m², per lm, per each), stored in cents.
-- **Splitting a total into shares** uses the *largest remainder* method so shares always add up exactly to the total; leftover smallest units go to people **in the order they appear in the split** (first person first).
+- **Splitting a total into shares** uses the *largest remainder* method so shares always add up exactly to the total. Leftover smallest units go to the largest remainders; ties go to people **in the order they appear in the split** (first person first). An **equal** split divides by head-count directly (it is not converted to percentages first, which would lose cents).
 - All amounts are **ex GST** unless stated.
 - Dates are local calendar dates in the workspace timezone.
 
@@ -59,7 +59,7 @@ The rate used is **copied onto the log** (snapshot). Later rate changes never ch
 A progress entry has: stage (with unit *u*), date, quantity *Q*, crew list with shares.
 1. Shares: **equal** by default, or custom % (must total exactly 100%).
 2. Split *Q* into per-person quantities with largest remainder at 0.01 (or 1 for "each").
-3. Each person gets a work log: basis per-unit, quantity = their share, rate = their own rate for *u*, `amount = quantity × rate`, hours = standard day unless edited.
+3. Each person gets a work log: basis per-unit, quantity = their share, rate = their own rate for *u*, `amount = quantity × rate`, **hours = 0**. Hours worked that day are recorded once, by the crew-day grid (a time-only log, E4.4), so they are never double-counted.
 4. If anyone in the split has no rate for *u* → the entry is still saved; that person's log gets $0.00 + "missing rate" flag.
 
 > **E4.1 Equal split, two people.** 120 m² sheet install, Sam + Dima equal → 60.00 each. Sam 60.00 × $9.50 = **$570.00**. Dima 60.00 × $12.00 = **$720.00**.
@@ -72,7 +72,7 @@ A progress entry has: stage (with unit *u*), date, quantity *Q*, crew list with 
 Stage has `lump_sum_amount` *L*. When the stage is marked Done:
 1. App proposes crew = everyone with any log on that stage (any date), equal shares.
 2. Manager can change people/shares (must total 100%).
-3. Split *L* in cents by largest remainder. Each person gets a log dated the completion date, basis lump sum.
+3. Split *L* in cents by largest remainder. Each person gets a log dated the completion date, basis lump sum, hours 0.
 4. Re-opening a Done stage with lump-sum logs in an **approved** pay run → reversing adjustments (§8). If not yet approved → the lump-sum logs are deleted.
 
 > **E5.1** "Ridge bedding & pointing" L = $2,000.00, Sam/Tom/Dima equal → **$666.67 / $666.67 / $666.66** (sum $2,000.00).
@@ -124,7 +124,7 @@ Approve = snapshot all lines, lock the logs, compute contractor GST, post one le
 
 Per employee per pay run: `effective hourly = (sum of earnings lines incl. adjustments) ÷ (sum of hours)`. If below their level's floor → warning with the shortfall `floor × hours − earnings`. Lines with 0 hours are ignored for hours but counted for earnings.
 
-> **E10.1** Tom, one week: Mon per-unit 33.33 m² = $299.97 (8 h); Tue per-unit 20.00 m² × $9.00 = $180.00 (8 h). Earnings $479.97 ÷ 16 h = **$30.00/h** (displayed to cents, $29.998 → $30.00) < floor $32.00 → warning, shortfall 32.00 × 16 − 479.97 = **$32.03**.
+> **E10.1** Tom, one week: Mon per-unit 33.33 m² = $299.97 plus grid time-only log 8 h; Tue per-unit 20.00 m² × $9.00 = $180.00 plus grid time-only log 8 h. Earnings $479.97 ÷ 16 h = **$30.00/h** (displayed to cents, $29.998 → $30.00) < floor $32.00 → warning, shortfall 32.00 × 16 − 479.97 = **$32.03**.
 
 ## 11. Job costing
 
@@ -174,7 +174,8 @@ Expense cost: `amount ex GST`; if workspace not GST registered → `amount incl.
 
 - **Gap:** working day in the period, crew member active that day (between active from/to), no log (any kind) and no no-work marker.
 - **Available days** = working days while active − no-work days with reason Leave or Sick. (Rain/Other still count as available → shows time lost.)
-- **Utilisation** = days with ≥ 1 log ÷ available days.
+- **Utilisation** = working days with ≥ 1 log ÷ available days (weekend work is real work but doesn't push utilisation over 100%).
+- An employee with earnings but 0 hours in a pay run gets a "no hours recorded" warning (the floor check can't run).
 
 > **E14.1** Week Mon–Fri, Jake logged Mon–Wed, Rain marker Thu, nothing Fri → gap **Fri**; available 5; utilisation 3 ÷ 5 = **60%**.
 

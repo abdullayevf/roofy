@@ -34,7 +34,7 @@ Crew never need an account. It is not payroll and not accounting — we calculat
 | Backups | Daily, 30-day retention | Nightly, **7-day** retention, encrypted, delivered by Telegram bot. |
 | Hosting | AU region | Self-hosted on own VPS (France) for build + pilot; **move to Sydney VPS before paying customers.** |
 | Contractor invoices | Unspecified | **Subcontractors send their own invoices.** Roofy issues a *statement*, never a tax invoice (no RCTI). |
-| Hours on logs | Only for hourly | **Every work log records hours**, pre-filled from a standard day, editable. |
+| Hours on logs | Only for hourly | **Every worked day records hours** via the crew-day grid, pre-filled from a standard day, editable (m² and lump-sum logs carry no hours of their own, so hours are never double-counted). |
 | Days with no work | Not modelled | New **"no work" marker** (Rain, Leave, Sick, Other) so gaps aren't false alarms. |
 | Lump-sum crew | "Split across assigned crew" (no assignment model) | Split across **everyone who logged work on the stage**, editable at Done. |
 | Stage % complete (no unit) | Undefined | Optional manager-set % in quarter steps; otherwise 0% until Done. |
@@ -99,6 +99,7 @@ Default roofing templates (editable per workspace):
 - **Start / Pause / Resume / Done** with one tap. Pause reason: Weather, Waiting on materials, Waiting on client/builder, Crew on another job, Other (+ note).
 - **Done** needs a completion date; optional note + photo. Done triggers lump-sum pay if set. Manager/Owner only.
 - Stages may overlap. Order is display only.
+- Logging work or progress on a Not started stage starts it automatically from that date.
 - A log on a Paused or Done stage is allowed but flagged in the pay run.
 
 ### 5.4 Crew and pay
