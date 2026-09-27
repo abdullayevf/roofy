@@ -15,7 +15,7 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
   ]),
   {
-    files: ["src/domain/**/*.ts"],
+    files: ["src/domain/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -26,7 +26,12 @@ const eslintConfig = defineConfig([
               message: "src/domain may only import from @/domain and @/lib.",
             },
             {
-              regex: "^(react|react-dom|next|drizzle-orm|pg|postgres|dexie|zod)(/|$)",
+              // Note: written as `^node:|^(fs|...)(/|$)` rather than the flat
+              // `^(node:|fs|...)(/|$)` form, because the flat form never matches
+              // "node:fs"-style specifiers (the "(/|$)" suffix applies to whichever
+              // alternative matched, and "fs" follows "node:" with no separator).
+              regex:
+                "^(react|react-dom|next|drizzle-orm|pg|postgres|dexie|zod|node:|(fs|path|os|child_process|http|https|net|crypto)(/|$))",
               message: "src/domain is pure TypeScript: no frameworks, IO or DB.",
             },
           ],
@@ -39,7 +44,25 @@ const eslintConfig = defineConfig([
     rules: {
       "no-restricted-imports": [
         "error",
-        { patterns: [{ regex: "^@/server(/|$)", message: "UI and offline code must not import server code." }] },
+        {
+          patterns: [
+            { regex: "^@/server(/|$)", message: "UI and offline code must not import server code." },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    rules: {
+      "import/no-restricted-paths": [
+        "error",
+        {
+          zones: [
+            { target: "./src/domain", from: "./src", except: ["./domain", "./lib"] },
+            { target: ["./src/components", "./src/offline"], from: "./src/server" },
+          ],
+        },
       ],
     },
   },
