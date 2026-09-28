@@ -99,7 +99,7 @@ const RULES: Rule[] = [
     message: "Use tokens from src/app/tokens.css, not raw colours.",
     applies: (f) => f !== "src/app/tokens.css",
     test: (l) =>
-      /(?<!href=["'])(?<=^|[\s:(,"'])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})\b/.test(
+      /(?<!href=["'])(?<=^|[\s:(,"'[])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})\b/.test(
         l,
       ) || /\b(rgba?|hsla?|oklch)\(/.test(l),
   },

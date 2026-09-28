@@ -77,6 +77,12 @@ describe("design lint", () => {
     expect(rules("src/a.tsx", 'style={{ color: "#12345" }}')).not.toContain("raw-color");
     expect(rules("src/a.tsx", 'style={{ color: "#1234567" }}')).not.toContain("raw-color");
   });
+  it("flags raw colours in Tailwind arbitrary values", () => {
+    expect(rules("src/a.tsx", '<div className="bg-[#123456]">')).toContain("raw-color");
+    expect(rules("src/a.tsx", '<p className="text-[#fff]">')).toContain("raw-color");
+    expect(rules("src/a.tsx", '<div className="border-[#FFC82C]/50">')).toContain("raw-color");
+    expect(rules("src/a.tsx", '<a href="#faded">Skip</a>')).not.toContain("raw-color");
+  });
   it("flags emoji in UI files", () => {
     expect(rules("src/a.tsx", "<p>Done 🎉</p>")).toContain("emoji");
   });
