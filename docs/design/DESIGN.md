@@ -128,7 +128,7 @@ Radius hierarchy is deliberate: controls 10, groups 12, sheets 16, chips full. N
 - Accenting one word in a heading with colour/italic.
 - Entrance animations on scroll; hover effects on every card; shimmer loaders.
 - Emoji as icons; illustrations in empty states; hazard stripes.
-- Jargon: "entity", "sync", "mutation", "record", "submit".
+- Jargon: "entity", "sync", "mutation", "record" (as a noun for a row of data; the verb in "Record payout" and the screen name "Record history" are fine), "submit".
 
 ## 8. Responsive and platform behaviour
 

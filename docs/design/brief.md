@@ -15,7 +15,7 @@ Runs the business or a crew of 3–15. Opens Roofy before the trucks leave the y
 
 ### Foreman — on the roof, in glare, with gloves
 
-Runs one or two active jobs day to day. Doesn't see rates, pay or budgets — the app quite literally hides all of it. Logs the crew who turned up, marks progress (m² done), pauses a stage for rain, snaps a photo of a receipt. Often has patchy signal up a ladder or under an eave. Needs the next tap to be obvious without reading — big targets, one hand, a login-free device the business owns or their own phone.
+Runs one or two active jobs day to day. Doesn't see rates, pay or budgets — the app quite literally hides all of it. Logs the crew who turned up, marks progress (m² done), pauses a stage for rain, snaps a photo of a receipt. Often has patchy signal up a ladder or under an eave. Needs the next tap to be obvious without reading — big targets, one hand, their own phone or a work phone that stays signed in.
 
 ### Accountant — at a desk
 

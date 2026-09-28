@@ -73,7 +73,7 @@ Today in the prototype is **Mon 28 Sep 2026** (Australia/Sydney). Workspace: **H
 | ----------------------------------- | ------------------------------- | ---------------------------------- | -------------- | -------------------------------- |
 | Log a full crew-day                 | Manager/Foreman                 | ≤ 6 taps, < 30 s                   | 4 taps         | `crew-day.spec.ts`               |
 | Same as yesterday                   | Manager/Foreman                 | ≤ 3 taps                           | 3 taps         | `same-as-yesterday.spec.ts`      |
-| Progress 120 m² split two ways      | Manager/Foreman                 | ≤ 8 taps                           | 8 taps         | `progress-split.spec.ts`         |
+| Progress 120 m² split two ways      | Manager/Foreman                 | ≤ 8 taps                           | 7 taps         | `progress-split.spec.ts`         |
 | Pause a stage for rain              | Manager/Foreman                 | ≤ 4 taps                           | 4 taps         | `pause-stage.spec.ts`            |
 | Add a receipt paid by a crew member | Manager (Foreman variant noted) | ≤ 10 taps (excl. typing)           | 10 taps        | `add-receipt.spec.ts`            |
 | Find the job losing money and why   | Manager/Owner                   | ≤ 3 taps from Home                 | 2 taps         | `find-losing-job.spec.ts`        |
@@ -84,7 +84,7 @@ Today in the prototype is **Mon 28 Sep 2026** (Australia/Sydney). Workspace: **H
 | Stage done with lump sum            | Manager/Owner                   | ≤ 5 taps                           | 5 taps         | `stage-done-lump-sum.spec.ts`    |
 | Expense edit                        | Manager/Owner                   | ≤ 6 taps                           | 6 taps         | `expense-edit.spec.ts`           |
 | Outbox needs attention              | Manager/Foreman                 | ≤ 5 taps (edit & resend)           | 5 taps         | `outbox-needs-attention.spec.ts` |
-| Statement share                     | Manager/Owner                   | ≤ 4 taps                           | 4 taps         | `statement-share.spec.ts`        |
+| Statement share                     | Manager/Owner                   | ≤ 4 taps                           | 3 taps         | `statement-share.spec.ts`        |
 | Reports drill-down                  | Manager/Owner/Accountant        | ≤ 5 taps                           | 4 taps         | `reports-drilldown.spec.ts`      |
 | Settings changes                    | Owner/Manager                   | ≤ 5 taps                           | 5 taps         | `settings-changes.spec.ts`       |
 
@@ -131,12 +131,13 @@ The budget is achievable because the grid pre-fills from the last logged day. **
 
 1. Tap **Log**. → `/log`. _(1)_
 2. Tap the **Progress** segment. → `/log/progress`. _(2)_
-3. Tap the project field, select **"Smith job — Ryde re-roof."** _(3)_
-4. Tap the stage field, select **"Sheet install."** Budgeted 400 m², measured so far 0 m² today. _(4)_
-5. Tap the **quantity** field (decimal keypad) and type `120` — typing not counted, the tap to focus is. _(5)_
-6. Tap the **Sam** crew chip to add him to the split. _(6)_
-7. Tap the **Dima** crew chip to add him too. Equal split is the default (60.00 m² each, no extra tap needed to choose "equal"). _(7)_
-8. Tap **Save progress.** _(8)_
+3. Tap the recent-stage chip **"Smith job — Sheet install"** (the picker lists the stages you logged most recently as one-tap chips; "Choose another stage" opens the full job and stage list). Job and stage fill together. Budgeted 400 m², measured so far 0 m². _(3)_
+4. Tap the **quantity** field (decimal keypad) and type `120` — typing not counted, the tap to focus is. _(4)_
+5. Tap the **Sam** crew chip to add him to the split. _(5)_
+6. Tap the **Dima** crew chip to add him too. Equal split is the default (60.00 m² each, no extra tap needed to choose "equal"). _(6)_
+7. Tap **Save progress.** _(7)_
+
+7 taps, 1 under budget. Without a recent-stage chip (first ever progress entry), "Choose another stage" (1) + job row (1) + stage row (1) replaces step 3: 9 taps — acceptable only for the first entry; the test covers the recent-chip path.
 
 **After save:** stage tape bar updates to 30% with the tick at 120 m²; each person gets a per-unit work log ($570.00 for Sam, $720.00 for Dima per `02-pay-rules.md` E4.1 — hidden from foreman).
 
@@ -196,7 +197,7 @@ The budget is achievable because the grid pre-fills from the last logged day. **
 | ---------------------------------------------------- | -------------- | ----- | ------------------ | ----------------------------------------- |
 | From Home, find which job is over budget and see why | Manager, Owner | Home  | ≤ 3 taps from Home | `tests/e2e/flows/find-losing-job.spec.ts` |
 
-1. On Home's **Needs attention** list, tap the row: **"Smith job is $775 over on sheet install."** → opens the stage directly, `/jobs/[id]/stages/[stageId]`, already showing the tape bar at 30%, labour budget $4,200.00 (budget × 1.05 tolerance already reflected in the amber threshold) vs forecast **$4,775.00**, over marker on the tape at the forecast point. _(1 tap)_
+1. On Home's **Needs attention** list, tap the row: **"Smith job is trending $775 over on sheet install."** → opens the stage directly, `/jobs/[id]/stages/[stageId]`, already showing the tape bar at 30%, labour budget **$4,000.00** vs forecast **$4,775.00** (amber because the forecast is above the $4,200.00 trigger point, budget × 1.05), over marker on the tape at the forecast point. _(1 tap)_
 2. Tap the **forecast labour figure** to drill through to the logs behind it (DESIGN.md §4, "money cell" — the whole row is the tap target). → shows the two log lines that make up the $1,432.50 actual so far (Sam's per-unit line, Dima's per-unit line, both from the 120 m² progress entry) and the arithmetic that produces the $4,775.00 forecast. _(2 taps)_
 
 **After tap 2:** the person can see, in one more tap than Home itself, exactly which two lines are driving the overage and why (120 m² at 30% complete, projected out). 1 tap of headroom remains under the 3-tap budget for a workspace where Home doesn't already surface the exact stage (e.g. a job with two over-budget stages needing a first tap onto the job before the stage).
