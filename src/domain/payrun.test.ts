@@ -174,6 +174,54 @@ describe("buildPayRun", () => {
     expect(jake!.missingRate).toBe(true);
   });
 
+  it("a reversal nets an employee's subtotal to exactly 0", () => {
+    const [tom] = buildPayRun(
+      period,
+      people,
+      [
+        log({
+          crewMemberId: "tom",
+          basis: "hourly",
+          source: "adjustment",
+          amountCents: -18_000,
+          date: "2026-09-10",
+        }),
+        log({ crewMemberId: "tom", basis: "hourly", amountCents: 18_000, date: "2026-09-15" }),
+      ],
+      [],
+    );
+    expect(tom!.totals).toEqual({
+      subtotalCents: 0,
+      gstCents: 0,
+      reimbursementsCents: 0,
+      totalCents: 0,
+    });
+    expect(Object.is(tom!.totals.totalCents, 0)).toBe(true);
+  });
+
+  it("a contractor's subtotal goes negative with GST", () => {
+    const [dima] = buildPayRun(
+      period,
+      people,
+      [
+        log({
+          crewMemberId: "dima",
+          basis: "daily",
+          source: "adjustment",
+          amountCents: -10_050,
+          date: "2026-09-10",
+        }),
+      ],
+      [],
+    );
+    expect(dima!.totals).toEqual({
+      subtotalCents: -10_050,
+      gstCents: -1_005,
+      reimbursementsCents: 0,
+      totalCents: -11_055,
+    });
+  });
+
   it("omits people with nothing to pay and skips already-reimbursed or future expenses", () => {
     const result = buildPayRun(
       period,

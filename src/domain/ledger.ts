@@ -7,7 +7,7 @@ export type LedgerKind = "payrun_credit" | "advance" | "payment";
 export interface LedgerEntry {
   date: LocalDate;
   kind: LedgerKind;
-  /** Always positive; kind decides the sign. */
+  /** Kind decides the sign; a payrun_credit may be negative (a period of reversals). */
   amountCents: Cents;
 }
 

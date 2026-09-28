@@ -17,6 +17,12 @@ describe("ledger", () => {
     expect(oldestUnpaidCreditDate([credit, older, advance])).toBe("2026-09-20");
     expect(oldestUnpaidCreditDate([credit, older])).toBe("2026-09-13");
   });
+  it("a negative payrun credit (a period of reversals) lowers the balance", () => {
+    const reversal: LedgerEntry = { date: "2026-09-20", kind: "payrun_credit", amountCents: -18_000 };
+    expect(ledgerBalance([reversal])).toBe(-18_000);
+    expect(oldestUnpaidCreditDate([reversal])).toBeNull();
+  });
+
   it("flags balances unpaid for longer than one pay period", () => {
     expect(unpaidTooLong([advance, credit], "2026-09-28", 7)).toBe(true);
     expect(unpaidTooLong([advance, credit], "2026-09-27", 7)).toBe(false);

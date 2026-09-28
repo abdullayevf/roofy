@@ -63,7 +63,18 @@ const byDateProjectStage = (a: PayLog, b: PayLog) =>
 const labelFor = (log: PayLog, period: PayPeriod): LineLabel =>
   log.source === "adjustment" ? "adjustment" : log.date < period.start ? "late" : "normal";
 
-/** Pay rules §6–§10: the draft pay run for a period. */
+/**
+ * Pay rules §6–§10: the draft pay run for a period.
+ *
+ * Caller precondition: a draft includes every unlocked log dated on or before
+ * `period.end`, including logs from earlier periods (late entries,
+ * adjustments — see §9). Build the next period's draft only once every
+ * earlier pay run is approved (so their logs are locked and excluded here),
+ * or otherwise pass only the logs that belong to this draft. Building two
+ * drafts back-to-back before the earlier one is approved would show the
+ * same unlocked logs (labelled "late") in both, and approving from a stale
+ * draft could double-pay them.
+ */
 export function buildPayRun(
   period: PayPeriod,
   people: readonly PayPerson[],

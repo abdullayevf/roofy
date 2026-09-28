@@ -23,6 +23,13 @@ describe("labourCost", () => {
   it("non-registered contractors cost exactly their amount", () => {
     expect(labourCost(105_000, { type: "contractor", gstRegistered: false }, unregistered)).toBe(105_000);
   });
+
+  it("negative adjustments round symmetrically, never -0", () => {
+    expect(labourCost(-1_200, employee, registered)).toBe(-1_500);
+    expect(labourCost(-72_000, gstContractor, unregistered)).toBe(-79_200);
+    expect(labourCost(-1_005, employee, registered)).toBe(-labourCost(1_005, employee, registered));
+    expect(Object.is(labourCost(0, employee, registered), 0)).toBe(true);
+  });
 });
 
 describe("expenseCost", () => {
