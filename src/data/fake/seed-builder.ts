@@ -18,6 +18,7 @@ import type { PauseReason } from "@/domain/segments";
 import { splitWeighted, type Shares } from "@/domain/split";
 import type { BasisPoints, Cents, Hundredths, LocalDate, RateBasis, Unit } from "@/domain/types";
 import type { GridBasis, Id, Instant, JobType, PaidBy, PayoutMethod, ProjectStatus } from "../contracts";
+import { gridBasisFor } from "./grid-basis";
 import { Rng } from "./rng";
 import type {
   CrewMemberRow,
@@ -333,22 +334,9 @@ export class SeedBuilder {
 
   // ─── Logs ─────────────────────────────────────────────────────────────────
 
-  /**
-   * Product spec §5.5: every ticked person defaults to their usual basis; per-unit workers on a stage
-   * with their unit get a time-only log (pay rules §4, E4.4). Lump-sum stages are no exception: a
-   * time-paid person logged on one gets their usual basis, and the double-pay flag (pay rules §9)
-   * catches time-based + lump-sum on the same stage and date.
-   * `timeOnly` = the manager switched this person to time-only on the grid (e.g. Sam on the Smith
-   * sheet install, paid from progress).
-   */
+  /** The grid basis for this person on this stage (see `gridBasisFor`). */
   gridBasis(crew: CrewMemberRow, stage: StageRow, timeOnly = false): GridBasis {
-    if (timeOnly) return "time_only";
-    if (crew.defaultBasis === "per_unit") {
-      // Prototype decision (not in the spec): a per-unit worker on a stage without their unit falls
-      // back to their daily rate, so the grid never pays them $0 for a real day's work there.
-      return stage.unit !== null && stage.unit === crew.defaultUnit ? "time_only" : "daily";
-    }
-    return crew.defaultBasis;
+    return gridBasisFor(crew, stage.unit, timeOnly);
   }
 
   private pushLog(log: Omit<WorkLogRow, keyof RowBase>, createdAt: Instant): WorkLogRow {

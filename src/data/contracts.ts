@@ -92,7 +92,8 @@ export interface DateRange {
 
 // ─── Errors ─────────────────────────────────────────────────────────────────
 
-export type DataErrorCode = "not_found" | "forbidden" | "invalid" | "conflict";
+/** `unavailable` = the data layer couldn't answer (the route's `error.tsx` offers "Try again"). */
+export type DataErrorCode = "not_found" | "forbidden" | "invalid" | "conflict" | "unavailable";
 
 export interface FieldIssue {
   field: string;
@@ -1156,6 +1157,40 @@ export interface Snapshot {
   crew: CrewRowForeman[];
   categories: ExpenseCategory[];
 }
+
+// ─── Outbox (device-local from Phase 5; forced by `?demo=` in the prototype) ─
+
+export type OutboxState = "waiting" | "sending" | "sent" | "needs_attention";
+
+/**
+ * A queued field entry as the phone keeps it: the envelope's fields, with the payload as `input`
+ * (the key "payload" would read as money to the foreman scan in `./dto`).
+ */
+export type OutboxEntry = {
+  [T in MutationType]: { id: Id; type: T; createdAt: Instant; input: MutationPayloads[T] };
+}[MutationType];
+
+/**
+ * One queued field entry as the outbox screen and badge show it. "Edit & resend" pre-fills the
+ * original screen from `entry.input`. The demo outbox never holds an expense, so it is money-free.
+ */
+export interface OutboxItem {
+  entry: OutboxEntry;
+  state: OutboxState;
+  date: LocalDate;
+  projectName: string | null;
+  stageName: string | null;
+  crewNames: string[];
+  /** Needs attention: the server's own rejection, shown verbatim (flows "Outbox needs attention"). */
+  rejection: { code: DataErrorCode; message: string } | null;
+}
+
+/**
+ * Design states forced with `?demo=<state>` in fake mode (plan Task 6); ignored otherwise.
+ * empty · loading · error · offline · waiting · attention · noperm · blocked (Owner 2FA off).
+ */
+export type DemoState =
+  "empty" | "loading" | "error" | "offline" | "waiting" | "attention" | "noperm" | "blocked";
 
 // ─── Audit and export ───────────────────────────────────────────────────────
 
