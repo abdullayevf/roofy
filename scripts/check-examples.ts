@@ -6,7 +6,9 @@ const ID = /\*\*(E\d+\.\d+)/g;
 export function missingExamples(specText: string, testTexts: readonly string[]): string[] {
   const ids = [...new Set([...specText.matchAll(ID)].map((m) => m[1]!))];
   const tests = testTexts.join("\n");
-  return ids.filter((id) => !new RegExp(`\\b${id.replace(".", "\\.")}(?!\\d)`).test(tests));
+  return ids.filter(
+    (id) => !new RegExp(`(?:it|test)\\(\\s*["'\`]${id.replace(".", "\\.")}(?!\\d)`).test(tests),
+  );
 }
 
 function testFiles(dir: string, out: string[] = []): string[] {
