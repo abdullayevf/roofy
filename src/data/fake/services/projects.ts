@@ -19,7 +19,7 @@ import type {
 } from "../../contracts";
 import type { StageFigures } from "../figures";
 import type { ProjectRow, WorkLogRow } from "../rows";
-import { FIELD_ACCESS, forbidden, notYet, type FakeContext } from "./context";
+import { FakeContext, FIELD_ACCESS, forbidden, notYet } from "./context";
 
 /** How many recent logs a job page shows. */
 export const RECENT_LOGS = 20;
@@ -129,7 +129,8 @@ export function createProjectService(c: FakeContext): ProjectService {
       const p = c.requireProject(actor, projectId);
       const client = c.ix.clients.get(p.clientId)!;
       const f = c.fig.project(p.id);
-      const logs = [...c.ix.logsOfProject(p.id)].sort(byRecent).slice(0, RECENT_LOGS);
+      const all = [...c.ix.logsOfProject(p.id)].sort(byRecent);
+      const logs = all.slice(0, RECENT_LOGS);
       const expenses = [...c.ix.expensesOf(p.id)].sort(
         (a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt),
       );
@@ -147,7 +148,9 @@ export function createProjectService(c: FakeContext): ProjectService {
           pctBp: f.pctBp,
           stages: f.stages.map((s) => stageRowForeman(c, s)),
           crewThisWeek: crewWeek(p.id).map(weekForeman),
-          recentLogs: logs.map((l) => c.logForeman(l)),
+          recentLogs: FakeContext.fieldLogs(all)
+            .slice(0, RECENT_LOGS)
+            .map((l) => c.logForeman(l)),
           expenses: expenses.map((e) => c.expenseForeman(e)),
           files,
         };

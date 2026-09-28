@@ -118,6 +118,29 @@ describe("log lists", () => {
     ]);
   });
 
+  it("foreman log lists leave out adjustment rows (pay-run artefacts); the manager sees them", async () => {
+    const range = { from: "2026-09-14", to: "2026-09-27" };
+    const m = fake("manager");
+    const f = fake("foreman");
+    const managerJake = await m.data.logs.byPerson(m.actor, meta.crew.jake, range);
+    expect(managerJake.rows.some((r) => r.source === "adjustment")).toBe(true);
+    const lists = [
+      await f.data.logs.byPerson(f.actor, meta.crew.jake, range),
+      await f.data.logs.byDay(f.actor, "2026-09-17"),
+    ];
+    for (const list of lists) {
+      expect(list.rows.length).toBeGreaterThan(0);
+      expect(list.rows.some((r) => r.source === "adjustment")).toBe(false);
+    }
+    const adjusted = seed.workLogs.find((l) => l.id === meta.logs.adjustment)!;
+    const stage = await f.data.stages.get(f.actor, adjusted.stageId);
+    expect(stage.logs.some((r) => r.source === "adjustment")).toBe(false);
+    const job = await f.data.projects.get(f.actor, adjusted.projectId);
+    expect(job.recentLogs.some((r) => r.source === "adjustment")).toBe(false);
+    const byStage = await f.data.logs.byStage(f.actor, adjusted.stageId);
+    expect(byStage.rows.some((r) => r.source === "adjustment")).toBe(false);
+  });
+
   it("progress defaults offer the recent unit stages as chips", async () => {
     const { data, actor } = fake("foreman");
     const d = await data.progress.defaults(actor);

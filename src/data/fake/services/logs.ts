@@ -18,7 +18,7 @@ import type {
 } from "../../contracts";
 import { gridBasisFor } from "../grid-basis";
 import type { StageRow, WorkLogRow } from "../rows";
-import { FIELD_ACCESS, forbidden, notFound, notYet, shortName, type FakeContext } from "./context";
+import { FakeContext, FIELD_ACCESS, forbidden, notFound, notYet, shortName } from "./context";
 import { crewRowForeman } from "./crew";
 import { progressRowForeman, progressRowManager } from "./stages";
 
@@ -29,8 +29,9 @@ const byRecent = (a: WorkLogRow, b: WorkLogRow) =>
   b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt);
 
 function logList(c: FakeContext, actor: Actor, logs: WorkLogRow[]): LogList {
-  if (c.isForeman(actor))
-    return { view: "foreman", access: FIELD_ACCESS, rows: logs.map((l) => c.logForeman(l)) };
+  if (c.isForeman(actor)) {
+    return { view: "foreman", access: FIELD_ACCESS, rows: FakeContext.fieldLogs(logs).map((l) => c.logForeman(l)) };
+  }
   return { view: "manager", access: c.access(actor), rows: logs.map((l) => c.logManager(l)) };
 }
 

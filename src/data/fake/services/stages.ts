@@ -14,7 +14,7 @@ import type {
   StageService,
 } from "../../contracts";
 import type { ProgressEntryRow, StageRow, WorkLogRow } from "../rows";
-import { FIELD_ACCESS, forbidden, notYet, type FakeContext } from "./context";
+import { FakeContext, FIELD_ACCESS, forbidden, notYet } from "./context";
 
 const byRecent = (a: WorkLogRow, b: WorkLogRow) =>
   b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt);
@@ -139,7 +139,7 @@ export function createStageService(c: FakeContext): StageService {
           access: FIELD_ACCESS,
           tape: { pctBp: sf.pctBp },
           progress: progress.map((p) => progressRowForeman(c, p)),
-          logs: logs.map((l) => c.logForeman(l)),
+          logs: FakeContext.fieldLogs(logs).map((l) => c.logForeman(l)),
         };
       }
       const lumpLogs = logs.filter((l) => l.basis === "lump_sum");

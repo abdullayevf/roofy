@@ -939,7 +939,7 @@ interface AttentionBase {
 /**
  * A Home "Needs attention" row as structured facts, most severe first. The UI writes the sentence
  * with `src/lib/format.ts`, e.g. trending_over → "Smith job is trending $775 over on sheet install."
- * Severity: over_budget and outbox_attention are `over`; the rest are `watch`.
+ * Severity: over_budget is `over` (red); the rest are `watch` (amber). Order: product spec §5.9.
  */
 export type AttentionItem =
   | (AttentionBase & {

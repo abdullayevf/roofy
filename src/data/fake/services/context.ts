@@ -144,7 +144,12 @@ export class FakeContext {
     };
   }
 
-  logManager(l: WorkLogRow): LogRowManager {
+/** Foreman log lists: adjustments are pay-run artefacts (pay rules §8), not field facts. */
+  static fieldLogs<T extends { source: WorkLogRow["source"] }>(logs: readonly T[]): T[] {
+    return logs.filter((l) => l.source !== "adjustment");
+  }
+
+    logManager(l: WorkLogRow): LogRowManager {
     return {
       ...this.logForeman(l),
       multiplier: l.multiplier,

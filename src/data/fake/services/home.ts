@@ -13,7 +13,6 @@ import type {
   HomeView,
   LastWeekFigures,
   PayPeriodFigures,
-  Severity,
 } from "../../contracts";
 import { demoOutbox } from "../demo";
 import { FIELD_ACCESS, type FakeContext } from "./context";
@@ -21,13 +20,10 @@ import { FIELD_ACCESS, type FakeContext } from "./context";
 /** Max rows in Home's "Needs attention" (product spec §5.9). */
 export const ATTENTION_LIMIT = 7;
 
-/** Red before amber. */
-export const SEVERITY_ORDER: readonly Severity[] = ["over", "watch"];
-
 /**
- * Within a severity, product spec §5.9's list order: jobs over labour budget → trending over →
- * stages paused > 5 working days → last week's logging gaps → outbox entries needing attention →
- * balances unpaid too long → pay lines below the award floor.
+ * Product spec §5.9's list order, most severe first: jobs over labour budget (red) → trending over
+ * (amber) → stages paused > 5 working days → last week's logging gaps → outbox entries needing
+ * attention → balances unpaid too long → pay lines below the award floor. Only over budget is red.
  */
 export const ATTENTION_ORDER: readonly AttentionKind[] = [
   "over_budget",
@@ -56,7 +52,6 @@ export function sortAttention(items: AttentionItem[]): AttentionItem[] {
     .map((item, i) => ({ item, i }))
     .sort(
       (a, b) =>
-        SEVERITY_ORDER.indexOf(a.item.severity) - SEVERITY_ORDER.indexOf(b.item.severity) ||
         ATTENTION_ORDER.indexOf(a.item.kind) - ATTENTION_ORDER.indexOf(b.item.kind) ||
         compareWithin(a.item, b.item) ||
         a.i - b.i,
@@ -127,7 +122,7 @@ export function createHomeService(c: FakeContext): HomeService {
       items.push({
         id: "outbox_attention",
         kind: "outbox_attention",
-        severity: "over",
+        severity: "watch",
         href: "/outbox",
         count: outbox.length,
       });

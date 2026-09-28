@@ -107,7 +107,7 @@ describe("home (manager)", () => {
     ).toBe(false);
   });
 
-  it("needs attention: most severe first (red, then product spec §5.9 order), at most 7", async () => {
+  it("needs attention: product spec §5.9 order (over budget red, then amber kinds), at most 7", async () => {
     const home = await managerHome();
     const name = (id: string) => crew(id).name;
     expect(
@@ -141,18 +141,18 @@ describe("home (manager)", () => {
     expect(smith.href).toBe(`/jobs/${seed.meta.projects.smith}/stages/${seed.meta.stages.smithSheetInstall}`);
   });
 
-  it("an outbox entry needing attention is red: it goes second and the list stays capped at 7", async () => {
+  it("an outbox entry needing attention keeps its §5.9 place (after gaps, amber) and the list stays capped at 7", async () => {
     const home = await managerHome("attention");
     expect(home.needsAttention.map((i) => i.kind)).toEqual([
       "over_budget",
-      "outbox_attention",
       "trending_over",
       "trending_over",
       "paused_too_long",
       "logging_gaps",
+      "outbox_attention",
       "unpaid_too_long",
     ]);
-    expect(home.needsAttention[1]).toMatchObject({ severity: "over", count: 1, href: "/outbox" });
+    expect(home.needsAttention[5]).toMatchObject({ severity: "watch", count: 1, href: "/outbox" });
   });
 
   it("last week: figures from src/domain over 21–27 Sep", async () => {
