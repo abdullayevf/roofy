@@ -48,7 +48,22 @@ const eslintConfig = defineConfig([
         {
           patterns: [
             { regex: "^@/server(/|$)", message: "UI and offline code must not import server code." },
+            {
+              regex: "^@/data/fake(/|$)",
+              message: "UI and offline code must not import the fake data layer directly.",
+            },
           ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/data/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [{ regex: "^@/server(/|$)", message: "src/data must not import server code." }],
         },
       ],
     },
@@ -62,6 +77,8 @@ const eslintConfig = defineConfig([
           zones: [
             { target: "./src/domain", from: "./src", except: ["./domain", "./lib"] },
             { target: ["./src/components", "./src/offline"], from: "./src/server" },
+            { target: ["./src/components", "./src/offline"], from: "./src/data/fake" },
+            { target: "./src/data", from: "./src/server" },
           ],
         },
       ],
