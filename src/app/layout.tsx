@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { atkinson, barlow } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en-AU">
+    <html lang="en-AU" className={`${barlow.variable} ${atkinson.variable}`}>
       <body>{children}</body>
     </html>
   );

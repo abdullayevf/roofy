@@ -1,7 +1,163 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
+/*
+ * Tailwind v4 theme mapping. `@theme inline` keeps these as `var(...)`
+ * references (never resolving to a literal value at build time) so that
+ * dark mode — driven by tokens.css's prefers-color-scheme/data-theme
+ * overrides on :root — keeps working after Tailwind generates the utility
+ * classes. Colours and fonts are named differently from the raw
+ * custom properties they reference (e.g. --color-galv vs --galv) so
+ * Tailwind's generated :root declarations never collide with tokens.css's.
+ */
+@theme inline {
+  --color-galv: var(--galv);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-line: var(--line);
+  --color-edge: var(--edge);
+  --color-chalk: var(--chalk);
+  --color-chalk-link: var(--chalk-link);
+  --color-tape: var(--tape);
+  --color-over: var(--over);
+  --color-watch: var(--watch);
+  --color-good: var(--good);
+  --color-on-chalk: var(--on-chalk);
+  --color-on-tape: var(--on-tape);
+  --color-watch-fill: var(--watch-fill);
+
+  --font-display: var(--font-barlow);
+  --font-body: var(--font-atkinson);
+
+  --radius-control: 10px;
+  --radius-group: 12px;
+  --radius-sheet: 16px;
+}
+
+/*
+ * DESIGN.md §6: sheets/toasts get a real shadow in light mode; dark mode is
+ * elevation-by-lightness (tokens.css sets --shadow-sheet/--shadow-toast to
+ * "none" there). Written as manual utilities, not Tailwind's --shadow-*
+ * theme namespace, to avoid a naming collision with tokens.css's own
+ * --shadow-sheet/--shadow-toast custom properties and Tailwind's built-in
+ * shadow composition (ring layers, colour-mix opacity, etc.), which the
+ * DESIGN.md value (a single fixed shadow colour) neither needs nor expects.
+ */
+@utility shadow-sheet {
+  box-shadow: var(--shadow-sheet);
+}
+
+@utility shadow-toast {
+  box-shadow: var(--shadow-toast);
+}
+
+/* DESIGN.md §3 type scale. Each utility carries its own font family and
+ * weight (Tailwind's built-in --text-* theme namespace only pairs a size
+ * with a line-height, not a family/weight), and the phone -> desktop sizes
+ * that change at the >= 1024px breakpoint (§8) are written as nested
+ * @media rules inside the utility. */
+@utility text-figure-xl {
+  font-family: var(--font-barlow);
+  font-weight: 700;
+  font-size: 40px;
+  line-height: 44px;
+  @media (min-width: 1024px) {
+    font-size: 48px;
+    line-height: 52px;
+  }
+}
+
+@utility text-title {
+  font-family: var(--font-barlow);
+  font-weight: 600;
+  font-size: 28px;
+  line-height: 32px;
+  @media (min-width: 1024px) {
+    font-size: 32px;
+    line-height: 36px;
+  }
+}
+
+@utility text-heading {
+  font-family: var(--font-barlow);
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 24px;
+}
+
+@utility text-figure {
+  font-family: var(--font-barlow);
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 24px;
+}
+
+@utility text-body {
+  font-family: var(--font-atkinson);
+  font-weight: 400;
+  font-size: 17px;
+  line-height: 24px;
+  @media (min-width: 1024px) {
+    font-size: 16px;
+    line-height: 24px;
+  }
+}
+
+@utility text-body-strong {
+  font-family: var(--font-atkinson);
+  font-weight: 600;
+  font-size: 17px;
+  line-height: 24px;
+  @media (min-width: 1024px) {
+    font-size: 16px;
+    line-height: 24px;
+  }
+}
+
+@utility text-meta {
+  font-family: var(--font-atkinson);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 20px;
+  @media (min-width: 1024px) {
+    font-size: 14px;
+    line-height: 20px;
+  }
+}
+
+/* DESIGN.md §3: money, quantities, hours and dates in tables use tabular
+ * figures, right-aligned (alignment is the caller's job; this just fixes
+ * the figure width). */
+@utility num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
 body {
   background: var(--galv);
   color: var(--ink);
+  font-family: var(--font-atkinson);
+  font-size: 17px;
+  line-height: 24px;
+}
+
+@media (min-width: 1024px) {
+  body {
+    font-size: 16px;
+    line-height: 24px;
+  }
+}
+
+/* DESIGN.md §9: reduced motion is instant, everywhere, with no per-component
+ * opt-out required. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+  }
 }
