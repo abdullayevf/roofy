@@ -28,8 +28,11 @@ export function formatHours(value: number): string {
 }
 
 export function formatDays(value: number): string {
-  if (value === 50) return "½ day";
-  return value === 100 ? "1 day" : `${hundredths(value)} days`;
+  const abs = Math.abs(value);
+  const sign = value < 0 ? MINUS : "";
+  if (abs === 50) return `${sign}½ day`;
+  if (abs === 100) return `${sign}1 day`;
+  return `${sign}${hundredths(abs)} days`;
 }
 
 /** "Mon 7 Sep", plus the year when it isn't today's year. Dates are "YYYY-MM-DD". */

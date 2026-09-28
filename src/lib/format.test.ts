@@ -19,6 +19,9 @@ describe("format", () => {
     expect(formatDays(50)).toBe("½ day");
     expect(formatDays(100)).toBe("1 day");
     expect(formatDays(200)).toBe("2 days");
+    expect(formatDays(-50)).toBe("−½ day");
+    expect(formatDays(-100)).toBe("−1 day");
+    expect(formatDays(-200)).toBe("−2 days");
   });
   it("formats dates, adding the year only when it differs", () => {
     expect(formatDate("2026-09-07", "2026-09-28")).toBe("Mon 7 Sep");
