@@ -105,6 +105,8 @@ type RawInteractiveElement = {
    * target the way a button or a full-width row is).
    */
   inlineTextLink: boolean;
+  /** Element (or an ancestor) is position: fixed/sticky, so it stays put while the page scrolls. */
+  pinned: boolean;
 };
 
 /**
@@ -132,6 +134,21 @@ function collectInteractiveElements(): {
         el.querySelector("input, select, textarea") !== null ||
         (forTarget !== null && ["input", "select", "textarea"].includes(forTarget.tagName.toLowerCase()));
       if (!wrapsControl) continue;
+      // A label beside a visible control is a supplementary target: the
+      // control itself is what has to meet 48x48. Only a label standing in
+      // for a visually hidden control (custom checkbox/radio) is checked.
+      const control = (forTarget ?? el.querySelector("input, select, textarea")) as HTMLElement | null;
+      if (control) {
+        const cs = getComputedStyle(control);
+        const cr = control.getBoundingClientRect();
+        const controlVisible =
+          cs.display !== "none" &&
+          cs.visibility !== "hidden" &&
+          Number(cs.opacity) > 0 &&
+          cr.width > 1 &&
+          cr.height > 1;
+        if (controlVisible) continue;
+      }
     }
 
     const style = getComputedStyle(el);
@@ -139,6 +156,15 @@ function collectInteractiveElements(): {
 
     const rect = el.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) continue;
+
+    let pinned = false;
+    for (let a: Element | null = el; a; a = a.parentElement) {
+      const pos = getComputedStyle(a).position;
+      if (pos === "fixed" || pos === "sticky") {
+        pinned = true;
+        break;
+      }
+    }
 
     let inlineTextLink = false;
     if (tag === "a") {
@@ -164,6 +190,7 @@ function collectInteractiveElements(): {
         height: rect.height,
       },
       inlineTextLink,
+      pinned,
     });
   }
 
@@ -354,21 +381,46 @@ export async function checkSafeAreas(page: Page): Promise<GuardResult> {
     [SAFE_AREA_TOP_PX, SAFE_AREA_BOTTOM_PX],
   );
 
+  // Scrolling content can always be scrolled out from under an inset, except
+  // at the very top of the page (top inset) and the very bottom (bottom
+  // inset). Pinned (fixed/sticky) elements never move, so they must clear
+  // both insets at every scroll position.
   await polyfillEsbuildNameHelper(page);
-  const { elements, viewportHeight } = await page.evaluate(collectInteractiveElements);
   const failures: string[] = [];
-  for (const el of elements) {
-    if (el.rect.top < SAFE_AREA_TOP_PX) {
+  const scrollTo = (y: number) => page.evaluate((top) => window.scrollTo(0, top), y);
+  const describe = (el: RawInteractiveElement) => `<${el.tag}> "${el.text}"`;
+
+  await scrollTo(0);
+  const atTop = await page.evaluate(collectInteractiveElements);
+  for (const el of atTop.elements) {
+    if (el.rect.bottom > 0 && el.rect.top < SAFE_AREA_TOP_PX) {
       failures.push(
-        `<${el.tag}> "${el.text}" top ${el.rect.top.toFixed(0)}px is within the ${SAFE_AREA_TOP_PX}px top safe-area inset`,
+        `${describe(el)} top ${el.rect.top.toFixed(0)}px is within the ${SAFE_AREA_TOP_PX}px top safe-area inset`,
       );
     }
-    if (el.rect.bottom > viewportHeight - SAFE_AREA_BOTTOM_PX) {
+    if (
+      el.pinned &&
+      el.rect.top < atTop.viewportHeight &&
+      el.rect.bottom > atTop.viewportHeight - SAFE_AREA_BOTTOM_PX
+    ) {
       failures.push(
-        `<${el.tag}> "${el.text}" bottom ${el.rect.bottom.toFixed(0)}px is within the ${SAFE_AREA_BOTTOM_PX}px bottom safe-area inset`,
+        `${describe(el)} (pinned) bottom ${el.rect.bottom.toFixed(0)}px is within the ${SAFE_AREA_BOTTOM_PX}px bottom safe-area inset`,
       );
     }
   }
+
+  await scrollTo(1e9);
+  const atBottom = await page.evaluate(collectInteractiveElements);
+  for (const el of atBottom.elements) {
+    if (el.pinned) continue;
+    const vh = atBottom.viewportHeight;
+    if (el.rect.top < vh && el.rect.bottom > vh - SAFE_AREA_BOTTOM_PX) {
+      failures.push(
+        `${describe(el)} bottom ${el.rect.bottom.toFixed(0)}px (scrolled to the end) is within the ${SAFE_AREA_BOTTOM_PX}px bottom safe-area inset`,
+      );
+    }
+  }
+  await scrollTo(0);
   return { name: "safe-area-insets", ok: failures.length === 0, failures };
 }
 

@@ -11,6 +11,6 @@ Score history for every screen group's design loop (`docs/specs/04-design-proces
 - `automated checks pass?` is yes/no from that iteration's `docs/design/loop/shots/<group>/checks.md` (all guards green, design lint clean, contrast script clean).
 - **Exit** (§2): average ≥ 90, zero open P0/P1, automated checks pass — all on the same iteration's row.
 
-| group                                                                                            | iteration | design score | field score | average | P0/P1 count | automated checks pass? |
-| ------------------------------------------------------------------------------------------------ | --------- | ------------ | ----------- | ------- | ----------- | ---------------------- |
-| _(none yet — Task 4 ships the tooling; Task 10 (D2) and Tasks 11–19 (D5) start filling this in)_ |           |              |             |         |             |                        |
+| group  | iteration | design score | field score | average | P0/P1 count | automated checks pass?             |
+| ------ | --------- | ------------ | ----------- | ------- | ----------- | ---------------------------------- |
+| system | 1         | 72           | 69          | 70.5    | 6           | no (console 404: /outbox prefetch) |

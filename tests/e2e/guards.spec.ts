@@ -3,6 +3,7 @@ import {
   checkAxe,
   checkKeyboard,
   checkSafeAreas,
+  checkTouchTargets,
   checkScreenHealthy,
   checkTextZoom,
   collectConsole,
@@ -338,5 +339,51 @@ test.describe("checkKeyboard self-test", () => {
     await page.setContent("<!doctype html><html><body><button>No input here</button></body></html>");
     const noInputResult = await checkKeyboard(page, { phone: true });
     expect(noInputResult.ok).toBe(true);
+  });
+});
+
+const LONG_PAGE_GOOD_HTML = `<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Guards fixture (long page)</title>
+<style>
+  body { margin: 0; padding: 56px 16px 56px; font: 17px/24px sans-serif; }
+  .row { display: block; height: 64px; margin-bottom: 400px; }
+  label { display: block; }
+  input { display: block; width: 100%; height: 52px; box-sizing: border-box; }
+</style></head>
+<body>
+  <label for="qty">Quantity</label>
+  <input id="qty" inputmode="decimal" />
+  <button type="button" class="row">First</button>
+  <button type="button" class="row">Below the fold</button>
+  <button type="button" class="row">Last</button>
+</body></html>`;
+
+const PINNED_BOTTOM_BAD_HTML = `<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Guards fixture (pinned bottom bar)</title>
+<style>
+  body { margin: 0; padding-top: 56px; }
+  nav { position: fixed; left: 0; right: 0; bottom: 0; height: 56px; }
+  nav button { height: 56px; width: 100%; }
+</style></head>
+<body><nav><button type="button">Log</button></nav></body></html>`;
+
+test.describe("guards ignore scrolling content and supplementary labels", () => {
+  test("content below the fold and labels beside visible inputs pass", async ({ page }) => {
+    await page.setContent(LONG_PAGE_GOOD_HTML);
+    const safe = await checkSafeAreas(page);
+    expect(safe.ok, JSON.stringify(safe.failures)).toBe(true);
+    const targets = await checkTouchTargets(page, { phone: true });
+    expect(targets.failures.some((f) => f.includes("<label>"))).toBe(false);
+  });
+
+  test("a bar pinned to the very bottom fails the bottom inset", async ({ page }) => {
+    await page.setContent(PINNED_BOTTOM_BAD_HTML);
+    const safe = await checkSafeAreas(page);
+    expect(safe.ok).toBe(false);
+    expect(safe.failures.some((f) => f.includes("bottom safe-area inset"))).toBe(true);
   });
 });

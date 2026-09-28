@@ -40,7 +40,7 @@
  *   ROOFY_CHROMIUM_EXECUTABLE=<path>  Chromium binary to launch
  */
 
-import { chromium, webkit, type Browser } from "@playwright/test";
+import { chromium, webkit, type Browser, type Page } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { checkScreenHealthy, collectConsole, type GuardResult } from "../tests/e2e/guards";
@@ -89,6 +89,27 @@ function parseArgs(argv: string[]): { group: string; screensFilter?: string[]; b
     }
   }
   return { group, screensFilter, base };
+}
+
+/**
+ * Full-page shots of long screens get shrunk to an unreadable strip by any
+ * image viewer (critics included), so every capture also gets viewport-sized
+ * slices: `slices/<label>--p01.png`, `--p02.png`, … (max 15). Pinned bars
+ * repeat on every slice, exactly as a person scrolling would see them.
+ */
+async function screenshotSlices(page: Page, outDir: string, label: string): Promise<void> {
+  const sliceDir = join(outDir, "slices");
+  mkdirSync(sliceDir, { recursive: true });
+  const { total, step } = await page.evaluate(() => ({
+    total: document.documentElement.scrollHeight,
+    step: window.innerHeight,
+  }));
+  const count = Math.min(15, Math.max(1, Math.ceil(total / step)));
+  for (let i = 0; i < count; i++) {
+    await page.evaluate((y) => window.scrollTo(0, y), i * step);
+    await page.screenshot({ path: join(sliceDir, `${label}--p${String(i + 1).padStart(2, "0")}.png`) });
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
 }
 
 async function assertServerReachable(base: string): Promise<void> {
@@ -157,6 +178,7 @@ async function captureOne(opts: {
 
   const fileName = `${label}.png`;
   await page.screenshot({ path: join(outDir, fileName), fullPage: true });
+  await screenshotSlices(page, outDir, label);
 
   const results = await checkScreenHealthy(page, {
     phone: viewport.name !== "desktop",
@@ -228,6 +250,7 @@ async function captureInstalled(opts: {
   );
   await page.evaluate(() => document.fonts.ready).catch(() => undefined);
   await page.screenshot({ path: join(outDir, fileName), fullPage: true });
+  await screenshotSlices(page, outDir, fileName.replace(/\.png$/, ""));
 
   if (engine !== "chromium") {
     console.warn(
