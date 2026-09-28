@@ -13,10 +13,11 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:design": "tsx scripts/lint-design.ts",
-    "verify": "pnpm typecheck && pnpm lint && pnpm lint:design && pnpm test:unit",
+    "verify": "pnpm typecheck && pnpm lint && pnpm lint:design && pnpm test:coverage && pnpm check:examples",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "test:coverage": "vitest run --coverage",
+    "check:examples": "tsx scripts/check-examples.ts",
     "db:up": "docker compose -f ops/compose.dev.yml up -d --wait",
     "db:down": "docker compose -f ops/compose.dev.yml down"
   },
