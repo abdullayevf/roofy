@@ -56,73 +56,74 @@
  * weight (Tailwind's built-in --text-* theme namespace only pairs a size
  * with a line-height, not a family/weight), and the phone -> desktop sizes
  * that change at the >= 1024px breakpoint (§8) are written as nested
- * @media rules inside the utility. */
+ * @media rules inside the utility. Sizes are rem (px / 16) so text zoom and
+ * browser font-size settings scale them (DESIGN.md §8, WCAG 1.4.4). */
 @utility text-figure-xl {
   font-family: var(--font-barlow);
   font-weight: 700;
-  font-size: 40px;
-  line-height: 44px;
+  font-size: 2.5rem; /* 40px */
+  line-height: 2.75rem; /* 44px */
   @media (min-width: 1024px) {
-    font-size: 48px;
-    line-height: 52px;
+    font-size: 3rem; /* 48px */
+    line-height: 3.25rem; /* 52px */
   }
 }
 
 @utility text-title {
   font-family: var(--font-barlow);
   font-weight: 600;
-  font-size: 28px;
-  line-height: 32px;
+  font-size: 1.75rem; /* 28px */
+  line-height: 2rem; /* 32px */
   @media (min-width: 1024px) {
-    font-size: 32px;
-    line-height: 36px;
+    font-size: 2rem; /* 32px */
+    line-height: 2.25rem; /* 36px */
   }
 }
 
 @utility text-heading {
   font-family: var(--font-barlow);
   font-weight: 600;
-  font-size: 20px;
-  line-height: 24px;
+  font-size: 1.25rem; /* 20px */
+  line-height: 1.5rem; /* 24px */
 }
 
 @utility text-figure {
   font-family: var(--font-barlow);
   font-weight: 600;
-  font-size: 20px;
-  line-height: 24px;
+  font-size: 1.25rem; /* 20px */
+  line-height: 1.5rem; /* 24px */
 }
 
 @utility text-body {
   font-family: var(--font-atkinson);
   font-weight: 400;
-  font-size: 17px;
-  line-height: 24px;
+  font-size: 1.0625rem; /* 17px */
+  line-height: 1.5rem; /* 24px */
   @media (min-width: 1024px) {
-    font-size: 16px;
-    line-height: 24px;
+    font-size: 1rem; /* 16px */
+    line-height: 1.5rem; /* 24px */
   }
 }
 
 @utility text-body-strong {
   font-family: var(--font-atkinson);
   font-weight: 600;
-  font-size: 17px;
-  line-height: 24px;
+  font-size: 1.0625rem; /* 17px */
+  line-height: 1.5rem; /* 24px */
   @media (min-width: 1024px) {
-    font-size: 16px;
-    line-height: 24px;
+    font-size: 1rem; /* 16px */
+    line-height: 1.5rem; /* 24px */
   }
 }
 
 @utility text-meta {
   font-family: var(--font-atkinson);
   font-weight: 400;
-  font-size: 15px;
-  line-height: 20px;
+  font-size: 0.9375rem; /* 15px */
+  line-height: 1.25rem; /* 20px */
   @media (min-width: 1024px) {
-    font-size: 14px;
-    line-height: 20px;
+    font-size: 0.875rem; /* 14px */
+    line-height: 1.25rem; /* 20px */
   }
 }
 
@@ -138,14 +139,14 @@ body {
   background: var(--galv);
   color: var(--ink);
   font-family: var(--font-atkinson);
-  font-size: 17px;
-  line-height: 24px;
+  font-size: 1.0625rem; /* 17px */
+  line-height: 1.5rem; /* 24px */
 }
 
 @media (min-width: 1024px) {
   body {
-    font-size: 16px;
-    line-height: 24px;
+    font-size: 1rem; /* 16px */
+    line-height: 1.5rem; /* 24px */
   }
 }
 
