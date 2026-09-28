@@ -2,13 +2,14 @@
 
 ## Current
 
-- Phase: 0 — Foundation (complete; merged to master once this wave passes)
-- Next: Phase 1 — Pay engine (`docs/plans/02-pay-engine.md`), whose Task 1 must start with the "Phase 1 pre-work" items below.
+- Phase: 1 — Pay engine (complete; merged to master)
+- Next: Phase 2 — Design system and full prototype (`docs/plans/03-design-prototype.md`, write at phase start).
 
 ## Log
 
 - 2026-09-28 — Specs, DESIGN.md, master plan, Phase 0/1 plans written.
 - 2026-09-28 — Phase 0 shipped: Next.js scaffold (strict TS ~6.0.3), import-boundary lint (`src/domain` pure, `src/components`/`src/offline` barred from `src/server`), Vitest 5 unit tests, dev Postgres (Docker Compose), Playwright with 3 projects (iphone/android/desktop), design lint enforcing DESIGN.md anti-patterns, Claude Code harness (CLAUDE.md, hooks, spec reviewer, progress log), and a git pre-commit gate (typecheck + unit tests).
+- 2026-09-28 — Phase 1 shipped: pure domain core in `src/domain/` (money, split, rates, lines, piece, gst, costing, dates, segments, progress, floor, adjustments, flags, attendance, periods, payrun, ledger) plus `src/lib/format.ts`. Every pay-rules example (E1.1–E15.1) is a named test and matches to the cent; `scripts/check-examples.ts` proves none is missing; `verify` now runs coverage (100% on `src/domain`) and `check:examples`.
 
 ## Decisions and deviations
 
@@ -21,15 +22,27 @@
 - Playwright viewports: iPhone 390×844, Android 412×915, per DESIGN.md.
 - Pre-commit hook added (`.githooks/pre-commit`: typecheck + unit tests), activated via `"prepare": "git config core.hooksPath .githooks"`.
 
+- Phase 1: tsconfig `target` ES2017 → ES2020 (BigInt literals in exact money maths; tsconfig is noEmit so runtime is unaffected).
+- Phase 1: `pieceRateLines` gives a zero-quantity share $0.00 instead of throwing (e.g. 1 "each" split between 2 people).
+- Phase 1: "possible duplicate" flag includes time-only logs (spec §9 has no exception; two grids would double-count floor-check hours).
+- Phase 1: "paused/done stage" flag also fires for logs dated before a stage's first segment (non-blocking warning).
+- Phase 1: `formatMoney` formats without float division; `formatDays` keeps "½ day"/"1 day" for negative values.
+- Phase 1: `check:examples` only counts an example id that starts an `it(`/`test(` title.
+- Phase 1: eslint ignores generated `coverage/`.
+
 ## Gate evidence
 
-- `pnpm verify` exits 0 (12 unit tests passing).
+- Phase 1: `pnpm verify` exits 0 — 21 test files, 122 tests; coverage 100% statements 283/283, branches 203/203, functions 120/120, lines 210/210; "Every pay-rules example has a named test." `pnpm test:e2e` 3/3. Whole-branch review + phase spec review (opus): every example hand-checked to the cent; every rule in §0–§16 has code or a later-phase owner; its fixes applied and re-reviewed.
+- Phase 0: `pnpm verify` exits 0 (12 unit tests passing).
 - `pnpm test:e2e` 3/3 (iphone, android, desktop).
 - Stop hook (`scripts/hooks/stop-check.mjs`) blocks on a type error (exit 2) and exits 0 when `stop_hook_active` is set.
 
 ## Open issues (carried forward)
 
-- Phase 1 Task 1 (pre-work): `verify` must run `test:coverage` and prove the report lists `src/domain` files (plan 02 Task 18 does this).
+- Phase 4: add a unique DB constraint on rates (crew member, basis, unit, project, effective_from) — `resolveRate` picks the first of two rates with the same date.
+- Phase 7: `buildPayRun` includes every unlocked log dated ≤ period end; only build the next draft once every earlier run is approved (else logs appear in two drafts). Consider a "no hours" warning when an employee's net hours are ≤ 0 (reversal-only run).
+- Phase 7: a pay-run credit can be negative (reversal-only period); ledger maths handles it.
+- No target phase: lint rule for bare `new Date()`/`Date.now()` in `src/domain` (currently followed, not enforced); `formatDate` does not validate its input.
 - Phase 2 Task 1: design lint gaps — bare `bg-radial`/`bg-conic`, `tracking-[2px]`, px/rem `letter-spacing`, case-insensitive `geist`/`GeistSans`/`from "geist/font/…"`, `href="#faded"` false positive, raw-colour exemption must be exact path `src/app/tokens.css`; unused `--surface` token replaced by real tokens.
 - Phase 2: Playwright `reuseExistingServer` stale-server risk; axe scoped to WCAG 2.1 AA tags; vitest `include` widened to `*.test.tsx`.
 - Phase 3: vitest `include` widened to `tests/integration/**`.
