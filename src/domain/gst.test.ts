@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gstIncludedIn, gstOn, personTotals } from "./gst";
+import { gstIncludedIn, gstOn, personTotals, receiptTotal, splitReceipt } from "./gst";
 
 const dima = { type: "contractor", gstRegistered: true } as const;
 const lee = { type: "contractor", gstRegistered: false } as const;
@@ -27,5 +27,13 @@ describe("GST", () => {
   it("rounds GST on negative subtotals symmetrically", () => {
     expect(gstOn(-1_005)).toBe(-101);
     expect(gstOn(1_005)).toBe(101);
+  });
+  it("splits a GST-inclusive receipt: GST defaults to total ÷ 11, or as entered, and adds back exactly", () => {
+    expect(splitReceipt(11_000)).toEqual({ amountExGstCents: 10_000, gstCents: 1_000 });
+    expect(splitReceipt(99_000, 0)).toEqual({ amountExGstCents: 99_000, gstCents: 0 });
+    expect(splitReceipt(1_001)).toEqual({ amountExGstCents: 910, gstCents: 91 });
+    expect(receiptTotal({ amountExGstCents: 910, gstCents: 91 })).toBe(1_001);
+    expect(() => splitReceipt(1_000, 1_001)).toThrow(RangeError);
+    expect(() => splitReceipt(1_000, -1)).toThrow(RangeError);
   });
 });

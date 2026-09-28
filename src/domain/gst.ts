@@ -33,3 +33,19 @@ export function personTotals(
     totalCents: subtotalCents + gstCents + reimbursementsCents,
   };
 }
+
+export interface ReceiptAmounts {
+  amountExGstCents: Cents;
+  gstCents: Cents;
+}
+
+/** Product spec §5.7: a GST-inclusive receipt stored as ex GST + GST. GST defaults to total ÷ 11. */
+export function splitReceipt(totalCents: Cents, gstCents: Cents = gstIncludedIn(totalCents)): ReceiptAmounts {
+  if (gstCents < 0 || gstCents > totalCents) throw new RangeError("GST must be between 0 and the total");
+  return { amountExGstCents: totalCents - gstCents, gstCents };
+}
+
+/** What was paid (pay rules §7: a reimbursement is the GST-inclusive amount). */
+export function receiptTotal(r: ReceiptAmounts): Cents {
+  return r.amountExGstCents + r.gstCents;
+}
