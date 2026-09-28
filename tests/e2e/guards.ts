@@ -21,6 +21,11 @@ import { contrastRatio } from "../../scripts/check-contrast";
  * actually reads the simulated variables. A layout that ignores safe areas
  * entirely still fails (correctly): nothing wires the padding, so elements
  * sit at their un-padded positions and the guard catches it.
+ *
+ * Primary-action contract: `checkKeyboard` looks for the screen's one
+ * primary action via a `data-primary-action` attribute (any element —
+ * usually the Save/Approve/... button). A screen that hasn't adopted the
+ * attribute yet just skips that half of the check rather than failing.
  */
 
 export type GuardResult = { name: string; ok: boolean; failures: string[] };
@@ -368,16 +373,143 @@ export async function checkSafeAreas(page: Page): Promise<GuardResult> {
 }
 
 // ---------------------------------------------------------------------------
+// On-screen keyboard: focusing the first text input must not leave the
+// input, or the page's primary action, hidden or covered once the
+// keyboard's vertical space is gone (04-design-process.md §2 step 4:
+// "nothing hidden under safe areas or the keyboard, checked with an
+// on-screen-keyboard viewport").
+// ---------------------------------------------------------------------------
+
+const KEYBOARD_HEIGHT_PX = 336;
+const PRIMARY_ACTION_SELECTOR = "[data-primary-action]";
+const TEXT_INPUT_SELECTOR =
+  'input[type="text"], input[type="email"], input[type="tel"], input[type="number"], input[type="password"], input[type="search"], input[type="url"], input:not([type]), textarea';
+
+/** Runs in the browser; must not close over anything. Focuses the first visible, enabled match. */
+function focusFirstTextInput(selector: string): boolean {
+  const candidates = Array.from(document.querySelectorAll<HTMLElement>(selector));
+  for (const el of candidates) {
+    const style = getComputedStyle(el);
+    if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) continue;
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) continue;
+    if ("disabled" in el && (el as unknown as { disabled: boolean }).disabled) continue;
+    el.focus();
+    return document.activeElement === el;
+  }
+  return false;
+}
+
+type KeyboardAssessment = {
+  hasFocus: boolean;
+  inputVisible: boolean;
+  inputDebug: string;
+  primaryFound: boolean;
+  primaryVisible: boolean;
+  primaryDebug: string;
+};
+
+/** Runs in the browser, after the viewport has been shrunk; must not close over anything. */
+function assessKeyboardOcclusion(primarySelector: string): KeyboardAssessment {
+  function describe(el: Element): string {
+    const id = el.id ? `#${el.id}` : "";
+    return `<${el.tagName.toLowerCase()}${id}>`;
+  }
+
+  function checkVisible(el: Element): { visible: boolean; debug: string } {
+    el.scrollIntoView({ block: "nearest", inline: "nearest" });
+    const rect = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const withinViewport =
+      rect.top >= 0 &&
+      rect.left >= 0 &&
+      rect.bottom <= vh &&
+      rect.right <= vw &&
+      rect.width > 0 &&
+      rect.height > 0;
+    const cx = Math.min(Math.max(rect.left + rect.width / 2, 0), Math.max(vw - 1, 0));
+    const cy = Math.min(Math.max(rect.top + rect.height / 2, 0), Math.max(vh - 1, 0));
+    const topEl = document.elementFromPoint(cx, cy);
+    const notOccluded = topEl !== null && (topEl === el || el.contains(topEl) || topEl.contains(el));
+    return {
+      visible: withinViewport && notOccluded,
+      debug: `${describe(el)} rect top=${rect.top.toFixed(0)} bottom=${rect.bottom.toFixed(0)} left=${rect.left.toFixed(0)} right=${rect.right.toFixed(0)} viewport=${vw}x${vh} topmost-element-at-center=${topEl ? describe(topEl) : "none"}`,
+    };
+  }
+
+  const active = document.activeElement;
+  const hasFocus = active !== null && active !== document.body;
+  let inputVisible = false;
+  let inputDebug = "no element focused";
+  if (hasFocus && active) {
+    const r = checkVisible(active);
+    inputVisible = r.visible;
+    inputDebug = r.debug;
+  }
+
+  const primary = document.querySelector(primarySelector);
+  let primaryFound = false;
+  let primaryVisible = false;
+  let primaryDebug = "no [data-primary-action] element on the page";
+  if (primary) {
+    primaryFound = true;
+    const r = checkVisible(primary);
+    primaryVisible = r.visible;
+    primaryDebug = r.debug;
+  }
+
+  return { hasFocus, inputVisible, inputDebug, primaryFound, primaryVisible, primaryDebug };
+}
+
+export async function checkKeyboard(page: Page, opts: { phone: boolean }): Promise<GuardResult> {
+  if (!opts.phone) return { name: "keyboard", ok: true, failures: [] };
+
+  const viewport = page.viewportSize();
+  if (!viewport) return { name: "keyboard", ok: true, failures: [] };
+
+  await polyfillEsbuildNameHelper(page);
+  const focused = await page.evaluate(focusFirstTextInput, TEXT_INPUT_SELECTOR);
+  if (!focused) {
+    // No text/number input on this screen (e.g. a read-only list) — nothing
+    // for the keyboard to push around.
+    return { name: "keyboard", ok: true, failures: [] };
+  }
+
+  const reducedHeight = Math.max(viewport.height - KEYBOARD_HEIGHT_PX, 1);
+  await page.setViewportSize({ width: viewport.width, height: reducedHeight });
+
+  let assessment: KeyboardAssessment;
+  try {
+    assessment = await page.evaluate(assessKeyboardOcclusion, PRIMARY_ACTION_SELECTOR);
+  } finally {
+    await page.setViewportSize(viewport);
+  }
+
+  const failures: string[] = [];
+  if (!assessment.hasFocus) {
+    failures.push("focus was lost when the viewport shrank to simulate the on-screen keyboard");
+  } else if (!assessment.inputVisible) {
+    failures.push(
+      `the focused input is off-viewport or covered once the keyboard opens: ${assessment.inputDebug}`,
+    );
+  }
+  if (assessment.primaryFound && !assessment.primaryVisible) {
+    failures.push(
+      `the primary action ([data-primary-action]) is off-viewport or covered once the keyboard opens: ${assessment.primaryDebug}`,
+    );
+  }
+
+  return { name: "keyboard", ok: failures.length === 0, failures };
+}
+
+// ---------------------------------------------------------------------------
 // 200% text zoom: no new horizontal overflow.
 //
-// Note (see the design-capture report): src/app/globals.css's type scale
-// utilities (`text-figure-xl`, `text-body`, ...) are written in fixed px,
-// not rem, so `html { font-size: 200% }` does not actually double their
-// rendered size — only content that inherits/uses rem or unitless line
-// height would grow. This guard still runs and still reports overflow (a
-// layout that hard-codes widths can overflow even without the type scaling),
-// but it cannot presently catch "type doesn't reflow at 200%" the way it
-// would if the scale were rem-based.
+// src/app/globals.css's type scale utilities are rem-based (docs/design/loop/
+// DECISIONS.md, "Type scale moved to rem"), so `html { font-size: 200% }`
+// actually doubles their rendered size, and this guard's overflow check is
+// exercising real type growth, not just layout that happens to be wide.
 // ---------------------------------------------------------------------------
 
 export async function checkTextZoom(page: Page): Promise<GuardResult> {
@@ -403,14 +535,19 @@ export type ScreenHealthOptions = {
   consoleAllowlist?: RegExp[];
   /** Skip individual checks (design-capture uses this for states that don't apply, e.g. no need to re-check axe on every scheme). */
   skip?: Partial<
-    Record<"overflow" | "touchTargets" | "axe" | "console" | "contrast" | "safeAreas" | "textZoom", boolean>
+    Record<
+      "overflow" | "touchTargets" | "axe" | "console" | "contrast" | "safeAreas" | "keyboard" | "textZoom",
+      boolean
+    >
   >;
 };
 
 /**
  * Runs every guard and returns each result without throwing. Order matters:
- * `checkTextZoom` mutates the page (injects a style tag) and runs last so it
- * doesn't skew the other checks' measurements.
+ * `checkKeyboard` temporarily resizes the viewport (restored before it
+ * returns) and `checkTextZoom` permanently mutates the page (injects a style
+ * tag) — both run after the checks that depend on the page's original,
+ * unzoomed layout.
  */
 export async function checkScreenHealthy(page: Page, opts: ScreenHealthOptions): Promise<GuardResult[]> {
   const skip = opts.skip ?? {};
@@ -424,6 +561,7 @@ export async function checkScreenHealthy(page: Page, opts: ScreenHealthOptions):
   }
   if (!skip.contrast) results.push(await checkContrast(page));
   if (!skip.safeAreas) results.push(await checkSafeAreas(page));
+  if (!skip.keyboard) results.push(await checkKeyboard(page, { phone: opts.phone }));
   if (!skip.textZoom) results.push(await checkTextZoom(page));
 
   return results;

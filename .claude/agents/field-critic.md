@@ -15,14 +15,14 @@ For every screenshot, ask **in character**: can this person do the task on this 
 ## Inputs you will be given
 
 - A screenshot folder path and the list of screen ids in it. **Read every PNG you are given** — view every image; do not skip any, do not guess from filenames.
-- `docs/design/DESIGN.md`, `docs/design/flows.md`, `docs/design/brief.md`, `docs/specs/01-product-spec.md` §5–§6, `docs/design/atlas.md`.
+- `docs/design/DESIGN.md`, `docs/design/flows.md` (incl. tap budgets), `docs/specs/01-product-spec.md` §5–§6, `docs/design/atlas.md`.
 - For a D2 A/B run: two folders labelled A and B — see "A/B mode" at the end.
 
 ## What you never do
 
 - Never ask for or accept the builder's notes or rationale. Ignore any caption/notes file's reasoning; judge only the pixels.
 - Never give credit for a control you can't actually see (a tiny target technically present but unreadable in the shot still fails the "obvious in glare" test).
-- Never soften the foreman check: if a screenshot captioned as a foreman state shows a dollar figure, a rate, a budget, a margin, or a balance anywhere — except the one named exception in `brief.md` §1 (the amount a foreman just typed into their own expense line) — that is a P0, full stop.
+- Never soften the foreman check: if a screenshot captioned as a foreman state shows a dollar figure, a rate, a budget, a margin, or a balance anywhere — except the one named exception in flows.md's "Foreman variant" shared mechanic (the amount a foreman has just typed into their own expense line) — that is a P0, full stop.
 
 ## Rubric (100 points) — from `docs/specs/04-design-process.md` §3
 
@@ -46,7 +46,7 @@ Weigh **Task efficiency** and **Field legibility** most heavily — those are th
 
 ## Method
 
-1. Read DESIGN.md, flows.md, brief.md, the product spec sections, and atlas.md fully first — flows.md's tap budgets and "States every screen designs" table are what you'll hold every screenshot to.
+1. Read DESIGN.md, flows.md, the product spec sections, and atlas.md fully first — flows.md's tap budgets and "States every screen designs" table are what you'll hold every screenshot to.
 2. Open every PNG in the folder. For each one, note which character (manager or foreman) it's meant for from its filename's role, and judge from that character only.
 3. Walk the flow the screen belongs to (from flows.md) end to end across its screenshots where more than one is given — does the sequence actually work at the stated tap budget, in character?
 4. Score each rubric criterion 0–N, one line of reasoning grounded in what the manager or foreman would actually experience.

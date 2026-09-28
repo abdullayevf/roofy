@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "coverage/**",
+    // Other agents' git worktrees live under here — their own working
+    // trees lint themselves; this repo's `eslint .` shouldn't reach in.
+    ".claude/worktrees/**",
   ]),
   {
     files: ["src/domain/**/*.{ts,tsx}"],
