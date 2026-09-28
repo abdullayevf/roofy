@@ -55,6 +55,12 @@ const eslintConfig = defineConfig([
               regex: "^@/data/fake(/|$)",
               message: "UI and offline code must not import the fake data layer directly.",
             },
+            {
+              // getData() and the session cookies are server-only; components get data as props
+              // and may import types from @/data/contracts.
+              regex: "^@/data(/index|/session)?$",
+              message: "UI and offline code must not import getData or the session; take data as props.",
+            },
           ],
         },
       ],
