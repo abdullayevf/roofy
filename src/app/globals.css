@@ -25,6 +25,7 @@
   --color-good: var(--good);
   --color-on-chalk: var(--on-chalk);
   --color-on-tape: var(--on-tape);
+  --color-on-over: var(--on-over);
   --color-watch-fill: var(--watch-fill);
 
   --font-display: var(--font-barlow);
@@ -141,6 +142,23 @@ body {
   font-family: var(--font-atkinson);
   font-size: 1.0625rem; /* 17px */
   line-height: 1.5rem; /* 24px */
+}
+
+/*
+ * A [data-theme] wrapper (e.g. the /design page's side-by-side light/dark
+ * demo) re-scopes the colour *custom properties* (tokens.css), but custom
+ * properties only cascade to descendants that actually read them into a
+ * real CSS property. Text left to inherit `color` from `body` (any element
+ * using a type-scale utility like `text-figure` without also adding a
+ * `text-ink`/`text-*` colour class) would otherwise keep body's colour —
+ * computed once, outside the wrapper, under whatever scheme the page
+ * itself is in — regardless of the wrapper's own theme. Re-establishing
+ * `color`/`background` here, exactly as `body` does at the page root,
+ * makes every themed wrapper its own root for inheritance.
+ */
+[data-theme] {
+  background: var(--galv);
+  color: var(--ink);
 }
 
 @media (min-width: 1024px) {

@@ -88,6 +88,18 @@ describe("generateTokensCss", () => {
     expect(rootBlock).toMatch(/--watch-fill:\s*#ffc82c;/);
   });
 
+  it("derives on-over as white in light mode (over is dark-toned there)", () => {
+    const rootBlock = css.match(/:root\s*{([^}]*)}/s)?.[1] ?? "";
+    expect(rootBlock).toMatch(/--on-over:\s*#ffffff;/);
+  });
+
+  it("derives on-over as the dark galv in dark mode (over flips to a light tone there, like tape)", () => {
+    const mediaBlock = css.match(
+      /@media \(prefers-color-scheme: dark\)\s*{\s*:root:not\(\[data-theme="light"\]\)\s*{([^}]*)}/s,
+    )?.[1];
+    expect(mediaBlock).toMatch(/--on-over:\s*#1f2224;/);
+  });
+
   it("emits elevation shadows on :root from §6", () => {
     const rootBlock = css.match(/:root\s*{([^}]*)}/s)?.[1] ?? "";
     expect(rootBlock).toMatch(/--shadow-sheet:\s*0 8px 24px rgb\(31 34 36 \/ 0\.18\);/);
@@ -144,6 +156,25 @@ describe("generateTokensCss", () => {
     expect(explicitBlock).toMatch(/--chalk-link:\s*#8fb0ff;/);
     expect(explicitBlock).toMatch(/--good:\s*#6fcf97;/);
     expect(explicitBlock).toMatch(/--shadow-sheet:\s*none;/);
+  });
+
+  it("also emits a plain [data-theme=dark] block for wrapper elements, not only :root", () => {
+    const wrapperBlock = css.match(/\n\[data-theme="dark"\]\s*{([^}]*)}/s)?.[1];
+    expect(wrapperBlock).toBeDefined();
+    expect(wrapperBlock).toMatch(/color-scheme:\s*dark;/);
+    expect(wrapperBlock).toMatch(/--galv:\s*#1f2224;/);
+    expect(wrapperBlock).toMatch(/--chalk-link:\s*#8fb0ff;/);
+    expect(wrapperBlock).toMatch(/--good:\s*#6fcf97;/);
+    expect(wrapperBlock).toMatch(/--shadow-sheet:\s*none;/);
+  });
+
+  it("also emits a plain [data-theme=light] block for wrapper elements, forcing light regardless of scheme", () => {
+    const wrapperBlock = css.match(/\[data-theme="light"\]\s*{([^}]*)}/s)?.[1];
+    expect(wrapperBlock).toBeDefined();
+    expect(wrapperBlock).toMatch(/color-scheme:\s*light;/);
+    expect(wrapperBlock).toMatch(/--galv:\s*#edefed;/);
+    expect(wrapperBlock).toMatch(/--chalk-link:\s*#1f4fb5;/);
+    expect(wrapperBlock).toMatch(/--shadow-sheet:\s*0 8px 24px rgb\(31 34 36 \/ 0\.18\);/);
   });
 
   it("is stable (idempotent) across repeated generation", () => {
