@@ -1161,7 +1161,7 @@ export function buildSeed(): Seed {
   // Statement links for the last approved run (Dima and Lee).
   const statementTokens: SeedMeta["statementTokens"] = [];
   for (const key of ["dima", "lee"] as const) {
-    const token = b.rng.hex(40);
+    const token = b.rng.hex(64); // 32 bytes (architecture §6)
     t.statementLinks.push({
       ...b.base(b.at("2026-09-21", "09:30")),
       payRunId: lastApproved.id,

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { dayKey, findGaps, utilisation, type NoWorkReason } from "@/domain/attendance";
 import { labourCost, type CostContext } from "@/domain/costing";
 import { addDays, dayOfWeek, eachDay } from "@/domain/dates";
@@ -129,9 +129,21 @@ describe("seed: shape and determinism", () => {
   });
 
   it("is anchored at the default fake clock's work date", () => {
-    expect(SEED_TODAY).toBe("2026-09-28");
-    expect(seed.meta.today).toBe(SEED_TODAY);
-    expect(fakeToday()).toBe(seed.meta.today);
+    vi.stubEnv("ROOFY_FAKE_NOW", undefined);
+    try {
+      expect(SEED_TODAY).toBe("2026-09-28");
+      expect(seed.meta.today).toBe(SEED_TODAY);
+      expect(fakeToday()).toBe(seed.meta.today);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("statement tokens are 32 random bytes and stored only as sha256", () => {
+    for (const { token } of seed.meta.statementTokens) expect(token).toMatch(/^[0-9a-f]{64}$/);
+    const hashes = seed.statementLinks.map((l) => l.tokenHash);
+    const expected = seed.meta.statementTokens.map((x) => createHash("sha256").update(x.token).digest("hex"));
+    expect(expected).toEqual(hashes);
   });
 
   it("is Harbour Roofing: GST registered, Sydney, weekly from Monday, Mon–Fri, 8.0 h, 25% on-cost", () => {
@@ -403,6 +415,31 @@ describe("seed: every figure reproduces through src/domain", () => {
     const segs = segmentsOf(seed, seed.meta.stages.patelSheetInstall);
     expect(realWorkingDays(segs, [1, 2, 3, 4, 5], SEED_TODAY)).toBe(6);
     expect(lostWorkingDays(segs, [1, 2, 3, 4, 5], SEED_TODAY).weather).toBe(3);
+  });
+
+  it("lump-sum stages log each person's usual basis on the grid; Done then raises double pay (pay rules §9)", () => {
+    const name = (id: string) => crewOf(seed, id).name;
+    const ridge = live(seed.workLogs).filter((l) => l.stageId === seed.meta.stages.harrisRidge);
+    expect(ridge.map((l) => [name(l.crewMemberId), l.basis, l.date])).toEqual([
+      ["Sam", "daily", "2026-09-18"],
+      ["Tom", "daily", "2026-09-18"],
+      ["Dima", "daily", "2026-09-18"],
+    ]);
+    const brown = live(seed.workLogs).filter((l) => l.stageId === seed.meta.stages.brownRidge);
+    expect(brown.filter((l) => l.basis !== "lump_sum").map((l) => [name(l.crewMemberId), l.basis])).toEqual([
+      ["Mick", "daily"],
+      ["Kev", "daily"],
+      ["Josh", "hourly"],
+      ["Mick", "daily"],
+      ["Kev", "daily"],
+      ["Josh", "hourly"],
+    ]);
+    const flags = doublePayFlags(brown.map(flagLog)).map((f) => [name(f.crewMemberId), f.date]);
+    expect(flags).toEqual([
+      ["Mick", "2026-09-03"],
+      ["Kev", "2026-09-03"],
+      ["Josh", "2026-09-03"],
+    ]);
   });
 
   it("E5.1 Harris ridge is ready for Done: Sam/Tom/Dima logged → $666.67 / $666.67 / $666.66", () => {

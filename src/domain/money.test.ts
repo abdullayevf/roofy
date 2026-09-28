@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mulDivRound, parseDecimal, sum, toCents, toHundredths } from "./money";
+import { mulDivRound, parseDecimal, roundToNearest, sum, toCents, toHundredths } from "./money";
 
 describe("mulDivRound", () => {
   it("rounds half away from zero", () => {
@@ -45,5 +45,18 @@ describe("sum", () => {
   it("adds integers and returns 0 for none", () => {
     expect(sum([1, 2, 3])).toBe(6);
     expect(sum([])).toBe(0);
+  });
+});
+
+describe("roundToNearest", () => {
+  it("rounds cents to a whole step, half away from zero", () => {
+    expect(roundToNearest(412_499, 5_000)).toBe(410_000);
+    expect(roundToNearest(412_500, 5_000)).toBe(415_000);
+    expect(roundToNearest(-412_500, 5_000)).toBe(-415_000);
+    expect(roundToNearest(400_000, 5_000)).toBe(400_000);
+  });
+  it("never returns -0 and rejects a non-positive step", () => {
+    expect(Object.is(roundToNearest(-2_000, 5_000), 0)).toBe(true);
+    expect(() => roundToNearest(100, 0)).toThrow(RangeError);
   });
 });

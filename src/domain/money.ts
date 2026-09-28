@@ -33,6 +33,11 @@ export function parseDecimal(input: string, places: number): number {
   return m[1] === "-" && value !== 0 ? -value : value;
 }
 
+/** Round to a whole multiple of `step` (e.g. $50 budgets), half away from zero. Never returns -0. */
+export function roundToNearest(value: number, step: number): number {
+  return mulDivRound(value, 1, step) * step;
+}
+
 export const toCents = (s: string): Cents => parseDecimal(s, 2);
 export const toHundredths = (s: string): Hundredths => parseDecimal(s, 2);
 
