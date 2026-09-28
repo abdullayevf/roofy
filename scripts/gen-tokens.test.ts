@@ -88,6 +88,18 @@ describe("generateTokensCss", () => {
     expect(rootBlock).toMatch(/--watch-fill:\s*#ffc82c;/);
   });
 
+  it("derives on-over as white in light mode (over is dark-toned there)", () => {
+    const rootBlock = css.match(/:root\s*{([^}]*)}/s)?.[1] ?? "";
+    expect(rootBlock).toMatch(/--on-over:\s*#ffffff;/);
+  });
+
+  it("derives on-over as the dark galv in dark mode (over flips to a light tone there, like tape)", () => {
+    const mediaBlock = css.match(
+      /@media \(prefers-color-scheme: dark\)\s*{\s*:root:not\(\[data-theme="light"\]\)\s*{([^}]*)}/s,
+    )?.[1];
+    expect(mediaBlock).toMatch(/--on-over:\s*#1f2224;/);
+  });
+
   it("emits elevation shadows on :root from §6", () => {
     const rootBlock = css.match(/:root\s*{([^}]*)}/s)?.[1] ?? "";
     expect(rootBlock).toMatch(/--shadow-sheet:\s*0 8px 24px rgb\(31 34 36 \/ 0\.18\);/);

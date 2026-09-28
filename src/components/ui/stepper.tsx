@@ -51,7 +51,7 @@ export function Stepper({ mode, value, onChange, min, max, disabled, label, clas
         disabled={disabled || value <= lo}
         onClick={() => step_(-step)}
       />
-      <span aria-live="polite" className="min-w-[64px] text-center text-figure num">
+      <span aria-live="polite" className="min-w-[64px] text-center text-figure num text-ink">
         {display}
       </span>
       <Button

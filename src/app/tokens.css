@@ -15,6 +15,7 @@
   --good: #256b40;
   --on-chalk: #ffffff;
   --on-tape: #2f3133;
+  --on-over: #ffffff;
   --watch-fill: #ffc82c;
   --shadow-sheet: 0 8px 24px rgb(31 34 36 / 0.18);
   --shadow-toast: 0 12px 32px rgb(31 34 36 / 0.28);
@@ -37,6 +38,7 @@
     --good: #6fcf97;
     --on-chalk: #ffffff;
     --on-tape: #1f2224;
+    --on-over: #1f2224;
     --watch-fill: #ffc82c;
     --shadow-sheet: none;
     --shadow-toast: none;
@@ -59,6 +61,7 @@
   --good: #6fcf97;
   --on-chalk: #ffffff;
   --on-tape: #1f2224;
+  --on-over: #1f2224;
   --watch-fill: #ffc82c;
   --shadow-sheet: none;
   --shadow-toast: none;
@@ -85,6 +88,7 @@
   --good: #6fcf97;
   --on-chalk: #ffffff;
   --on-tape: #1f2224;
+  --on-over: #1f2224;
   --watch-fill: #ffc82c;
   --shadow-sheet: none;
   --shadow-toast: none;
@@ -106,6 +110,7 @@
   --good: #256b40;
   --on-chalk: #ffffff;
   --on-tape: #2f3133;
+  --on-over: #ffffff;
   --watch-fill: #ffc82c;
   --shadow-sheet: 0 8px 24px rgb(31 34 36 / 0.18);
   --shadow-toast: 0 12px 32px rgb(31 34 36 / 0.28);

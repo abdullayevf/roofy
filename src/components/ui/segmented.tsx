@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { cx } from "@/lib/cx";
 
 export type SegmentedOption = { value: string; label: string };
@@ -9,8 +10,10 @@ export type SegmentedProps = {
   legend: string;
   name: string;
   options: SegmentedOption[];
-  value: string;
-  onChange: (value: string) => void;
+  /** Uncontrolled starting value. Ignored once `value` (controlled) is passed. */
+  defaultValue?: string;
+  value?: string;
+  onChange?: (value: string) => void;
   className?: string;
 };
 
@@ -21,7 +24,18 @@ export type SegmentedProps = {
  * comes from the browser's own radio-group behaviour rather than a
  * hand-rolled `keydown` handler.
  */
-export function Segmented({ legend, name, options, value, onChange, className }: SegmentedProps) {
+export function Segmented({
+  legend,
+  name,
+  options,
+  defaultValue,
+  value: controlledValue,
+  onChange,
+  className,
+}: SegmentedProps) {
+  const [uncontrolled, setUncontrolled] = useState(defaultValue ?? options[0]?.value ?? "");
+  const value = controlledValue ?? uncontrolled;
+
   return (
     <div
       role="radiogroup"
@@ -43,7 +57,10 @@ export function Segmented({ legend, name, options, value, onChange, className }:
               name={name}
               value={opt.value}
               checked={checked}
-              onChange={() => onChange(opt.value)}
+              onChange={() => {
+                setUncontrolled(opt.value);
+                onChange?.(opt.value);
+              }}
               className="absolute inset-0 h-full w-full cursor-pointer appearance-none opacity-0 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-chalk"
             />
             <span>{opt.label}</span>

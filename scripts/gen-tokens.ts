@@ -24,6 +24,7 @@ const COLOR_TOKEN_ORDER = [
   "good",
   "on-chalk",
   "on-tape",
+  "on-over",
   "watch-fill",
 ] as const;
 
@@ -115,7 +116,7 @@ function parseElevation(md: string): Elevation {
 
 function buildColors(
   base: Record<string, string>,
-  opts: { chalkLink: string; onTapeFrom: string },
+  opts: { chalkLink: string; onTapeFrom: string; onOverFrom: string },
 ): ColorTokens {
   const required = [
     "galv",
@@ -148,6 +149,7 @@ function buildColors(
     good: base.good!,
     "on-chalk": "#ffffff",
     "on-tape": opts.onTapeFrom,
+    "on-over": opts.onOverFrom,
     "watch-fill": base.tape!,
   };
 }
@@ -160,8 +162,22 @@ export function generateTokensCss(designMd: string): string {
   const { light: lightBase, dark: darkBase } = parseColorSection(designMd);
   const elevation = parseElevation(designMd);
 
-  const light = buildColors(lightBase, { chalkLink: lightBase.chalk!, onTapeFrom: lightBase.ink! });
-  const dark = buildColors(darkBase, { chalkLink: darkBase["chalk-link"]!, onTapeFrom: darkBase.galv! });
+  // `over` is dark-toned in light mode (#C62D1F) but light-toned in dark
+  // mode (#FF8A7A, calibrated as a *text* colour on dark surfaces per §2) —
+  // the same inversion `tape` has, so `on-over` is derived the same way
+  // `on-tape` is: white where the fill is dark, a dark surface tone where
+  // the fill is itself light. This backs the filled destructive button
+  // (DESIGN.md §4, confirmation sheets only).
+  const light = buildColors(lightBase, {
+    chalkLink: lightBase.chalk!,
+    onTapeFrom: lightBase.ink!,
+    onOverFrom: "#ffffff",
+  });
+  const dark = buildColors(darkBase, {
+    chalkLink: darkBase["chalk-link"]!,
+    onTapeFrom: darkBase.galv!,
+    onOverFrom: darkBase.galv!,
+  });
 
   const header =
     "/* Design tokens. Generated from docs/design/DESIGN.md by scripts/gen-tokens.ts. Only file allowed to contain raw colours. */";

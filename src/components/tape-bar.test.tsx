@@ -5,8 +5,8 @@ import { TapeBar } from "./tape-bar";
 
 describe("TapeBar", () => {
   it("exposes progressbar aria values", () => {
-    render(<TapeBar percent={30} />);
-    const bar = screen.getByRole("progressbar");
+    render(<TapeBar label="Sheet install progress" percent={30} />);
+    const bar = screen.getByRole("progressbar", { name: "Sheet install progress" });
     expect(bar).toHaveAttribute("aria-valuenow", "30");
     expect(bar).toHaveAttribute("aria-valuemin", "0");
     expect(bar).toHaveAttribute("aria-valuemax", "100");
@@ -14,22 +14,22 @@ describe("TapeBar", () => {
   });
 
   it("prints the percent as text beside the bar", () => {
-    render(<TapeBar percent={30} />);
+    render(<TapeBar label="Sheet install progress" percent={30} />);
     expect(screen.getByText("30%")).toBeInTheDocument();
   });
 
   it("clamps out-of-range percentages for the aria value", () => {
-    render(<TapeBar percent={140} />);
+    render(<TapeBar label="Sheet install progress" percent={140} />);
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100");
   });
 
   it("labels an optional forecast marker as Forecast", () => {
-    render(<TapeBar percent={30} forecastPercent={120} />);
+    render(<TapeBar label="Sheet install progress" percent={30} forecastPercent={120} />);
     expect(screen.getByText("Forecast")).toBeInTheDocument();
   });
 
   it("has no forecast label when no forecast is given", () => {
-    render(<TapeBar percent={30} />);
+    render(<TapeBar label="Sheet install progress" percent={30} />);
     expect(screen.queryByText("Forecast")).not.toBeInTheDocument();
   });
 });

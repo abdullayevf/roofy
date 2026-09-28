@@ -1,6 +1,8 @@
 import { cx } from "@/lib/cx";
 
 export type TapeBarProps = {
+  /** Accessible name for the progressbar role, e.g. "Sheet install progress". */
+  label: string;
   /** Progress as a whole percent, 0-100. */
   percent: number;
   /** Where the forecast lands, as a whole percent, if it's tracking to go over. */
@@ -16,12 +18,13 @@ const TICK_STOPS = [10, 20, 30, 40, 50, 60, 70, 80, 90];
  * text, and an optional `over`-coloured marker at the forecast point,
  * labelled "Forecast" — never a red bar.
  */
-export function TapeBar({ percent, forecastPercent, className }: TapeBarProps) {
+export function TapeBar({ label, percent, forecastPercent, className }: TapeBarProps) {
   const clamped = Math.max(0, Math.min(100, percent));
   return (
     <div className={cx("flex items-center gap-3", className)}>
       <div
         role="progressbar"
+        aria-label={label}
         aria-valuenow={clamped}
         aria-valuemin={0}
         aria-valuemax={100}
@@ -48,7 +51,7 @@ export function TapeBar({ percent, forecastPercent, className }: TapeBarProps) {
           />
         ) : null}
       </div>
-      <span className="text-figure num shrink-0">{clamped}%</span>
+      <span className="text-figure num shrink-0 text-ink">{clamped}%</span>
       {forecastPercent !== undefined ? <span className="text-meta text-over shrink-0">Forecast</span> : null}
     </div>
   );

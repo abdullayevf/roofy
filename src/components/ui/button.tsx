@@ -37,7 +37,7 @@ const FORCED_FOCUS = "outline outline-[3px] outline-offset-2 outline-chalk";
 function variantClasses(props: ButtonProps): string {
   if (props.tone === "danger") {
     return props.filled
-      ? "bg-over text-on-chalk border border-transparent"
+      ? "bg-over text-on-over border border-transparent"
       : "bg-transparent text-over border border-transparent";
   }
   switch (props.variant ?? "primary") {
@@ -79,7 +79,10 @@ export function Button(props: ButtonProps) {
       {props.iconOnly ? (
         <span className="sr-only">{props.label}</span>
       ) : (
-        <span className={props.loading ? "invisible" : undefined}>{props.children}</span>
+        // opacity, not `invisible` (visibility:hidden): the real label must
+        // stay in the accessibility tree as the button's name while loading,
+        // even though the "Working" text below is what's visually shown.
+        <span className={props.loading ? "opacity-0" : undefined}>{props.children}</span>
       )}
       {props.loading && !props.iconOnly ? (
         <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
