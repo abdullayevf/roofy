@@ -99,7 +99,7 @@ Today in the prototype is **Mon 28 Sep 2026** (Australia/Sydney). Workspace: **H
 The budget is achievable because the grid pre-fills from the last logged day. **Arithmetic:** open Log (1) + Same as yesterday (2) + one exception (3) + Save day (4) = **4 taps**, 2 under budget — enough headroom for a second exception without breaking the target.
 
 1. Tap **Log** (bottom tab, raised chalk circle). → `/log`, crew-day grid. Date defaults to today, **Mon 28 Sep**. _(1 tap)_
-2. Tap **Same as yesterday**. Project ("Smith job — Ryde re-roof"), stage ("Sheet install") and the crew who logged yesterday (Sam, Tom, Jake) fill in, each ticked with their usual basis shown on their chip ("Day", "Hourly", "m²"). _(2 taps)_
+2. Tap **Same as yesterday**. Project ("Smith job — Ryde re-roof"), stage ("Sheet install") and the crew from the previous logged day (Fri 25 Sep in the seed: Sam and Dima) fill in, each ticked with their usual basis shown on their chip ("Day", "Hourly", "m²"). _(2 taps)_
 3. One exception — e.g. Sam worked a half day: tap the **½ day** toggle on Sam's row. _(3 taps)_
 4. Tap **Save day**. _(4 taps)_
 
@@ -121,7 +121,7 @@ The budget is achievable because the grid pre-fills from the last logged day. **
 2. Tap **Same as yesterday**. Project, stage and crew fill in exactly as logged yesterday, no edits needed. _(2 taps)_
 3. Tap **Save day**. _(3 taps)_
 
-**After save:** same "Logged" motion as above. **Offline:** identical to the crew-day flow. **Errors:** if there is no "yesterday" to copy (first working day, or nothing logged yesterday), the button reads **"No day to copy yet"** and is disabled — the person falls back to a manual crew-day log.
+**After save:** same "Logged" motion as above. **Offline:** identical to the crew-day flow. **Errors:** if there is no "yesterday" to copy (no earlier logged day at all, e.g. a brand-new workspace), the button reads **"No day to copy yet"** and is disabled — the person falls back to a manual crew-day log.
 
 ## Progress 120 m² split two ways
 
@@ -131,7 +131,7 @@ The budget is achievable because the grid pre-fills from the last logged day. **
 
 1. Tap **Log**. → `/log`. _(1)_
 2. Tap the **Progress** segment. → `/log/progress`. _(2)_
-3. Tap the recent-stage chip **"Smith job — Sheet install"** (the picker lists the stages you logged most recently as one-tap chips; "Choose another stage" opens the full job and stage list). Job and stage fill together. Budgeted 400 m², measured so far 0 m². _(3)_
+3. Tap the recent-stage chip **"Smith job — Sheet install"** (the picker lists the stages you logged most recently as one-tap chips; "Choose another stage" opens the full job and stage list). Job and stage fill together. Budgeted 400 m², measured so far 120 m². _(3)_
 4. Tap the **quantity** field (decimal keypad) and type `120` — typing not counted, the tap to focus is. _(4)_
 5. Tap the **Sam** crew chip to add him to the split. _(5)_
 6. Tap the **Dima** crew chip to add him too. Equal split is the default (60.00 m² each, no extra tap needed to choose "equal"). _(6)_
@@ -139,7 +139,7 @@ The budget is achievable because the grid pre-fills from the last logged day. **
 
 7 taps, 1 under budget. Without a recent-stage chip (first ever progress entry), "Choose another stage" (1) + job row (1) + stage row (1) replaces step 3: 9 taps — acceptable only for the first entry; the test covers the recent-chip path.
 
-**After save:** stage tape bar updates to 30% with the tick at 120 m²; each person gets a per-unit work log ($570.00 for Sam, $720.00 for Dima per `02-pay-rules.md` E4.1 — hidden from foreman).
+**After save:** stage tape bar moves from 30% to 60% (240 of 400 m²); each person gets a per-unit work log ($570.00 for Sam, $720.00 for Dima per `02-pay-rules.md` E4.1 — hidden from foreman).
 
 **Offline:** Waiting/Sending/Sent as above.
 
