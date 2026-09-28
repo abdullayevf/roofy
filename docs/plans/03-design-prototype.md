@@ -122,6 +122,7 @@ opus: Tasks 5, 6, 7 (data contracts, foreman DTO hiding, domain-derived figures,
 - [ ] `demo.ts`: `?demo=` states for fake mode — `empty` (new workspace with nothing), `loading` (page renders its skeleton via a never-resolving Suspense child), `error` (service throws a typed `DataError` shown by the route's `error.tsx`), `offline` (banner shown), `waiting` (outbox has 3 waiting items), `attention` (1 rejected item), `noperm` (role lacks permission). Read only in fake mode; ignored otherwise.
 - [ ] Role: cookie `roofy_role` (owner/manager/foreman/accountant; default manager), set by `GET /prototype/role?as=…` (fake mode only, 404 otherwise). Foreman actor is assigned to 2 of the 5 active jobs.
 - [ ] Today: `todayIn("Australia/Sydney", fakeNow())` = `2026-09-28` at the default clock (test).
+- [ ] Runtime foreman scan (from Task 5 review): `dto.test.ts` calls `expectNoMoney` on the fake's result of every foreman-reachable method (all `view: "foreman"` reads) for the seeded data and every `?demo=` state.
 - [ ] Verify: `pnpm verify` green.
 
 ### Task 7: Fake writes and the push shape (opus)
@@ -130,6 +131,7 @@ opus: Tasks 5, 6, 7 (data contracts, foreman DTO hiding, domain-derived figures,
 
 - [ ] Mutation envelope `{ id: uuidv7, type, schemaVersion: 1, appVersion, createdAt, payload }`; push request ≤ 25 mutations; response per id: `{ status: "applied", result }` · `{ status: "rejected", code, message }` · `{ status: "retry" }`. Repeat id → stored result, no second apply (test). Business warnings (paused stage, late entry, possible duplicate) → applied with `flags`, never rejected (test). Foreman posting to an unassigned project → rejected `forbidden` with money-free message (test).
 - [ ] `submit.ts` (client): builds the envelope (uuid v7), POSTs, returns the per-mutation result; no retries/durability in Phase 2 (Phase 5 replaces it with the Dexie outbox). Lint keeps it free of `@/server` and `@/data/fake`.
+- [ ] Foreman push results never reveal pay facts: strip `missing_rate` (and any other pay-only flag) from `EntryResult.flags` for foreman actors (from Task 5 review); test.
 - [ ] Crew-day writes compute amounts via `resolveRate` + `hourlyAmount`/`dailyAmount`/time-only; progress via `pieceRateLines`; stage done via `lumpSumLines`; auto-start of a Not started stage on first log; logs on Paused/Done stages flagged.
 - [ ] Admin Server Functions (projects, stages done/reopen, crew, rates, settings, pay run approve/reopen/export, payouts) validate with zod and call the fake services; foreman calls to money actions → typed `forbidden`.
 - [ ] Verify: `pnpm verify` green.
