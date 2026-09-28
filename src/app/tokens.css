@@ -63,3 +63,50 @@
   --shadow-sheet: none;
   --shadow-toast: none;
 }
+
+/*
+ * Non-:root variants so a wrapper element (e.g. a side-by-side light/dark
+ * demo on /design) can force a theme regardless of the page's own scheme,
+ * not only the document root.
+ */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --galv: #1f2224;
+  --surface: #2a2e30;
+  --ink: #eceeec;
+  --ink-2: #a9b0ac;
+  --line: #3a3f42;
+  --edge: #7a827e;
+  --chalk: #3563cc;
+  --chalk-link: #8fb0ff;
+  --tape: #ffc82c;
+  --over: #ff8a7a;
+  --watch: #ffc82c;
+  --good: #6fcf97;
+  --on-chalk: #ffffff;
+  --on-tape: #1f2224;
+  --watch-fill: #ffc82c;
+  --shadow-sheet: none;
+  --shadow-toast: none;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --galv: #edefed;
+  --surface: #ffffff;
+  --ink: #2f3133;
+  --ink-2: #5a605c;
+  --line: #d5dad6;
+  --edge: #7d8580;
+  --chalk: #1f4fb5;
+  --chalk-link: #1f4fb5;
+  --tape: #ffc82c;
+  --over: #c62d1f;
+  --watch: #8a5300;
+  --good: #256b40;
+  --on-chalk: #ffffff;
+  --on-tape: #2f3133;
+  --watch-fill: #ffc82c;
+  --shadow-sheet: 0 8px 24px rgb(31 34 36 / 0.18);
+  --shadow-toast: 0 12px 32px rgb(31 34 36 / 0.28);
+}

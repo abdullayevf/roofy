@@ -189,6 +189,25 @@ ${colorDeclarations(dark, "  ")}
   --shadow-sheet: none;
   --shadow-toast: none;
 }
+
+/*
+ * Non-:root variants so a wrapper element (e.g. a side-by-side light/dark
+ * demo on /design) can force a theme regardless of the page's own scheme,
+ * not only the document root.
+ */
+[data-theme="dark"] {
+  color-scheme: dark;
+${colorDeclarations(dark, "  ")}
+  --shadow-sheet: none;
+  --shadow-toast: none;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+${colorDeclarations(light, "  ")}
+  --shadow-sheet: ${elevation.sheet};
+  --shadow-toast: ${elevation.toast};
+}
 `;
 }
 

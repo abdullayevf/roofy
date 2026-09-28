@@ -146,6 +146,25 @@ describe("generateTokensCss", () => {
     expect(explicitBlock).toMatch(/--shadow-sheet:\s*none;/);
   });
 
+  it("also emits a plain [data-theme=dark] block for wrapper elements, not only :root", () => {
+    const wrapperBlock = css.match(/\n\[data-theme="dark"\]\s*{([^}]*)}/s)?.[1];
+    expect(wrapperBlock).toBeDefined();
+    expect(wrapperBlock).toMatch(/color-scheme:\s*dark;/);
+    expect(wrapperBlock).toMatch(/--galv:\s*#1f2224;/);
+    expect(wrapperBlock).toMatch(/--chalk-link:\s*#8fb0ff;/);
+    expect(wrapperBlock).toMatch(/--good:\s*#6fcf97;/);
+    expect(wrapperBlock).toMatch(/--shadow-sheet:\s*none;/);
+  });
+
+  it("also emits a plain [data-theme=light] block for wrapper elements, forcing light regardless of scheme", () => {
+    const wrapperBlock = css.match(/\[data-theme="light"\]\s*{([^}]*)}/s)?.[1];
+    expect(wrapperBlock).toBeDefined();
+    expect(wrapperBlock).toMatch(/color-scheme:\s*light;/);
+    expect(wrapperBlock).toMatch(/--galv:\s*#edefed;/);
+    expect(wrapperBlock).toMatch(/--chalk-link:\s*#1f4fb5;/);
+    expect(wrapperBlock).toMatch(/--shadow-sheet:\s*0 8px 24px rgb\(31 34 36 \/ 0\.18\);/);
+  });
+
   it("is stable (idempotent) across repeated generation", () => {
     expect(generateTokensCss(FIXTURE)).toEqual(css);
   });
