@@ -32,6 +32,22 @@ describe("session cookies", () => {
     expect(await session.readSession()).toEqual({ role: "manager", demoSessionId: null });
   });
 
+  it("marks the demo cookie Secure when the request came over https", async () => {
+    requestHeaders.set("x-forwarded-proto", "https");
+    try {
+      await session.ensureDemoSession();
+      expect(set).toHaveBeenCalledWith("roofy_demo", expect.any(String), expect.objectContaining({ secure: true }));
+    } finally {
+      requestHeaders.delete("x-forwarded-proto");
+    }
+  });
+
+  it("isHttps reads the URL protocol or x-forwarded-proto", () => {
+    expect(session.isHttps("https://a.example/x", new Headers())).toBe(true);
+    expect(session.isHttps("http://127.0.0.1/x", new Headers({ "x-forwarded-proto": "https, http" }))).toBe(true);
+    expect(session.isHttps("http://127.0.0.1/x", new Headers())).toBe(false);
+  });
+
   it("ensureDemoSession creates the cookie once, then reuses it", async () => {
     const id = await session.ensureDemoSession();
     expect(session.isDemoSessionId(id)).toBe(true);
@@ -64,6 +80,14 @@ describe("safeNextPath", () => {
     ["/\\evil.example", "/"],
     ["/\u0000x", "/"],
     ["/ok\nSet-Cookie: x", "/"],
+    ["/.//evil.example", "/"],
+    ["/a/..//evil.example", "/"],
+    ["/./\\evil.example", "/"],
+    ["/%2F%2Fevil.example", "/"],
+    ["/%2f/evil.example", "/"],
+    ["/.%2F%2Fevil.example", "/"],
+    ["/%5Cevil.example", "/"],
+    ["\\evil.example", "/"],
   ])("%s → %s", (input, expected) => {
     expect(session.safeNextPath(input)).toBe(expected);
   });

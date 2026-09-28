@@ -25,10 +25,23 @@ afterEach(() => {
 });
 
 describe("ROOFY_DATA", () => {
-  it("fake is the only implementation; unset defaults to fake during Phase 2", () => {
+  it("fake is the only implementation; unset defaults to fake outside production", () => {
+    vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("ROOFY_DATA", "fake");
     expect([isFakeMode(), dataMode()]).toEqual([true, "fake"]);
     vi.stubEnv("ROOFY_DATA", undefined);
+    expect([isFakeMode(), dataMode()]).toEqual([true, "fake"]);
+  });
+
+  it("in production an unset ROOFY_DATA is not fake: it throws until Phase 3", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ROOFY_DATA", undefined);
+    expect(isFakeMode()).toBe(false);
+    expect(() => dataMode()).toThrow(/ROOFY_DATA isn't set.*real data layer arrives in Phase 3/);
+    await expect(getData()).rejects.toThrow(/Phase 3/);
+    vi.stubEnv("ROOFY_DATA", "");
+    expect(isFakeMode()).toBe(false);
+    vi.stubEnv("ROOFY_DATA", "fake");
     expect([isFakeMode(), dataMode()]).toEqual([true, "fake"]);
   });
 

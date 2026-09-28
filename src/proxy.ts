@@ -1,7 +1,8 @@
 /**
  * Copies `?demo=<state>` into the `x-roofy-demo` request header so layouts — which get no
  * `searchParams` — can read the prototype's demo state through `getData()` (e.g. the offline
- * banner). Runs only on requests that carry `?demo`; `getData()` ignores it outside fake mode.
+ * banner). Runs on every page request and always drops a client-sent copy of the header, so only
+ * the URL decides the state. `getData()` ignores it outside fake mode.
  */
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -16,11 +17,9 @@ export function proxy(request: NextRequest): NextResponse {
   return NextResponse.next({ request: { headers } });
 }
 
+/** Every page and route request (so a client-sent header is always stripped); not static files. */
 export const config = {
   matcher: [
-    {
-      source: "/((?!_next/static|_next/image|favicon.ico).*)",
-      has: [{ type: "query", key: "demo" }],
-    },
+    "/((?!_next/static|_next/image|favicon\\.ico|icon|apple-icon|manifest\\.webmanifest|.*\\.(?:png|jpg|jpeg|svg|webp|ico|woff2)$).*)",
   ],
 };

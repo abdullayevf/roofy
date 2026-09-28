@@ -21,7 +21,7 @@ export const DEMO_HEADER = "x-roofy-demo";
 export const ROLES: readonly Role[] = ["owner", "manager", "foreman", "accountant"];
 export const DEFAULT_ROLE: Role = "manager";
 
-/** Prototype cookies: HTTP-only, same-site, 30 days. (Not `secure`: e2e runs on http://127.0.0.1.) */
+/** Prototype cookies: HTTP-only, same-site, 30 days; `Secure` is added when the request is https. */
 export const SESSION_COOKIE_OPTIONS = {
   httpOnly: true,
   sameSite: "lax",
@@ -45,21 +45,33 @@ export function newDemoSessionId(): string {
 }
 
 /**
- * A same-origin path to go to after a role switch, else "/". Refuses absolute URLs,
- * protocol-relative ("//evil") and backslash tricks ("/\\evil").
+ * A same-origin path to go to after a role switch, else "/". Refuses absolute URLs, backslashes,
+ * control characters and anything that is — or normalises or decodes to — protocol-relative
+ * ("//evil", "/.//evil", "/a/..//evil"); encoded slashes (%2F, %5C) are refused outright. Any doubt → "/".
  */
 export function safeNextPath(value: unknown): string {
-  if (
-    typeof value !== "string" ||
-    !value.startsWith("/") ||
-    value.startsWith("//") ||
-    value.startsWith("/\\")
-  )
+  if (typeof value !== "string" || !value.startsWith("/")) return "/";
+  if (value.includes("\\") || [...value].some((ch) => ch.charCodeAt(0) < 0x20 || ch.charCodeAt(0) === 0x7f))
     return "/";
-  if ([...value].some((ch) => ch.charCodeAt(0) < 0x20 || ch.charCodeAt(0) === 0x7f)) return "/";
   const base = "http://roofy.invalid";
-  const url = new URL(value, base);
-  return url.origin === base ? `${url.pathname}${url.search}${url.hash}` : "/";
+  let url: URL;
+  let decoded: string;
+  try {
+    url = new URL(value, base);
+    decoded = decodeURIComponent(url.pathname);
+  } catch {
+    return "/";
+  }
+  const risky = (path: string) => path.startsWith("//") || path.includes("\\");
+  if (url.origin !== base || risky(url.pathname) || risky(decoded) || /%2f|%5c/i.test(url.pathname)) return "/";
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+/** Was this request made over https (directly or behind a proxy)? Decides the `Secure` flag. */
+export function isHttps(url: string, requestHeaders: Headers): boolean {
+  if (url.startsWith("https:")) return true;
+  const forwarded = requestHeaders.get("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase();
+  return forwarded === "https";
 }
 
 export interface PrototypeSession {
@@ -86,7 +98,7 @@ export async function ensureDemoSession(): Promise<string> {
   const id = jar.get(DEMO_COOKIE)?.value;
   if (isDemoSessionId(id)) return id;
   const created = newDemoSessionId();
-  jar.set(DEMO_COOKIE, created, SESSION_COOKIE_OPTIONS);
+  jar.set(DEMO_COOKIE, created, { ...SESSION_COOKIE_OPTIONS, secure: isHttps("", await headers()) });
   return created;
 }
 

@@ -22,9 +22,9 @@
  *   "N to send" badge. Layouts get no `searchParams`: call `getData()` with no argument there and
  *   the state comes from the `x-roofy-demo` header that `src/proxy.ts` copies from `?demo=`.
  *
- * `ROOFY_DATA` selects the implementation: "fake" (Phase 2; also the default when unset, so
- * `pnpm dev`/`build`/`start` work without a `.env`). Any other value throws — the real data layer
- * arrives in Phase 3.
+ * `ROOFY_DATA` selects the implementation: "fake" (Phase 2). Unset means fake outside production
+ * only; in production (`pnpm start`) set `ROOFY_DATA=fake` explicitly. Anything else throws — the
+ * real data layer arrives in Phase 3.
  */
 import { todayIn } from "@/domain/dates";
 import type { LocalDate } from "@/domain/types";
@@ -42,9 +42,12 @@ export type { SearchParamsInput } from "./session";
 
 export type DataMode = "fake";
 
-/** `ROOFY_DATA`, defaulting to "fake" while Phase 2 has no other implementation. */
+/**
+ * `ROOFY_DATA`. Unset or empty means "fake" outside production only (so `pnpm dev` needs no
+ * `.env`); in production (`next start`) it must be set explicitly — playwright's webServer does.
+ */
 function rawMode(): string {
-  return process.env.ROOFY_DATA || "fake";
+  return process.env.ROOFY_DATA || (process.env.NODE_ENV === "production" ? "" : "fake");
 }
 
 export function isFakeMode(): boolean {
@@ -53,6 +56,11 @@ export function isFakeMode(): boolean {
 
 export function dataMode(): DataMode {
   const mode = rawMode();
+  if (mode === "") {
+    throw new Error(
+      "ROOFY_DATA isn't set: the real data layer arrives in Phase 3. Set ROOFY_DATA=fake to run the prototype.",
+    );
+  }
   if (mode !== "fake") {
     throw new Error(
       `ROOFY_DATA="${mode}" isn't available yet: the real data layer arrives in Phase 3. Set ROOFY_DATA=fake.`,

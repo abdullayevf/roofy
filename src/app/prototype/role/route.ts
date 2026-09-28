@@ -11,14 +11,15 @@ import {
   ROLES,
   SESSION_COOKIE_OPTIONS,
   isDemoSessionId,
+  isHttps,
   newDemoSessionId,
   parseRole,
   safeNextPath,
 } from "@/data/session";
 
-function cookie(name: string, value: string): string {
+function cookie(name: string, value: string, secure: boolean): string {
   const o = SESSION_COOKIE_OPTIONS;
-  return `${name}=${value}; Path=${o.path}; Max-Age=${o.maxAge}; HttpOnly; SameSite=Lax`;
+  return `${name}=${value}; Path=${o.path}; Max-Age=${o.maxAge}; HttpOnly; SameSite=Lax${secure ? "; Secure" : ""}`;
 }
 
 export async function GET(request: NextRequest): Promise<Response> {
@@ -34,9 +35,10 @@ export async function GET(request: NextRequest): Promise<Response> {
   // A relative Location keeps the browser on the host it used (127.0.0.1 vs localhost), so the
   // cookies set here are the ones it sends next.
   const headers = new Headers({ Location: safeNextPath(params.get("next")), "Cache-Control": "no-store" });
-  headers.append("Set-Cookie", cookie(ROLE_COOKIE, role));
+  const secure = isHttps(request.url, request.headers);
+  headers.append("Set-Cookie", cookie(ROLE_COOKIE, role, secure));
   if (!isDemoSessionId(request.cookies.get(DEMO_COOKIE)?.value)) {
-    headers.append("Set-Cookie", cookie(DEMO_COOKIE, newDemoSessionId()));
+    headers.append("Set-Cookie", cookie(DEMO_COOKIE, newDemoSessionId(), secure));
   }
   return new Response(null, { status: 303, headers });
 }

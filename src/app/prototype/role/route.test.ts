@@ -2,10 +2,10 @@ import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GET } from "./route";
 
-const call = (query: string, cookie?: string) =>
+const call = (query: string, cookie?: string, origin = "http://127.0.0.1:3100", extra: Record<string, string> = {}) =>
   GET(
-    new NextRequest(`http://127.0.0.1:3100/prototype/role${query}`, {
-      headers: cookie ? { cookie } : {},
+    new NextRequest(`${origin}/prototype/role${query}`, {
+      headers: { ...(cookie ? { cookie } : {}), ...extra },
     }),
   );
 
@@ -38,6 +38,23 @@ describe("GET /prototype/role", () => {
       const res = await call(`?as=owner&next=${encodeURIComponent(next)}`);
       expect(res.headers.get("location")).toBe("/");
     }
+  });
+
+  it("marks cookies Secure over https (URL or x-forwarded-proto)", async () => {
+    for (const res of [
+      await call("?as=owner", undefined, "https://roofy.example"),
+      await call("?as=owner", undefined, "http://127.0.0.1:3100", { "x-forwarded-proto": "https" }),
+    ]) {
+      const cookies = res.headers.getSetCookie();
+      expect(cookies).toHaveLength(2);
+      for (const c of cookies) expect(c).toMatch(/; Secure$/);
+    }
+  });
+
+  it("is not found in production when ROOFY_DATA isn't set", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ROOFY_DATA", undefined);
+    expect((await call("?as=owner")).status).toBe(404);
   });
 
   it("is not found outside fake mode", async () => {
