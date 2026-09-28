@@ -117,13 +117,13 @@ opus: Tasks 5, 6, 7 (data contracts, foreman DTO hiding, domain-derived figures,
 
 **Files:** `src/data/fake/store.ts`, `src/data/fake/services/*.ts`, `src/data/fake/demo.ts`, `src/data/index.ts`, `src/data/session.ts`, tests beside each.
 
-- [ ] `FakeStore` = cloned seed + mutation log; `getData()` returns fake services bound to the store for the current demo session (cookie `roofy_demo`, random id; stores kept in a bounded LRU of 50; absent cookie → shared read-only seed store).
-- [ ] Every figure via `src/domain` (costing, progress, forecasts, alerts, margins, payrun builder, floor, flags, attendance, ledger, periods, segments). Tests assert Home and Job detail figures equal direct domain calls on the seed, and Home "Needs attention" is ordered most severe first, max 7.
-- [ ] `demo.ts`: `?demo=` states for fake mode — `empty` (new workspace with nothing), `loading` (page renders its skeleton via a never-resolving Suspense child), `error` (service throws a typed `DataError` shown by the route's `error.tsx`), `offline` (banner shown), `waiting` (outbox has 3 waiting items), `attention` (1 rejected item), `noperm` (role lacks permission). Read only in fake mode; ignored otherwise.
-- [ ] Role: cookie `roofy_role` (owner/manager/foreman/accountant; default manager), set by `GET /prototype/role?as=…` (fake mode only, 404 otherwise). Foreman actor is assigned to 2 of the 5 active jobs.
-- [ ] Today: `todayIn("Australia/Sydney", fakeNow())` = `2026-09-28` at the default clock (test).
-- [ ] Runtime foreman scan (from Task 5 review): `dto.test.ts` calls `expectNoMoney` on the fake's result of every foreman-reachable method (all `view: "foreman"` reads) for the seeded data and every `?demo=` state.
-- [ ] Verify: `pnpm verify` green.
+- [x] `FakeStore` = cloned seed + mutation log; `getData()` returns fake services bound to the store for the current demo session (cookie `roofy_demo`, random id; stores kept in a bounded LRU of 50; absent cookie → shared read-only seed store).
+- [x] Every figure via `src/domain` (costing, progress, forecasts, alerts, margins, payrun builder, floor, flags, attendance, ledger, periods, segments). Tests assert Home and Job detail figures equal direct domain calls on the seed, and Home "Needs attention" is ordered most severe first, max 7.
+- [x] `demo.ts`: `?demo=` states for fake mode — `empty` (new workspace with nothing), `loading` (page renders its skeleton via a never-resolving Suspense child), `error` (service throws a typed `DataError` shown by the route's `error.tsx`), `offline` (banner shown), `waiting` (outbox has 3 waiting items), `attention` (1 rejected item), `noperm` (role lacks permission). Read only in fake mode; ignored otherwise.
+- [x] Role: cookie `roofy_role` (owner/manager/foreman/accountant; default manager), set by `GET /prototype/role?as=…` (fake mode only, 404 otherwise). Foreman actor is assigned to 2 of the 5 active jobs.
+- [x] Today: `todayIn("Australia/Sydney", fakeNow())` = `2026-09-28` at the default clock (test).
+- [x] Runtime foreman scan (from Task 5 review): `dto.test.ts` calls `expectNoMoney` on the fake's result of every foreman-reachable method (all `view: "foreman"` reads) for the seeded data and every `?demo=` state.
+- [x] Verify: `pnpm verify` green.
 
 ### Task 7: Fake writes and the push shape (opus)
 
