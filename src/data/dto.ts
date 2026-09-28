@@ -6,7 +6,10 @@
  * foreman-reachable service method; Task 21 applies the same patterns to rendered HTML.
  */
 
-/** Object keys that name money. Foreman DTO keys are chosen so they never match (e.g. `quantityDone`). */
+/**
+ * Object keys that name money. Foreman DTO keys are chosen so they never match (e.g. `quantityDone`,
+ * not `totalQuantity`). Watch substrings: "re**cents**tages", "gene**rate**dAt", "sepa**rate**" all match.
+ */
 export const MONEY_KEY = /rate|amount|cents|budget|margin|balance|cost|earn|pay|total|gst/i;
 
 /** A dollar figure inside a string value ("$775", "$ 12.00"). */
