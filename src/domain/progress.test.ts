@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { budgetAlert, forecastLabour, projectMargins, projectPercentBp, stagePercentBp } from "./progress";
+import {
+  budgetAlert,
+  forecastLabour,
+  projectMargins,
+  projectPercentBp,
+  stageExpectedLabour,
+  stagePercentBp,
+} from "./progress";
 
 const unitStage = { status: "active", unit: "m2", budgetQty: 40_000, manualPctBp: null } as const;
 
@@ -58,6 +65,14 @@ describe("forecast and alerts", () => {
     expect(budgetAlert(100_000, 104_000, 100_000)).toBeNull();
     expect(forecastLabour("done", 10_000, 123_400)).toBe(123_400);
     expect(budgetAlert(10_000, null, 100_000)).toBeNull();
+  });
+});
+
+describe("stage expected labour (pay rules §12 margins)", () => {
+  it("is the forecast when there is one, else the larger of budget and actual", () => {
+    expect(stageExpectedLabour(477500, 400000, 143250)).toBe(477500);
+    expect(stageExpectedLabour(null, 150000, 160000)).toBe(160000);
+    expect(stageExpectedLabour(null, 150000, 20000)).toBe(150000);
   });
 });
 

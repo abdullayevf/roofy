@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatDays, formatHours, formatMoney, formatQuantity } from "./format";
+import { formatDate, formatDays, formatDecimal, formatHours, formatMoney, formatQuantity } from "./format";
 
 describe("format", () => {
   it("formats AUD with a true minus sign", () => {
@@ -26,5 +26,11 @@ describe("format", () => {
   it("formats dates, adding the year only when it differs", () => {
     expect(formatDate("2026-09-07", "2026-09-28")).toBe("Mon 7 Sep");
     expect(formatDate("2025-12-31", "2026-09-28")).toBe("Wed 31 Dec 2025");
+  });
+  it("writes hundredths (cents, quantities) as a plain two-place decimal for CSV", () => {
+    expect(formatDecimal(143_250)).toBe("1432.50");
+    expect(formatDecimal(5)).toBe("0.05");
+    expect(formatDecimal(-30_000)).toBe("-300.00");
+    expect(formatDecimal(0)).toBe("0.00");
   });
 });

@@ -62,6 +62,15 @@ export interface MarginInput {
   stages: readonly { forecastCents: Cents | null; labourBudgetCents: Cents; actualLabourCents: Cents }[];
 }
 
+/** Pay rules §12: a stage's expected labour = forecast if it exists, else max(labour budget, actual). */
+export function stageExpectedLabour(
+  forecastCents: Cents | null,
+  labourBudgetCents: Cents,
+  actualLabourCents: Cents,
+): Cents {
+  return forecastCents ?? Math.max(labourBudgetCents, actualLabourCents);
+}
+
 export function projectMargins(m: MarginInput): {
   earnedValueCents: Cents;
   marginToDateCents: Cents;
@@ -69,7 +78,7 @@ export function projectMargins(m: MarginInput): {
 } {
   const earnedValueCents = mulDivRound(m.contractCents, m.projectPctBp, 10_000);
   const expectedLabour = sum(
-    m.stages.map((s) => s.forecastCents ?? Math.max(s.labourBudgetCents, s.actualLabourCents)),
+    m.stages.map((s) => stageExpectedLabour(s.forecastCents, s.labourBudgetCents, s.actualLabourCents)),
   );
   const remainingMaterials = Math.max(m.materialsBudgetCents - m.materialsExpenseCents, 0);
   return {

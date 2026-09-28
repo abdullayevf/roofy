@@ -41,3 +41,9 @@ export function formatDate(date: string, today: string): string {
   const base = `${WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
   return date.slice(0, 4) === today.slice(0, 4) ? base : `${base} ${date.slice(0, 4)}`;
 }
+
+/** Hundredths (cents, quantities, hours) as a plain decimal for CSV: 143250 → "1432.50", ASCII minus. */
+export function formatDecimal(value: number): string {
+  const digits = String(Math.abs(value)).padStart(3, "0");
+  return `${value < 0 ? "-" : ""}${digits.slice(0, -2)}.${digits.slice(-2)}`;
+}
