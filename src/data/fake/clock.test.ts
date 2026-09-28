@@ -25,6 +25,7 @@ describe("fake clock", () => {
   });
 
   it("returns a fresh Date each call", () => {
+    vi.stubEnv("ROOFY_FAKE_NOW", undefined);
     const a = fakeNow();
     a.setUTCFullYear(2000);
     expect(fakeNow().getUTCFullYear()).toBe(2026);

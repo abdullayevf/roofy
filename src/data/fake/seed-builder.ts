@@ -9,7 +9,7 @@ import { addDays, daysBetween } from "@/domain/dates";
 import { receiptTotal, splitReceipt } from "@/domain/gst";
 import { ledgerBalance } from "@/domain/ledger";
 import { dailyAmount, defaultHours, hourlyAmount } from "@/domain/lines";
-import { mulDivRound, sum } from "@/domain/money";
+import { mulDivRound, roundToNearest, sum } from "@/domain/money";
 import { buildPayRun, type PayLog, type PayPerson, type PayReimbursement } from "@/domain/payrun";
 import { lumpSumLines, pieceRateLines } from "@/domain/piece";
 import { forecastLabour, stagePercentBp } from "@/domain/progress";
@@ -56,7 +56,7 @@ interface StageMeta {
 
 export interface GridSpec {
   crewId: Id;
-  /** Force a time-only log (hours, $0) even for a time-paid person. */
+  /** The manager switched this person to time-only (hours, $0) — paid from progress instead. */
   timeOnly?: boolean;
   hours?: Hundredths;
   days?: Hundredths;
@@ -333,10 +333,19 @@ export class SeedBuilder {
 
   // ─── Logs ─────────────────────────────────────────────────────────────────
 
-  /** Pay rules §4/§5 and product spec §5.5: which basis the grid uses for this person on this stage. */
+  /**
+   * Product spec §5.5: every ticked person defaults to their usual basis; per-unit workers on a stage
+   * with their unit get a time-only log (pay rules §4, E4.4). Lump-sum stages are no exception: a
+   * time-paid person logged on one gets their usual basis, and the double-pay flag (pay rules §9)
+   * catches time-based + lump-sum on the same stage and date.
+   * `timeOnly` = the manager switched this person to time-only on the grid (e.g. Sam on the Smith
+   * sheet install, paid from progress).
+   */
   gridBasis(crew: CrewMemberRow, stage: StageRow, timeOnly = false): GridBasis {
-    if (timeOnly || stage.lumpSumCents !== null) return "time_only";
+    if (timeOnly) return "time_only";
     if (crew.defaultBasis === "per_unit") {
+      // Prototype decision (not in the spec): a per-unit worker on a stage without their unit falls
+      // back to their daily rate, so the grid never pays them $0 for a real day's work there.
       return stage.unit !== null && stage.unit === crew.defaultUnit ? "time_only" : "daily";
     }
     return crew.defaultBasis;
@@ -707,7 +716,7 @@ export class SeedBuilder {
         });
         const forecast = forecastLabour(st.status, pct, actual) ?? 0;
         const basis = Math.max(actual, forecast, 30_000);
-        st.labourBudgetCents = roundTo(mulDivRound(basis, this.rng.int(...o.labourFactor), 10_000), 5_000);
+        st.labourBudgetCents = roundToNearest(mulDivRound(basis, this.rng.int(...o.labourFactor), 10_000), 5_000);
       }
       if (!meta.fixedMaterials) {
         const materials = sum(
@@ -718,7 +727,7 @@ export class SeedBuilder {
         st.materialsBudgetCents =
           materials === 0
             ? 0
-            : roundTo(mulDivRound(materials, this.rng.int(...o.materialsFactor), 10_000), 5_000);
+            : roundToNearest(mulDivRound(materials, this.rng.int(...o.materialsFactor), 10_000), 5_000);
       }
       startedLabour += st.labourBudgetCents;
       startedLabourShare += meta.labourShareBp;
@@ -733,9 +742,9 @@ export class SeedBuilder {
       if (st.status !== "not_started") continue;
       if (st.unit !== null && st.budgetQty === null) st.budgetQty = this.rng.int(80, 300) * 100;
       if (!meta.fixedLabour)
-        st.labourBudgetCents = roundTo(mulDivRound(labourPlan, meta.labourShareBp, 10_000), 5_000);
+        st.labourBudgetCents = roundToNearest(mulDivRound(labourPlan, meta.labourShareBp, 10_000), 5_000);
       if (!meta.fixedMaterials) {
-        st.materialsBudgetCents = roundTo(mulDivRound(materialsPlan, meta.materialsShareBp, 10_000), 5_000);
+        st.materialsBudgetCents = roundToNearest(mulDivRound(materialsPlan, meta.materialsShareBp, 10_000), 5_000);
       }
     }
     const other = sum(expenses.filter((e) => e.categoryId !== materialsId).map((e) => e.amountExGstCents));
@@ -745,7 +754,7 @@ export class SeedBuilder {
       other,
     ]);
     project.contractValueCents =
-      o.contractCents ?? roundTo(mulDivRound(cost, this.rng.int(...o.markupBp), 10_000), 10_000);
+      o.contractCents ?? roundToNearest(mulDivRound(cost, this.rng.int(...o.markupBp), 10_000), 10_000);
   }
 
   // ─── Pay runs and the ledger ──────────────────────────────────────────────
@@ -928,10 +937,6 @@ export class SeedBuilder {
   }
 }
 
-/** Round cents to a whole step (e.g. $50 budgets), half away from zero, via the domain. */
-export function roundTo(cents: Cents, step: Cents): Cents {
-  return mulDivRound(cents, 1, step) * step;
-}
 
 export function toPayLog(l: WorkLogRow): PayLog {
   return {
