@@ -43,16 +43,23 @@ export class Rng {
     return items[this.int(0, items.length - 1)]!;
   }
 
+  /** An unsigned 32-bit integer. */
+  u32(): number {
+    return Math.floor(this.next() * 4_294_967_296);
+  }
+
   hex(digits: number): string {
     let out = "";
-    while (out.length < digits) out += this.int(0, 0xffff).toString(16).padStart(4, "0");
+    while (out.length < digits) out += hex8(this.u32());
     return out.slice(0, digits);
   }
 
   /** A deterministic UUID-shaped id (version 4 layout). */
   uuid(): string {
-    const h = this.hex(32);
-    const variant = "89ab"[this.int(0, 3)]!;
-    return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-${variant}${h.slice(17, 20)}-${h.slice(20, 32)}`;
+    const d = this.u32();
+    const h = hex8(this.u32()) + hex8(this.u32()) + hex8(this.u32()) + hex8(d);
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-${"89ab"[d & 3]}${h.slice(17, 20)}-${h.slice(20, 32)}`;
   }
 }
+
+const hex8 = (n: number) => n.toString(16).padStart(8, "0");

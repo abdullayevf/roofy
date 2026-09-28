@@ -784,19 +784,27 @@ export type PayFlagKind =
   | "possible_duplicate"
   | "no_hours";
 
+/**
+ * A pay-run flag as structured facts; the UI writes the sentence with `src/lib/format.ts`
+ * (e.g. missing rate → "No lm rate for Jake — paid $0.00 until this is fixed.").
+ */
 export interface PayFlag {
   kind: PayFlagKind;
   /** Missing rate and Owner 2FA off block approval. */
   blocking: boolean;
   crewMemberId: Id | null;
   crewName: string | null;
-  date: LocalDate | null;
-  /** Plain sentence, e.g. "Jake has no lm rate — paid $0.00 until this is fixed." */
-  message: string;
+  /** The day (double pay, paused stage, duplicate) or days (gaps) concerned. */
+  dates: LocalDate[];
+  projectName: string | null;
+  stageName: string | null;
+  /** Missing rate: the basis and unit with no rate. */
+  basis: RateBasis | null;
+  unit: Unit | null;
   logIds: Id[];
   href: string | null;
   /** Below floor only (pay rules §10). */
-  shortfallCents: Cents | null;
+  floor: { floorRateCents: Cents; effectiveHourlyCents: Cents; shortfallCents: Cents } | null;
 }
 
 export interface PayLineDto {
@@ -879,8 +887,8 @@ export interface PayRunReview {
   people: PayPersonGroup[];
   totals: PayRunTotals;
   canApprove: boolean;
-  /** Why Approve is disabled, e.g. "Fix the missing rate before you approve." */
-  blockedReason: string | null;
+  /** Why Approve is disabled; the UI words it ("Fix the missing rate before you approve."). */
+  blockedBy: ("missing_rate" | "owner_2fa_off")[];
   canReopen: boolean;
 }
 
@@ -899,8 +907,8 @@ export interface Statement {
     method: PayoutMethod | null;
   }[];
   balanceAfterCents: Cents;
-  /** Contractors: "Statement only — not a tax invoice. Please send your invoice as usual." */
-  footer: string | null;
+  /** Contractors get the footer "Statement only — not a tax invoice. …" (pay rules §16), added by the UI. */
+  contractorFooter: boolean;
 }
 
 export interface StatementShare {
@@ -920,23 +928,47 @@ export interface BalanceRow {
 
 // ─── Home ───────────────────────────────────────────────────────────────────
 
-export type AttentionKind =
-  | "over_budget"
-  | "trending_over"
-  | "paused_too_long"
-  | "logging_gaps"
-  | "outbox_attention"
-  | "unpaid_too_long"
-  | "below_floor";
 
-export interface AttentionItem {
+interface AttentionBase {
   id: string;
-  kind: AttentionKind;
   severity: Severity;
-  /** e.g. "Smith job is trending $775 over on sheet install." */
-  sentence: string;
   href: string;
 }
+
+/**
+ * A Home "Needs attention" row as structured facts, most severe first. The UI writes the sentence
+ * with `src/lib/format.ts`, e.g. trending_over → "Smith job is trending $775 over on sheet install."
+ * Severity: over_budget and outbox_attention are `over`; the rest are `watch`.
+ */
+export type AttentionItem =
+  | (AttentionBase & {
+      kind: "over_budget" | "trending_over";
+      projectId: Id;
+      projectName: string;
+      stageId: Id;
+      stageName: string;
+      byCents: Cents;
+    })
+  | (AttentionBase & {
+      kind: "paused_too_long";
+      projectId: Id;
+      projectName: string;
+      stageId: Id;
+      stageName: string;
+      reason: PauseReason;
+      since: LocalDate;
+      workingDays: number;
+    })
+  | (AttentionBase & {
+      kind: "logging_gaps";
+      period: PayPeriod;
+      gaps: { crewMemberId: Id; name: string; dates: LocalDate[] }[];
+    })
+  | (AttentionBase & { kind: "unpaid_too_long"; crewMemberId: Id; name: string; balanceCents: Cents; since: LocalDate })
+  | (AttentionBase & { kind: "below_floor"; crewMemberId: Id; name: string; payRunId: Id; shortfallCents: Cents })
+  | (AttentionBase & { kind: "outbox_attention"; count: number });
+
+export type AttentionKind = AttentionItem["kind"];
 
 export interface ActiveJobRow {
   projectId: Id;
@@ -1134,8 +1166,8 @@ export interface AuditRow {
   table: string;
   rowId: Id;
   action: "insert" | "update" | "delete";
-  /** Plain-words summary, e.g. "Changed total from $935.00 to $990.00". */
-  summary: string;
+  /** Changed fields; the UI words the change from before/after with `src/lib/format.ts`. */
+  fields: string[];
   before: Record<string, unknown> | null;
   after: Record<string, unknown> | null;
 }
