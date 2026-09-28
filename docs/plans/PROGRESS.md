@@ -29,6 +29,15 @@
 - Phase 1: `formatMoney` formats without float division; `formatDays` keeps "½ day"/"1 day" for negative values.
 - Phase 1: `check:examples` only counts an example id that starts an `it(`/`test(` title.
 - Phase 1: eslint ignores generated `coverage/`.
+- Phase 2 Task 6: `ROOFY_DATA` defaults to `fake` when unset (Phase 2 only, so `pnpm dev`/`build`/`start` work without a `.env`); any other value throws "real data layer arrives in Phase 3". `.env.example` sets `ROOFY_DATA=fake`.
+- Phase 2 Task 6: `server-only` isn't installed; `src/data/session.ts` has a runtime `window` guard instead.
+- Phase 2 Task 6: `?demo=loading` → pages return their skeleton (`demo.loading`) rather than a never-resolving Suspense child, which would keep the HTML response open and hang `page.goto`/capture.
+- Phase 2 Task 6: layouts get `?demo=` via the `x-roofy-demo` request header set by `src/proxy.ts` (runs only on requests with `?demo`). Soft navigations that keep the layout don't re-read it.
+- Phase 2 Task 6: Owner 2FA is ON in the seed (Karen Holt), so approval is possible once the missing rate is fixed; `?demo=blocked` reads it as off. Seed names are reused for the actors (owner Karen Holt, manager Dan Holt, foreman Craig Dunn, accountant Priya Shah).
+- Phase 2 Task 6: Home "Needs attention" sorts red before amber, then product spec §5.9 order, then larger amount / longer pause / older debt; outbox entries needing attention are red, so they sit second. Only `?demo=attention` adds an outbox item in fake mode (on the device from Phase 5).
+- Phase 2 Task 6: "Same as yesterday" copies the first crew-day grid entry on the previous logged day among the actor's jobs (seed: Fri 25 Sep, Smith sheet install, Sam and Dima). Job detail's "crew this week" is the rolling last 7 days. Pay run totals: employees/contractors = sum of person totals (incl. GST and reimbursements).
+- Phase 2 Task 6: outbox items carry the entry as `input` (the key `payload` reads as money to the foreman key scan). Domain gained `ratios.ts` (over marker, margin %, cost per unit, per crew-day) and `stageExpectedLabour`, so `src/data` never divides money; `src/lib/format.ts` gained `formatDecimal` for CSV.
+- Phase 2 Task 6: UI/offline code may not import `@/data` or `@/data/session` (lint); types come from `@/data/contracts`.
 
 ## Gate evidence
 
