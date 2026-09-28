@@ -14,6 +14,9 @@ export type SegmentedProps = {
   defaultValue?: string;
   value?: string;
   onChange?: (value: string) => void;
+  disabled?: boolean;
+  /** Demo-only: forces the focus-visible ring so it shows up in a static screenshot. */
+  focusVisible?: boolean;
   className?: string;
 };
 
@@ -31,16 +34,26 @@ export function Segmented({
   defaultValue,
   value: controlledValue,
   onChange,
+  disabled,
+  focusVisible,
   className,
 }: SegmentedProps) {
   const [uncontrolled, setUncontrolled] = useState(defaultValue ?? options[0]?.value ?? "");
   const value = controlledValue ?? uncontrolled;
+  const FOCUS = focusVisible
+    ? "outline outline-[3px] outline-offset-2 outline-chalk"
+    : "focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-chalk";
 
   return (
     <div
       role="radiogroup"
       aria-label={legend}
-      className={cx("inline-flex rounded-control border-[1.5px] border-edge bg-surface p-1", className)}
+      aria-disabled={disabled || undefined}
+      className={cx(
+        "inline-flex rounded-control border-[1.5px] border-edge bg-surface p-1",
+        disabled && "opacity-50",
+        className,
+      )}
     >
       {options.map((opt) => {
         const checked = opt.value === value;
@@ -48,7 +61,8 @@ export function Segmented({
           <label
             key={opt.value}
             className={cx(
-              "relative flex min-h-12 flex-1 cursor-pointer items-center justify-center rounded-control px-3 text-body-strong",
+              "relative flex min-h-[52px] flex-1 items-center justify-center rounded-control px-3 text-body-strong lg:min-h-12",
+              disabled ? "cursor-not-allowed" : "cursor-pointer",
               checked ? "bg-chalk text-on-chalk" : "text-ink",
             )}
           >
@@ -57,11 +71,16 @@ export function Segmented({
               name={name}
               value={opt.value}
               checked={checked}
+              disabled={disabled}
               onChange={() => {
                 setUncontrolled(opt.value);
                 onChange?.(opt.value);
               }}
-              className="absolute inset-0 h-full w-full cursor-pointer appearance-none opacity-0 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-chalk"
+              className={cx(
+                "absolute inset-0 h-full w-full appearance-none opacity-0",
+                disabled ? "cursor-not-allowed" : "cursor-pointer",
+                FOCUS,
+              )}
             />
             <span>{opt.label}</span>
           </label>

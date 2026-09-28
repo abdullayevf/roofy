@@ -14,6 +14,8 @@ type Shared = {
   filled?: boolean;
   loading?: boolean;
   disabled?: boolean;
+  /** Shown below the button, in meta/ink-2, when disabled and there's a reason to explain — e.g. "Needs connection — try again once you're back online." */
+  reason?: string;
   /** Demo-only: forces the focus-visible ring so it shows up in a static screenshot. */
   focusVisible?: boolean;
   icon?: PhosphorIcon;
@@ -33,8 +35,14 @@ const SIZE = "h-[52px] lg:h-12 px-4 rounded-control text-body-strong";
 const FOCUS =
   "focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-chalk";
 const FORCED_FOCUS = "outline outline-[3px] outline-offset-2 outline-chalk";
+// DESIGN.md §2: dimming a button's own fill (opacity) also dims its text,
+// which can fall below 4.5:1. A disabled button keeps a fixed, always-legible
+// treatment instead — surface fill, ink-2 text, edge border — regardless of
+// its variant or tone.
+const DISABLED = "bg-surface text-ink-2 border-[1.5px] border-edge";
 
 function variantClasses(props: ButtonProps): string {
+  if (props.disabled) return DISABLED;
   if (props.tone === "danger") {
     return props.filled
       ? "bg-over text-on-over border border-transparent"
@@ -64,11 +72,11 @@ export function Button(props: ButtonProps) {
   const isLink = props.variant === "link";
   const className = cx(
     "inline-flex items-center justify-center gap-2",
-    isLink ? "" : SIZE,
+    isLink && !props.disabled ? "" : SIZE,
     isLink && !props.iconOnly ? "text-body-strong" : "",
     props.iconOnly && "w-[52px] lg:w-12 px-0",
     variantClasses(props),
-    "disabled:opacity-50 disabled:pointer-events-none",
+    props.disabled && "pointer-events-none",
     props.focusVisible ? FORCED_FOCUS : FOCUS,
     props.className,
   );
@@ -92,19 +100,20 @@ export function Button(props: ButtonProps) {
     </>
   );
 
-  if (props.href && !props.onClick) {
-    return (
-      <Link
-        href={props.href}
-        aria-disabled={props.disabled || undefined}
-        className={cx(className, props.loading && "relative")}
-      >
-        {content}
-      </Link>
-    );
-  }
-
-  return (
+  // DESIGN.md §4/§8: every button meets the 48 px target, except a true
+  // inline link (variant="link"), which reads inline in a sentence rather
+  // than standing alone as a discrete tap target. `data-variant` lets
+  // automated checks (and this component's own gallery) tell the two apart.
+  const control = props.href ? (
+    <Link
+      href={props.href}
+      aria-disabled={props.disabled || undefined}
+      data-variant={props.variant ?? "primary"}
+      className={cx(className, props.loading && "relative")}
+    >
+      {content}
+    </Link>
+  ) : (
     <button
       type={props.type ?? "button"}
       disabled={props.disabled || props.loading}
@@ -112,9 +121,19 @@ export function Button(props: ButtonProps) {
       onClick={props.onClick}
       name={props.name}
       value={props.value}
+      data-variant={props.variant ?? "primary"}
       className={cx(className, props.loading && "relative")}
     >
       {content}
     </button>
+  );
+
+  if (!props.disabled || !props.reason) return control;
+
+  return (
+    <span className="inline-flex flex-col gap-1.5">
+      {control}
+      <span className="text-meta text-ink-2">{props.reason}</span>
+    </span>
   );
 }

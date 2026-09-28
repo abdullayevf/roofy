@@ -50,4 +50,29 @@ describe("Button", () => {
     await user.click(screen.getByRole("button", { name: "Save day" }));
     expect(clicked).toBe(0);
   });
+
+  it("disabled keeps a fixed, readable treatment regardless of variant", () => {
+    render(
+      <Button disabled variant="primary">
+        Approve pay run
+      </Button>,
+    );
+    const button = screen.getByRole("button", { name: "Approve pay run" });
+    expect(button).toHaveClass("bg-surface", "text-ink-2", "border-edge");
+    expect(button.className).not.toContain("bg-chalk");
+  });
+
+  it("shows a reason line beneath a disabled button when one is given", () => {
+    render(
+      <Button disabled reason="Needs connection — try again once you're back online.">
+        Approve pay run
+      </Button>,
+    );
+    expect(screen.getByText("Needs connection — try again once you're back online.")).toBeInTheDocument();
+  });
+
+  it("shows no reason line when the button isn't disabled", () => {
+    render(<Button reason="This should not show.">Save day</Button>);
+    expect(screen.queryByText("This should not show.")).not.toBeInTheDocument();
+  });
 });

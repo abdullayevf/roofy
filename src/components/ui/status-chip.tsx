@@ -29,8 +29,15 @@ export type Status =
   | "sent"
   | "needs-attention";
 
+// Every status shares the same outline treatment (surface fill, edge
+// border) so "Active" reads no louder than any other status — colour and
+// icon carry the distinction, not a heavier fill (design-loop finding).
 const CONFIG: Record<Status, { word: string; icon: PhosphorIcon; className: string }> = {
-  active: { word: "Active", icon: Circle, className: "bg-chalk text-on-chalk" },
+  active: {
+    word: "Active",
+    icon: Circle,
+    className: "bg-surface text-chalk-link border-[1.5px] border-edge",
+  },
   paused: {
     word: "Paused",
     icon: PauseCircle,

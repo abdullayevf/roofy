@@ -22,6 +22,8 @@ const ROW_LAYOUT =
   "flex min-h-[64px] lg:min-h-12 w-full items-center justify-between gap-4 px-4 py-2 text-left";
 const FOCUS =
   "focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-chalk";
+/** Pressed state for a tappable row: a visible tint (colour is never the only feedback — the row also moves under the finger). */
+const PRESSED = "active:bg-galv";
 
 function RowBody({ row }: { row: ListRow }) {
   const interactive = Boolean(row.href || row.onClick);
@@ -45,18 +47,23 @@ function RowBody({ row }: { row: ListRow }) {
  */
 export function List({ rows, className }: ListProps) {
   return (
-    <div className={cx("divide-y divide-line rounded-group bg-surface", className)}>
+    <div className={cx("divide-y divide-line rounded-group bg-surface border-group", className)}>
       {rows.map((row) => {
         if (row.href) {
           return (
-            <Link key={row.key} href={row.href} className={cx(ROW_LAYOUT, FOCUS)}>
+            <Link key={row.key} href={row.href} className={cx(ROW_LAYOUT, FOCUS, PRESSED)}>
               <RowBody row={row} />
             </Link>
           );
         }
         if (row.onClick) {
           return (
-            <button key={row.key} type="button" onClick={row.onClick} className={cx(ROW_LAYOUT, FOCUS)}>
+            <button
+              key={row.key}
+              type="button"
+              onClick={row.onClick}
+              className={cx(ROW_LAYOUT, FOCUS, PRESSED)}
+            >
               <RowBody row={row} />
             </button>
           );

@@ -161,6 +161,26 @@ body {
   color: var(--ink);
 }
 
+/*
+ * DESIGN.md §6: light mode's level-1 groups (lists, panels) stay borderless
+ * (separation by colour, no shadow). Dark mode is elevation-by-lightness —
+ * a `surface` block barely lifts off `galv` by colour alone there — so a
+ * group also gets a 1 px `line` border in dark mode to still read as a
+ * block. Mirrors tokens.css's own three dark-mode triggers (automatic OS
+ * scheme, explicit :root override, [data-theme] wrapper).
+ */
+.border-group {
+  border: 1px solid transparent;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .border-group {
+    border-color: var(--line);
+  }
+}
+[data-theme="dark"] .border-group {
+  border-color: var(--line);
+}
+
 @media (min-width: 1024px) {
   body {
     font-size: 1rem; /* 16px */

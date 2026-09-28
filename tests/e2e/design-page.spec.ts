@@ -39,8 +39,19 @@ test("every button and input on /design is at least 48 px tall on phone", async 
         // serialization) — it isn't a real touch target, so it isn't checked
         // as one.
         .filter((el) => getComputedStyle(el).pointerEvents !== "none")
+        // A true inline link (Button variant="link") reads inline in a
+        // sentence rather than standing alone as a 48 px target (DESIGN.md
+        // §4/§8's own stated exception).
+        .filter((el) => el.getAttribute("data-variant") !== "link")
         .map((el) => {
-          const rect = el.getBoundingClientRect();
+          // A radio/checkbox absolutely positioned inside a bordered
+          // <label> (Segmented, ChoiceChip) sits inside the label's
+          // *padding* box, so its own rect comes up a couple of px short of
+          // the border box — but native <label> click-forwarding means the
+          // whole label, border included, is the real tap target, not just
+          // the input's own slightly-smaller rect.
+          const target = (el.tagName === "INPUT" && el.closest("label")) || el;
+          const rect = target.getBoundingClientRect();
           return { tag: el.tagName, text: (el.textContent ?? "").trim().slice(0, 40), height: rect.height };
         })
     );
@@ -69,10 +80,12 @@ test("/design logs no console errors", async ({ page }) => {
   });
   page.on("pageerror", (err) => errors.push(String(err)));
 
-  await page.goto("/design");
-  // Give client components (Stepper, Checkbox, Segmented, Sheet/Dialog/Toast
-  // demos) a moment to hydrate before checking for hydration warnings.
-  await page.waitForLoadState("networkidle");
+  // "load", not "networkidle": a lingering keepalive connection can leave
+  // "networkidle" waiting past the test timeout for no real reason. A fixed
+  // pause after "load" gives client components (Stepper, Checkbox,
+  // Segmented, ...) time to hydrate before checking for hydration warnings.
+  await page.goto("/design", { waitUntil: "load" });
+  await page.waitForTimeout(1000);
 
   const unexpectedFailedUrls = failedUrls.filter((u) => !u.endsWith("/favicon.ico"));
   expect(unexpectedFailedUrls, JSON.stringify(unexpectedFailedUrls, null, 2)).toEqual([]);

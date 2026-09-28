@@ -10,6 +10,8 @@ export type FieldProps = Omit<ComponentPropsWithoutRef<"input">, "id"> & {
   hint?: string;
   /** Message stating what went wrong and how to fix it. Shown below in `over`. */
   error?: string;
+  /** In-field unit suffix shown inside the box, e.g. "m²" on a quantity field. */
+  suffix?: string;
   focusVisible?: boolean;
   className?: string;
 };
@@ -18,7 +20,16 @@ export type FieldProps = Omit<ComponentPropsWithoutRef<"input">, "id"> & {
  * DESIGN.md §4 field: label always above the input (never placeholder-only),
  * hint in meta/ink-2, error in `over` linked to the input by aria-describedby.
  */
-export function Field({ label, inputMode, hint, error, focusVisible, className, ...inputProps }: FieldProps) {
+export function Field({
+  label,
+  inputMode,
+  hint,
+  error,
+  suffix,
+  focusVisible,
+  className,
+  ...inputProps
+}: FieldProps) {
   const id = useId();
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
@@ -34,6 +45,7 @@ export function Field({ label, inputMode, hint, error, focusVisible, className, 
         id={id}
         inputMode={inputMode}
         invalid={Boolean(error)}
+        suffix={suffix}
         focusVisible={focusVisible}
         aria-describedby={describedBy}
       />

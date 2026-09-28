@@ -6,13 +6,16 @@ import { Dialog } from "radix-ui";
 import { X } from "@phosphor-icons/react";
 import { cx } from "@/lib/cx";
 
-export type SheetProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+export type SheetContentProps = {
   title: string;
   children: ReactNode;
   /** Pinned above the home bar (phone) via env(safe-area-inset-bottom). */
   primaryAction?: ReactNode;
+};
+
+export type SheetProps = SheetContentProps & {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 };
 
 const DESKTOP_QUERY = "(min-width: 1024px)";
@@ -32,11 +35,8 @@ function useIsDesktop(): boolean {
   );
 }
 
-function SheetBody({
-  title,
-  children,
-  primaryAction,
-}: Pick<SheetProps, "title" | "children" | "primaryAction">) {
+/** The title/body/pinned-action content, shared by the phone sheet and the desktop dialog chrome. */
+function SheetBody({ title, children, primaryAction }: SheetContentProps) {
   return (
     <div className="flex max-h-[85vh] flex-col overflow-hidden">
       <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2">
@@ -56,9 +56,31 @@ function SheetBody({
 }
 
 /**
+ * The full phone-sheet panel visuals — grabber, 16 px top radius,
+ * shadow-sheet — as their own component so the live vaul Drawer and a
+ * static gallery preview (no Drawer/matchMedia/JS involved) render
+ * identical markup. Takes no position/overlay props; the caller places it.
+ */
+export function SheetPanel({
+  title,
+  children,
+  primaryAction,
+  className,
+}: SheetContentProps & { className?: string }) {
+  return (
+    <div className={cx("rounded-t-sheet bg-surface shadow-sheet", className)}>
+      <div aria-hidden="true" className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-line" />
+      <SheetBody title={title} primaryAction={primaryAction}>
+        {children}
+      </SheetBody>
+    </div>
+  );
+}
+
+/**
  * DESIGN.md §4 sheet/dialog: vaul Drawer on phone (< 1024 px), Radix Dialog
- * on desktop (>= 1024 px), the same content component either way. 16 px top
- * radius, grabber, shadow-sheet, 220 ms ease-out (instant under reduced
+ * on desktop (>= 1024 px), the same content (`SheetBody`) either way. 16 px
+ * top radius, grabber, shadow-sheet, 220 ms ease-out (instant under reduced
  * motion, handled globally in globals.css).
  */
 export function Sheet({ open, onOpenChange, title, children, primaryAction }: SheetProps) {
@@ -117,16 +139,12 @@ export function Sheet({ open, onOpenChange, title, children, primaryAction }: Sh
         <Drawer.Overlay className="fixed inset-0 z-40 bg-ink/40" />
         <Drawer.Content
           onCloseAutoFocus={restoreFocus}
-          className={cx(
-            "fixed inset-x-0 bottom-0 z-50 rounded-t-sheet bg-surface shadow-sheet",
-            "duration-[220ms] ease-out",
-          )}
+          className={cx("fixed inset-x-0 bottom-0 z-50", "duration-[220ms] ease-out")}
         >
           <Drawer.Title className="sr-only">{title}</Drawer.Title>
-          <Drawer.Handle className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-line" />
-          <SheetBody title={title} primaryAction={primaryAction}>
+          <SheetPanel title={title} primaryAction={primaryAction}>
             {children}
-          </SheetBody>
+          </SheetPanel>
         </Drawer.Content>
       </Drawer.Portal>
     </Drawer.Root>

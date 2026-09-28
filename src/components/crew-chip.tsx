@@ -44,6 +44,8 @@ export function CrewChip({
       }}
       className={cx(
         "flex w-full items-center justify-between gap-4 min-h-[64px] lg:min-h-12 px-4",
+        "border-l-[2px]",
+        pressed ? "border-l-ink" : "border-l-transparent",
         "bg-surface disabled:opacity-50",
         "focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-chalk",
         className,
@@ -60,7 +62,7 @@ export function CrewChip({
           pressed ? "bg-tape border-transparent" : "bg-surface border-edge",
         )}
       >
-        {pressed ? <Check size={24} weight="bold" className="text-ink" /> : null}
+        {pressed ? <Check size={24} weight="bold" className="text-on-tape" /> : null}
       </span>
     </button>
   );

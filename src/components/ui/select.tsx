@@ -49,7 +49,7 @@ export function Select({
           aria-invalid={Boolean(error) || undefined}
           aria-describedby={describedBy}
           className={cx(
-            "h-[52px] w-full appearance-none rounded-control border-[1.5px] bg-surface px-4 pr-12 text-body text-ink",
+            "h-[52px] w-full appearance-none rounded-control border-[1.5px] bg-surface px-4 pr-12 text-body text-ink lg:h-12",
             error ? "border-over" : "border-edge",
             "disabled:opacity-50",
             focusVisible ? FORCED_FOCUS : FOCUS,
