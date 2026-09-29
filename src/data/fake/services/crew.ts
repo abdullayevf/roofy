@@ -244,8 +244,11 @@ export function createCrewService(c: FakeContext): CrewService {
     /**
      * A dated rate, optionally for one job (pay rules §1; history kept). The same person, basis, unit,
      * job and start date replaces that rate's amount rather than adding a twin. Existing logs keep
-     * their snapshot — except $0.00 "missing rate" logs not yet in an approved pay run, which take the
-     * rate that now applies to them: that is how a missing rate is fixed before approval (§9).
+     * their snapshot — except original $0.00 "missing rate" logs (same basis and unit) not yet in an
+     * approved pay run and not deleted, which take the rate §1 now resolves for their own job and
+     * date, audited: that is how a missing rate is fixed before approval (§9). Adjustments are never
+     * re-priced: they carry the difference from a locked original (§8), which keeps its $0.00 snapshot
+     * when approved with the waiver, so the adjustment keeps it too.
      */
     async setRate(actor: Actor, input: RateInput): Promise<RateDto> {
       requireEditor(c, actor);
@@ -285,6 +288,7 @@ export function createCrewService(c: FakeContext): CrewService {
         for (const log of w.t.workLogs) {
           if (
             log.crewMemberId !== m.id ||
+            log.source === "adjustment" ||
             !log.missingRate ||
             log.payRunId !== null ||
             log.deletedAt !== null ||

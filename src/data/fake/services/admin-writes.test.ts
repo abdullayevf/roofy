@@ -5,7 +5,12 @@
 import { describe, expect, it } from "vitest";
 import { hourlyAmount } from "@/domain/lines";
 import { lumpSumLines } from "@/domain/piece";
-import { DataError, type ProjectDetailManager, type StageDetailManager } from "../../contracts";
+import {
+  DataError,
+  type CrewDayEntry,
+  type ProjectDetailManager,
+  type StageDetailManager,
+} from "../../contracts";
 import { scanForMoney } from "../../dto";
 import { getSeed } from "../store";
 import { fakeSession } from "./testing";
@@ -32,6 +37,29 @@ const jakeLm = {
   effectiveFrom: "2026-01-05",
   projectId: null,
 };
+
+const dailyRate = (crewMemberId: string) => ({
+  crewMemberId,
+  basis: "daily" as "daily" | "hourly",
+  unit: null,
+  amountCents: 20000,
+  effectiveFrom: "2026-01-05",
+  projectId: null,
+});
+const daily = (crewMemberId: string): CrewDayEntry => ({
+  crewMemberId,
+  basis: "daily",
+  days: 100,
+  hours: 0,
+  multiplier: null,
+});
+const hourly = (crewMemberId: string, hours: number): CrewDayEntry => ({
+  crewMemberId,
+  basis: "hourly",
+  days: null,
+  hours,
+  multiplier: null,
+});
 
 describe("projects", () => {
   it("a new job without stages gets the proposal (last metal re-roof); an update is audited", async () => {
@@ -186,6 +214,62 @@ describe("crew and rates", () => {
       ["2024-09-02", 28000],
     ]);
     expect(store.tables.workLogs.find((l) => l.id === old.id)!.rateCents).toBe(old.rateCents);
+  });
+
+  describe("a new rate never re-prices adjustments on a waived $0.00 line (pay rules §1, §8, §9)", () => {
+    /** Log a missing-rate day in the review week, approve it with the waiver, then change the log. */
+    async function waived(entry: CrewDayEntry, change: "delete" | { hours: number }) {
+      const session = fakeSession("manager");
+      const { data, actor, store } = session;
+      const saved = await data.logs.saveCrewDay(actor, {
+        date: "2026-09-22",
+        projectId: projects.smith,
+        stageId: stages.smithSheetInstall,
+        entries: [entry],
+      });
+      expect(saved.flags).toContain("missing_rate");
+      await data.payRuns.approve(actor, payRuns.review, { waiveMissingRate: true });
+      const logId = saved.ids[0]!;
+      const r =
+        change === "delete"
+          ? await data.logs.deleteLog(actor, logId)
+          : await data.logs.editLog(actor, logId, change);
+      const adj = store.tables.workLogs.find((l) => l.id === r.ids[0])!;
+      expect([adj.source, adj.adjustsLogId, adj.missingRate, adj.rateCents]).toEqual([
+        "adjustment",
+        logId,
+        true,
+        null,
+      ]);
+      const original = structuredClone(store.tables.workLogs.find((l) => l.id === logId)!);
+      return { ...session, adj: structuredClone(adj), original };
+    }
+    const tableRow = (store: ReturnType<typeof fakeSession>["store"], id: string) =>
+      store.tables.workLogs.find((l) => l.id === id)!;
+
+    it("daily: delete (−1 day adjustment) then a daily rate → the rate saves; the adjustment stays", async () => {
+      const { data, actor, store, adj, original } = await waived(daily(crew.jake), "delete");
+      const rate = { ...dailyRate(crew.jake), amountCents: 20000 };
+      await data.crew.setRate(actor, rate);
+      await data.crew.setRate(actor, { ...rate, amountCents: 21000 }); // later changes still work
+      expect(tableRow(store, adj.id)).toEqual(adj);
+      expect(tableRow(store, original.id)).toEqual(original);
+      const rates = await data.crew.rates(actor, crew.jake);
+      expect(rates.find((r) => r.basis === "daily")!.amountCents).toBe(21000);
+    });
+
+    it("hourly: a longer edit (+0.5 h adjustment) then an hourly rate → the adjustment stays $0.00", async () => {
+      const { data, actor, store, adj, original } = await waived(hourly(crew.tom, 750), { hours: 800 });
+      await data.crew.setRate(actor, { ...dailyRate(crew.tom), basis: "hourly", amountCents: 3000 });
+      expect(tableRow(store, adj.id)).toEqual(adj);
+      expect(tableRow(store, original.id)).toEqual(original);
+    });
+
+    it("hourly: a shorter edit (−0.5 h adjustment) then an hourly rate → saves; nothing re-priced", async () => {
+      const { data, actor, store, adj } = await waived(hourly(crew.tom, 750), { hours: 700 });
+      await data.crew.setRate(actor, { ...dailyRate(crew.tom), basis: "hourly", amountCents: 3000 });
+      expect(tableRow(store, adj.id)).toEqual(adj);
+    });
   });
 
   it("creates and updates a crew member; a contractor's GST flag, a per-unit worker's unit", async () => {
