@@ -1,21 +1,108 @@
 import { sum } from "@/domain/money";
-import type {
-  Actor,
-  AuditRow,
+import {
+  DataError,
+  isDataError,
+  MAX_PUSH_BATCH,
+  type Actor,
+  type AuditRow,
+  type EntryResult,
+  type MutationEnvelope,
+  type PushRequest,
+  type PushResponse,
+  type PushResult,
   AuditService,
-  ExportFile,
-  ExportListing,
-  ExportService,
-  Id,
-  Snapshot,
-  SyncService,
+  type ExportFile,
+  type ExportListing,
+  type ExportService,
+  type Id,
+  type Snapshot,
+  type SyncService,
 } from "../../contracts";
+import { parseMutation } from "../../mutations";
 import type { Seed } from "../seed";
-import { forbidden, notFound, notYet, type FakeContext } from "./context";
+import { forbidden, notFound, type FakeContext } from "./context";
 import { crewRowForeman } from "./crew";
+import { createExpenseService } from "./expenses";
+import { createLogService, createNoWorkService, createProgressService } from "./logs";
+import { createStageService } from "./stages";
 import { toCsv } from "./reports";
 
+export const OTHER_ACCOUNT = "This entry was already sent from another account. Discard it and enter it again.";
+
+/**
+ * The fake `POST /api/sync/push` (architecture §7), one mutation at a time in the order sent:
+ * idempotency (a repeat id returns the stored result, nothing applied twice) → zod validation →
+ * role and job-assignment checks → business checks → apply → store the result. Business warnings
+ * are flags on an applied result; only what can't be saved is rejected. Rejections aren't stored, so
+ * an edited resend with the same id is applied fresh. Anything unexpected → `retry`.
+ */
+function createPush(c: FakeContext) {
+  const logs = createLogService(c);
+  const progress = createProgressService(c);
+  const noWork = createNoWorkService(c);
+  const stages = createStageService(c);
+  const expenses = createExpenseService(c);
+
+  function apply(actor: Actor, m: MutationEnvelope): Promise<EntryResult> {
+    switch (m.type) {
+      case "crew_day":
+        return logs.saveCrewDay(actor, m.payload, m.id);
+      case "progress":
+        return progress.record(actor, m.payload, m.id);
+      case "no_work":
+        return noWork.record(actor, m.payload, m.id);
+      case "stage_pause":
+        return stages.pause(actor, m.payload);
+      case "stage_resume":
+        return stages.resume(actor, m.payload);
+      case "expense":
+        return expenses.create(actor, m.payload, m.id);
+    }
+  }
+
+  async function one(actor: Actor, raw: { id: Id }): Promise<PushResult> {
+    const id = raw.id;
+    const stored = c.t.clientMutations.find((m) => m.id === id);
+    if (stored) {
+      if (stored.userId !== actor.userId) return { id, status: "rejected", code: "conflict", message: OTHER_ACCOUNT };
+      return { id, status: "applied", result: stored.result as EntryResult };
+    }
+    const parsed = parseMutation(raw);
+    if (!parsed.ok) return { id, status: "rejected", code: "invalid", message: parsed.message };
+    let result: EntryResult;
+    try {
+      result = await apply(actor, parsed.envelope);
+    } catch (e) {
+      if (isDataError(e) && e.code !== "unavailable")
+        return { id, status: "rejected", code: e.code, message: e.message };
+      return { id, status: "retry" };
+    }
+    const receivedAt = c.store.nextInstant(c.now());
+    c.store.write((t) =>
+      t.clientMutations.push({
+        id,
+        workspaceId: t.workspace.id,
+        userId: actor.userId,
+        type: parsed.envelope.type,
+        receivedAt,
+        result,
+      }),
+    );
+    return { id, status: "applied", result };
+  }
+
+  return async (actor: Actor, request: PushRequest): Promise<PushResponse> => {
+    c.check(actor);
+    if (request.mutations.length > MAX_PUSH_BATCH)
+      throw new DataError("invalid", `Send at most ${MAX_PUSH_BATCH} entries at a time.`);
+    const results: PushResult[] = [];
+    for (const m of request.mutations) results.push(await one(actor, m));
+    return { results };
+  };
+}
+
 export function createSyncService(c: FakeContext): SyncService {
+  const push = createPush(c);
   return {
     /** Reference cache for the pickers: no rates for anyone. */
     async snapshot(actor: Actor): Promise<Snapshot> {
@@ -55,7 +142,7 @@ export function createSyncService(c: FakeContext): SyncService {
           .map((x) => ({ id: x.id, name: x.name, position: x.position })),
       };
     },
-    push: () => notYet("sync.push"),
+    push,
   };
 }
 

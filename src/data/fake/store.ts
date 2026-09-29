@@ -31,6 +31,7 @@ export class FakeStore {
   readonly readOnly: boolean;
   readonly mutations: StoreMutation[] = [];
   private currentVersion = 0;
+  private lastInstantMs = 0;
   private indexCache: { version: number; index: StoreIndex } | null = null;
 
   constructor(tables: Seed, options: { readOnly: boolean }) {
@@ -49,6 +50,15 @@ export class FakeStore {
       this.indexCache = { version: this.currentVersion, index: new StoreIndex(this.tables) };
     }
     return this.indexCache.index;
+  }
+
+  /**
+   * The instant to stamp a write with: `now`, or 1 ms after the previous stamp when the (fixed)
+   * fake clock hasn't moved, so writes keep their order in "newest first" lists.
+   */
+  nextInstant(now: Date): string {
+    this.lastInstantMs = Math.max(now.getTime(), this.lastInstantMs + 1);
+    return new Date(this.lastInstantMs).toISOString();
   }
 
   /** Runs a change against the tables. Read-only stores (shared seed, empty) refuse. */

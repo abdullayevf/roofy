@@ -1,4 +1,5 @@
-import { countWorkingDays } from "@/domain/dates";
+import { reversal } from "@/domain/adjustments";
+import { addDays, countWorkingDays } from "@/domain/dates";
 import { lumpSumLines } from "@/domain/piece";
 import { lostWorkingDays, pausePeriods, realWorkingDays } from "@/domain/segments";
 import { splitWeighted } from "@/domain/split";
@@ -6,15 +7,35 @@ import type { LocalDate } from "@/domain/types";
 import type {
   Actor,
   DoneProposal,
+  EntryResult,
   Id,
+  ManualPctBp,
   ProgressRowForeman,
   ProgressRowManager,
   StageActions,
   StageDetail,
+  StageDoneInput,
+  StagePauseInput,
+  StageResumeInput,
   StageService,
 } from "../../contracts";
 import type { ProgressEntryRow, StageRow, WorkLogRow } from "../rows";
-import { FakeContext, FIELD_ACCESS, forbidden, notYet } from "./context";
+import { FakeContext, FIELD_ACCESS, forbidden } from "./context";
+import {
+  conflict,
+  dateText,
+  entryFlags,
+  entryResult,
+  invalid,
+  lastSegment,
+  openSegment,
+  requireCrewOn,
+  requireEditor,
+  requireFieldWriter,
+  snapshot,
+  startStage,
+  write,
+} from "./writes";
 
 const byRecent = (a: WorkLogRow, b: WorkLogRow) =>
   b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt);
@@ -202,11 +223,255 @@ export function createStageService(c: FakeContext): StageService {
       };
     },
 
-    start: () => notYet("stages.start"),
-    pause: () => notYet("stages.pause"),
-    resume: () => notYet("stages.resume"),
-    confirmDone: () => notYet("stages.confirmDone"),
-    reopen: () => notYet("stages.reopen"),
-    setManualPct: () => notYet("stages.setManualPct"),
+    /** Start a Not started stage from `date` (Owner/Manager; logging starts it automatically too). */
+    async start(actor: Actor, stageId: Id, date: LocalDate): Promise<EntryResult> {
+      requireEditor(c, actor);
+      const st = c.requireStage(actor, stageId);
+      if (st.status !== "not_started") throw conflict("This stage has already started.");
+      const seg = write(c, actor, "stage_start", (w) => {
+        const seg = startStage(w, st, date)!;
+        w.audit("stage", st.id, "update", { status: "not_started" }, { status: "active", start: date });
+        return seg;
+      });
+      return entryResult(actor, [seg.id], []);
+    },
+
+    async pause(actor: Actor, input: StagePauseInput): Promise<EntryResult> {
+      return pauseStage(c, actor, input);
+    },
+
+    async resume(actor: Actor, input: StageResumeInput): Promise<EntryResult> {
+      return resumeStage(c, actor, input);
+    },
+
+    async confirmDone(actor: Actor, input: StageDoneInput): Promise<EntryResult> {
+      return confirmDone(c, actor, input);
+    },
+
+    async reopen(actor: Actor, stageId: Id): Promise<EntryResult> {
+      return reopenStage(c, actor, stageId);
+    },
+
+    /** Manual % for a stage without a measured unit (pay rules §12). Owner/Manager. */
+    async setManualPct(actor: Actor, stageId: Id, pctBp: ManualPctBp): Promise<EntryResult> {
+      requireEditor(c, actor);
+      const st = c.requireStage(actor, stageId);
+      if (st.status === "done") throw conflict("This stage is done. Reopen it to change its progress.");
+      if (st.unit !== null && st.budgetQty !== null)
+        throw invalid("This stage's progress comes from its measured quantity, not a manual %.");
+      write(c, actor, "stage_manual_pct", (w) => {
+        w.audit("stage", st.id, "update", { manualPctBp: st.manualPctBp }, { manualPctBp: pctBp });
+        st.manualPctBp = pctBp;
+        st.updatedAt = w.at;
+      });
+      return entryResult(actor, [st.id], []);
+    },
   };
+}
+
+// ─── Writes ─────────────────────────────────────────────────────────────────
+
+/**
+ * Pause (product spec §5.3; Owner, Manager, Foreman on assigned jobs): closes the open segment at
+ * `date` (the first day not worked) with the reason and note. Already paused → nothing changes.
+ */
+function pauseStage(c: FakeContext, actor: Actor, input: StagePauseInput): EntryResult {
+  requireFieldWriter(c, actor);
+  const st = c.requireStage(actor, input.stageId);
+  if (st.status === "done") throw conflict("This stage was marked Done, so it can't be paused.");
+  if (st.status === "not_started")
+    throw conflict("This stage hasn't started yet, so there's nothing to pause.");
+  if (st.status === "paused") return entryResult(actor, [], []);
+  const open = openSegment(c.t, st.id)!;
+  if (input.date <= open.startDate) {
+    throw invalid(
+      `This stage started on ${dateText(c, open.startDate)}. Pick the first day not worked, after that.`,
+    );
+  }
+  write(c, actor, "stage_pause", (w) => {
+    open.endDate = input.date;
+    open.pauseReason = input.reason;
+    open.pauseNote = input.note;
+    open.updatedAt = w.at;
+    st.status = "paused";
+    st.updatedAt = w.at;
+    w.audit("stage", st.id, "update", { status: "active" }, { status: "paused", pauseReason: input.reason });
+  });
+  return entryResult(actor, [open.id], []);
+}
+
+/** Resume: opens a new segment from `date` (the first day worked again). Already active → no change. */
+function resumeStage(c: FakeContext, actor: Actor, input: StageResumeInput): EntryResult {
+  requireFieldWriter(c, actor);
+  const st = c.requireStage(actor, input.stageId);
+  if (st.status === "done") throw conflict("This stage was marked Done. Ask your manager to reopen it.");
+  if (st.status === "not_started")
+    throw conflict("This stage hasn't started yet. Log work on it to start it.");
+  if (st.status === "active") return entryResult(actor, [], []);
+  const last = lastSegment(c.t, st.id)!;
+  if (input.date < last.endDate!) {
+    throw invalid(`This stage was paused from ${dateText(c, last.endDate!)}. Pick that day or later.`);
+  }
+  const seg = write(c, actor, "stage_resume", (w) => {
+    const seg = {
+      ...w.base(),
+      stageId: st.id,
+      startDate: input.date,
+      endDate: null,
+      pauseReason: null,
+      pauseNote: null,
+    };
+    w.t.stageSegments.push(seg);
+    st.status = "active";
+    st.updatedAt = w.at;
+    w.audit("stage", st.id, "update", { status: "paused" }, { status: "active", resumedOn: input.date });
+    return seg;
+  });
+  return entryResult(actor, [seg.id], []);
+}
+
+/**
+ * Done (Owner/Manager only): closes the open segment at completion + 1 day, and on a lump-sum stage
+ * splits the lump sum over the confirmed people with `lumpSumLines` (pay rules §5) — one log each,
+ * dated the completion date.
+ */
+function confirmDone(c: FakeContext, actor: Actor, input: StageDoneInput): EntryResult {
+  requireEditor(c, actor);
+  const st = c.requireStage(actor, input.stageId);
+  if (st.status === "done") throw conflict("This stage is already done.");
+  if (st.status === "not_started") throw conflict("This stage hasn't started yet. Log work on it first.");
+  const last = lastSegment(c.t, st.id)!;
+  if (input.completedOn < last.startDate) {
+    throw invalid(`Pick a completion date on or after ${dateText(c, last.startDate)}.`);
+  }
+  const lump = st.lumpSumCents;
+  let lines: ReturnType<typeof lumpSumLines> = [];
+  if (lump !== null) {
+    if (input.crewMemberIds.length === 0) throw invalid("Pick who shares the lump sum.");
+    for (const id of input.crewMemberIds) requireCrewOn(c, id, input.completedOn);
+    try {
+      lines = lumpSumLines(lump, input.crewMemberIds, input.shares);
+    } catch {
+      throw invalid("Shares must add up to 100%, one share per person.");
+    }
+  }
+  const bp =
+    input.shares.mode === "equal"
+      ? splitWeighted(
+          10_000,
+          input.crewMemberIds.map(() => 1),
+        )
+      : [...input.shares.bp];
+  const logs = write(c, actor, "stage_done", (w) => {
+    const open = openSegment(w.t, st.id);
+    if (open) {
+      open.endDate = addDays(input.completedOn, 1);
+      open.updatedAt = w.at;
+    }
+    const before = { status: st.status };
+    st.status = "done";
+    st.completedOn = input.completedOn;
+    st.completionNote = input.note;
+    st.updatedAt = w.at;
+    w.audit("stage", st.id, "update", before, { status: "done", completedOn: input.completedOn });
+    if (lump === null) return [];
+    input.crewMemberIds.forEach((crewMemberId, i) =>
+      w.t.stageCompletionShares.push({ ...w.base(), stageId: st.id, crewMemberId, shareBp: bp[i]! }),
+    );
+    const entryId = w.base().id;
+    return lines.map((line) => {
+      const row = {
+        ...w.base(),
+        date: input.completedOn,
+        crewMemberId: line.crewMemberId,
+        projectId: st.projectId,
+        stageId: st.id,
+        basis: "lump_sum" as const,
+        unit: null,
+        quantity: 0,
+        hours: line.hours,
+        multiplier: null,
+        rateCents: null,
+        amountCents: line.amountCents,
+        missingRate: false,
+        source: "lump_sum" as const,
+        adjustsLogId: null,
+        progressEntryId: null,
+        entryId,
+        payRunId: null,
+        enteredBy: actor.userId,
+        mutationId: null,
+        deletedAt: null,
+      };
+      w.t.workLogs.push(row);
+      return row;
+    });
+  });
+  return entryResult(actor, [st.id, ...logs.map((l) => l.id)], entryFlags(c, logs));
+}
+
+/**
+ * Reopen a Done stage (Owner/Manager; pay rules §5 step 4): lump-sum logs not yet in an approved pay
+ * run are deleted; locked ones get a reversing adjustment in the next draft (§8). The segment Done
+ * closed opens again (Active); a stage that was paused when marked Done goes back to Paused.
+ */
+function reopenStage(c: FakeContext, actor: Actor, stageId: Id): EntryResult {
+  requireEditor(c, actor);
+  const st = c.requireStage(actor, stageId);
+  if (st.status !== "done") throw conflict("This stage isn't done, so there's nothing to reopen.");
+  const lumpLogs = c.ix.logsOfStage(st.id).filter((l) => l.source === "lump_sum");
+  const reversed = new Set(c.ix.liveLogs.filter((l) => l.adjustsLogId !== null).map((l) => l.adjustsLogId));
+  const ids = write(c, actor, "stage_reopen", (w) => {
+    const last = lastSegment(w.t, st.id)!;
+    const closedByDone = last.pauseReason === null && last.endDate === addDays(st.completedOn!, 1);
+    if (closedByDone) {
+      last.endDate = null;
+      last.updatedAt = w.at;
+    }
+    w.audit(
+      "stage",
+      st.id,
+      "update",
+      { status: "done", completedOn: st.completedOn },
+      {
+        status: closedByDone ? "active" : "paused",
+      },
+    );
+    st.status = closedByDone ? "active" : "paused";
+    st.completedOn = null;
+    st.completionNote = null;
+    st.updatedAt = w.at;
+    w.t.stageCompletionShares = w.t.stageCompletionShares.filter((s) => s.stageId !== st.id);
+    const out: Id[] = [];
+    for (const log of lumpLogs) {
+      if (log.payRunId === null) {
+        log.deletedAt = w.at;
+        log.updatedAt = w.at;
+        w.audit("work_log", log.id, "delete", snapshot({ ...log, deletedAt: null }), null);
+        continue;
+      }
+      if (reversed.has(log.id)) continue;
+      const delta = reversal(log);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { id, workspaceId, createdAt, updatedAt, ...fields } = log;
+      const row = {
+        ...fields,
+        ...w.base(),
+        quantity: delta.quantity,
+        hours: delta.hours,
+        amountCents: delta.amountCents,
+        source: "adjustment" as const,
+        adjustsLogId: log.id,
+        entryId: w.base().id,
+        payRunId: null,
+        enteredBy: actor.userId,
+        mutationId: null,
+      };
+      w.t.workLogs.push(row);
+      w.audit("work_log", row.id, "insert", null, snapshot(row));
+      out.push(row.id);
+    }
+    return out;
+  });
+  return entryResult(actor, ids, []);
 }

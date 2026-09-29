@@ -46,7 +46,7 @@ describe("FakeStore", () => {
     expect(ids).toContain("s0");
     expect(ids).not.toContain("s1");
     expect(ids.at(-1)).toBe("new");
-  });
+  }, 30_000); // 51 clones of the seed: slow while the rest of the suite runs in parallel
 
   it("rebuilds its indexes after a write", () => {
     const s = sessionStore("x");

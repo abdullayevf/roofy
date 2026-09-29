@@ -7,7 +7,9 @@ import { describe, expect, it } from "vitest";
 import { DataError, isDataError, type Actor, type DataServices, type DemoState } from "../contracts";
 import { expectNoMoney, scanForMoney } from "../dto";
 import { DEMO_STATES, demoOutbox } from "./demo";
-import { fake, TEST_NOW } from "./services/testing";
+import { v7 as uuidv7 } from "uuid";
+import type { MutationEnvelope } from "../contracts";
+import { fake, fakeSession, TEST_NOW } from "./services/testing";
 import { getSeed } from "./store";
 
 const seed = getSeed();
@@ -131,5 +133,99 @@ describe("foreman scan: no money in any foreman-reachable read", () => {
       expect((error as DataError).code, name).toBe("forbidden");
       expect(scanForMoney((error as DataError).message)).toEqual([]);
     }
+  });
+});
+
+describe("foreman scan: field entries (push results and EntryResults)", () => {
+  const smith = meta.projects.smith;
+  const sheet = meta.stages.smithSheetInstall;
+  const envelope = (type: MutationEnvelope["type"], payload: unknown) =>
+    ({ id: uuidv7(), type, schemaVersion: 1, appVersion: "0.1.0", createdAt: TEST_NOW.toISOString(), payload }) as MutationEnvelope;
+  const materials = seed.expenseCategories.find((x) => x.name === "Materials")!.id;
+  // Every type, on assigned and unassigned jobs, valid and invalid, with pay-only warnings (Ben has no daily rate; 16 Sep is approved).
+  const batch = (): MutationEnvelope[] => [
+    envelope("crew_day", {
+      date: "2026-09-16",
+      projectId: smith,
+      stageId: sheet,
+      entries: [{ crewMemberId: meta.crew.ben, basis: "daily", days: 100, hours: 0, multiplier: null }],
+    }),
+    envelope("crew_day", {
+      date: "2026-09-28",
+      projectId: meta.projects.rydeHeritage,
+      stageId: meta.stages.rydeRepairs,
+      entries: [{ crewMemberId: meta.crew.mick, basis: "daily", days: 100, hours: 0, multiplier: null }],
+    }),
+    envelope("progress", {
+      stageId: meta.stages.patelFlashings,
+      date: "2026-09-28",
+      quantity: 8000,
+      crewMemberIds: [meta.crew.lee, meta.crew.jake],
+      shares: { mode: "custom", bp: [7500, 2500] },
+      photoFileId: null,
+      note: null,
+    }),
+    envelope("progress", { stageId: sheet, date: "2026-09-28", quantity: 0, crewMemberIds: [], shares: { mode: "equal" }, photoFileId: null, note: null }),
+    envelope("no_work", { crewMemberIds: [meta.crew.nick], date: "2026-09-28", reason: "rain", note: null }),
+    envelope("stage_pause", { stageId: sheet, date: "2026-09-29", reason: "weather", note: null }),
+    envelope("stage_resume", { stageId: sheet, date: "2026-10-01" }),
+    envelope("stage_pause", { stageId: meta.stages.patelSheetInstall, date: "2026-09-29", reason: "weather", note: null }),
+    envelope("expense", {
+      date: "2026-09-16",
+      supplier: "Bunnings",
+      totalCents: 11000,
+      gstCents: null,
+      projectId: smith,
+      stageId: null,
+      categoryId: materials,
+      paidBy: "crew",
+      crewMemberId: meta.crew.dima,
+      receiptFileId: null,
+    }),
+    envelope("expense", {
+      date: "2026-09-28",
+      supplier: "Bunnings",
+      totalCents: 0,
+      gstCents: null,
+      projectId: smith,
+      stageId: null,
+      categoryId: materials,
+      paidBy: "cash",
+      crewMemberId: null,
+      receiptFileId: null,
+    }),
+  ];
+
+  it("every push result a foreman gets (applied, rejected, repeated) is money-free", async () => {
+    const { data, actor } = fakeSession("foreman");
+    const mutations = batch();
+    const first = await data.sync.push(actor, { mutations });
+    const repeat = await data.sync.push(actor, { mutations });
+    expect(first.results.map((r) => r.status)).toEqual([
+      "applied",
+      "rejected",
+      "applied",
+      "rejected",
+      "applied",
+      "applied",
+      "applied",
+      "rejected",
+      "applied",
+      "rejected",
+    ]);
+    expect(repeat.results.filter((r) => r.status === "applied")).toEqual(
+      first.results.filter((r) => r.status === "applied"),
+    );
+    expectNoMoney(first, "push (foreman)");
+    expectNoMoney(repeat, "push repeat (foreman)");
+    for (const r of first.results) if (r.status === "applied") expect(r.result.flags).not.toContain("missing_rate");
+  });
+
+  it("the manager's results for the same entries do carry the pay flags (the strip is real)", async () => {
+    const { data, actor } = fakeSession("manager");
+    const res = await data.sync.push(actor, { mutations: batch() });
+    const flags = res.results.flatMap((r) => (r.status === "applied" ? r.result.flags : []));
+    expect(flags).toContain("missing_rate");
+    expect(flags).toContain("late_entry");
   });
 });

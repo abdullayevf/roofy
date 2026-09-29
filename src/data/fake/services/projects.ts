@@ -91,10 +91,14 @@ export function createProjectService(c: FakeContext): ProjectService {
     };
   }
 
-  /** The last 7 days up to today (a rolling "this week", so Monday morning isn't empty). */
-  function crewWeek(projectId: Id): { crewMemberId: Id; name: string; logs: WorkLogRow[] }[] {
+  /**
+   * The last 7 days up to today (a rolling "this week", so Monday morning isn't empty). The field view
+   * leaves out adjustments (pay-run artefacts, pay rules §8), so they add no days or hours there.
+   */
+  function crewWeek(projectId: Id, field: boolean): { crewMemberId: Id; name: string; logs: WorkLogRow[] }[] {
     const from = addDays(c.today, -6);
-    const logs = c.ix.logsOfProject(projectId).filter((l) => l.date >= from && l.date <= c.today);
+    const all = c.ix.logsOfProject(projectId).filter((l) => l.date >= from && l.date <= c.today);
+    const logs = field ? FakeContext.fieldLogs(all) : all;
     const byCrew = new Map<Id, WorkLogRow[]>();
     for (const l of logs) byCrew.set(l.crewMemberId, [...(byCrew.get(l.crewMemberId) ?? []), l]);
     return [...byCrew]
@@ -147,7 +151,7 @@ export function createProjectService(c: FakeContext): ProjectService {
           status: p.status,
           pctBp: f.pctBp,
           stages: f.stages.map((s) => stageRowForeman(c, s)),
-          crewThisWeek: crewWeek(p.id).map(weekForeman),
+          crewThisWeek: crewWeek(p.id, true).map(weekForeman),
           recentLogs: FakeContext.fieldLogs(all)
             .slice(0, RECENT_LOGS)
             .map((l) => c.logForeman(l)),
@@ -178,7 +182,7 @@ export function createProjectService(c: FakeContext): ProjectService {
         margins: f.margins,
         alert: f.alert,
         stages: f.stages.map((s) => stageRowManager(c, s)),
-        crewThisWeek: crewWeek(p.id).map((w): CrewWeekManager => ({
+        crewThisWeek: crewWeek(p.id, false).map((w): CrewWeekManager => ({
           ...weekForeman(w),
           labourCostCents: c.fig.labourOf(w.logs),
         })),

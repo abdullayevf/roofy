@@ -259,3 +259,38 @@ describe("stage detail", () => {
     }
   });
 });
+
+describe("crew this week (foreman) leaves out adjustments", () => {
+  it("an adjustment dated this week doesn't add days or hours to the foreman's view", async () => {
+    const { fakeSession } = await import("./testing");
+    const { data, actor, store, as } = fakeSession("foreman");
+    const base = store.tables.workLogs.find(
+      (l) => l.projectId === meta.projects.smith && l.date === "2026-09-25" && l.hours > 0 && l.deletedAt === null,
+    )!;
+    const before = await data.projects.get(actor, meta.projects.smith);
+    // A pay-run artefact for someone with no other log on the job this week, plus one for someone with logs.
+    const other = seed.crewMembers.find(
+      (c) => !store.tables.workLogs.some((l) => l.projectId === meta.projects.smith && l.crewMemberId === c.id && l.date >= "2026-09-22"),
+    )!;
+    store.write((t) => {
+      for (const crewMemberId of [other.id, base.crewMemberId]) {
+        t.workLogs.push({
+          ...base,
+          id: `adj-${crewMemberId}`,
+          crewMemberId,
+          date: "2026-09-24",
+          hours: 50,
+          quantity: 50,
+          source: "adjustment",
+          adjustsLogId: base.id,
+          entryId: `adj-entry-${crewMemberId}`,
+        });
+      }
+    });
+    const after = await data.projects.get(actor, meta.projects.smith);
+    expect(after.crewThisWeek).toEqual(before.crewThisWeek);
+    const manager = as("manager");
+    const m = await manager.data.projects.get(manager.actor, meta.projects.smith);
+    expect(m.crewThisWeek.map((w) => w.name)).toContain(other.name);
+  });
+});
