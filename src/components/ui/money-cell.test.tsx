@@ -14,8 +14,15 @@ describe("MoneyCell", () => {
     expect(screen.getByText("−$300.00")).toBeInTheDocument();
   });
 
-  it("applies the over tone class when trending over budget", () => {
-    render(<MoneyCell cents={-30000} tone="over" />);
-    expect(screen.getByText("−$300.00").closest("span")).toHaveClass("text-over");
+  it("pairs a tone with an icon and a plain word, never colour alone", () => {
+    render(<MoneyCell cents={477500} tone="watch" status="$775.00 over budget" />);
+    const status = screen.getByText("$775.00 over budget");
+    expect(status).toHaveClass("text-watch");
+    expect(status.querySelector("svg")).toBeInTheDocument();
+  });
+
+  it("shows no status line without a tone", () => {
+    const { container } = render(<MoneyCell cents={143250} />);
+    expect(container.querySelector("svg")).not.toBeInTheDocument();
   });
 });

@@ -1,8 +1,10 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import Link from "next/link";
+import { CircleNotch } from "@phosphor-icons/react/dist/ssr";
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 import { Icon } from "./icon";
 import { cx } from "@/lib/cx";
+import { focusRing } from "./focus";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "link";
 
@@ -13,8 +15,12 @@ type Shared = {
   /** Solid `over` fill — only valid with `tone="danger"`, only inside confirmation sheets. */
   filled?: boolean;
   loading?: boolean;
+  /** The verb shown while loading, e.g. "Saving day". Defaults to the button's own label. */
+  loadingLabel?: string;
   disabled?: boolean;
-  /** Demo-only: forces the focus-visible ring so it shows up in a static screenshot. */
+  /** Shown directly under a disabled button, at body size, when there's a reason to explain. */
+  reason?: string;
+  /** Demo-only: forces the focus ring so it shows up in a static screenshot. */
   focusVisible?: boolean;
   icon?: PhosphorIcon;
   className?: string;
@@ -29,12 +35,17 @@ export type ButtonProps =
   | (Shared & { children: ReactNode; iconOnly?: false; label?: never })
   | (Shared & { iconOnly: true; label: string; icon: PhosphorIcon; children?: never });
 
-const SIZE = "h-[52px] lg:h-12 px-4 rounded-control text-body-strong";
-const FOCUS =
-  "focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-chalk";
-const FORCED_FOCUS = "outline outline-[3px] outline-offset-2 outline-chalk";
+// min-height, not height: at 200% text zoom a label may wrap, and the button
+// grows with it rather than clipping.
+const SIZE = "min-h-[52px] lg:min-h-12 px-4 py-1 rounded-control text-body-strong";
+// DESIGN.md §2: dimming a button's own fill (opacity) also dims its text,
+// which can fall below 4.5:1. A disabled button keeps a fixed, always-legible
+// treatment instead — `galv` fill, `line` border, ink-2 text — regardless of
+// its variant or tone, so it reads as clearly "not a secondary button".
+const DISABLED = "bg-galv text-ink-2 border border-line";
 
 function variantClasses(props: ButtonProps): string {
+  if (props.disabled) return DISABLED;
   if (props.tone === "danger") {
     return props.filled
       ? "bg-over text-on-over border border-transparent"
@@ -48,7 +59,7 @@ function variantClasses(props: ButtonProps): string {
     case "ghost":
       return "bg-transparent text-ink border border-transparent";
     case "link":
-      return "bg-transparent text-chalk-link border border-transparent px-0 h-auto underline-offset-4 hover:underline";
+      return "bg-transparent text-chalk-link border border-transparent px-0 min-h-12 underline underline-offset-4";
   }
 }
 
@@ -64,12 +75,12 @@ export function Button(props: ButtonProps) {
   const isLink = props.variant === "link";
   const className = cx(
     "inline-flex items-center justify-center gap-2",
-    isLink ? "" : SIZE,
+    isLink && !props.disabled ? "" : SIZE,
     isLink && !props.iconOnly ? "text-body-strong" : "",
     props.iconOnly && "w-[52px] lg:w-12 px-0",
     variantClasses(props),
-    "disabled:opacity-50 disabled:pointer-events-none",
-    props.focusVisible ? FORCED_FOCUS : FOCUS,
+    props.disabled && "pointer-events-none",
+    focusRing(props.focusVisible),
     props.className,
   );
 
@@ -78,33 +89,38 @@ export function Button(props: ButtonProps) {
       {props.icon ? <Icon icon={props.icon} /> : null}
       {props.iconOnly ? (
         <span className="sr-only">{props.label}</span>
-      ) : (
-        // opacity, not `invisible` (visibility:hidden): the real label must
-        // stay in the accessibility tree as the button's name while loading,
-        // even though the "Working" text below is what's visually shown.
-        <span className={props.loading ? "opacity-0" : undefined}>{props.children}</span>
-      )}
-      {props.loading && !props.iconOnly ? (
-        <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
-          <span className="text-body-strong">Working</span>
+      ) : props.loading ? (
+        // The original label stays in the layout (hidden) so the button keeps
+        // its width; what's visible is the loading verb plus a small
+        // indicator (it only spins when motion is allowed).
+        <span className="grid">
+          <span aria-hidden="true" className="invisible col-start-1 row-start-1">
+            {props.children}
+          </span>
+          <span className="col-start-1 row-start-1 flex items-center justify-center gap-2 whitespace-nowrap">
+            <CircleNotch size={24} aria-hidden="true" className="animate-spin" />
+            {props.loadingLabel ?? props.children}
+          </span>
         </span>
-      ) : null}
+      ) : (
+        <span>{props.children}</span>
+      )}
     </>
   );
 
-  if (props.href && !props.onClick) {
-    return (
-      <Link
-        href={props.href}
-        aria-disabled={props.disabled || undefined}
-        className={cx(className, props.loading && "relative")}
-      >
-        {content}
-      </Link>
-    );
-  }
-
-  return (
+  // DESIGN.md §4/§8: every button meets the 48 px target, except a true
+  // inline link (variant="link") — which still gets a 48 px tall tap area
+  // here, but is marked so automated checks can tell it apart.
+  const control = props.href ? (
+    <Link
+      href={props.href}
+      aria-disabled={props.disabled || undefined}
+      data-variant={props.variant ?? "primary"}
+      className={className}
+    >
+      {content}
+    </Link>
+  ) : (
     <button
       type={props.type ?? "button"}
       disabled={props.disabled || props.loading}
@@ -112,9 +128,19 @@ export function Button(props: ButtonProps) {
       onClick={props.onClick}
       name={props.name}
       value={props.value}
-      className={cx(className, props.loading && "relative")}
+      data-variant={props.variant ?? "primary"}
+      className={className}
     >
       {content}
     </button>
+  );
+
+  if (!props.disabled || !props.reason) return control;
+
+  return (
+    <span className="inline-flex flex-col gap-2">
+      {control}
+      <span className="text-body text-ink-2">{props.reason}</span>
+    </span>
   );
 }

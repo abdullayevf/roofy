@@ -131,6 +131,31 @@
 /* DESIGN.md §3: money, quantities, hours and dates in tables use tabular
  * figures, right-aligned (alignment is the caller's job; this just fixes
  * the figure width). */
+/* Tab bar labels: Barlow Semi Condensed 600 (DESIGN.md §3 "tab labels"), never
+ * smaller than `meta`; the condensed face is what lets five labels fit a
+ * phone, and they wrap rather than overflow when text is zoomed. */
+@utility text-tab {
+  font-family: var(--font-barlow);
+  font-weight: 600;
+  font-size: 0.9375rem; /* 15px */
+  line-height: 1.25rem; /* 20px */
+}
+
+/* The phone tab bar's box: its 4 rem body, plus the safe-area inset (real,
+ * or simulated via --sab-sim in captures), plus the 1.5 rem the raised Log
+ * circle lifts above the bar. Pages pad their bottom with `pb-tab-bar` so the
+ * last row is never hidden behind the bar. */
+:root {
+  --tab-bar-body: 4rem;
+  --tab-bar-raise: 1.5rem;
+  --tab-bar-height: calc(
+    var(--tab-bar-body) + var(--tab-bar-raise) + max(var(--sab-sim, 0px), env(safe-area-inset-bottom))
+  );
+}
+@utility pb-tab-bar {
+  padding-bottom: var(--tab-bar-height);
+}
+
 @utility num {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
@@ -159,6 +184,26 @@ body {
 [data-theme] {
   background: var(--galv);
   color: var(--ink);
+}
+
+/*
+ * DESIGN.md §6: light mode's level-1 groups (lists, panels) stay borderless
+ * (separation by colour, no shadow). Dark mode is elevation-by-lightness —
+ * a `surface` block barely lifts off `galv` by colour alone there — so a
+ * group also gets a 1 px `line` border in dark mode to still read as a
+ * block. Mirrors tokens.css's own three dark-mode triggers (automatic OS
+ * scheme, explicit :root override, [data-theme] wrapper).
+ */
+.border-group {
+  border: 1px solid transparent;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .border-group {
+    border-color: var(--line);
+  }
+}
+[data-theme="dark"] .border-group {
+  border-color: var(--line);
 }
 
 @media (min-width: 1024px) {

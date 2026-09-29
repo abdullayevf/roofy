@@ -1,6 +1,8 @@
 import { useId, type ComponentPropsWithoutRef } from "react";
 import { CaretDown } from "@phosphor-icons/react/dist/ssr";
 import { cx } from "@/lib/cx";
+import { ErrorMessage } from "./error-message";
+import { focusRing } from "./focus";
 
 export type SelectOption = { value: string; label: string };
 
@@ -12,10 +14,6 @@ export type SelectProps = Omit<ComponentPropsWithoutRef<"select">, "id"> & {
   focusVisible?: boolean;
   className?: string;
 };
-
-const FOCUS =
-  "focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-chalk";
-const FORCED_FOCUS = "outline outline-[3px] outline-offset-2 outline-chalk";
 
 /**
  * DESIGN.md §4 select. Native `<select>` (not Radix Select) for phone
@@ -49,10 +47,10 @@ export function Select({
           aria-invalid={Boolean(error) || undefined}
           aria-describedby={describedBy}
           className={cx(
-            "h-[52px] w-full appearance-none rounded-control border-[1.5px] bg-surface px-4 pr-12 text-body text-ink",
-            error ? "border-over" : "border-edge",
-            "disabled:opacity-50",
-            focusVisible ? FORCED_FOCUS : FOCUS,
+            "h-[52px] w-full appearance-none rounded-control bg-surface px-4 pr-12 text-body text-ink lg:h-12",
+            error ? "border-2 border-over" : "border-[1.5px] border-edge",
+            "disabled:bg-galv disabled:text-ink-2",
+            focusRing(focusVisible),
           )}
         >
           {options.map((opt) => (
@@ -62,7 +60,7 @@ export function Select({
           ))}
         </select>
         <CaretDown
-          size={20}
+          size={24}
           aria-hidden="true"
           className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-2"
         />
@@ -72,11 +70,7 @@ export function Select({
           {hint}
         </span>
       ) : null}
-      {error ? (
-        <span id={errorId} className="text-meta text-over">
-          {error}
-        </span>
-      ) : null}
+      {error ? <ErrorMessage id={errorId}>{error}</ErrorMessage> : null}
     </div>
   );
 }

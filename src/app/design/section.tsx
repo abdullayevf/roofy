@@ -20,6 +20,16 @@ export function Swatch({ label, children }: { label: string; children: ReactNode
   );
 }
 
+/** A labelled subgroup inside a section, e.g. splitting "Stage status" from "Job status". */
+export function Group({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-body-strong text-ink">{title}</p>
+      {children}
+    </div>
+  );
+}
+
 /**
  * Renders the same content twice, once under a forced light theme and once
  * under a forced dark theme, side by side on desktop (stacked on phone so

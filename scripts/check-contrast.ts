@@ -67,6 +67,7 @@ export const PAIRS: ContrastPair[] = [
   { fg: "on-tape", bg: "tape", role: "text" },
   { fg: "over", bg: "surface", role: "text" },
   { fg: "over", bg: "galv", role: "text" },
+  { fg: "on-over", bg: "over", role: "text" },
   { fg: "watch", bg: "surface", role: "text" },
   { fg: "good", bg: "galv", role: "text" },
   { fg: "good", bg: "surface", role: "text" },

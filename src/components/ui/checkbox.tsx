@@ -10,14 +10,16 @@ export type CheckboxProps = {
   defaultChecked?: boolean;
   onCheckedChange?: (checked: boolean) => void;
   disabled?: boolean;
-  /** Demo-only: forces the focus-visible ring so it shows up in a static screenshot. */
+  /** Demo-only: forces the focus ring so it shows up in a static screenshot. */
   focusVisible?: boolean;
   className?: string;
 };
 
-const FOCUS =
-  "focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-chalk";
-const FORCED_FOCUS = "outline outline-[3px] outline-offset-2 outline-chalk";
+// The ring goes on the visible box, not the 48 px hit area around it, so it
+// follows the box's own radius instead of drawing a big square offset frame.
+const BOX_FOCUS =
+  "group-focus-visible:outline group-focus-visible:outline-[3px] group-focus-visible:outline-offset-2 group-focus-visible:outline-chalk-link";
+const BOX_FOCUS_FORCED = "outline outline-[3px] outline-offset-2 outline-chalk-link";
 
 /** Checkbox, built on Radix for correct keyboard/indeterminate behaviour. */
 export function Checkbox({
@@ -30,7 +32,13 @@ export function Checkbox({
   className,
 }: CheckboxProps) {
   return (
-    <label className={cx("inline-flex min-h-12 cursor-pointer items-center gap-3", className)}>
+    <label
+      className={cx(
+        "inline-flex min-h-12 items-center gap-3",
+        disabled ? "cursor-not-allowed" : "cursor-pointer",
+        className,
+      )}
+    >
       {/*
         Radix's Checkbox.Root is the actual interactive element (a real
         `<button role="checkbox">`), so it — not just the wrapping label —
@@ -43,16 +51,14 @@ export function Checkbox({
         defaultChecked={defaultChecked}
         onCheckedChange={(next) => onCheckedChange?.(next === true)}
         disabled={disabled}
-        className={cx(
-          "group flex h-12 w-12 shrink-0 items-center justify-center",
-          "disabled:opacity-50",
-          focusVisible ? FORCED_FOCUS : FOCUS,
-        )}
+        className="group flex h-12 w-12 shrink-0 items-center justify-center outline-none"
       >
         <span
           className={cx(
-            "flex h-6 w-6 items-center justify-center rounded-[3px] border-[1.5px] border-edge bg-surface",
+            "flex h-6 w-6 items-center justify-center rounded-[3px] border-[1.5px] border-edge",
+            disabled ? "bg-galv" : "bg-surface",
             "group-data-[state=checked]:border-transparent group-data-[state=checked]:bg-chalk",
+            focusVisible ? BOX_FOCUS_FORCED : BOX_FOCUS,
           )}
         >
           <RadixCheckbox.Indicator>
@@ -60,7 +66,7 @@ export function Checkbox({
           </RadixCheckbox.Indicator>
         </span>
       </RadixCheckbox.Root>
-      <span className="text-body text-ink">{label}</span>
+      <span className={cx("text-body", disabled ? "text-ink-2" : "text-ink")}>{label}</span>
     </label>
   );
 }

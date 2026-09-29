@@ -1,18 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { Minus, Plus } from "@phosphor-icons/react";
 import type { Hundredths } from "@/domain/types";
-import { formatDays, formatHours } from "@/lib/format";
+import { formatHours } from "@/lib/format";
 import { Button } from "./button";
 import { cx } from "@/lib/cx";
 
-export type StepperMode = "hours" | "days";
-
 export type StepperProps = {
-  mode: StepperMode;
-  /** Hundredths: hours in 0.01 h units (750 = 7.5 h), days in 0.01 day units (100 = 1 day, 50 = ½ day). */
-  value: Hundredths;
-  onChange: (next: Hundredths) => void;
+  /** Hundredths: 0.01 h units (750 = 7.5 h). Controlled; omit to let the stepper hold its own value. */
+  value?: Hundredths;
+  /** Starting value when uncontrolled. */
+  defaultValue?: Hundredths;
+  onChange?: (next: Hundredths) => void;
   min?: Hundredths;
   max?: Hundredths;
   disabled?: boolean;
@@ -22,23 +22,34 @@ export type StepperProps = {
 };
 
 const HOURS_STEP = 25;
-const DAYS_STEP = 50;
+const DEFAULT_MIN = 0;
+const DEFAULT_MAX = 2400;
 
-function defaultBounds(mode: StepperMode): { min: Hundredths; max: Hundredths } {
-  return mode === "hours" ? { min: 0, max: 2400 } : { min: 50, max: 100 };
-}
-
-/** DESIGN.md §4 stepper: − / value / + at 52 px; hours step 0.25 h, days toggles 1 / ½. */
-export function Stepper({ mode, value, onChange, min, max, disabled, label, className }: StepperProps) {
-  const bounds = defaultBounds(mode);
-  const lo = min ?? bounds.min;
-  const hi = max ?? bounds.max;
-  const step = mode === "hours" ? HOURS_STEP : DAYS_STEP;
-  const display = mode === "hours" ? formatHours(value) : formatDays(value);
+/**
+ * DESIGN.md §4 stepper: − / value / + at 52 px phone / 48 desktop, steps by
+ * 0.25 h. (A full/half day is a two-option choice, not a step count — see
+ * `DayToggle`.)
+ */
+export function Stepper({
+  value: controlledValue,
+  defaultValue = 0,
+  onChange,
+  min,
+  max,
+  disabled,
+  label,
+  className,
+}: StepperProps) {
+  const [uncontrolled, setUncontrolled] = useState(defaultValue);
+  const value = controlledValue ?? uncontrolled;
+  const lo = min ?? DEFAULT_MIN;
+  const hi = max ?? DEFAULT_MAX;
 
   function step_(delta: number) {
     const next = Math.max(lo, Math.min(hi, value + delta));
-    if (next !== value) onChange(next);
+    if (next === value) return;
+    setUncontrolled(next);
+    onChange?.(next);
   }
 
   return (
@@ -49,10 +60,10 @@ export function Stepper({ mode, value, onChange, min, max, disabled, label, clas
         label={`Decrease ${label}`}
         variant="secondary"
         disabled={disabled || value <= lo}
-        onClick={() => step_(-step)}
+        onClick={() => step_(-HOURS_STEP)}
       />
       <span aria-live="polite" className="min-w-[64px] text-center text-figure num text-ink">
-        {display}
+        {formatHours(value)}
       </span>
       <Button
         iconOnly
@@ -60,7 +71,7 @@ export function Stepper({ mode, value, onChange, min, max, disabled, label, clas
         label={`Increase ${label}`}
         variant="secondary"
         disabled={disabled || value >= hi}
-        onClick={() => step_(step)}
+        onClick={() => step_(HOURS_STEP)}
       />
     </div>
   );
