@@ -8,6 +8,9 @@ import {
   sessionStoreIds,
   sharedStore,
 } from "./store";
+import { FakeContext, actorFor } from "./services/context";
+import { TEST_NOW } from "./services/testing";
+import { write } from "./services/writes";
 
 afterEach(() => clearSessionStores());
 
@@ -56,6 +59,44 @@ describe("FakeStore", () => {
     s.write(() => undefined);
     expect(s.version).toBe(v + 1);
     expect(s.indexes()).not.toBe(before);
+  });
+
+  it("a write is all or nothing: a change that throws leaves every table exactly as it was", () => {
+    const s = sessionStore("tx");
+    const before = structuredClone(s.tables);
+    const log = s.tables.workLogs[0]!;
+    const v = s.version;
+    expect(() =>
+      s.write((t) => {
+        log.amountCents += 100;
+        t.workspace.name = "Half-saved";
+        t.rates.push({ ...t.rates[0]!, id: "new-rate" });
+        t.workLogs.splice(1, 1);
+        t.auditEvents.push({ ...t.auditEvents[0]!, id: "new-audit" });
+        t.meta.statementTokens.push({ ...t.meta.statementTokens[0]! });
+        throw new Error("boom");
+      }),
+    ).toThrow("boom");
+    expect(s.tables).toEqual(before);
+    expect(s.tables.workLogs[0]).toBe(log); // rows keep their identity (indexes stay valid)
+    expect(s.version).toBe(v);
+  });
+
+  it("a service write that audits then throws saves nothing: no row, no audit event, no mutation", () => {
+    const s = sessionStore("tx-service");
+    const c = new FakeContext(s, { now: () => TEST_NOW, demo: null });
+    const actor = actorFor(s.tables, "manager");
+    const counts = () => [s.tables.rates.length, s.tables.auditEvents.length, s.mutations.length];
+    const before = counts();
+    expect(() =>
+      write(c, actor, "rate_set", (w) => {
+        const rate = { ...w.t.rates[0]!, ...w.base() };
+        w.t.rates.push(rate);
+        w.audit("rate", rate.id, "insert", null, {});
+        throw new RangeError("days must be 1 or 0.5");
+      }),
+    ).toThrow(RangeError);
+    expect(counts()).toEqual(before);
   });
 
   it("?demo=empty is a new workspace: settings only, every list empty", () => {
