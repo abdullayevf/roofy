@@ -236,9 +236,15 @@ test.describe("every link resolves", () => {
         await collect();
       }
       expect(hrefs.size).toBeGreaterThan(2);
-      // Home links into detail pages that later tasks build (job and stage detail 14, crew detail 15, pay run
-      // review 17); drop this filter as each lands.
-      for (const href of [...hrefs].filter((h) => !/^\/(jobs|crew|pay)\/[^/]/.test(h))) {
+      // Home links to detail pages that don't exist yet: job and stage detail /jobs/<id>[/stages/<id>] (Task 14),
+      // crew detail /crew/<id> (Task 15), pay run review /pay/<id>[#crew-<id>] (Task 17). Skip exactly those
+      // shapes (not /jobs/new or /crew/new) and drop each pattern as its task lands.
+      const notBuiltYet = [
+        /^\/jobs\/(?!new(?:$|[/?#]))[^/?#]+(?:\/stages\/[^/?#]+)?$/,
+        /^\/crew\/(?!new(?:$|[/?#]))[^/?#]+$/,
+        /^\/pay\/[^/?#]+(?:#.*)?$/,
+      ];
+      for (const href of [...hrefs].filter((h) => !notBuiltYet.some((re) => re.test(h)))) {
         const res = await page.goto(href);
         expect(res?.status(), href).toBeLessThan(400);
         await expect(page.getByRole("heading", { level: 1 }), href).toBeVisible();

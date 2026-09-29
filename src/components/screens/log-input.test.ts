@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { basisLabel, buildEntries, exceptionFor, initialException } from "./log-input";
+import { basisLabel, buildEntries, canLog, exceptionFor, initialException, pickableIds } from "./log-input";
 
 const crew = (over: object) => ({
   crewMemberId: "c1", name: "Sam", type: "employee" as const, basis: "daily" as const, unit: null,
@@ -44,5 +44,16 @@ describe("crew-day grid input", () => {
     expect(buildEntries([crew({})], new Set(["c1"]), {})).toEqual([
       { crewMemberId: "c1", basis: "daily", days: 100, hours: 800, multiplier: null },
     ]);
+  });
+
+  it("never ticks or saves someone marked no work or already logged that day", () => {
+    const people = [
+      crew({ crewMemberId: "a" }),
+      crew({ crewMemberId: "b", noWorkOnDate: "sick" }),
+      crew({ crewMemberId: "c", loggedOnDate: true }),
+    ];
+    expect(people.map(canLog)).toEqual([true, false, false]);
+    expect(pickableIds(people, ["a", "b", "c", "zzz"])).toEqual(["a"]);
+    expect(buildEntries(people, new Set(["a", "b", "c"]), {}).map((e) => e.crewMemberId)).toEqual(["a"]);
   });
 });

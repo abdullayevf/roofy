@@ -30,7 +30,8 @@ test.describe("Home (manager)", () => {
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
-  test("an active job opens its detail page", async ({ page }) => {
+  // Fixme until the job detail page exists (Task 14): today /jobs/<id> is a 404.
+  test.fixme("an active job opens its detail page", async ({ page }) => {
     await signInAs(page, "manager");
     await page.getByRole("link", { name: /Smith job/ }).last().click();
     await expect(page).toHaveURL(/\/jobs\//);

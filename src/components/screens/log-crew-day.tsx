@@ -13,7 +13,7 @@ import { ErrorMessage } from "@/components/ui/error-message";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusChip } from "@/components/ui/status-chip";
-import { basisLabel, buildEntries, exceptionFor, initialException } from "./log-input";
+import { basisLabel, buildEntries, canLog, exceptionFor, initialException, pickableIds } from "./log-input";
 
 const WIDTH = "max-w-150";
 
@@ -61,8 +61,10 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
   const router = useRouter();
   const [navigating, startNav] = useTransition();
   const [ticked, setTicked] = useState<Set<string>>(
-    () => new Set(initialTicked.filter((id) => defaults.crew.some((c) => c.crewMemberId === id))),
+    () => new Set(pickableIds(defaults.crew, initialTicked)),
   );
+  /** People saved in this visit: shown as logged, so a second save can't log them twice. */
+  const [justLogged, setJustLogged] = useState<Set<string>>(new Set());
   const [exceptions, setExceptions] = useState<Record<string, Hundredths>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +73,11 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
   const project = defaults.projects.find((p) => p.id === defaults.projectId) ?? null;
   const stage = project?.stages.find((s) => s.id === defaults.stageId) ?? null;
   const same = defaults.sameAsYesterday;
-  const ready = project !== null && stage !== null && ticked.size > 0;
+  const sameStageOpen = same
+    ? (defaults.projects.find((p) => p.id === same.projectId)?.stages.find((s) => s.id === same.stageId)?.status ?? "done") !== "done"
+    : false;
+  const crew = defaults.crew.map((c) => (justLogged.has(c.crewMemberId) ? { ...c, loggedOnDate: true } : c));
+  const ready = project !== null && stage !== null && crew.some((c) => ticked.has(c.crewMemberId) && canLog(c));
 
   const go = (url: string) => startNav(() => router.replace(url));
 
@@ -79,22 +85,30 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
     if (!project || !stage) return;
     setSaving(true);
     setError(null);
-    const result = await submit("crew_day", {
-      date: defaults.date,
-      projectId: project.id,
-      stageId: stage.id,
-      entries: buildEntries(defaults.crew, ticked, exceptions),
-    });
-    setSaving(false);
-    if (result.status === "rejected") {
-      setError(result.message);
-      return;
+    try {
+      const entries = buildEntries(crew, ticked, exceptions);
+      const result = await submit("crew_day", {
+        date: defaults.date,
+        projectId: project.id,
+        stageId: stage.id,
+        entries,
+      });
+      if (result.status === "rejected") {
+        setError(result.message);
+        return;
+      }
+      const ids = new Set(entries.map((e) => e.crewMemberId));
+      setJustLogged((prev) => new Set([...prev, ...ids]));
+      setSaved({
+        state: result.status === "applied" ? "logged" : "waiting",
+        names: crew.filter((c) => ids.has(c.crewMemberId)).map((c) => c.name),
+        stageLabel: `${stage.name} on ${project.name}`,
+      });
+    } catch {
+      setError("Couldn't save the day. Try again.");
+    } finally {
+      setSaving(false);
     }
-    setSaved({
-      state: result.status === "applied" ? "logged" : "waiting",
-      names: defaults.crew.filter((c) => ticked.has(c.crewMemberId)).map((c) => c.name),
-      stageLabel: `${stage.name} on ${project.name}`,
-    });
   }
 
   function logAnother() {
@@ -128,7 +142,7 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
           loading={navigating}
           loadingLabel="Copying"
           onClick={() =>
-            same && go(logUrl(basePath, { project: same.projectId, stage: same.stageId, crew: same.crewMemberIds, demo }))
+            same && go(logUrl(basePath, { project: same.projectId, stage: sameStageOpen ? same.stageId : undefined, crew: same.crewMemberIds, demo }))
           }
           className="w-full"
         >
@@ -158,8 +172,9 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
         />
       </div>
 
+      <div role="status" className="empty:hidden">
       {saved ? (
-        <div role="status" className="flex flex-col items-start gap-3 rounded-group border-group bg-surface p-4">
+        <div className="flex flex-col items-start gap-3 rounded-group border-group bg-surface p-4">
           <StatusChip status={saved.state === "logged" ? "sent" : "waiting"} />
           <p className="text-body-strong text-ink">
             {saved.state === "logged" ? "Logged" : "Saved on this phone"}: {saved.names.join(", ")}
@@ -172,21 +187,24 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
             Log another stage
           </Button>
         </div>
-      ) : (
+      ) : null}
+      </div>
+
+      {saved ? null : (
         <>
           <section className="flex flex-col gap-2">
             <h2 className="text-heading text-ink">Who worked</h2>
-            {defaults.crew.length === 0 ? (
+            {crew.length === 0 ? (
               <p className="text-body text-ink-2">No crew yet. Add your crew first.</p>
             ) : (
               <CrewGroup>
-                {defaults.crew.map((person) => (
+                {crew.map((person) => (
                   <CrewChip
                     key={person.crewMemberId}
                     name={person.name}
                     basis={basisLabel(person)}
                     note={chipNote(person)}
-                    disabled={person.noWorkOnDate !== null}
+                    disabled={!canLog(person)}
                     exception={exceptionFor(person.basis)}
                     pressed={ticked.has(person.crewMemberId)}
                     onPressedChange={(on) =>

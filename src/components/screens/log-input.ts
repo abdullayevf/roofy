@@ -3,6 +3,17 @@ import type { Hundredths } from "@/domain/types";
 import type { CrewBasisLabel } from "@/components/crew-chip";
 
 type GridPerson = Pick<GridCrewForeman, "crewMemberId" | "basis" | "unit" | "standardHours">;
+type Loggable = GridPerson & Pick<GridCrewForeman, "noWorkOnDate" | "loggedOnDate">;
+
+/** Someone marked no work, or already logged for the date, gets no new crew-day entry. */
+export function canLog(p: Pick<GridCrewForeman, "noWorkOnDate" | "loggedOnDate">): boolean {
+  return p.noWorkOnDate === null && !p.loggedOnDate;
+}
+
+/** The ids from `ids` that are on the crew and can be logged (what may start ticked). */
+export function pickableIds(crew: Pick<Loggable, "crewMemberId" | "noWorkOnDate" | "loggedOnDate">[], ids: string[]): string[] {
+  return ids.filter((id) => crew.some((c) => c.crewMemberId === id && canLog(c)));
+}
 
 /** The usual basis as the chip shows it: never a rate. */
 export function basisLabel(p: Pick<GridPerson, "basis" | "unit">): CrewBasisLabel {
@@ -26,12 +37,12 @@ export function initialException(p: Pick<GridPerson, "basis" | "standardHours">)
 
 /** The entries to save: the ticked people, each on their basis. Hours for a day = days x the standard day. */
 export function buildEntries(
-  crew: GridPerson[],
+  crew: Loggable[],
   ticked: ReadonlySet<string>,
   exceptions: Readonly<Record<string, Hundredths>>,
 ): CrewDayEntry[] {
   return crew
-    .filter((p) => ticked.has(p.crewMemberId))
+    .filter((p) => ticked.has(p.crewMemberId) && canLog(p))
     .map((p): CrewDayEntry => {
       const value = exceptions[p.crewMemberId] ?? initialException(p);
       if (p.basis === "daily") {
