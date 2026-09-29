@@ -20,6 +20,9 @@
 - Phase 2 Task 9: `Button` and `List` links now `prefetch={false}` like the nav (aborted RSC prefetches log a WebKit console error on navigation). Page title template `%s | Roofy` lives in the `(app)` layout only (`/design` keeps "Design system"). Placeholder pages handle `?demo=noperm` and `?demo=error` via `PlaceholderPage`; screen tasks keep that pattern. Layout reads the workspace name through `data.workspace.settings` and falls back to "Roofy" if that throws.
 - Phase 2 Task 9: `error.tsx` uses Next 16.3's `retry` prop. The root layout reads the theme cookie (whole app is dynamic, as the proxy already required). Left and right safe-area padding is on the content column only; the fixed tab bar pads bottom only.
 
+- Phase 2 Task 9 (review fixes): Workspace export is Owner-only (spec §5.11): hidden from the manager's More and `/export` shows no-access to a manager; the owner shares the manager nav otherwise. Manifest has no `orientation`. Manifest and `theme-color` colours come from `src/app/theme-colors.json`, generated from tokens.css by `scripts/gen-theme-colors.ts` (part of `tokens:gen` / `tokens:check`), so nothing reads `src/` at run time. The tab bar pads left and right insets too.
+- Phase 2 Task 9 (recorded for review): the desktop sidebar adds a "Manage" section for managers (Expenses, Pay runs, Reports, Settings) beyond the tab-bar items. `prefetch={false}` on Button, List and nav links (WebKit aborted-prefetch console errors); revisit in Phase 5. A foreman at `/` redirects to `/log`. Accountant More = Expenses + Install guide.
+
 ## Log
 
 - 2026-09-28 — Specs, DESIGN.md, master plan, Phase 0/1 plans written.

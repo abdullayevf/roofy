@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseGalv, readGalv } from "./theme-colors";
 
@@ -20,7 +22,11 @@ describe("parseGalv", () => {
 });
 
 describe("readGalv", () => {
-  it("reads the real tokens.css", () => {
+  it("matches the real tokens.css (theme-colors.json has not drifted)", () => {
+    const css = readFileSync(join(process.cwd(), "src", "app", "tokens.css"), "utf8");
+    expect(readGalv()).toEqual(parseGalv(css));
+  });
+  it("gives two different hex colours", () => {
     const g = readGalv();
     expect(g.light).toMatch(/^#[0-9a-f]{6}$/i);
     expect(g.dark).toMatch(/^#[0-9a-f]{6}$/i);

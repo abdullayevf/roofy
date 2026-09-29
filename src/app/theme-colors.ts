@@ -1,12 +1,10 @@
 /**
  * The manifest and the `theme-color` meta need literal colours, but raw colours may live only in
- * `tokens.css` (design lint). So this reads `--galv` out of tokens.css itself: the light value from
- * `:root`, the dark value from the `prefers-color-scheme: dark` block. Server-only (uses `fs`); the
- * result is cached for the life of the process. tokens.css ships with the app (`next start` runs
- * from the repo), so it is there at build and at run time.
+ * `tokens.css` (design lint). `theme-colors.json` holds the two `--galv` values, generated from
+ * tokens.css by `scripts/gen-theme-colors.ts` (`pnpm tokens:gen`, checked by `pnpm tokens:check`),
+ * so nothing reads `src/` at run time. `parseGalv` is the parser the script and tests use.
  */
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import galv from "./theme-colors.json";
 
 export interface GalvColors {
   light: string;
@@ -24,9 +22,7 @@ export function parseGalv(css: string): GalvColors {
   return { light, dark };
 }
 
-let cached: GalvColors | undefined;
-
+/** The generated colours (`pnpm tokens:gen` writes theme-colors.json from tokens.css), bundled at build time. */
 export function readGalv(): GalvColors {
-  cached ??= parseGalv(readFileSync(join(process.cwd(), "src", "app", "tokens.css"), "utf8"));
-  return cached;
+  return galv;
 }

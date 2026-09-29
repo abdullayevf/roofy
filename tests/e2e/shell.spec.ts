@@ -27,6 +27,7 @@ test.describe("manifest and head", () => {
     expect(response.status()).toBe(200);
     expect(response.headers()["content-type"]).toContain("json");
     const manifest = await response.json();
+    expect(manifest.orientation).toBeUndefined();
     expect(manifest).toMatchObject({ name: "Roofy", short_name: "Roofy", display: "standalone", start_url: "/" });
     expect(manifest.background_color).toMatch(/^#[0-9a-f]{6}$/i);
     expect(manifest.theme_color).toBe(manifest.background_color);
@@ -106,9 +107,16 @@ test.describe("navigation by role", () => {
   test("the More menu lists what the role can reach", async ({ page }) => {
     await signInAs(page, "manager", "/more");
     const main = page.getByRole("main");
-    for (const label of ["Expenses", "Pay runs", "Reports", "Settings", "Record history", "Workspace export", "Install guide"]) {
+    for (const label of ["Expenses", "Pay runs", "Reports", "Settings", "Record history", "Install guide"]) {
       await expect(main.getByRole("link", { name: new RegExp(label) })).toBeVisible();
     }
+    await expect(main.getByRole("link", { name: /Workspace export/ })).toHaveCount(0);
+    await signInAs(page, "owner", "/more");
+    await expect(main.getByRole("link", { name: /Workspace export/ })).toBeVisible();
+    await page.goto("/export");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Workspace export");
+    await signInAs(page, "manager", "/export");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("No access");
     await signInAs(page, "accountant", "/more");
     await expect(main.getByRole("link")).toHaveCount(2);
     await expect(main.getByRole("link", { name: /Expenses/ })).toBeVisible();
@@ -142,6 +150,16 @@ test.describe("layout", () => {
       const result = await checkSafeAreas(page);
       expect(result.failures, `${path}: ${result.failures.join("\n")}`).toEqual([]);
     }
+  });
+
+  test("the tab bar pads left and right for the device insets", async ({ page }, testInfo) => {
+    test.skip(!isPhone(testInfo.project.name), "phone only");
+    await page.goto("/");
+    const bar = page.getByRole("navigation", { name: "Primary" });
+    // Playwright can't set a real inset, so check the padding is wired to env().
+    const cls = await bar.getAttribute("class");
+    expect(cls).toContain("safe-area-inset-left");
+    expect(cls).toContain("safe-area-inset-right");
   });
 
   test("the layout pads with the safe-area insets", async ({ page }) => {
@@ -196,7 +214,7 @@ test.describe("demo states in the shell", () => {
 });
 
 test.describe("every link resolves", () => {
-  for (const role of ["manager", "foreman", "accountant"] as const) {
+  for (const role of ["owner", "manager", "foreman", "accountant"] as const) {
     test(`${role}: every nav and More link opens without a 404 or console error`, async ({ page }) => {
       const consoleLog = collectConsole(page);
       const failed: string[] = [];

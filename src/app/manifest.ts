@@ -12,7 +12,6 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/",
     scope: "/",
     display: "standalone",
-    orientation: "portrait",
     lang: "en-AU",
     background_color: light,
     theme_color: light,

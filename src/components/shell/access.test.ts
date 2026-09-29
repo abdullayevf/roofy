@@ -11,11 +11,13 @@ describe("navRoleFor", () => {
 });
 
 describe("canOpen", () => {
-  it("lets the owner and manager open everything", () => {
-    for (const s of ["jobs", "crew", "pay", "reports", "settings", "history", "export", "more"] as const) {
+  it("lets the owner and manager open everything except the owner-only workspace export", () => {
+    for (const s of ["jobs", "crew", "pay", "reports", "settings", "history", "more"] as const) {
       expect(canOpen("owner", s)).toBe(true);
       expect(canOpen("manager", s)).toBe(true);
     }
+    expect(canOpen("owner", "export")).toBe(true);
+    expect(canOpen("manager", "export")).toBe(false);
   });
   it("keeps money and admin pages from the foreman", () => {
     for (const s of ["crew", "pay", "reports", "settings", "history", "export", "more"] as const)
@@ -32,15 +34,9 @@ describe("canOpen", () => {
 
 describe("moreItems", () => {
   it("lists what each role can reach from More", () => {
-    expect(moreItems("manager").map((i) => i.label)).toEqual([
-      "Expenses",
-      "Pay runs",
-      "Reports",
-      "Settings",
-      "Record history",
-      "Workspace export",
-      "Install guide",
-    ]);
+    const shared = ["Expenses", "Pay runs", "Reports", "Settings", "Record history"];
+    expect(moreItems("manager").map((i) => i.label)).toEqual([...shared, "Install guide"]);
+    expect(moreItems("owner").map((i) => i.label)).toEqual([...shared, "Workspace export", "Install guide"]);
     expect(moreItems("accountant").map((i) => i.label)).toEqual(["Expenses", "Install guide"]);
     expect(moreItems("foreman")).toEqual([]);
   });

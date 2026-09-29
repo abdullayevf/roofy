@@ -26,5 +26,12 @@ export function ShellSidebar({ role, workspaceName }: { role: NavRole; workspace
 
 export function ShellTabBar({ role }: { role: NavRole }) {
   const pathname = usePathname();
-  return <TabBar role={role} active={activeNavKey(pathname, role, "phone")} />;
+  // Left and right padding keeps the outer tabs clear of the notch and rounded corners in landscape.
+  return (
+    <TabBar
+      role={role}
+      active={activeNavKey(pathname, role, "phone")}
+      className="pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
+    />
+  );
 }

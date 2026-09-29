@@ -27,12 +27,14 @@ const FOREMAN: readonly Section[] = ["jobs", "log", "outbox", "expenses", "insta
 const ACCOUNTANT: readonly Section[] = ["home", "jobs", "pay", "reports", "expenses", "more", "install"];
 
 /**
- * Product spec §3. The foreman sees no money and no admin pages (they add expenses); the accountant
+ * Product spec §3 and §5.11. The foreman sees no money and no admin pages (they add expenses); the accountant
  * is read-only on pay, expenses and reports (no logging, crew, settings, history or export).
  */
 export function canOpen(role: ShellRole, section: Section): boolean {
   if (role === "foreman") return FOREMAN.includes(section);
   if (role === "accountant") return ACCOUNTANT.includes(section);
+  // Workspace export is the Owner's alone (product spec §5.11); the manager shares the Owner's nav, not this page.
+  if (section === "export") return role === "owner";
   return true;
 }
 
