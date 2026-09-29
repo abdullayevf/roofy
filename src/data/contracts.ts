@@ -763,9 +763,30 @@ export interface NoWorkRow {
   note: string | null;
 }
 
-/** Business outcomes that are applied with a flag, never rejected (architecture §7). */
+/**
+ * Business outcomes that are applied with a flag, never rejected (architecture §7):
+ * `paused_stage` — dated on a day the stage was Paused/Done; `late_entry` — dated inside an approved
+ * pay run's period (lands in the next draft, "Late entry for <date>"); `possible_duplicate` — same
+ * person, date, stage and basis as another entry's log; `missing_rate` — saved at $0.00 with no rate;
+ * `auto_started` — the entry started a Not started stage from its date.
+ */
 export type EntryFlag =
   "paused_stage" | "late_entry" | "possible_duplicate" | "missing_rate" | "auto_started";
+
+/** Flag order in an `EntryResult`. */
+export const ENTRY_FLAGS: readonly EntryFlag[] = [
+  "paused_stage",
+  "late_entry",
+  "possible_duplicate",
+  "missing_rate",
+  "auto_started",
+];
+
+/**
+ * Flags that are pay facts, never shown to a foreman: a missing rate, and whether a pay run for the
+ * day is already approved (product spec §3: a foreman sees no rate, earning or pay run).
+ */
+export const FOREMAN_HIDDEN_FLAGS: readonly EntryFlag[] = ["missing_rate", "late_entry"];
 
 /** Result of a field entry: ids created and any flags. Money-free for every role. */
 export interface EntryResult {
@@ -1113,6 +1134,18 @@ export interface Report<Row> {
 
 export type MutationType = "crew_day" | "progress" | "no_work" | "stage_pause" | "stage_resume" | "expense";
 
+export const MUTATION_TYPES: readonly MutationType[] = [
+  "crew_day",
+  "progress",
+  "no_work",
+  "stage_pause",
+  "stage_resume",
+  "expense",
+];
+
+/** Architecture §7: a push carries at most this many mutations. */
+export const MAX_PUSH_BATCH = 25;
+
 export interface MutationPayloads {
   crew_day: CrewDayInput;
   progress: ProgressInput;
@@ -1134,11 +1167,16 @@ export type MutationEnvelope = {
   };
 }[MutationType];
 
-/** At most 25 mutations, in creation order. */
+/** At most 25 mutations (`MAX_PUSH_BATCH`), in creation order; applied in that order. */
 export interface PushRequest {
   mutations: MutationEnvelope[];
 }
 
+/**
+ * Per mutation: `applied` (also on a repeat id — the stored result, nothing applied twice),
+ * `rejected` (can't be saved: no permission, gone, invalid — the message says how to fix it; not
+ * stored, so an edited resend with the same id is applied fresh) or `retry` (try again later).
+ */
 export type PushResult =
   | { id: Id; status: "applied"; result: EntryResult }
   | { id: Id; status: "rejected"; code: DataErrorCode; message: string }
@@ -1277,8 +1315,8 @@ export interface ExpenseInput {
   supplier: string;
   /** What was paid, GST included. */
   totalCents: Cents;
-  /** Defaults to total ÷ 11 (`gstIncludedIn`); 0 for "No GST". */
-  gstCents: Cents;
+  /** Null = the default, total ÷ 11 (domain `splitReceipt`); 0 = "No GST". */
+  gstCents: Cents | null;
   projectId: Id;
   stageId: Id | null;
   categoryId: Id;
