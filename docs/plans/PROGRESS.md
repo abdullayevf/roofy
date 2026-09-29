@@ -7,10 +7,9 @@
 - Done and reviewed: Tasks 1–7 and 9.
   - Task 7: spec review (opus) settled the open question — re-pricing $0.00 missing-rate logs when a rate is added is spec-compliant (it is the only "fix" before approval). Fixed: re-pricing skipped adjustments (crash + half-saved rate), `FakeStore.write` is all-or-nothing, seed perf guard measures thread CPU time. Re-review clean.
   - Task 9: shell, nav, PWA manifest, placeholders for every nav target, error/not-found/no-permission. Review fixes: Workspace export Owner-only, tab bar side insets, theme colours generated at build time. Re-review clean.
-- **Task 8 (design system page) — the only open item before Task 10.** Loop scores (design / field): i1 72/69 · i2 75/70 · i3 90/87 · i4 82/82 · i5 87/87 (0 P0/P1, checks green). Iteration 6 fixes are committed (`20d77fe`) and captured (`checks.md`: 0 failures), **but the iteration-6 critics were cut off by the usage limit — not scored.**
-  - Next step: `pnpm build && ROOFY_DATA=fake pnpm start`, `pnpm design:capture system` (shots are git-ignored, so re-capture), stop the server by PID, then run `design-critic` and `field-critic` (opus) per the token rules below. Record i6 in `SCORES.md`/`ISSUES.md` (i5-* rows are open until then).
-  - If average ≥ 90 with 0 P0/P1: run one sonnet task review of Task 8's code (`git diff 7faba77^..20d77fe -- src tests scripts`), then Task 10.
-  - If < 90: the 6-iteration cap is reached — stop and ask the owner (04-design-process §2), with the open issues and screenshots.
+- **Task 8 (design system page) — waiting on the owner.** Loop scores (design / field): i1 72/69 · i2 75/70 · i3 90/87 · i4 82/82 · i5 87/87 · i6 87/87 (0 P0/P1, checks green). The 6-iteration cap was reached below 90. Logged in `docs/design/loop/DECISIONS.md` (2026-09-30), with 19 open i6 rows in `ISSUES.md` (P2: i6-D1, D2, F1, F2). Owner page (private): https://claude.ai/artifact/FpXvidGzcdPtNsWrUx3hGY
+  - Owner options: A accept 87 and carry i6-F1 (undo toast after one-tap pause) and i6-F2 (landscape row width) into the screen tasks; B one more fix round (iteration 7); C pause.
+  - After the decision: one sonnet task review of Task 8's code (`git diff 7faba77^..HEAD -- src tests scripts`), then Task 10.
 - Then: Tasks 10–23 in order (D2 A/B, nine screen groups, tap-budget suite, foreman sweep, baselines + PWA, phase gate).
 - Environment: real WebKit works on the VPS (`pnpm test:e2e` all three projects green). `ROOFY_NO_WEBKIT` / `ROOFY_CHROMIUM_EXECUTABLE` are not needed here. Never stop the server with `pkill -f "next start"` (it matches the calling shell); kill the PID from `ss -ltnp | grep 3100`.
 
@@ -35,6 +34,7 @@ Quality gates stay the same (TDD, per-task review, design loop ≥ 90 with no P0
 - 2026-09-28 — Phase 1 shipped: pure domain core in `src/domain/` (money, split, rates, lines, piece, gst, costing, dates, segments, progress, floor, adjustments, flags, attendance, periods, payrun, ledger) plus `src/lib/format.ts`. Every pay-rules example (E1.1–E15.1) is a named test and matches to the cent; `scripts/check-examples.ts` proves none is missing; `verify` now runs coverage (100% on `src/domain`) and `check:examples`.
 
 - 2026-09-28/29 — Phase 2 in progress (cloud session): plan written; Tasks 1–6 shipped and reviewed; Task 7 implemented (review pending); Task 8 through design-loop iteration 3 (+ iteration 4 fixes); Task 9 partial.
+- 2026-09-30 — Task 8 iteration 6 scored 87/87; loop stopped at the cap and escalated to the owner.
 - 2026-09-29/30 — Phase 2 on the VPS: Task 7 reviewed and fixed; Task 9 finished and reviewed; Task 8 loop iterations 4–5 scored (82, 87) and iteration 6 fixed + captured (critics cut off by the usage limit). Token budget rules added. See Current.
 
 ## Decisions and deviations

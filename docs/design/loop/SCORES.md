@@ -18,3 +18,4 @@ Score history for every screen group's design loop (`docs/specs/04-design-proces
 | system | 3         | 90           | 87          | 88.5    | 1           | no (/outbox prefetch 404 only — route arrives in Task 12)                       |
 | system | 4         | 82           | 82          | 82      | 2           | no (dom-contrast "Forecast"/"Cost so far" 1.00:1)                               |
 | system | 5         | 87           | 87          | 87      | 0           | yes                                                                             |
+| system | 6         | 87           | 87          | 87      | 0           | yes                                                                             |

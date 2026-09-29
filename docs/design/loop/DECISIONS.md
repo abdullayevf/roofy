@@ -19,3 +19,7 @@ Resolves the deviation above. `globals.css` type utilities and the body size are
 ## 2026-09-29 — System loop iteration 5 rulings
 
 Input values (numbers, ABN, amounts) are Atkinson with tabular figures; Barlow is for read-only figures (DESIGN.md §3). The iteration-4 Barlow inputs were reverted and i4-D6 closed as won't fix. The desktop sidebar's active item is no longer a chalk fill (filled icon, `galv` background, `ink` edge bar); the pause sheet puts the optional note above the reason chips (flows.md updated); crew rows run in two columns from 600 to 1023 px; DESIGN.md §4 records all three.
+
+## 2026-09-30 — System loop stopped at the 6-iteration cap (average 87)
+
+Iterations 5 and 6 both scored 87/87 with zero open P0/P1 and clean automated checks, so the loop did not reach 90 (04-design-process §3 cap). Why it didn't converge: each round fixed every raised issue (all 23 iteration-5 rows closed but one), and the critics then raised a fresh set of P2/P3 polish on the gallery itself — caption styles, specimen corners, copy nits — rather than on anything a screen depends on. The two P2s that matter to real screens are an undo toast after a one-tap pause (i6-F1) and a width limit on grouped rows in phone landscape (i6-F2). Screenshots and the 19 open rows went to the owner for a decision.
