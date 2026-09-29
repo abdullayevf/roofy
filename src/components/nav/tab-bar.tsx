@@ -26,8 +26,8 @@ const ITEMS: Record<TabBarRole, Item[]> = {
     { key: "more", label: "More", href: "/more", icon: SquaresFour },
   ],
   foreman: [
-    { key: "log", label: "Log", href: "/log", icon: NotePencil, raised: true },
     { key: "jobs", label: "Jobs", href: "/jobs", icon: Briefcase },
+    { key: "log", label: "Log", href: "/log", icon: NotePencil, raised: true },
     { key: "outbox", label: "Outbox", href: "/outbox", icon: Tray },
   ],
   accountant: [

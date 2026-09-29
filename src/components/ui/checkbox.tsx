@@ -34,8 +34,11 @@ export function Checkbox({
   return (
     <label
       className={cx(
-        "flex min-h-[64px] w-full items-center gap-1 rounded-group border-group px-2 pr-4 lg:min-h-12",
-        disabled ? "cursor-not-allowed bg-galv" : "cursor-pointer bg-surface active:bg-galv",
+        "flex min-h-[64px] w-full items-center gap-1 rounded-group px-2 pr-4 lg:min-h-12",
+        // Disabled keeps a visible row container (a `line` border) on galv pages too.
+        disabled
+          ? "cursor-not-allowed border border-line bg-galv"
+          : "border-group cursor-pointer bg-surface active:bg-galv",
         className,
       )}
     >
@@ -57,12 +60,12 @@ export function Checkbox({
           className={cx(
             "flex h-7 w-7 items-center justify-center rounded-md border-[1.5px] border-edge",
             disabled ? "bg-galv" : "bg-surface",
-            "group-data-[state=checked]:border-transparent group-data-[state=checked]:bg-chalk",
+            "group-data-[state=checked]:border-transparent group-data-[state=checked]:bg-tape",
             focusVisible ? BOX_FOCUS_FORCED : BOX_FOCUS,
           )}
         >
           <RadixCheckbox.Indicator>
-            <Check size={20} weight="bold" className="text-on-chalk" />
+            <Check size={20} weight="bold" className="text-on-tape" />
           </RadixCheckbox.Indicator>
         </span>
       </RadixCheckbox.Root>

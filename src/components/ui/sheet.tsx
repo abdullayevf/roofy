@@ -40,8 +40,8 @@ function useIsDesktop(): boolean {
 function SheetBody({ title, children, primaryAction }: SheetContentProps) {
   return (
     <div className="flex max-h-[85vh] flex-col overflow-hidden">
-      <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2 lg:px-6 lg:pt-6">
-        <h2 className="text-heading text-ink lg:pr-12">{title}</h2>
+      <div className="flex-1 overflow-y-auto px-4 pb-4 pt-4 lg:px-6 lg:pt-6">
+        <h2 className="text-heading text-ink pr-14">{title}</h2>
         <div className="mt-4">{children}</div>
       </div>
       {primaryAction ? (
@@ -71,18 +71,20 @@ export function SheetPanel({
   children,
   primaryAction,
   className,
-}: SheetContentProps & { className?: string }) {
+  onClose,
+}: SheetContentProps & { className?: string; onClose?: () => void }) {
   return (
     <div
+      data-sheet-panel=""
       className={cx(
         "relative rounded-t-sheet bg-surface shadow-sheet lg:mx-auto lg:max-w-md lg:rounded-sheet",
         className,
       )}
     >
       <div aria-hidden="true" className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-line lg:hidden" />
-      {/* In the dialog form (>= 1024) there's no grabber, so a labelled Close stands in. */}
-      <span className="absolute right-4 top-4 hidden lg:block">
-        <Button iconOnly icon={X} label="Close" variant="secondary" />
+      {/* A 48 px+ Close top right on phone and desktop: the grabber alone is not a control you can find with a thumb. */}
+      <span className="absolute right-4 top-4">
+        <Button iconOnly icon={X} label="Close" variant="secondary" onClick={onClose} />
       </span>
       <SheetBody title={title} primaryAction={primaryAction}>
         {children}
@@ -156,7 +158,7 @@ export function Sheet({ open, onOpenChange, title, children, primaryAction }: Sh
           className={cx("fixed inset-x-0 bottom-0 z-50", "duration-[220ms] ease-out")}
         >
           <Drawer.Title className="sr-only">{title}</Drawer.Title>
-          <SheetPanel title={title} primaryAction={primaryAction}>
+          <SheetPanel title={title} primaryAction={primaryAction} onClose={() => onOpenChange(false)}>
             {children}
           </SheetPanel>
         </Drawer.Content>

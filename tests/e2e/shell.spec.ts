@@ -17,7 +17,8 @@ async function navLabels(page: Page): Promise<string[]> {
 
 const PHONE_ITEMS: Record<"manager" | "foreman" | "accountant", string[]> = {
   manager: ["Home", "Jobs", "Log", "Crew", "More"],
-  foreman: ["Log", "Jobs", "Outbox"],
+  // Log sits in the middle (raised) on the phone bar; the desktop sidebar lists it first.
+  foreman: ["Jobs", "Log", "Outbox"],
   accountant: ["Home", "Pay", "Reports", "More"],
 };
 
@@ -68,12 +69,13 @@ test.describe("navigation by role", () => {
   ] as const) {
     test(`${role} sees the ${navRole} items with the right one active`, async ({ page }, testInfo) => {
       await signInAs(page, role, role === "foreman" ? "/log" : "/");
-      const expected = PHONE_ITEMS[navRole];
+      const phone = isPhone(testInfo.project.name);
+      const expected = navRole === "foreman" && !phone ? ["Log", "Jobs", "Outbox"] : PHONE_ITEMS[navRole];
       const desktopExtras =
         navRole === "manager" && !isPhone(testInfo.project.name) ? ["Expenses", "Pay runs", "Reports", "Settings"] : [];
       expect(await navLabels(page)).toEqual([...expected, ...desktopExtras]);
-      const first = expected[0]!;
-      await expect(page.getByRole("navigation", { name: "Primary" }).locator('[aria-current="page"]')).toHaveText(first);
+      const landing = navRole === "foreman" ? "Log" : expected[0]!;
+      await expect(page.getByRole("navigation", { name: "Primary" }).locator('[aria-current="page"]')).toHaveText(landing);
 
       // Follow the last item and check the active state moves with it.
       const target = expected.at(-1)!;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Check } from "@phosphor-icons/react";
 import { cx } from "@/lib/cx";
 import { focusRingWithin } from "./focus";
 
@@ -23,7 +24,9 @@ export type SegmentedProps = {
 
 /**
  * DESIGN.md §4 segmented control: radiogroup, segments 52 px phone / 48
- * desktop. Built on native radio inputs (visually hidden) so arrow-key
+ * desktop, full width on phone. A selected segment is `tape` fill, `ink` text
+ * and a check — the one selection treatment (`chalk` is for actions and focus).
+ * Built on native radio inputs (visually hidden) so arrow-key
  * navigation between segments (DESIGN.md §8 desktop keyboard operation)
  * comes from the browser's own radio-group behaviour rather than a
  * hand-rolled `keydown` handler. The focus ring is drawn on the segment
@@ -50,7 +53,7 @@ export function Segmented({
       aria-label={legend}
       aria-disabled={disabled || undefined}
       className={cx(
-        "flex w-fit max-w-full flex-wrap rounded-control border-[1.5px] border-edge p-1",
+        "flex w-full max-w-full flex-wrap rounded-control border-[1.5px] border-edge p-1 lg:w-fit",
         disabled ? "bg-galv" : "bg-surface",
         className,
       )}
@@ -61,12 +64,12 @@ export function Segmented({
           <label
             key={opt.value}
             className={cx(
-              "relative flex min-h-[52px] flex-auto items-center justify-center rounded-control px-3 py-1 text-center text-body-strong lg:min-h-12",
+              "relative flex min-h-[52px] flex-auto items-center justify-center gap-1.5 rounded-control px-3 py-1 text-center text-body-strong lg:min-h-12",
               disabled ? "cursor-not-allowed" : "cursor-pointer",
               checked
                 ? disabled
                   ? "bg-line text-ink-2"
-                  : "bg-chalk text-on-chalk"
+                  : "bg-tape text-on-tape"
                 : disabled
                   ? "text-ink-2"
                   : "text-ink",
@@ -88,6 +91,7 @@ export function Segmented({
                 disabled ? "cursor-not-allowed" : "cursor-pointer",
               )}
             />
+            {checked ? <Check size={24} weight="bold" aria-hidden="true" className="shrink-0" /> : null}
             <span>{opt.label}</span>
           </label>
         );

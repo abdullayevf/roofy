@@ -3,7 +3,7 @@ import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Sheet } from "./sheet";
+import { Sheet, SheetPanel } from "./sheet";
 
 // vaul picks the phone Drawer by default and relies on pointer/drag APIs
 // jsdom doesn't implement; the task directs testing the desktop Radix
@@ -93,5 +93,21 @@ describe("Sheet (desktop / Radix Dialog path)", () => {
       },
       { timeout: 3000 },
     );
+  });
+});
+
+describe("SheetPanel (the phone sheet's markup)", () => {
+  it("has a Close control on phone too, and it calls onClose", async () => {
+    const onClose = vi.fn();
+    render(
+      <SheetPanel title="Pause stage" onClose={onClose}>
+        <p>Body</p>
+      </SheetPanel>,
+    );
+    const close = screen.getByRole("button", { name: "Close" });
+    // Not hidden below the desktop breakpoint: no `hidden` on it or its wrapper.
+    expect(close.closest(".hidden")).toBeNull();
+    await userEvent.click(close);
+    expect(onClose).toHaveBeenCalledOnce();
   });
 });
