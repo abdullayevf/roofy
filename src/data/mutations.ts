@@ -219,40 +219,41 @@ export const stagePauseSchema = z.object({
 
 export const stageResumeSchema = z.object({ stageId: idSchema, date: localDateSchema });
 
-export const expenseSchema = z
-  .object({
-    date: localDateSchema,
-    supplier: z
-      .string({ error: "Add the supplier." })
-      .trim()
-      .min(1, { error: "Add the supplier." })
-      .max(120, { error: "Keep the supplier under 120 characters." }),
-    totalCents: z
-      .int({ error: "Add a total before saving." })
-      .positive({ error: "Add a total before saving." })
-      .max(100_000_000, { error: "That total is too big. Check it and try again." }),
-    gstCents: z.int().min(0, { error: "GST can't be negative." }).nullable(),
-    projectId: idSchema,
-    stageId: idSchema.nullable(),
-    categoryId: idSchema,
-    paidBy: z.enum(["company_card", "cash", "crew"], {
-      error: "Choose who paid: company card, cash or a crew member.",
-    }),
-    crewMemberId: idSchema.nullable(),
-    receiptFileId: idSchema.nullable(),
-  })
-  .superRefine((e, ctx) => {
-    if (e.gstCents !== null && e.gstCents > e.totalCents)
-      ctx.addIssue({ code: "custom", message: "GST can't be more than the total.", path: ["gstCents"] });
-    if (e.paidBy === "crew" && e.crewMemberId === null)
-      ctx.addIssue({ code: "custom", message: "Pick who paid.", path: ["crewMemberId"] });
-    if (e.paidBy !== "crew" && e.crewMemberId !== null)
-      ctx.addIssue({
-        code: "custom",
-        message: "Only a crew-paid expense names a crew member.",
-        path: ["crewMemberId"],
-      });
-  });
+/** The expense fields without the cross-field checks (the admin edit schema makes them optional). */
+export const expenseFields = z.object({
+  date: localDateSchema,
+  supplier: z
+    .string({ error: "Add the supplier." })
+    .trim()
+    .min(1, { error: "Add the supplier." })
+    .max(120, { error: "Keep the supplier under 120 characters." }),
+  totalCents: z
+    .int({ error: "Add a total before saving." })
+    .positive({ error: "Add a total before saving." })
+    .max(100_000_000, { error: "That total is too big. Check it and try again." }),
+  gstCents: z.int().min(0, { error: "GST can't be negative." }).nullable(),
+  projectId: idSchema,
+  stageId: idSchema.nullable(),
+  categoryId: idSchema,
+  paidBy: z.enum(["company_card", "cash", "crew"], {
+    error: "Choose who paid: company card, cash or a crew member.",
+  }),
+  crewMemberId: idSchema.nullable(),
+  receiptFileId: idSchema.nullable(),
+});
+
+export const expenseSchema = expenseFields.superRefine((e, ctx) => {
+  if (e.gstCents !== null && e.gstCents > e.totalCents)
+    ctx.addIssue({ code: "custom", message: "GST can't be more than the total.", path: ["gstCents"] });
+  if (e.paidBy === "crew" && e.crewMemberId === null)
+    ctx.addIssue({ code: "custom", message: "Pick who paid.", path: ["crewMemberId"] });
+  if (e.paidBy !== "crew" && e.crewMemberId !== null)
+    ctx.addIssue({
+      code: "custom",
+      message: "Only a crew-paid expense names a crew member.",
+      path: ["crewMemberId"],
+    });
+});
 
 /** One schema per field entry type; outputs are exactly the contract input types. */
 export const PAYLOAD_SCHEMAS: { [T in MutationType]: z.ZodType<MutationPayloads[T]> } = {

@@ -1608,3 +1608,13 @@ export interface DataServices {
   audit: AuditService;
   exports: ExportService;
 }
+
+// ─── Server Function results (admin writes) ─────────────────────────────────
+
+/**
+ * What an admin Server Function returns: `ok` with its data, or the refusal in plain words (with
+ * per-field issues for a form). Never throws for an expected outcome.
+ */
+export type ActionResult<T extends object = object> =
+  | ({ ok: true } & T)
+  | { ok: false; code: DataErrorCode; message: string; issues: FieldIssue[] };
