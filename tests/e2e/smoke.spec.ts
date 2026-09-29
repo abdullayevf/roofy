@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { runAxe } from "./axe";
 
-test("home renders with the product name and no serious a11y issues", async ({ page }) => {
+test("home renders inside the shell with the product title and no serious a11y issues", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveTitle("Roofy");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Roofy");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Home");
   const results = await runAxe(page);
   const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
   expect(serious).toEqual([]);
@@ -55,7 +55,7 @@ test("both self-hosted fonts (Barlow Semi Condensed, Atkinson Hyperlegible Next)
 });
 
 test("a .num element uses tabular figures", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/design");
   const money = page.locator(".num").first();
   await expect(money).toBeVisible();
   const variant = await money.evaluate((el) => getComputedStyle(el).fontVariantNumeric);

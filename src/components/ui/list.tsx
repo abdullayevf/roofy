@@ -60,6 +60,7 @@ export function List({ rows, className }: ListProps) {
             <Link
               key={row.key}
               href={row.href}
+              prefetch={false}
               className={cx(ROW_LAYOUT, row.focusVisible ? FOCUS_FORCED : FOCUS, PRESSED)}
             >
               <RowBody row={row} />

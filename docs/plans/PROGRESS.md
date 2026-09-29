@@ -10,11 +10,15 @@
   - Iteration 1: 72 / 69. Iteration 2: 75 / 70. Iteration 3: 90 / 87 (average 88.5, one P1: payout method unselected).
   - The iteration 4 fixes are merged (ea29b95 via 456b784) but not yet captured or scored.
   - Next step: `pnpm build && pnpm start` (ROOFY_DATA=fake), then `pnpm design:capture system`, then run the `design-critic` and `field-critic` agents on `docs/design/loop/shots/system/slices/`. Record the results in `docs/design/loop/SCORES.md` and `ISSUES.md`. Cap: 6 iterations.
-- **Task 9 (app shell and PWA): partial (446bef6).** Done: icons (`scripts/gen-icons.ts`, `scripts/icon.svg`, PNGs), theme cookie action and helpers, manifest colours read from tokens.css (`src/app/theme-colors.ts`), nav active-item mapping (`src/components/shell/active.ts`). Not done: `(app)` route-group layout with TabBar/Sidebar, offline banner and outbox badge slots, `/more`, placeholder pages for every nav target, `manifest.ts`, viewport, `error.tsx`/`not-found.tsx`/no-permission, and the `shell.spec.ts` e2e. Resume from the Task 9 text in the plan.
+- **Task 9 (app shell and PWA): implemented, `pnpm verify` and `pnpm test:e2e` (real WebKit) green; awaiting spec review.** `(app)` route group with tab bar / 240 px sidebar, offline banner and outbox badge slots, placeholder pages for every nav target, `/more` menu, manifest, viewport, error / not-found / no-permission states, theme cookie on `<html>`, `tests/e2e/shell.spec.ts`.
 - Then: Task 10 (D2 A/B) onward.
 - Environment notes from the cloud session:
   - WebKit could not be installed, so the iphone project ran on Chromium via `ROOFY_NO_WEBKIT=1`. The cached Chromium revision differed from what Playwright expects, so runs also needed `ROOFY_CHROMIUM_EXECUTABLE`. On the VPS use real WebKit and re-run e2e and the captures.
   - The critics flagged the Chromium iPhone captures (issue `system/D9+F13`).
+
+- Phase 2 Task 9 decisions: owner and manager share the manager nav; a foreman opening Home is redirected to Log (no Home tab). Access rules in `src/components/shell/access.ts` (spec §3): foreman gets jobs, log, outbox, expenses, install; accountant gets home, jobs, pay, reports, expenses, more, install; other pages show the no-permission state. Accountant More = Expenses, Install guide (Pay and Reports are tabs; settings, history, export are edit or admin). Manager More also lists Workspace export (brief) although `screens.ts` says owner-only for that page.
+- Phase 2 Task 9: `Button` and `List` links now `prefetch={false}` like the nav (aborted RSC prefetches log a WebKit console error on navigation). Page title template `%s | Roofy` lives in the `(app)` layout only (`/design` keeps "Design system"). Placeholder pages handle `?demo=noperm` and `?demo=error` via `PlaceholderPage`; screen tasks keep that pattern. Layout reads the workspace name through `data.workspace.settings` and falls back to "Roofy" if that throws.
+- Phase 2 Task 9: `error.tsx` uses Next 16.3's `retry` prop. The root layout reads the theme cookie (whole app is dynamic, as the proxy already required). Left and right safe-area padding is on the content column only; the fixed tab bar pads bottom only.
 
 ## Log
 

@@ -114,6 +114,7 @@ export function Button(props: ButtonProps) {
   const control = props.href ? (
     <Link
       href={props.href}
+      prefetch={false}
       aria-disabled={props.disabled || undefined}
       data-variant={props.variant ?? "primary"}
       className={className}

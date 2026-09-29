@@ -42,13 +42,17 @@ export type SidebarProps = {
   role: SidebarRole;
   active: string;
   workspaceName: string;
+  /** Extra text-only items beneath the icon items (the desktop shell's manager pages), under a "Manage" label. */
+  extra?: { key: string; label: string; href: string }[];
+  /** Key of the active extra item. */
+  activeExtra?: string;
   /** Demo-only: forces the focus ring on one item (by key) so it shows up in a static screenshot. */
   focusKey?: string;
   className?: string;
 };
 
 /** DESIGN.md §4 navigation, desktop >= 1024: 240 px sidebar, same items as the phone tab bar. */
-export function Sidebar({ role, active, workspaceName, focusKey, className }: SidebarProps) {
+export function Sidebar({ role, active, workspaceName, extra, activeExtra, focusKey, className }: SidebarProps) {
   const items = ITEMS[role];
   return (
     <nav
@@ -76,6 +80,29 @@ export function Sidebar({ role, active, workspaceName, focusKey, className }: Si
           </Link>
         );
       })}
+      {extra && extra.length > 0 ? (
+        <>
+          <p className="mb-1 mt-4 px-3 text-meta text-ink-2">Manage</p>
+          {extra.map((item) => {
+            const isActive = item.key === activeExtra;
+            return (
+              <Link
+                key={item.key}
+                href={item.href}
+                prefetch={false}
+                aria-current={isActive ? "page" : undefined}
+                className={cx(
+                  "flex min-h-12 items-center rounded-control pl-12 pr-3 text-body-strong",
+                  isActive ? "bg-chalk text-on-chalk" : "text-ink",
+                  focusRing(false),
+                )}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </>
+      ) : null}
     </nav>
   );
 }
