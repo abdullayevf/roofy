@@ -17,6 +17,24 @@ test("/design has no horizontal overflow", async ({ page }) => {
   expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth);
 });
 
+test("an icon-only button's glyph really renders at 24 px", async ({ page }) => {
+  await page.goto("/design");
+  const box = await page.getByRole("button", { name: "Settings" }).first().locator("svg").boundingBox();
+  expect(Math.round(box?.width ?? 0)).toBe(24);
+  expect(Math.round(box?.height ?? 0)).toBe(24);
+});
+
+test("Record payout opens with the method already chosen and Advance or payment left to the person", async ({
+  page,
+}) => {
+  await page.goto("/design");
+  const sheet = page.locator("[data-theme=light]").filter({ hasText: "Save payout" });
+  await expect(sheet.getByRole("radio", { name: "Bank transfer" })).toBeChecked();
+  await expect(sheet.getByRole("radio", { name: "Advance", exact: true })).not.toBeChecked();
+  await expect(sheet.getByRole("radio", { name: "Payment", exact: true })).not.toBeChecked();
+  await expect(sheet.getByLabel("Amount")).toHaveValue("1,482.00");
+});
+
 test("/design has no horizontal overflow at 200% text zoom", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === "desktop", "the text-zoom check is a phone-width check (390 and 412)");
   await page.goto("/design");

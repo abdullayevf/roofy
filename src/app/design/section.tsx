@@ -29,21 +29,3 @@ export function Group({ title, children }: { title: string; children: ReactNode 
     </div>
   );
 }
-
-/**
- * Renders the same content twice, once under a forced light theme and once
- * under a forced dark theme, side by side on desktop (stacked on phone so
- * neither column has to shrink below a usable width at 390 px).
- */
-export function ThemePair({ children }: { children: ReactNode }) {
-  return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <div data-theme="light" className="flex flex-col gap-4 rounded-group bg-galv p-4">
-        {children}
-      </div>
-      <div data-theme="dark" className="flex flex-col gap-4 rounded-group bg-galv p-4">
-        {children}
-      </div>
-    </div>
-  );
-}

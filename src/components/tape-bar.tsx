@@ -1,5 +1,6 @@
 import { WarningCircle, WarningDiamond } from "@phosphor-icons/react/dist/ssr";
 import { cx } from "@/lib/cx";
+import { keepAmountsTogether } from "@/lib/text";
 
 export type TapeBarTone = "watch" | "over";
 
@@ -10,7 +11,7 @@ export type TapeBarProps = {
   percent: number;
   /** Where the forecast lands, as a whole percent, if it's tracking to go over (or already is). */
   forecastPercent?: number;
-  /** Short text at the forecast marker, e.g. "Forecast". */
+  /** Short text anchored to the forecast marker, e.g. "Forecast". */
   forecastLabel?: string;
   /**
    * `watch` (amber, with a warning diamond) = trending over; `over` (red,
@@ -36,9 +37,11 @@ const TONE = {
 /**
  * DESIGN.md §4 tape bar: 12 px steel-tape track (surface, 1 px ink outline),
  * tape fill, ink ticks every 10% (the 50% tick clearly taller), the % printed
- * as text, and a marker at the forecast point — 4 px wide, taller than the
- * track, labelled where it sits. Trending over is amber (`watch`) with a
- * warning icon; actually over is `over`. Never a red bar.
+ * as text (the loudest thing in the block), and a marker at the forecast
+ * point — 4 px wide, taller than the track, its label anchored to it. The
+ * summary line is left-aligned meta text with its icon beside it: the same
+ * "over" pattern the money cell uses. Trending over is amber (`watch`);
+ * actually over is `over`. Never a red bar.
  */
 export function TapeBar({
   label,
@@ -53,11 +56,12 @@ export function TapeBar({
   const clampedForecast =
     forecastPercent === undefined ? undefined : Math.max(0, Math.min(100, forecastPercent));
   const t = TONE[tone];
+  const Glyph = t.icon;
 
   return (
-    <div className={cx("flex flex-col gap-1", className)}>
+    <div className={cx("flex flex-col gap-2", className)}>
       <div className="flex items-center gap-3">
-        <div className="relative flex-1">
+        <div className={cx("relative flex-1", clampedForecast !== undefined && forecastLabel && "mb-6")}>
           <div
             role="progressbar"
             aria-label={label}
@@ -75,51 +79,38 @@ export function TapeBar({
               <span
                 key={stop}
                 aria-hidden="true"
-                className={cx(
-                  "absolute top-1/2 w-px -translate-y-1/2 bg-ink",
-                  stop === 50 ? "h-4" : "h-1.5",
-                )}
+                className={cx("absolute top-1/2 w-px -translate-y-1/2 bg-ink", stop === 50 ? "h-4" : "h-1.5")}
                 style={{ left: `${stop}%` }}
               />
             ))}
             {clampedForecast !== undefined ? (
               <div
-                aria-hidden="true"
                 className={cx("absolute w-1 -translate-x-1/2 rounded-full", t.marker)}
                 style={{ left: `${clampedForecast}%`, top: "-4px", bottom: "-4px" }}
-              />
+              >
+                {forecastLabel ? (
+                  // Anchored to the marker: it hangs off the marker's own box, right-aligned to it
+                  // near the end of the track and centred under it elsewhere.
+                  <span
+                    className={cx(
+                      "absolute top-full mt-1 whitespace-nowrap text-meta",
+                      t.text,
+                      clampedForecast >= 70 ? "right-0" : "left-1/2 -translate-x-1/2",
+                    )}
+                  >
+                    {forecastLabel}
+                  </span>
+                ) : null}
+              </div>
             ) : null}
           </div>
         </div>
         <span className="shrink-0 text-figure num text-ink">{clamped}% done</span>
       </div>
-      {clampedForecast !== undefined && forecastLabel ? (
-        <div className="flex items-center gap-3">
-          <div className="relative h-5 flex-1">
-            <span
-              className={cx(
-                "absolute whitespace-nowrap text-meta",
-                t.text,
-                clampedForecast >= 70 ? "-translate-x-full" : "-translate-x-1/2",
-              )}
-              style={{ left: `${clampedForecast}%` }}
-            >
-              {forecastLabel}
-            </span>
-          </div>
-          <span aria-hidden="true" className="invisible shrink-0 text-figure num">
-            {clamped}% done
-          </span>
-        </div>
-      ) : null}
       {note ? (
-        <p className={cx("flex items-start justify-end gap-2 text-right text-figure num", t.text)}>
-          {tone === "over" ? (
-            <WarningCircle size={24} aria-hidden="true" className="shrink-0" />
-          ) : (
-            <WarningDiamond size={24} aria-hidden="true" className="shrink-0" />
-          )}
-          <span className="min-w-0">{note}</span>
+        <p className={cx("flex items-start gap-2 text-left text-meta", t.text)}>
+          <Glyph size={24} aria-hidden="true" className="shrink-0" />
+          <span className="min-w-0 [overflow-wrap:anywhere]">{keepAmountsTogether(note)}</span>
         </p>
       ) : null}
     </div>

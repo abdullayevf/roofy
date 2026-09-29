@@ -18,7 +18,7 @@ type Shared = {
   /** The verb shown while loading, e.g. "Saving day". Defaults to the button's own label. */
   loadingLabel?: string;
   disabled?: boolean;
-  /** Shown directly under a disabled button, at body size, when there's a reason to explain. */
+  /** Shown directly under a disabled button, in meta size (the one helper-text style), when there's a reason to explain. */
   reason?: string;
   /** Demo-only: forces the focus ring so it shows up in a static screenshot. */
   focusVisible?: boolean;
@@ -140,7 +140,7 @@ export function Button(props: ButtonProps) {
   return (
     <span className="inline-flex flex-col gap-2">
       {control}
-      <span className="text-body text-ink-2">{props.reason}</span>
+      <span className="text-meta text-ink-2">{props.reason}</span>
     </span>
   );
 }

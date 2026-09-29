@@ -49,7 +49,7 @@ export function Select({
           className={cx(
             "h-[52px] w-full appearance-none rounded-control bg-surface px-4 pr-12 text-body text-ink lg:h-12",
             error ? "border-2 border-over" : "border-[1.5px] border-edge",
-            "disabled:bg-galv disabled:text-ink-2",
+            "disabled:border-line disabled:bg-galv disabled:text-ink-2",
             focusRing(focusVisible),
           )}
         >

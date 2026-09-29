@@ -6,6 +6,8 @@ export type InputProps = ComponentPropsWithoutRef<"input"> & {
   invalid?: boolean;
   /** In-field unit suffix shown inside the box, e.g. "m²" on a quantity field. */
   suffix?: string;
+  /** In-field leading mark shown inside the box, e.g. "$" on an amount field. */
+  leading?: string;
   /** Demo-only: forces the focus ring so it shows up in a static screenshot. */
   focusVisible?: boolean;
 };
@@ -13,9 +15,10 @@ export type InputProps = ComponentPropsWithoutRef<"input"> & {
 /**
  * DESIGN.md §4 input: 52 px phone / 48 desktop, radius 10, 1.5 px edge
  * border; error = a 2 px `over` border (the message below carries the icon
- * and the fix, so colour is never alone).
+ * and the fix, so colour is never alone). Disabled = `galv` fill, `line`
+ * border, ink-2 text, so it reads as dimmed in both schemes.
  */
-export function Input({ invalid, suffix, focusVisible, className, ...props }: InputProps) {
+export function Input({ invalid, suffix, leading, focusVisible, className, ...props }: InputProps) {
   const input = (
     <input
       {...props}
@@ -23,22 +26,30 @@ export function Input({ invalid, suffix, focusVisible, className, ...props }: In
       className={cx(
         "h-[52px] w-full rounded-control bg-surface px-4 text-body text-ink lg:h-12",
         suffix && "pr-14",
+        leading && "pl-8",
         invalid ? "border-2 border-over" : "border-[1.5px] border-edge",
-        "disabled:bg-galv disabled:text-ink-2",
+        "disabled:border-line disabled:bg-galv disabled:text-ink-2",
         focusRing(focusVisible),
-        !suffix && className,
+        !suffix && !leading && className,
       )}
     />
   );
 
-  if (!suffix) return input;
+  if (!suffix && !leading) return input;
 
   return (
     <div className={cx("relative", className)}>
+      {leading ? (
+        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-body text-ink-2">
+          {leading}
+        </span>
+      ) : null}
       {input}
-      <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-body text-ink-2">
-        {suffix}
-      </span>
+      {suffix ? (
+        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-body text-ink-2">
+          {suffix}
+        </span>
+      ) : null}
     </div>
   );
 }
