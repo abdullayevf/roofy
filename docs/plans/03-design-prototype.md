@@ -129,32 +129,32 @@ opus: Tasks 5, 6, 7 (data contracts, foreman DTO hiding, domain-derived figures,
 
 **Files:** `src/data/mutations.ts` (zod schemas: `crew_day`, `progress`, `no_work`, `stage_pause`, `stage_resume`, `expense`), `src/app/api/sync/push/route.ts`, `src/offline/submit.ts`, `src/data/fake/services/*` (write methods), `src/app/**/actions.ts` (Server Functions for admin writes), tests.
 
-- [ ] Mutation envelope `{ id: uuidv7, type, schemaVersion: 1, appVersion, createdAt, payload }`; push request ≤ 25 mutations; response per id: `{ status: "applied", result }` · `{ status: "rejected", code, message }` · `{ status: "retry" }`. Repeat id → stored result, no second apply (test). Business warnings (paused stage, late entry, possible duplicate) → applied with `flags`, never rejected (test). Foreman posting to an unassigned project → rejected `forbidden` with money-free message (test).
-- [ ] `submit.ts` (client): builds the envelope (uuid v7), POSTs, returns the per-mutation result; no retries/durability in Phase 2 (Phase 5 replaces it with the Dexie outbox). Lint keeps it free of `@/server` and `@/data/fake`.
-- [ ] Foreman push results never reveal pay facts: strip `missing_rate` (and any other pay-only flag) from `EntryResult.flags` for foreman actors (from Task 5 review); test.
-- [ ] Crew-day writes compute amounts via `resolveRate` + `hourlyAmount`/`dailyAmount`/time-only; progress via `pieceRateLines`; stage done via `lumpSumLines`; auto-start of a Not started stage on first log; logs on Paused/Done stages flagged.
-- [ ] Admin Server Functions (projects, stages done/reopen, crew, rates, settings, pay run approve/reopen/export, payouts) validate with zod and call the fake services; foreman calls to money actions → typed `forbidden`.
-- [ ] Verify: `pnpm verify` green. (Implemented and green; spec review still pending — see PROGRESS.md Current.)
+- [x] Mutation envelope `{ id: uuidv7, type, schemaVersion: 1, appVersion, createdAt, payload }`; push request ≤ 25 mutations; response per id: `{ status: "applied", result }` · `{ status: "rejected", code, message }` · `{ status: "retry" }`. Repeat id → stored result, no second apply (test). Business warnings (paused stage, late entry, possible duplicate) → applied with `flags`, never rejected (test). Foreman posting to an unassigned project → rejected `forbidden` with money-free message (test).
+- [x] `submit.ts` (client): builds the envelope (uuid v7), POSTs, returns the per-mutation result; no retries/durability in Phase 2 (Phase 5 replaces it with the Dexie outbox). Lint keeps it free of `@/server` and `@/data/fake`.
+- [x] Foreman push results never reveal pay facts: strip `missing_rate` (and any other pay-only flag) from `EntryResult.flags` for foreman actors (from Task 5 review); test.
+- [x] Crew-day writes compute amounts via `resolveRate` + `hourlyAmount`/`dailyAmount`/time-only; progress via `pieceRateLines`; stage done via `lumpSumLines`; auto-start of a Not started stage on first log; logs on Paused/Done stages flagged.
+- [x] Admin Server Functions (projects, stages done/reopen, crew, rates, settings, pay run approve/reopen/export, payouts) validate with zod and call the fake services; foreman calls to money actions → typed `forbidden`.
+- [x] Verify: `pnpm verify` green. Spec review (opus) + fix round + re-review clean.
 
 ### Task 8: UI primitives and the /design page (D3)
 
 **Files:** `src/components/ui/{button,input,field,stepper,select,segmented,checkbox,sheet,dialog,toast,skeleton,status-chip,list,money-cell,icon}.tsx`, `src/components/{tape-bar,crew-chip,needs-attention-item,empty-state,outbox-badge,offline-banner}.tsx`, `src/app/design/page.tsx`, tests `*.test.tsx`.
 
-- [ ] Each primitive exactly per DESIGN.md §4 (sizes, radii, borders, focus ring 3 px chalk outside, error state with fix message, disabled state). Sheet = vaul on phone (< 1024) and Radix Dialog on desktop, same content; primary action pinned above the home bar.
-- [ ] TapeBar: 12 px track, 1 px ink outline, tape fill, ticks every 10% (taller at 50%), % printed beside, optional over marker at forecast point; `role="progressbar"` with `aria-valuenow`.
-- [ ] Component tests (jsdom): Stepper steps (hours 0.25, days 1/½) and bounds; CrewChip toggles `aria-pressed`; MoneyCell renders `formatMoney` with true minus; StatusChip always renders icon + word; Sheet traps focus and restores it.
-- [ ] `/design` shows every component × state (default, hover-free focus, pressed, disabled, error, loading) in light and dark side by side (`data-theme` wrappers).
-- [ ] Design loop on `/design` (group "system"): capture, guards, contrast, both critics ≥ 90, no P0/P1 (≤ 6 iterations).
+- [x] Each primitive exactly per DESIGN.md §4 (sizes, radii, borders, focus ring 3 px chalk outside, error state with fix message, disabled state). Sheet = vaul on phone (< 1024) and Radix Dialog on desktop, same content; primary action pinned above the home bar.
+- [x] TapeBar: 12 px track, 1 px ink outline, tape fill, ticks every 10% (taller at 50%), % printed beside, optional over marker at forecast point; `role="progressbar"` with `aria-valuenow`.
+- [x] Component tests (jsdom): Stepper steps (hours 0.25, days 1/½) and bounds; CrewChip toggles `aria-pressed`; MoneyCell renders `formatMoney` with true minus; StatusChip always renders icon + word; Sheet traps focus and restores it.
+- [x] `/design` shows every component × state (default, hover-free focus, pressed, disabled, error, loading) in light and dark side by side (`data-theme` wrappers).
+- [ ] Design loop on `/design` (group "system"): capture, guards, contrast, both critics ≥ 90, no P0/P1 (≤ 6 iterations). (i1–i5 scored; i6 fixed + captured, critics pending — see PROGRESS.md Current)
 
 ### Task 9: App shell, navigation and PWA
 
 **Files:** `src/app/(app)/layout.tsx`, `src/components/nav/{tab-bar,sidebar,top-bar}.tsx`, `src/app/manifest.ts`, `src/app/icon*.png`/`apple-icon.png` (generated from an SVG mark by `scripts/gen-icons.ts` using Playwright rendering), `src/app/(app)/more/page.tsx`, theme override in settings (`data-theme` cookie), `viewport` export (`themeColor` galv per scheme, `viewportFit: "cover"`), tests.
 
-- [ ] Phone: bottom tab bar Home · Jobs · **Log** (raised chalk circle) · Crew · More; foreman: Log · Jobs · Outbox; accountant: Home · Pay · Reports · More. Desktop ≥ 1024: 240 px sidebar, same items. Active tab uses Phosphor Fill.
-- [ ] Offline banner and outbox badge slots in the layout (driven by demo state now, by the outbox in Phase 5).
-- [ ] Manifest: name Roofy, `display: standalone`, `start_url: "/"`, `background_color`/`theme_color` galv, icons 192/512 + maskable, `apple-touch-icon`; `appleWebApp` metadata (capable, status bar style default).
-- [ ] Safe areas: layout pads with `env(safe-area-inset-*)`; tab bar sits above the home indicator.
-- [ ] e2e: manifest served and valid; standalone capture on iPhone shows nothing under the insets; tab bar targets ≥ 48 px.
+- [x] Phone: bottom tab bar Home · Jobs · **Log** (raised chalk circle) · Crew · More; foreman: Log · Jobs · Outbox; accountant: Home · Pay · Reports · More. Desktop ≥ 1024: 240 px sidebar, same items. Active tab uses Phosphor Fill.
+- [x] Offline banner and outbox badge slots in the layout (driven by demo state now, by the outbox in Phase 5).
+- [x] Manifest: name Roofy, `display: standalone`, `start_url: "/"`, `background_color`/`theme_color` galv, icons 192/512 + maskable, `apple-touch-icon`; `appleWebApp` metadata (capable, status bar style default).
+- [x] Safe areas: layout pads with `env(safe-area-inset-*)`; tab bar sits above the home indicator.
+- [x] e2e: manifest served and valid; standalone capture on iPhone shows nothing under the insets; tab bar targets ≥ 48 px.
 
 ### Task 10: D2 — prove the direction (A/B)
 

@@ -2,27 +2,31 @@
 
 ## Current
 
-- Phase: 2 — Design system and full prototype. Branch `phase/2-design-prototype` (not merged to master). Plan: `docs/plans/03-design-prototype.md`.
-- Session paused 2026-09-29 by the owner to continue on the VPS. The work was pushed to `origin/claude/funny-feynman-1r94tn`; it is the same commits as `phase/2-design-prototype`. On the VPS: `git fetch origin && git checkout -b phase/2-design-prototype origin/claude/funny-feynman-1r94tn`.
-- Done and reviewed: Tasks 1, 2, 3, 4, 5, 6.
-- **Task 7 (fake writes and push): implemented (88b97b1…85317cb), `pnpm verify` green, e2e green, but its opus spec review was cut off by a usage limit. Next step: run `spec-reviewer` on it.** The review must decide one open question: adding a rate re-prices unapproved $0.00 missing-rate logs. Check that against pay rules §1 (snapshot) and step 3 ("fixed or waived").
-- **Task 8 (primitives and `/design`): built and merged; the system design loop is in progress.**
-  - Iteration 1: 72 / 69. Iteration 2: 75 / 70. Iteration 3: 90 / 87 (average 88.5, one P1: payout method unselected).
-  - Iteration 4: 82 / 82, two P1s (dom-contrast "Forecast"/"Cost so far" 1.00:1 from a caption inside the marker element; installed capture unreviewable). Recorded in `SCORES.md` and `ISSUES.md` (i4-* rows).
-  - The iteration 4 fixes are committed (1120cfb…) and iteration 5 is captured with all guards green (`checks.md`: 9 captures, 0 failures). New captures: installed top/bottom/navigation/sheet shots, landscape phone, tablet, keyboard-open. New tokens `over-fill` and `bar` (DESIGN.md §2, `pnpm tokens:gen`).
-  - Next step: run the `design-critic` and `field-critic` agents on `docs/design/loop/shots/system/slices/` and the new top-level shots (iteration 5; cap 6). Record the results in `SCORES.md` and `ISSUES.md`; i4-* rows stay open until the critics confirm them. i4-D6 (slashed zero in inline text) is left open on purpose.
-- **Task 9 (app shell and PWA): implemented, `pnpm verify` and `pnpm test:e2e` (real WebKit) green; awaiting spec review.** `(app)` route group with tab bar / 240 px sidebar, offline banner and outbox badge slots, placeholder pages for every nav target, `/more` menu, manifest, viewport, error / not-found / no-permission states, theme cookie on `<html>`, `tests/e2e/shell.spec.ts`.
-- Then: Task 10 (D2 A/B) onward.
-- Environment notes from the cloud session:
-  - WebKit could not be installed, so the iphone project ran on Chromium via `ROOFY_NO_WEBKIT=1`. The cached Chromium revision differed from what Playwright expects, so runs also needed `ROOFY_CHROMIUM_EXECUTABLE`. On the VPS use real WebKit and re-run e2e and the captures.
-  - The critics flagged the Chromium iPhone captures (issue `system/D9+F13`).
+- Phase: 2 — Design system and full prototype. Branch `phase/2-design-prototype` (local on the VPS, not pushed, not merged). Plan: `docs/plans/03-design-prototype.md`.
+- Paused 2026-09-30 (usage limit). Head `20d77fe` plus this docs commit. Tree clean. Task ledger (git-ignored, local only): `.superpowers/sdd/03-design-prototype/progress.md` — every ruling, deferred minor and fix round is there; the files `implementer-rules.md` and `reviewer-rules.md` beside it are reused by every dispatch.
+- Done and reviewed: Tasks 1–7 and 9.
+  - Task 7: spec review (opus) settled the open question — re-pricing $0.00 missing-rate logs when a rate is added is spec-compliant (it is the only "fix" before approval). Fixed: re-pricing skipped adjustments (crash + half-saved rate), `FakeStore.write` is all-or-nothing, seed perf guard measures thread CPU time. Re-review clean.
+  - Task 9: shell, nav, PWA manifest, placeholders for every nav target, error/not-found/no-permission. Review fixes: Workspace export Owner-only, tab bar side insets, theme colours generated at build time. Re-review clean.
+- **Task 8 (design system page) — the only open item before Task 10.** Loop scores (design / field): i1 72/69 · i2 75/70 · i3 90/87 · i4 82/82 · i5 87/87 (0 P0/P1, checks green). Iteration 6 fixes are committed (`20d77fe`) and captured (`checks.md`: 0 failures), **but the iteration-6 critics were cut off by the usage limit — not scored.**
+  - Next step: `pnpm build && ROOFY_DATA=fake pnpm start`, `pnpm design:capture system` (shots are git-ignored, so re-capture), stop the server by PID, then run `design-critic` and `field-critic` (opus) per the token rules below. Record i6 in `SCORES.md`/`ISSUES.md` (i5-* rows are open until then).
+  - If average ≥ 90 with 0 P0/P1: run one sonnet task review of Task 8's code (`git diff 7faba77^..20d77fe -- src tests scripts`), then Task 10.
+  - If < 90: the 6-iteration cap is reached — stop and ask the owner (04-design-process §2), with the open issues and screenshots.
+- Then: Tasks 10–23 in order (D2 A/B, nine screen groups, tap-budget suite, foreman sweep, baselines + PWA, phase gate).
+- Environment: real WebKit works on the VPS (`pnpm test:e2e` all three projects green). `ROOFY_NO_WEBKIT` / `ROOFY_CHROMIUM_EXECUTABLE` are not needed here. Never stop the server with `pkill -f "next start"` (it matches the calling shell); kill the PID from `ss -ltnp | grep 3100`.
 
-- Phase 2 Task 9 decisions: owner and manager share the manager nav; a foreman opening Home is redirected to Log (no Home tab). Access rules in `src/components/shell/access.ts` (spec §3): foreman gets jobs, log, outbox, expenses, install; accountant gets home, jobs, pay, reports, expenses, more, install; other pages show the no-permission state. Accountant More = Expenses, Install guide (Pay and Reports are tabs; settings, history, export are edit or admin). Manager More also lists Workspace export (brief) although `screens.ts` says owner-only for that page.
-- Phase 2 Task 9: `Button` and `List` links now `prefetch={false}` like the nav (aborted RSC prefetches log a WebKit console error on navigation). Page title template `%s | Roofy` lives in the `(app)` layout only (`/design` keeps "Design system"). Placeholder pages handle `?demo=noperm` and `?demo=error` via `PlaceholderPage`; screen tasks keep that pattern. Layout reads the workspace name through `data.workspace.settings` and falls back to "Roofy" if that throws.
-- Phase 2 Task 9: `error.tsx` uses Next 16.3's `retry` prop. The root layout reads the theme cookie (whole app is dynamic, as the proxy already required). Left and right safe-area padding is on the content column only; the fixed tab bar pads bottom only.
+### Token budget rules (owner request 2026-09-30 — follow every session)
 
-- Phase 2 Task 9 (review fixes): Workspace export is Owner-only (spec §5.11): hidden from the manager's More and `/export` shows no-access to a manager; the owner shares the manager nav otherwise. Manifest has no `orientation`. Manifest and `theme-color` colours come from `src/app/theme-colors.json`, generated from tokens.css by `scripts/gen-theme-colors.ts` (part of `tokens:gen` / `tokens:check`), so nothing reads `src/` at run time. The tab bar pads left and right insets too.
-- Phase 2 Task 9 (recorded for review): the desktop sidebar adds a "Manage" section for managers (Expenses, Pay runs, Reports, Settings) beyond the tab-bar items. `prefetch={false}` on Button, List and nav links (WebKit aborted-prefetch console errors); revisit in Phase 5. A foreman at `/` redirects to `/log`. Accountant More = Expenses + Install guide.
+Quality gates stay the same (TDD, per-task review, design loop ≥ 90 with no P0/P1, spec review, phase gate). What changes is how much each step reads and re-runs:
+
+1. **Critics read slices, not full pages.** Give critics `shots/<group>/slices/` + `checks.md` + the installed/keyboard/landscape/tablet top-level shots. Never the full-page PNGs (they render as unreadable thumbnails; critics already judge from slices).
+2. **Split critic coverage by lens.** Field critic: phone viewports (iphone, android) light + dark, installed, keyboard, landscape. Design critic: iphone light + dark, desktop light + dark, tablet, installed. Android and iphone are near-identical layouts, so each critic skips what the other covers. Both still see dark mode and both see iphone.
+3. **Critics return only scores + issue table** (no per-image narration). Ask for ≤ 40 lines.
+4. **Opus only where it earns it:** money/pay/ledger, foreman hiding, sync/idempotency, timezone, spec reviews, critics, final phase review. Sonnet for screens, components, scripts, seeding, per-task reviews and every scoped re-review.
+5. **e2e once per task, focused while iterating.** Implementers iterate on unit tests + the one e2e spec they touch (`--project=iphone`); run their task's e2e specs on all three projects once before the final commit. Fix rounds re-run only the affected spec files. The full `pnpm test:e2e` runs at the phase gate.
+6. **One implementer run per design iteration does fix + capture + checks** (never a separate capture agent). Critics run in parallel with each other only.
+7. **Resume the same implementer for fix rounds while its context is small;** if its last report said it was large (≈ 200k+), start a fresh sonnet implementer pointed at the report file instead.
+8. **Controller hands over files, not pasted text:** briefs, critic tables and review packages live in `.superpowers/sdd/03-design-prototype/`; dispatch prompts stay under ~25 lines and point at `implementer-rules.md` / `reviewer-rules.md`.
+9. **Screen groups: the capture manifest already lists only states that differ;** don't add a state capture unless it looks different from one already captured (e.g. no separate capture per `?demo=` state that renders the same shell).
 
 ## Log
 
@@ -30,7 +34,8 @@
 - 2026-09-28 — Phase 0 shipped: Next.js scaffold (strict TS ~6.0.3), import-boundary lint (`src/domain` pure, `src/components`/`src/offline` barred from `src/server`), Vitest 5 unit tests, dev Postgres (Docker Compose), Playwright with 3 projects (iphone/android/desktop), design lint enforcing DESIGN.md anti-patterns, Claude Code harness (CLAUDE.md, hooks, spec reviewer, progress log), and a git pre-commit gate (typecheck + unit tests).
 - 2026-09-28 — Phase 1 shipped: pure domain core in `src/domain/` (money, split, rates, lines, piece, gst, costing, dates, segments, progress, floor, adjustments, flags, attendance, periods, payrun, ledger) plus `src/lib/format.ts`. Every pay-rules example (E1.1–E15.1) is a named test and matches to the cent; `scripts/check-examples.ts` proves none is missing; `verify` now runs coverage (100% on `src/domain`) and `check:examples`.
 
-- 2026-09-28/29 — Phase 2 in progress (cloud session): plan written; Tasks 1–6 shipped and reviewed; Task 7 implemented (review pending); Task 8 through design-loop iteration 3 (+ iteration 4 fixes); Task 9 partial. See Current.
+- 2026-09-28/29 — Phase 2 in progress (cloud session): plan written; Tasks 1–6 shipped and reviewed; Task 7 implemented (review pending); Task 8 through design-loop iteration 3 (+ iteration 4 fixes); Task 9 partial.
+- 2026-09-29/30 — Phase 2 on the VPS: Task 7 reviewed and fixed; Task 9 finished and reviewed; Task 8 loop iterations 4–5 scored (82, 87) and iteration 6 fixed + captured (critics cut off by the usage limit). Token budget rules added. See Current.
 
 ## Decisions and deviations
 
@@ -76,6 +81,13 @@
 - Phase 2: DESIGN.md §7 jargon rule clarified — "record" is banned as a noun for data; "Record payout"/"Record history" are fine.
 - Phase 2: flows.md aligned with the seed (last logged Smith day Fri 25 Sep with Sam and Dima; progress flow uses a one-tap recent-stage chip, 7 taps).
 
+- Phase 2 Task 9 decisions: owner and manager share the manager nav; a foreman opening Home is redirected to Log (no Home tab). Access rules in `src/components/shell/access.ts` (spec §3): foreman gets jobs, log, outbox, expenses, install; accountant gets home, jobs, pay, reports, expenses, more, install; other pages show the no-permission state. Accountant More = Expenses, Install guide (Pay and Reports are tabs; settings, history, export are edit or admin).
+- Phase 2 Task 9: `Button` and `List` links now `prefetch={false}` like the nav (aborted RSC prefetches log a WebKit console error on navigation). Page title template `%s | Roofy` lives in the `(app)` layout only (`/design` keeps "Design system"). Placeholder pages handle `?demo=noperm` and `?demo=error` via `PlaceholderPage`; screen tasks keep that pattern. Layout reads the workspace name through `data.workspace.settings` and falls back to "Roofy" if that throws.
+- Phase 2 Task 9: `error.tsx` uses Next 16.3's `retry` prop. The root layout reads the theme cookie (whole app is dynamic, as the proxy already required). Left and right safe-area padding is on the content column only; the fixed tab bar pads bottom only.
+- Phase 2 Task 9 (review fixes): Workspace export is Owner-only (spec §5.11): hidden from the manager's More and `/export` shows no-access to a manager; the owner shares the manager nav otherwise. Manifest has no `orientation`. Manifest and `theme-color` colours come from `src/app/theme-colors.json`, generated from tokens.css by `scripts/gen-theme-colors.ts` (part of `tokens:gen` / `tokens:check`), so nothing reads `src/` at run time. The tab bar pads left and right insets too.
+- Phase 2 Task 9 (recorded for review): the desktop sidebar adds a "Manage" section for managers (Expenses, Pay runs, Reports, Settings) beyond the tab-bar items. `prefetch={false}` on Button, List and nav links (WebKit aborted-prefetch console errors); revisit in Phase 5. A foreman at `/` redirects to `/log`. Accountant More = Expenses + Install guide.
+- Phase 2 Task 8 (loop): input values use Atkinson with tabular figures (DESIGN.md §3); Atkinson's slashed zero is accepted (i4-D6 won't fix). Pause sheet puts the optional note above the reason chips; a reason tap pauses (4 taps). New tokens `over-fill`, `bar`; `tablet: 600px` breakpoint for the 2-column crew grid (DESIGN.md §8); active desktop sidebar item is filled icon + galv background + ink edge bar (no chalk fill). Foreman tab bar is Jobs · Log · Outbox with Log centred.
+
 ## Gate evidence
 
 - Phase 1: `pnpm verify` exits 0 — 21 test files, 122 tests; coverage 100% statements 283/283, branches 203/203, functions 120/120, lines 210/210; "Every pay-rules example has a named test." `pnpm test:e2e` 3/3. Whole-branch review + phase spec review (opus): every example hand-checked to the cent; every rule in §0–§16 has code or a later-phase owner; its fixes applied and re-reviewed.
@@ -85,6 +97,13 @@
 
 ## Open issues (carried forward)
 
+- Phase 5: the fake push saves the entry and its repeat-id record as two separate writes; the real push must do both in one transaction. The outbox badge / offline banner in the `(app)` layout read demo state per layout render and go stale on soft navigation — drive them from a client outbox store.
+- Phase 3: `(app)` layout's `workspaceNameFor` swallows every error (falls back to "Roofy"); narrow it to the demo error once real data exists.
+- Phase 2 Task 12: keyboard-open capture uses the static Record payout panel on `/design`; add a live-sheet keyboard capture with the Log/expense screens.
+- Phase 2 Task 18: accountant can open `/jobs` (placeholder) though spec §3 lists no jobs access; decide with the reports drill-down.
+- Phase 2 Task 19: theme override has a Server Function and cookie but no Settings control yet.
+- Phase 2 Task 22: tighten weak shell e2e asserts (Phosphor Fill on the active tab only checks visibility; a `top >= 0` check is trivially true); `scripts/icon.svg` hard-codes the galv/tape colours (add a drift check or generate from tokens).
+- No target phase: `FakeStore.nextInstant` advances on a rolled-back write (harmless 1 ms shift); each fake write snapshots the table graph (~20 ms).
 - Phase 7: editing an expense already reimbursed in an approved pay run keeps the old reimbursement — the difference isn't carried to a later run yet (flows "Expense edit" promises it will).
 - Phase 7: changing pay frequency or start day leaves existing draft pay-run rows on their old periods.
 - Phase 5: photo/receipt file ids on field entries are stored unchecked (no upload yet); the fake push's idempotency record isn't atomic with the apply across an `await` (the real push uses one transaction).
