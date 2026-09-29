@@ -134,7 +134,7 @@ opus: Tasks 5, 6, 7 (data contracts, foreman DTO hiding, domain-derived figures,
 - [ ] Foreman push results never reveal pay facts: strip `missing_rate` (and any other pay-only flag) from `EntryResult.flags` for foreman actors (from Task 5 review); test.
 - [ ] Crew-day writes compute amounts via `resolveRate` + `hourlyAmount`/`dailyAmount`/time-only; progress via `pieceRateLines`; stage done via `lumpSumLines`; auto-start of a Not started stage on first log; logs on Paused/Done stages flagged.
 - [ ] Admin Server Functions (projects, stages done/reopen, crew, rates, settings, pay run approve/reopen/export, payouts) validate with zod and call the fake services; foreman calls to money actions → typed `forbidden`.
-- [ ] Verify: `pnpm verify` green.
+- [ ] Verify: `pnpm verify` green. (Implemented and green; spec review still pending — see PROGRESS.md Current.)
 
 ### Task 8: UI primitives and the /design page (D3)
 

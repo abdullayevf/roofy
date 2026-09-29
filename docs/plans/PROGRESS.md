@@ -2,14 +2,27 @@
 
 ## Current
 
-- Phase: 1 — Pay engine (complete; merged to master)
-- Next: Phase 2 — Design system and full prototype (`docs/plans/03-design-prototype.md`, write at phase start).
+- Phase: 2 — Design system and full prototype. Branch `phase/2-design-prototype` (not merged to master). Plan: `docs/plans/03-design-prototype.md`.
+- Session paused 2026-09-29 by the owner to continue on the VPS. The work was pushed to `origin/claude/funny-feynman-1r94tn`; it is the same commits as `phase/2-design-prototype`. On the VPS: `git fetch origin && git checkout -b phase/2-design-prototype origin/claude/funny-feynman-1r94tn`.
+- Done and reviewed: Tasks 1, 2, 3, 4, 5, 6.
+- **Task 7 (fake writes and push): implemented (88b97b1…85317cb), `pnpm verify` green, e2e green, but its opus spec review was cut off by a usage limit. Next step: run `spec-reviewer` on it.** The review must decide one open question: adding a rate re-prices unapproved $0.00 missing-rate logs. Check that against pay rules §1 (snapshot) and step 3 ("fixed or waived").
+- **Task 8 (primitives and `/design`): built and merged; the system design loop is in progress.**
+  - Iteration 1: 72 / 69. Iteration 2: 75 / 70. Iteration 3: 90 / 87 (average 88.5, one P1: payout method unselected).
+  - The iteration 4 fixes are merged (ea29b95 via 456b784) but not yet captured or scored.
+  - Next step: `pnpm build && pnpm start` (ROOFY_DATA=fake), then `pnpm design:capture system`, then run the `design-critic` and `field-critic` agents on `docs/design/loop/shots/system/slices/`. Record the results in `docs/design/loop/SCORES.md` and `ISSUES.md`. Cap: 6 iterations.
+- **Task 9 (app shell and PWA): partial (446bef6).** Done: icons (`scripts/gen-icons.ts`, `scripts/icon.svg`, PNGs), theme cookie action and helpers, manifest colours read from tokens.css (`src/app/theme-colors.ts`), nav active-item mapping (`src/components/shell/active.ts`). Not done: `(app)` route-group layout with TabBar/Sidebar, offline banner and outbox badge slots, `/more`, placeholder pages for every nav target, `manifest.ts`, viewport, `error.tsx`/`not-found.tsx`/no-permission, and the `shell.spec.ts` e2e. Resume from the Task 9 text in the plan.
+- Then: Task 10 (D2 A/B) onward.
+- Environment notes from the cloud session:
+  - WebKit could not be installed, so the iphone project ran on Chromium via `ROOFY_NO_WEBKIT=1`. The cached Chromium revision differed from what Playwright expects, so runs also needed `ROOFY_CHROMIUM_EXECUTABLE`. On the VPS use real WebKit and re-run e2e and the captures.
+  - The critics flagged the Chromium iPhone captures (issue `system/D9+F13`).
 
 ## Log
 
 - 2026-09-28 — Specs, DESIGN.md, master plan, Phase 0/1 plans written.
 - 2026-09-28 — Phase 0 shipped: Next.js scaffold (strict TS ~6.0.3), import-boundary lint (`src/domain` pure, `src/components`/`src/offline` barred from `src/server`), Vitest 5 unit tests, dev Postgres (Docker Compose), Playwright with 3 projects (iphone/android/desktop), design lint enforcing DESIGN.md anti-patterns, Claude Code harness (CLAUDE.md, hooks, spec reviewer, progress log), and a git pre-commit gate (typecheck + unit tests).
 - 2026-09-28 — Phase 1 shipped: pure domain core in `src/domain/` (money, split, rates, lines, piece, gst, costing, dates, segments, progress, floor, adjustments, flags, attendance, periods, payrun, ledger) plus `src/lib/format.ts`. Every pay-rules example (E1.1–E15.1) is a named test and matches to the cent; `scripts/check-examples.ts` proves none is missing; `verify` now runs coverage (100% on `src/domain`) and `check:examples`.
+
+- 2026-09-28/29 — Phase 2 in progress (cloud session): plan written; Tasks 1–6 shipped and reviewed; Task 7 implemented (review pending); Task 8 through design-loop iteration 3 (+ iteration 4 fixes); Task 9 partial. See Current.
 
 ## Decisions and deviations
 
@@ -48,6 +61,11 @@
 - Phase 2 Task 7: approve takes the oldest draft first, dates ledger credits on the workspace's today, audits a missing-rate waiver on the pay-run audit row, and opens the next period's draft if none exists. Pay-run CSV: one row per line and reimbursement plus a per-person "Total" row (subtotal, GST, total); an accountant's export also marks it Exported.
 - Phase 2 Task 7: reopening a Done stage reopens the segment Done closed (Active), or leaves it Paused if it was paused when marked Done; locked lump-sum logs are reversed once. `editLog`/`deleteLog` refuse progress and lump-sum lines (change the entry / reopen the stage) and adjustments can't be edited. Stage-done photos aren't stored and progress/receipt photo ids aren't checked (no uploads in Phase 2).
 - Phase 2 Task 7: `FakeStore.nextInstant` keeps write order under the fixed fake clock; the LRU store test has a 30 s timeout (51 seed clones in a busier parallel suite).
+
+- Phase 2: Playwright `iphone` project can run on Chromium via `ROOFY_NO_WEBKIT=1` (opt-in, containers without WebKit); `ROOFY_CHROMIUM_EXECUTABLE` overrides the Chromium binary (opt-in). Both unused on a normal install.
+- Phase 2: type scale in rem (text zoom scales it); design-capture writes viewport slices so critics can read long pages.
+- Phase 2: DESIGN.md §7 jargon rule clarified — "record" is banned as a noun for data; "Record payout"/"Record history" are fine.
+- Phase 2: flows.md aligned with the seed (last logged Smith day Fri 25 Sep with Sam and Dima; progress flow uses a one-tap recent-stage chip, 7 taps).
 
 ## Gate evidence
 
