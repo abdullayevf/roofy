@@ -32,6 +32,31 @@ describe("CrewChip", () => {
     expect(screen.queryByText(/\$/)).not.toBeInTheDocument();
   });
 
+  it("shows the inline half-day toggle only while ticked", async () => {
+    const user = userEvent.setup();
+    render(<CrewChip name="Sam" basis="Day" exception="half-day" />);
+    expect(screen.queryByRole("radio", { name: "½ day" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /sam/i }));
+    expect(screen.getByRole("radio", { name: "½ day" })).toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: "½ day" }));
+    expect(screen.getByRole("radio", { name: "½ day" })).toBeChecked();
+  });
+
+  it("shows an hours stepper as the exception for an hourly worker, holding its own value", async () => {
+    const user = userEvent.setup();
+    render(<CrewChip name="Tom" basis="Hourly" exception="hours" defaultPressed />);
+    expect(screen.getByText("6.5 h")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Increase Tom's hours" }));
+    expect(screen.getByText("6.75 h")).toBeInTheDocument();
+  });
+
+  it("shows a note line under the basis", () => {
+    render(
+      <CrewChip name="Jake" basis="m²" note={{ text: "Paid from progress, not this grid", tone: "info" }} />,
+    );
+    expect(screen.getByText("Paid from progress, not this grid")).toBeInTheDocument();
+  });
+
   it("can start pressed via defaultPressed", () => {
     render(<CrewChip name="Jake" basis="Day" defaultPressed />);
     expect(screen.getByRole("button", { name: /jake/i })).toHaveAttribute("aria-pressed", "true");

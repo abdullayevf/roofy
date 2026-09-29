@@ -89,9 +89,9 @@ export function StatusChip({ status, reason, className }: StatusChipProps) {
   const { word, icon, className: toneClass } = CONFIG[status];
   return (
     <span
-      className={cx("inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-meta", toneClass, className)}
+      className={cx("inline-flex max-w-full items-center gap-1.5 min-h-10 px-3 py-1 rounded-3xl text-meta", toneClass, className)}
     >
-      <Icon icon={icon} size={16} weight={status === "active" ? "fill" : "regular"} />
+      <Icon icon={icon} size={24} />
       <span>{reason ? `${word}: ${reason}` : word}</span>
     </span>
   );

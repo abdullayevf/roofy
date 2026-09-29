@@ -11,6 +11,7 @@ import {
 } from "@phosphor-icons/react/dist/ssr";
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 import { cx } from "@/lib/cx";
+import { focusRing } from "@/components/ui/focus";
 
 export type TabBarRole = "manager" | "foreman" | "accountant";
 
@@ -47,16 +48,21 @@ export type TabBarProps = {
    * document flow instead of covering the rest of the page.
    */
   fixed?: boolean;
+  /** Demo-only: forces the focus ring on one item (by key) so it shows up in a static screenshot. */
+  focusKey?: string;
   className?: string;
 };
 
 /**
  * DESIGN.md §4 navigation, phone: bottom tab bar. Log is a raised `chalk`
- * circle (manager/foreman). The active tab uses a Phosphor Fill icon and
- * `chalk` text; inactive tabs use Regular and `ink-2`. Sits above the home
- * indicator via a safe-area-aware padding-bottom.
+ * circle (manager/foreman) that lifts 1.5 rem above the bar — leave that much
+ * clearance above it, and pad a page's bottom with `pb-tab-bar` (which
+ * accounts for the raise and the safe area). The active tab uses a Phosphor
+ * Fill icon and `chalk-link` text; inactive tabs use Regular and `ink-2`.
+ * Labels are Barlow Semi Condensed and wrap rather than overflow at large
+ * text sizes.
  */
-export function TabBar({ role, active, fixed = true, className }: TabBarProps) {
+export function TabBar({ role, active, fixed = true, focusKey, className }: TabBarProps) {
   const items = ITEMS[role];
   return (
     <nav
@@ -71,6 +77,7 @@ export function TabBar({ role, active, fixed = true, className }: TabBarProps) {
       {items.map((item) => {
         const isActive = item.key === active;
         const Glyph = item.icon;
+        const ring = focusRing(focusKey === item.key);
         if (item.raised) {
           return (
             <Link
@@ -78,17 +85,22 @@ export function TabBar({ role, active, fixed = true, className }: TabBarProps) {
               key={item.key}
               href={item.href}
               aria-current={isActive ? "page" : undefined}
-              className="relative flex min-w-12 flex-1 flex-col items-center justify-end gap-1 pb-2 pt-1 text-meta"
+              className={cx(
+                "relative flex min-h-16 min-w-0 flex-1 flex-col items-center justify-end gap-1 rounded-control px-1 pb-2 pt-1",
+                ring,
+              )}
             >
               <span className="-mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-chalk shadow-sheet">
                 <Glyph
-                  size={28}
+                  size={24}
                   weight={isActive ? "fill" : "regular"}
                   aria-hidden="true"
                   className="text-on-chalk"
                 />
               </span>
-              <span className="text-ink">{item.label}</span>
+              <span className="max-w-full text-center text-tab text-ink [overflow-wrap:anywhere]">
+                {item.label}
+              </span>
             </Link>
           );
         }
@@ -98,7 +110,10 @@ export function TabBar({ role, active, fixed = true, className }: TabBarProps) {
             key={item.key}
             href={item.href}
             aria-current={isActive ? "page" : undefined}
-            className="flex min-h-12 min-w-12 flex-1 flex-col items-center justify-center gap-1 py-2 text-meta"
+            className={cx(
+              "flex min-h-16 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-control px-1 py-2",
+              ring,
+            )}
           >
             <Glyph
               size={24}
@@ -106,7 +121,14 @@ export function TabBar({ role, active, fixed = true, className }: TabBarProps) {
               aria-hidden="true"
               className={isActive ? "text-chalk-link" : "text-ink-2"}
             />
-            <span className={isActive ? "text-chalk-link" : "text-ink-2"}>{item.label}</span>
+            <span
+              className={cx(
+                "max-w-full text-center text-tab [overflow-wrap:anywhere]",
+                isActive ? "text-chalk-link" : "text-ink-2",
+              )}
+            >
+              {item.label}
+            </span>
           </Link>
         );
       })}

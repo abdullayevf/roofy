@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { runAxe } from "./axe";
+import { checkTextZoom } from "./guards";
 
 test("/design loads, has the right title and heading", async ({ page }) => {
   await page.goto("/design");
@@ -14,6 +15,13 @@ test("/design has no horizontal overflow", async ({ page }) => {
     return { scrollWidth: doc.scrollWidth, clientWidth: doc.clientWidth };
   });
   expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth);
+});
+
+test("/design has no horizontal overflow at 200% text zoom", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "desktop", "the text-zoom check is a phone-width check (390 and 412)");
+  await page.goto("/design");
+  const result = await checkTextZoom(page);
+  expect(result.failures, result.failures.join("\n")).toEqual([]);
 });
 
 test("/design has no serious or critical axe violations", async ({ page }) => {

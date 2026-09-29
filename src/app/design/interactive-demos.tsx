@@ -1,30 +1,69 @@
 "use client";
 
 import { useState } from "react";
-import { GearSix, WarningCircle } from "@phosphor-icons/react";
+import { GearSix } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
-import { Stepper } from "@/components/ui/stepper";
-import { MoneyCell } from "@/components/ui/money-cell";
-
-/** DESIGN.md §4 stepper demo: hours, holding its own value. */
-export function StepperDemo() {
-  const [hours, setHours] = useState(700);
-  return <Stepper value={hours} onChange={setHours} label="Sam's hours" />;
-}
+import { ChoiceChip } from "@/components/ui/choice-chip";
+import { Field } from "@/components/ui/field";
+import { SheetPanel } from "@/components/ui/sheet";
+import { StatusChip } from "@/components/ui/status-chip";
 
 /**
- * A few demos below pass a Phosphor icon component as a prop (Button's
- * `icon`, MoneyCell's `toneIcon`). That only works from inside a Client
- * Component: page.tsx (a Server Component) can render icons itself, but
- * can't hand an unrendered icon *component reference* down into one of
- * these already-client primitives as a bare prop value — only rendered
- * content, or plain strings/booleans, cross that boundary. Every icon-prop
- * demo therefore lives in this file.
+ * Passing a Phosphor icon component as a prop (Button's `icon`) only works
+ * from inside a Client Component: page.tsx (a Server Component) can't hand an
+ * unrendered icon *component reference* down into an already-client
+ * primitive as a bare prop value. Every icon-prop demo therefore lives here.
  */
 export function IconOnlyButtonDemo() {
   return <Button iconOnly icon={GearSix} label="Settings" variant="secondary" />;
 }
 
-export function MoneyCellIconDemo() {
-  return <MoneyCell cents={-30000} tone="over" toneIcon={WarningCircle} />;
+const REASONS = [
+  { value: "weather", label: "Weather" },
+  { value: "materials", label: "Waiting on materials" },
+  { value: "client", label: "Waiting on client or builder" },
+  { value: "crew", label: "Crew on another job" },
+  { value: "other", label: "Other" },
+];
+
+/**
+ * flows.md "Pause a stage for rain": nothing is pre-selected, and tapping a
+ * reason pauses immediately (no separate confirm). The note is optional; a
+ * pinned "Pause stage" only appears once a note is typed, since that's the one
+ * case where the person needs a deliberate commit.
+ */
+export function PauseStageSheetDemo() {
+  const [reason, setReason] = useState("");
+  const [note, setNote] = useState("");
+  const reasonLabel = REASONS.find((r) => r.value === reason)?.label;
+
+  return (
+    <SheetPanel
+      title="Pause stage"
+      primaryAction={
+        note.trim() ? (
+          <Button variant="primary" onClick={() => setReason((r) => r || "other")}>
+            Pause stage
+          </Button>
+        ) : undefined
+      }
+    >
+      <ChoiceChip legend="Reason" name="pause-reason" value={reason} onChange={setReason} options={REASONS} />
+      <div className="mt-4">
+        <Field
+          label="Note (optional)"
+          inputMode="text"
+          hint="e.g. Forecast clearing Thursday"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+      </div>
+      {reasonLabel ? (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <StatusChip status="paused" reason={reasonLabel} />
+          <span className="text-meta text-ink-2">Stage paused.</span>
+        </div>
+      ) : null}
+    </SheetPanel>
+  );
 }

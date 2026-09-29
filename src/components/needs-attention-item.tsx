@@ -28,15 +28,15 @@ export function NeedsAttentionItem({ severity, sentence, href, className }: Need
     <Link
       href={href}
       className={cx(
-        "flex min-h-[64px] lg:min-h-12 w-full items-center gap-3 px-4 py-2",
-        "focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-chalk",
+        "flex min-h-[64px] lg:min-h-12 w-full items-center gap-3 px-4 py-2 lg:py-1",
+        "focus-visible:outline focus-visible:outline-[3px] focus-visible:-outline-offset-3 focus-visible:outline-chalk-link",
         "active:bg-galv",
         className,
       )}
     >
       <SeverityIcon size={24} aria-hidden="true" className={cx("shrink-0", toneClass)} />
       <span className="flex-1 text-body text-ink">{sentence}</span>
-      <CaretRight size={20} aria-hidden="true" className="shrink-0 text-ink-2" />
+      <CaretRight size={24} aria-hidden="true" className="shrink-0 text-ink-2" />
     </Link>
   );
 }

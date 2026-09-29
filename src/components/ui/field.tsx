@@ -1,5 +1,6 @@
 import { useId, type ComponentPropsWithoutRef } from "react";
 import { Input } from "./input";
+import { ErrorMessage } from "./error-message";
 import { cx } from "@/lib/cx";
 
 export type FieldProps = Omit<ComponentPropsWithoutRef<"input">, "id"> & {
@@ -54,11 +55,7 @@ export function Field({
           {hint}
         </span>
       ) : null}
-      {error ? (
-        <span id={errorId} className="text-meta text-over">
-          {error}
-        </span>
-      ) : null}
+      {error ? <ErrorMessage id={errorId}>{error}</ErrorMessage> : null}
     </div>
   );
 }

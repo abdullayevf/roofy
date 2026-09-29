@@ -35,6 +35,19 @@ describe("TapeBar", () => {
     expect(screen.getByText("Forecast $4,775.00")).toBeInTheDocument();
   });
 
+  it("trending over is amber with a warning icon; actually over is red with its own icon", () => {
+    const { rerender } = render(<TapeBar label="Sheet install progress" percent={30} note="$775.00 over" />);
+    expect(screen.getByText("$775.00 over").closest("p")).toHaveClass("text-watch");
+    expect(screen.getByText("$775.00 over").closest("p")?.querySelector("svg")).toBeInTheDocument();
+    rerender(<TapeBar label="Sheet install progress" percent={100} tone="over" note="$300.00 over budget" />);
+    expect(screen.getByText("$300.00 over budget").closest("p")).toHaveClass("text-over");
+  });
+
+  it("has no note, marker or label when none is given (the foreman case: no money, no marker)", () => {
+    const { container } = render(<TapeBar label="Sheet install progress" percent={30} />);
+    expect(container.querySelector("p")).not.toBeInTheDocument();
+  });
+
   it("has no forecast label when no forecast is given (the foreman case: no money, no marker)", () => {
     render(<TapeBar label="Sheet install progress" percent={30} />);
     expect(screen.queryByText(/Forecast/)).not.toBeInTheDocument();

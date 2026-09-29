@@ -11,6 +11,7 @@ import {
 } from "@phosphor-icons/react/dist/ssr";
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 import { cx } from "@/lib/cx";
+import { focusRing } from "@/components/ui/focus";
 
 export type SidebarRole = "manager" | "foreman" | "accountant";
 
@@ -41,11 +42,13 @@ export type SidebarProps = {
   role: SidebarRole;
   active: string;
   workspaceName: string;
+  /** Demo-only: forces the focus ring on one item (by key) so it shows up in a static screenshot. */
+  focusKey?: string;
   className?: string;
 };
 
 /** DESIGN.md §4 navigation, desktop >= 1024: 240 px sidebar, same items as the phone tab bar. */
-export function Sidebar({ role, active, workspaceName, className }: SidebarProps) {
+export function Sidebar({ role, active, workspaceName, focusKey, className }: SidebarProps) {
   const items = ITEMS[role];
   return (
     <nav
@@ -65,6 +68,7 @@ export function Sidebar({ role, active, workspaceName, className }: SidebarProps
             className={cx(
               "flex min-h-12 items-center gap-3 rounded-control px-3 text-body-strong",
               isActive ? "bg-chalk text-on-chalk" : "text-ink",
+              focusRing(focusKey === item.key),
             )}
           >
             <Glyph size={24} weight={isActive ? "fill" : "regular"} aria-hidden="true" />

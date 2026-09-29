@@ -39,7 +39,7 @@ function useIsDesktop(): boolean {
 function SheetBody({ title, children, primaryAction }: SheetContentProps) {
   return (
     <div className="flex max-h-[85vh] flex-col overflow-hidden">
-      <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2">
+      <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2 lg:px-6 lg:pt-6">
         <h2 className="text-heading text-ink">{title}</h2>
         <div className="mt-4">{children}</div>
       </div>
@@ -56,7 +56,9 @@ function SheetBody({ title, children, primaryAction }: SheetContentProps) {
 }
 
 /**
- * The full phone-sheet panel visuals — grabber, 16 px top radius,
+ * The full sheet panel visuals — on phone: grabber, 16 px top radius; from
+ * 1024 px it becomes the dialog form (centred, 16 px radius all round, no
+ * grabber) —
  * shadow-sheet — as their own component so the live vaul Drawer and a
  * static gallery preview (no Drawer/matchMedia/JS involved) render
  * identical markup. Takes no position/overlay props; the caller places it.
@@ -68,8 +70,8 @@ export function SheetPanel({
   className,
 }: SheetContentProps & { className?: string }) {
   return (
-    <div className={cx("rounded-t-sheet bg-surface shadow-sheet", className)}>
-      <div aria-hidden="true" className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-line" />
+    <div className={cx("rounded-t-sheet bg-surface shadow-sheet lg:mx-auto lg:max-w-md lg:rounded-sheet", className)}>
+      <div aria-hidden="true" className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-line lg:hidden" />
       <SheetBody title={title} primaryAction={primaryAction}>
         {children}
       </SheetBody>

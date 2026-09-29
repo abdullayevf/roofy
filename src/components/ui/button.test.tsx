@@ -39,6 +39,15 @@ describe("Button", () => {
     expect(button).toHaveTextContent("Save day");
   });
 
+  it("keeps a verb while loading: the loading label is what a screen reader gets", () => {
+    render(
+      <Button loading loadingLabel="Saving day">
+        Save day
+      </Button>,
+    );
+    expect(screen.getByRole("button", { name: "Saving day" })).toBeDisabled();
+  });
+
   it("disabled buttons cannot be clicked", async () => {
     const user = userEvent.setup();
     let clicked = 0;
@@ -58,8 +67,9 @@ describe("Button", () => {
       </Button>,
     );
     const button = screen.getByRole("button", { name: "Approve pay run" });
-    expect(button).toHaveClass("bg-surface", "text-ink-2", "border-edge");
+    expect(button).toHaveClass("bg-galv", "text-ink-2", "border-line");
     expect(button.className).not.toContain("bg-chalk");
+    expect(button.className).not.toContain("bg-surface");
   });
 
   it("shows a reason line beneath a disabled button when one is given", () => {

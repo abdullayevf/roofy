@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Minus, Plus } from "@phosphor-icons/react";
 import type { Hundredths } from "@/domain/types";
 import { formatHours } from "@/lib/format";
@@ -7,9 +8,11 @@ import { Button } from "./button";
 import { cx } from "@/lib/cx";
 
 export type StepperProps = {
-  /** Hundredths: 0.01 h units (750 = 7.5 h). */
-  value: Hundredths;
-  onChange: (next: Hundredths) => void;
+  /** Hundredths: 0.01 h units (750 = 7.5 h). Controlled; omit to let the stepper hold its own value. */
+  value?: Hundredths;
+  /** Starting value when uncontrolled. */
+  defaultValue?: Hundredths;
+  onChange?: (next: Hundredths) => void;
   min?: Hundredths;
   max?: Hundredths;
   disabled?: boolean;
@@ -27,13 +30,26 @@ const DEFAULT_MAX = 2400;
  * 0.25 h. (A full/half day is a two-option choice, not a step count — see
  * `DayToggle`.)
  */
-export function Stepper({ value, onChange, min, max, disabled, label, className }: StepperProps) {
+export function Stepper({
+  value: controlledValue,
+  defaultValue = 0,
+  onChange,
+  min,
+  max,
+  disabled,
+  label,
+  className,
+}: StepperProps) {
+  const [uncontrolled, setUncontrolled] = useState(defaultValue);
+  const value = controlledValue ?? uncontrolled;
   const lo = min ?? DEFAULT_MIN;
   const hi = max ?? DEFAULT_MAX;
 
   function step_(delta: number) {
     const next = Math.max(lo, Math.min(hi, value + delta));
-    if (next !== value) onChange(next);
+    if (next === value) return;
+    setUncontrolled(next);
+    onChange?.(next);
   }
 
   return (

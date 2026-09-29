@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
+import { Check } from "@phosphor-icons/react/dist/ssr";
 import { Group, Section, Swatch, ThemePair } from "./section";
-import { StepperDemo, IconOnlyButtonDemo, MoneyCellIconDemo } from "./interactive-demos";
+import { IconOnlyButtonDemo, PauseStageSheetDemo } from "./interactive-demos";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import { Segmented } from "@/components/ui/segmented";
 import { ChoiceChip } from "@/components/ui/choice-chip";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Stepper } from "@/components/ui/stepper";
 import { DayToggle } from "@/components/ui/day-toggle";
 import { StatusChip } from "@/components/ui/status-chip";
 import { MoneyCell } from "@/components/ui/money-cell";
@@ -43,6 +45,30 @@ const TOKEN_SWATCHES = [
   { name: "good", className: "bg-good" },
 ] as const;
 
+// Product spec §5.7 expense categories — no others.
+const EXPENSE_CATEGORIES = [
+  { value: "materials", label: "Materials" },
+  { value: "equipment-hire", label: "Equipment hire" },
+  { value: "scaffolding", label: "Scaffolding" },
+  { value: "skip-tip", label: "Skip/tip fees" },
+  { value: "fuel-travel", label: "Fuel & travel" },
+  { value: "parking-tolls", label: "Parking & tolls" },
+  { value: "subcontractor", label: "Subcontractor (non-crew)" },
+  { value: "permits", label: "Permits" },
+  { value: "other", label: "Other" },
+];
+
+const PAUSE_REASONS = [
+  { value: "weather", label: "Weather" },
+  { value: "materials", label: "Waiting on materials" },
+  { value: "client", label: "Waiting on client or builder" },
+  { value: "crew", label: "Crew on another job" },
+  { value: "other", label: "Other" },
+];
+
+/** A grouped `surface` block (radius 12, `line` dividers) for rows that aren't a List. */
+const GROUP = "divide-y divide-line rounded-group bg-surface border-group";
+
 export default function DesignPage() {
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-12 px-4 py-8 lg:px-8">
@@ -59,7 +85,7 @@ export default function DesignPage() {
         <ThemePair>
           <Swatch label="Scale, with real content">
             <div className="flex flex-col gap-3">
-              <p className="text-figure-xl num text-ink">$4,775.00</p>
+              <p className="text-figure-xl num text-ink [overflow-wrap:anywhere]">$4,775.00</p>
               <p className="text-title text-ink">Smith job — Ryde re-roof</p>
               <p className="text-heading text-ink">Sheet install</p>
               <p className="text-figure num text-ink">120 m²</p>
@@ -84,16 +110,30 @@ export default function DesignPage() {
       <Section title="Navigation">
         <ThemePair>
           <Swatch label="Phone, manager">
-            <TabBar role="manager" active="home" fixed={false} />
+            <div className="pt-8">
+              <TabBar role="manager" active="home" fixed={false} />
+            </div>
+          </Swatch>
+          <Swatch label="Phone, manager, focus">
+            <div className="pt-8">
+              <TabBar role="manager" active="home" fixed={false} focusKey="jobs" />
+            </div>
           </Swatch>
           <Swatch label="Phone, foreman">
-            <TabBar role="foreman" active="log" fixed={false} />
+            <div className="pt-8">
+              <TabBar role="foreman" active="log" fixed={false} />
+            </div>
           </Swatch>
           <Swatch label="Phone, accountant">
-            <TabBar role="accountant" active="reports" fixed={false} />
+            <div className="pt-8">
+              <TabBar role="accountant" active="reports" fixed={false} />
+            </div>
           </Swatch>
           <Swatch label="Desktop sidebar">
             <Sidebar role="manager" active="jobs" workspaceName="Harbour Roofing" />
+          </Swatch>
+          <Swatch label="Desktop sidebar, focus">
+            <Sidebar role="manager" active="jobs" workspaceName="Harbour Roofing" focusKey="crew" />
           </Swatch>
         </ThemePair>
       </Section>
@@ -119,8 +159,10 @@ export default function DesignPage() {
               Approve pay run
             </Button>
           </Swatch>
-          <Swatch label="Loading (keeps its width)">
-            <Button loading>Save day</Button>
+          <Swatch label="Loading (keeps its width and its verb)">
+            <Button loading loadingLabel="Saving day">
+              Save day
+            </Button>
           </Swatch>
           <Swatch label="Icon only (requires a label)">
             <IconOnlyButtonDemo />
@@ -210,6 +252,7 @@ export default function DesignPage() {
               options={[
                 { value: "crew-day", label: "Crew day" },
                 { value: "progress", label: "Progress" },
+                { value: "no-work", label: "No work" },
               ]}
             />
           </Swatch>
@@ -222,6 +265,7 @@ export default function DesignPage() {
               options={[
                 { value: "crew-day", label: "Crew day" },
                 { value: "progress", label: "Progress" },
+                { value: "no-work", label: "No work" },
               ]}
             />
           </Swatch>
@@ -230,30 +274,15 @@ export default function DesignPage() {
 
       <Section title="Choice chip">
         <ThemePair>
-          <Group title="Pause reason">
-            <ChoiceChip
-              legend="Reason"
-              name="pause-reason"
-              defaultValue="weather"
-              options={[
-                { value: "weather", label: "Weather" },
-                { value: "materials", label: "Waiting on materials" },
-                { value: "client", label: "Waiting on client or builder" },
-                { value: "crew", label: "Crew on another job" },
-                { value: "other", label: "Other" },
-              ]}
-            />
+          <Group title="Pause reason (nothing chosen yet)">
+            <ChoiceChip legend="Reason" name="pause-reason" options={PAUSE_REASONS} />
           </Group>
           <Group title="Expense category">
             <ChoiceChip
               legend="Category"
               name="expense-category"
               defaultValue="materials"
-              options={[
-                { value: "materials", label: "Materials" },
-                { value: "labour", label: "Labour" },
-                { value: "other", label: "Other" },
-              ]}
+              options={EXPENSE_CATEGORIES}
             />
           </Group>
           <Group title="Paid by">
@@ -288,22 +317,28 @@ export default function DesignPage() {
               ]}
             />
           </Group>
-          <Swatch label="Focus and disabled">
-            <div className="flex flex-wrap gap-4">
-              <ChoiceChip
-                legend="Category"
-                name="expense-category-focus"
-                defaultValue="materials"
-                focusVisible
-                options={[{ value: "materials", label: "Materials" }]}
-              />
-              <ChoiceChip
-                legend="Category"
-                name="expense-category-disabled"
-                disabled
-                options={[{ value: "materials", label: "Materials" }]}
-              />
-            </div>
+          <Swatch label="Focus">
+            <ChoiceChip
+              legend="Category"
+              name="expense-category-focus"
+              defaultValue="materials"
+              focusVisible
+              options={[
+                { value: "materials", label: "Materials" },
+                { value: "scaffolding", label: "Scaffolding" },
+              ]}
+            />
+          </Swatch>
+          <Swatch label="Disabled">
+            <ChoiceChip
+              legend="Category"
+              name="expense-category-disabled"
+              disabled
+              options={[
+                { value: "materials", label: "Materials" },
+                { value: "scaffolding", label: "Scaffolding" },
+              ]}
+            />
           </Swatch>
         </ThemePair>
       </Section>
@@ -328,7 +363,10 @@ export default function DesignPage() {
       <Section title="Stepper">
         <ThemePair>
           <Swatch label="Steps by 0.25 h">
-            <StepperDemo />
+            <Stepper label="Sam's hours" defaultValue={700} />
+          </Swatch>
+          <Swatch label="Disabled">
+            <Stepper label="Lee's hours" defaultValue={800} disabled />
           </Swatch>
         </ThemePair>
       </Section>
@@ -337,6 +375,12 @@ export default function DesignPage() {
         <ThemePair>
           <Swatch label="A full day or a half day">
             <DayToggle label="Tom's day" defaultValue={100} />
+          </Swatch>
+          <Swatch label="Focus">
+            <DayToggle label="Dima's day" defaultValue={50} focusVisible />
+          </Swatch>
+          <Swatch label="Disabled">
+            <DayToggle label="Lee's day" defaultValue={100} disabled />
           </Swatch>
         </ThemePair>
       </Section>
@@ -373,21 +417,21 @@ export default function DesignPage() {
 
       <Section title="Money cell">
         <ThemePair>
-          <Swatch label="Shown inside labelled rows">
+          <Swatch label="Inside labelled rows; a tone is always an icon plus words">
             <List
               rows={[
                 { key: "labour", primary: "Labour so far", figure: <MoneyCell cents={143250} /> },
                 {
                   key: "forecast",
                   primary: "Forecast labour",
-                  figure: <MoneyCell cents={-30000} tone="over" toneLabel="Over budget" />,
+                  figure: <MoneyCell cents={477500} tone="watch" status="$775.00 over budget" />,
                 },
                 {
-                  key: "on-track",
-                  primary: "On track example",
-                  figure: <MoneyCell cents={143250} tone="good" toneLabel="On track" />,
+                  key: "ridge",
+                  primary: "Ridge bedding & pointing",
+                  figure: <MoneyCell cents={200000} tone="good" status="On budget" />,
                 },
-                { key: "icon", primary: "With an icon instead of a word", figure: <MoneyCellIconDemo /> },
+                { key: "advance", primary: "Advance", figure: <MoneyCell cents={-30000} /> },
               ]}
             />
           </Swatch>
@@ -396,7 +440,7 @@ export default function DesignPage() {
 
       <Section title="List">
         <ThemePair>
-          <Swatch label="Grouped rows, whole row is the tap target">
+          <Swatch label="Crew rows show what each person has earned">
             <List
               rows={[
                 { key: "sam", primary: "Sam", meta: "Day", figure: <MoneyCell cents={143250} />, href: "#" },
@@ -404,14 +448,27 @@ export default function DesignPage() {
                   key: "tom",
                   primary: "Tom",
                   meta: "Hourly",
+                  figure: <MoneyCell cents={96000} />,
+                  href: "#",
+                },
+                { key: "dima", primary: "Dima", meta: "m²", figure: <MoneyCell cents={72000} />, href: "#" },
+              ]}
+            />
+          </Swatch>
+          <Swatch label="Stage rows">
+            <List
+              rows={[
+                {
+                  key: "sheet-install",
+                  primary: "Sheet install",
+                  meta: "120 m² of 400 m²",
                   figure: <StatusChip status="active" />,
                   href: "#",
                 },
                 {
-                  key: "dima",
-                  primary: "Dima",
-                  meta: "m²",
-                  figure: <MoneyCell cents={-30000} tone="over" toneLabel="Over budget" />,
+                  key: "ridge",
+                  primary: "Ridge bedding & pointing",
+                  figure: <StatusChip status="not-started" />,
                   href: "#",
                 },
               ]}
@@ -436,13 +493,37 @@ export default function DesignPage() {
           <Swatch label="On track">
             <TapeBar label="Site setup and safety progress" percent={60} />
           </Swatch>
-          <Swatch label="Trending over, manager view">
+          <Swatch label="Trending over (manager view)">
             <TapeBar
               label="Sheet install progress"
               percent={30}
-              forecastPercent={119}
-              forecastLabel="Forecast $4,775.00"
+              forecastPercent={100}
+              forecastLabel="Forecast"
+              tone="watch"
+              note="$775.00 over — forecast $4,775.00 of $4,000.00"
             />
+          </Swatch>
+          <Swatch label="Over budget (manager view)">
+            <TapeBar
+              label="Ridge bedding and pointing progress"
+              percent={100}
+              forecastPercent={100}
+              forecastLabel="Cost so far"
+              tone="over"
+              note="$300.00 over — cost $2,300.00 of $2,000.00"
+            />
+          </Swatch>
+          <Swatch label="Paused">
+            <div className="flex flex-col gap-2">
+              <TapeBar label="Sheet install progress" percent={30} />
+              <StatusChip status="paused" reason="Weather" />
+            </div>
+          </Swatch>
+          <Swatch label="Done">
+            <div className="flex flex-col gap-2">
+              <TapeBar label="Site setup and safety progress" percent={100} />
+              <StatusChip status="done" />
+            </div>
           </Swatch>
           <Swatch label="Foreman view (no forecast, no money)">
             <TapeBar label="Sheet install progress" percent={30} />
@@ -452,13 +533,38 @@ export default function DesignPage() {
 
       <Section title="Crew chip">
         <ThemePair>
-          <Swatch label="Full-width rows, tapped = tape fill with an ink check">
-            <div className="flex w-full flex-col gap-2 rounded-group bg-surface border-group">
-              <CrewChip name="Sam" basis="Day" defaultPressed />
-              <CrewChip name="Tom" basis="Hourly" defaultPressed />
-              <CrewChip name="Jake" basis="m²" />
-              <CrewChip name="Dima" basis="m²" defaultPressed />
+          <Swatch label="Ticked rows carry their own exception control">
+            <div className={GROUP}>
+              <CrewChip name="Sam" basis="Day" exception="half-day" defaultPressed />
+              <CrewChip name="Tom" basis="Hourly" exception="hours" defaultPressed />
+              <CrewChip
+                name="Jake"
+                basis="m²"
+                note={{ text: "Paid from progress, not this grid", tone: "info" }}
+                defaultPressed
+              />
+              <CrewChip name="Dima" basis="Day" note={{ text: "No rate for this basis", tone: "watch" }} />
               <CrewChip name="Lee" basis="Day" />
+            </div>
+          </Swatch>
+          <Swatch label="Focus">
+            <div className={GROUP}>
+              <CrewChip name="Lee" basis="Day" focusVisible />
+            </div>
+          </Swatch>
+          <Swatch label="Disabled">
+            <div className={GROUP}>
+              <CrewChip name="Lee" basis="Day" disabled />
+            </div>
+          </Swatch>
+          <Swatch label="After Save day, ticked rows fold into one line">
+            <div className="flex flex-col gap-1.5 rounded-group border-group bg-surface p-4">
+              <p className="text-body-strong text-ink">Mon 28 Sep</p>
+              <span aria-hidden="true" className="h-[3px] w-24 bg-chalk" />
+              <p className="flex items-center gap-2 text-body-strong text-ink">
+                <Check size={24} aria-hidden="true" />
+                Logged: Sam, Tom, Jake, Dima
+              </p>
             </div>
           </Swatch>
         </ThemePair>
@@ -470,16 +576,23 @@ export default function DesignPage() {
             <div className="flex flex-col gap-4">
               <List
                 rows={[
-                  { key: "sheet-install", primary: "Sheet install", figure: <StatusChip status="active" /> },
+                  {
+                    key: "sheet-install",
+                    primary: "Sheet install",
+                    meta: "120 m² of 400 m²",
+                    figure: <StatusChip status="active" />,
+                    href: "#",
+                  },
                   {
                     key: "ridge",
-                    primary: "Ridge bedding and pointing",
+                    primary: "Ridge bedding & pointing",
                     figure: <StatusChip status="not-started" />,
+                    href: "#",
                   },
                 ]}
               />
               <TapeBar label="Sheet install progress" percent={30} />
-              <div className="flex flex-col gap-2 rounded-group bg-surface border-group">
+              <div className={GROUP}>
                 <CrewChip name="Sam" basis="Day" defaultPressed />
                 <CrewChip name="Tom" basis="Hourly" />
               </div>
@@ -491,7 +604,7 @@ export default function DesignPage() {
       <Section title="Needs-attention item">
         <ThemePair>
           <Swatch label="Severity icon plus one plain sentence, tap-through">
-            <div className="flex flex-col gap-1 rounded-group bg-surface border-group">
+            <div className={GROUP}>
               <NeedsAttentionItem
                 severity="over"
                 sentence="Smith job is $775 over on sheet install."
@@ -529,22 +642,36 @@ export default function DesignPage() {
 
       <Section title="Sheet">
         <ThemePair>
-          <Swatch label="Sheet on phone, dialog on desktop">
-            <SheetPanel title="Pause stage" primaryAction={<Button variant="primary">Pause stage</Button>}>
-              <ChoiceChip
-                legend="Reason"
-                name="sheet-pause-reason"
-                defaultValue="weather"
-                options={[
-                  { value: "weather", label: "Weather" },
-                  { value: "materials", label: "Waiting on materials" },
-                  { value: "client", label: "Waiting on client or builder" },
-                  { value: "crew", label: "Crew on another job" },
-                  { value: "other", label: "Other" },
-                ]}
-              />
-              <div className="mt-4">
-                <Field label="Note (optional)" inputMode="text" hint="e.g. Forecast clearing Thursday" />
+          <Swatch label="Pause stage: tap a reason and it pauses, no confirm button">
+            <PauseStageSheetDemo />
+          </Swatch>
+          <Swatch label="Record payout: a form, so it keeps a pinned Save">
+            <SheetPanel title="Record payout" primaryAction={<Button variant="primary">Save payout</Button>}>
+              <div className="flex flex-col gap-4">
+                <Field label="Date" inputMode="text" defaultValue="Mon 28 Sep" />
+                <Field label="Amount" inputMode="decimal" defaultValue="1482.00" />
+                <Group title="Advance or payment">
+                  <ChoiceChip
+                    legend="Advance or payment"
+                    name="payout-kind"
+                    options={[
+                      { value: "advance", label: "Advance" },
+                      { value: "payment", label: "Payment" },
+                    ]}
+                  />
+                </Group>
+                <Group title="Method">
+                  <ChoiceChip
+                    legend="Method"
+                    name="payout-method"
+                    options={[
+                      { value: "bank", label: "Bank transfer" },
+                      { value: "cash", label: "Cash" },
+                      { value: "other", label: "Other" },
+                    ]}
+                  />
+                </Group>
+                <Field label="Note (optional)" inputMode="text" />
               </div>
             </SheetPanel>
           </Swatch>
@@ -587,9 +714,9 @@ export default function DesignPage() {
             </Button>
           </Group>
           <Group title="No permission">
-            <div className="flex flex-col items-start gap-2">
+            <div className="flex flex-col items-start gap-3">
               <p className="text-body text-ink">You don&apos;t have access to this. Ask your manager.</p>
-              <Button variant="link" href="#">
+              <Button variant="secondary" href="#">
                 Back to Home
               </Button>
             </div>
@@ -597,8 +724,11 @@ export default function DesignPage() {
           <Group title="Logged (after Save day)">
             <div className="flex flex-col gap-1.5">
               <p className="text-body-strong text-ink">Mon 28 Sep</p>
-              <span aria-hidden="true" className="h-[1.5px] w-24 bg-chalk" />
-              <p className="text-body text-ink-2">Logged</p>
+              <span aria-hidden="true" className="h-[3px] w-24 bg-chalk" />
+              <p className="flex items-center gap-2 text-body-strong text-ink">
+                <Check size={24} aria-hidden="true" />
+                Logged
+              </p>
             </div>
           </Group>
           <Group title="No day to copy yet">
