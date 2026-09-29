@@ -119,13 +119,19 @@ describe("seed: shape and determinism", () => {
     expect(hash(buildSeed())).toBe(hash(seed));
   });
 
-  it("builds in under 300 ms (best of 5, so a busy parallel test run doesn't decide it)", () => {
+  // Measured as this thread's CPU time, not wall-clock time: `pnpm verify` runs test files in
+  // parallel forks on a 4-core box, and time spent waiting for a core isn't the seed's cost. Best of
+  // 5 drops a run a GC pause or a cold start landed in. The budget allows for V8 coverage, which
+  // `pnpm verify` turns on: ~200 ms plain, ~300 ms with coverage on this server (2026-09-29), so it
+  // still fails if the build gets markedly slower.
+  it("builds in under 500 ms of CPU time (best of 5; parallel test files and waiting for a core don't count)", () => {
     const times = Array.from({ length: 5 }, () => {
-      const t0 = performance.now();
+      const t0 = process.threadCpuUsage();
       buildSeed();
-      return Math.round(performance.now() - t0);
+      const cpu = process.threadCpuUsage(t0);
+      return Math.round((cpu.user + cpu.system) / 1000);
     });
-    expect(Math.min(...times), `build times: ${times.join(", ")} ms`).toBeLessThan(300);
+    expect(Math.min(...times), `build CPU times: ${times.join(", ")} ms`).toBeLessThan(500);
   });
 
   it("is anchored at the default fake clock's work date", () => {
