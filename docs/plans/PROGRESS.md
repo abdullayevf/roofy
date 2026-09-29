@@ -39,6 +39,15 @@
 - Phase 2 Task 6: outbox items carry the entry as `input` (the key `payload` reads as money to the foreman key scan). Domain gained `ratios.ts` (over marker, margin %, cost per unit, per crew-day) and `stageExpectedLabour`, so `src/data` never divides money; `src/lib/format.ts` gained `formatDecimal` for CSV.
 - Phase 2 Task 6: UI/offline code may not import `@/data` or `@/data/session` (lint); types come from `@/data/contracts`.
 - Phase 2 Task 6: `safeNextPath` checks the normalised and decoded path (refuses `//`, backslashes, `%2F`/`%5C`); prototype cookies get `Secure` over https (URL or `x-forwarded-proto`). Foreman log lists leave out adjustment rows (pay-run artefacts).
+- Phase 2 Task 7: admin Server Functions live in `src/app/actions/{projects,stages,crew,pay,records,settings}.ts` (no route groups yet) over one runner (`run.ts`: zod per argument → `getWriteData()` → `revalidatePath` of the affected screen groups as `layout` patterns → `ActionResult`). Unexpected errors → `unavailable` "Couldn't save this. Try again.".
+- Phase 2 Task 7: foremen never get `missing_rate` or `late_entry` in an `EntryResult` (whether a day's pay run is approved is a pay fact). `FOREMAN_HIDDEN_FLAGS` in contracts.
+- Phase 2 Task 7: push stores only applied results (`clientMutations`); a rejected id can be edited and resent with the same id. A repeat id from another user is rejected `conflict`, not replayed. Unexpected errors and `DataError("unavailable")` → `retry`. The push route ignores `?demo=` and always writes to the browser's own session store (setting `roofy_demo` on the response when missing).
+- Phase 2 Task 7: a crew-day row's basis is the one sent (the grid defaults it with `gridBasisFor`; switching someone to time-only is allowed); daily rows with hours 0 get days × standard day. Pause on a Paused stage / resume on an Active one is applied with no change (`ids: []`); pause date must be after the open segment's start, resume date on/after the pause date. A second no-work marker for the same person and day replaces reason and note; someone already logged that day is refused (`conflict`).
+- Phase 2 Task 7: `ExpenseInput.gstCents` is nullable (null = total ÷ 11 via `splitReceipt`; 0 = No GST). Editing a total without a GST keeps "No GST" if it had none, else re-defaults.
+- Phase 2 Task 7: `setRate` with the same (person, basis, unit, job, start date) replaces that rate's amount (no twins); a new rate re-prices unlocked $0.00 missing-rate logs it now covers — that is how a missing rate is "fixed" before approval (pay rules §9).
+- Phase 2 Task 7: approve takes the oldest draft first, dates ledger credits on the workspace's today, audits a missing-rate waiver on the pay-run audit row, and opens the next period's draft if none exists. Pay-run CSV: one row per line and reimbursement plus a per-person "Total" row (subtotal, GST, total); an accountant's export also marks it Exported.
+- Phase 2 Task 7: reopening a Done stage reopens the segment Done closed (Active), or leaves it Paused if it was paused when marked Done; locked lump-sum logs are reversed once. `editLog`/`deleteLog` refuse progress and lump-sum lines (change the entry / reopen the stage) and adjustments can't be edited. Stage-done photos aren't stored and progress/receipt photo ids aren't checked (no uploads in Phase 2).
+- Phase 2 Task 7: `FakeStore.nextInstant` keeps write order under the fixed fake clock; the LRU store test has a 30 s timeout (51 seed clones in a busier parallel suite).
 
 ## Gate evidence
 
@@ -49,6 +58,10 @@
 
 ## Open issues (carried forward)
 
+- Phase 7: editing an expense already reimbursed in an approved pay run keeps the old reimbursement — the difference isn't carried to a later run yet (flows "Expense edit" promises it will).
+- Phase 7: changing pay frequency or start day leaves existing draft pay-run rows on their old periods.
+- Phase 5: photo/receipt file ids on field entries are stored unchecked (no upload yet); the fake push's idempotency record isn't atomic with the apply across an `await` (the real push uses one transaction).
+- Phase 2 (screens): `src/app/actions/*` are only compiled by `next build` once a page imports them (typecheck and unit tests cover them until then).
 - Phase 4: add a unique DB constraint on rates (crew member, basis, unit, project, effective_from) — `resolveRate` picks the first of two rates with the same date.
 - Phase 7: `buildPayRun` includes every unlocked log dated ≤ period end; only build the next draft once every earlier run is approved (else logs appear in two drafts). Consider a "no hours" warning when an employee's net hours are ≤ 0 (reversal-only run).
 - Phase 7: a pay-run credit can be negative (reversal-only period); ledger maths handles it.
