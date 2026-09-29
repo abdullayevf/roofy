@@ -33,7 +33,8 @@
  * `<screen>-keyboard-iphone.png` (viewport shrunk by the keyboard's height,
  * field focused). The installed shot also writes `-installed-iphone-top.png`
  * and `-installed-iphone-bottom.png`: the first and last screen at viewport
- * size, showing the top inset and the bottom inset with the tab bar.
+ * size, showing the top and bottom insets, plus one `-installed-iphone-<section>.png`
+ * per manifest `installedSections` entry (the gallery's bars sit in the page).
  *
  * and the automated-checks summary for the whole run:
  *
@@ -294,6 +295,18 @@ async function captureInstalled(opts: {
   await page.screenshot({ path: join(outDir, `${base_}-top.png`) });
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   await page.screenshot({ path: join(outDir, `${base_}-bottom.png`) });
+  // Screens whose bars sit in the page rather than fixed to the viewport (the gallery): one shot per named
+  // section, its heading scrolled to the top, so the tab bars and pinned actions and their bottom inset show.
+  for (const section of screen.installedSections ?? []) {
+    await page
+      .getByRole("heading", { level: 2, name: section, exact: true })
+      .first()
+      .evaluate((el) => {
+        el.scrollIntoView({ block: "start" });
+      });
+    const slug = section.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    await page.screenshot({ path: join(outDir, `${base_}-${slug}.png`) });
+  }
   await page.evaluate(() => window.scrollTo(0, 0));
 
   if (engine !== "chromium") {

@@ -8,8 +8,9 @@
 - **Task 7 (fake writes and push): implemented (88b97b1…85317cb), `pnpm verify` green, e2e green, but its opus spec review was cut off by a usage limit. Next step: run `spec-reviewer` on it.** The review must decide one open question: adding a rate re-prices unapproved $0.00 missing-rate logs. Check that against pay rules §1 (snapshot) and step 3 ("fixed or waived").
 - **Task 8 (primitives and `/design`): built and merged; the system design loop is in progress.**
   - Iteration 1: 72 / 69. Iteration 2: 75 / 70. Iteration 3: 90 / 87 (average 88.5, one P1: payout method unselected).
-  - The iteration 4 fixes are merged (ea29b95 via 456b784) but not yet captured or scored.
-  - Next step: `pnpm build && pnpm start` (ROOFY_DATA=fake), then `pnpm design:capture system`, then run the `design-critic` and `field-critic` agents on `docs/design/loop/shots/system/slices/`. Record the results in `docs/design/loop/SCORES.md` and `ISSUES.md`. Cap: 6 iterations.
+  - Iteration 4: 82 / 82, two P1s (dom-contrast "Forecast"/"Cost so far" 1.00:1 from a caption inside the marker element; installed capture unreviewable). Recorded in `SCORES.md` and `ISSUES.md` (i4-* rows).
+  - The iteration 4 fixes are committed (1120cfb…) and iteration 5 is captured with all guards green (`checks.md`: 9 captures, 0 failures). New captures: installed top/bottom/navigation/sheet shots, landscape phone, tablet, keyboard-open. New tokens `over-fill` and `bar` (DESIGN.md §2, `pnpm tokens:gen`).
+  - Next step: run the `design-critic` and `field-critic` agents on `docs/design/loop/shots/system/slices/` and the new top-level shots (iteration 5; cap 6). Record the results in `SCORES.md` and `ISSUES.md`; i4-* rows stay open until the critics confirm them. i4-D6 (slashed zero in inline text) is left open on purpose.
 - **Task 9 (app shell and PWA): implemented, `pnpm verify` and `pnpm test:e2e` (real WebKit) green; awaiting spec review.** `(app)` route group with tab bar / 240 px sidebar, offline banner and outbox badge slots, placeholder pages for every nav target, `/more` menu, manifest, viewport, error / not-found / no-permission states, theme cookie on `<html>`, `tests/e2e/shell.spec.ts`.
 - Then: Task 10 (D2 A/B) onward.
 - Environment notes from the cloud session:

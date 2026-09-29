@@ -64,6 +64,12 @@ export type ScreenSpec = {
    * field and the named primary action are both still visible and unobstructed.
    */
   keyboard?: { field: string; action: string };
+  /**
+   * Section headings (level 2) to bring to the top of an extra installed-mode
+   * iPhone shot each, for screens whose bars are not fixed to the viewport
+   * (the gallery shows the tab bars and pinned sheet actions in place).
+   */
+  installedSections?: string[];
 };
 
 // All states a field-entry screen a foreman can reach should design: real
@@ -101,6 +107,7 @@ export const SCREENS: ScreenSpec[] = [
     roles: ["owner"],
     // The Record payout sheet's amount field, with its pinned Save payout.
     keyboard: { field: "Amount", action: "Save payout" },
+    installedSections: ["Navigation", "Sheet"],
   },
 
   // --- field-1 (Task 11): Home manager (4), Home foreman (5) ----------

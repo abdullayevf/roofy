@@ -74,9 +74,12 @@ const GROUP = "divide-y divide-line rounded-group bg-surface border-group";
 export default function DesignPage() {
   return (
     <main
-      className="mx-auto flex max-w-6xl flex-col gap-12 px-4 pb-8 lg:px-8"
+      className="mx-auto flex max-w-6xl flex-col gap-12 px-4 lg:px-8"
       // Clears the status bar / notch in an installed app (real inset, or simulated in captures) plus the normal padding.
-      style={{ paddingTop: "calc(max(var(--sat-sim, 0px), env(safe-area-inset-top)) + 2rem)" }}
+      style={{
+        paddingTop: "calc(max(var(--sat-sim, 0px), env(safe-area-inset-top)) + 2rem)",
+        paddingBottom: "calc(max(var(--sab-sim, 0px), env(safe-area-inset-bottom)) + 2rem)",
+      }}
     >
       <header className="flex flex-col gap-2">
         <h1 className="text-title text-ink">Design system</h1>
