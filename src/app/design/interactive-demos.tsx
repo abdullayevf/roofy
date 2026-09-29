@@ -48,6 +48,7 @@ export function PauseStageSheetDemo() {
         ) : undefined
       }
     >
+      <p className="-mt-2 mb-3 text-meta text-ink-2">Tap a reason to pause now.</p>
       <ChoiceChip legend="Reason" name="pause-reason" value={reason} onChange={setReason} options={REASONS} />
       <div className="mt-4">
         <Field

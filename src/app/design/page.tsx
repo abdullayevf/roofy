@@ -158,7 +158,9 @@ export default function DesignPage() {
             </div>
           </Swatch>
           <Swatch label="Focus">
-            <Button focusVisible>Save day</Button>
+            <div>
+              <Button focusVisible>Save day</Button>
+            </div>
           </Swatch>
           <Swatch label="Disabled, with a reason">
             <Button disabled reason="Needs connection — try again once you're back online.">
@@ -430,13 +432,15 @@ export default function DesignPage() {
                 {
                   key: "forecast",
                   primary: "Forecast labour",
-                  figure: <MoneyCell cents={477500} tone="watch" status="$775.00 over budget" />,
+                  figure: <MoneyCell cents={477500} tone="watch" status="Trending $775.00 over budget" />,
+                  figureAlign: "top",
                   href: "#",
                 },
                 {
                   key: "ridge",
                   primary: "Ridge bedding & pointing",
-                  figure: <MoneyCell cents={200000} tone="good" status="On budget" />,
+                  figure: <MoneyCell cents={230000} tone="over" status="$300.00 over budget" />,
+                  figureAlign: "top",
                   href: "#",
                 },
                 { key: "advance", primary: "Advance", figure: <MoneyCell cents={-30000} />, href: "#" },
@@ -489,7 +493,7 @@ export default function DesignPage() {
                 {
                   key: "ridge",
                   primary: "Ridge bedding & pointing",
-                  figure: <StatusChip status="not-started" />,
+                  figure: <StatusChip status="done" />,
                   href: "#",
                 },
               ]}
@@ -518,7 +522,7 @@ export default function DesignPage() {
             <TapeBar
               label="Sheet install progress"
               percent={30}
-              forecastPercent={100}
+              forecastPercent={119}
               forecastLabel="Forecast"
               tone="watch"
               note="$775.00 over — forecast $4,775.00 of $4,000.00"
@@ -528,7 +532,7 @@ export default function DesignPage() {
             <TapeBar
               label="Ridge bedding and pointing progress"
               percent={100}
-              forecastPercent={100}
+              forecastPercent={115}
               forecastLabel="Cost so far"
               tone="over"
               note="$300.00 over — cost $2,300.00 of $2,000.00"
@@ -568,8 +572,8 @@ export default function DesignPage() {
                 note={{ text: "Paid from progress, not this grid", tone: "info" }}
                 defaultPressed
               />
-              <CrewChip name="Dima" basis="Day" note={{ text: "No rate for this basis", tone: "watch" }} />
-              <CrewChip name="Lee" basis="Day" />
+              <CrewChip name="Dima" basis="m²" />
+              <CrewChip name="Lee" basis="Day" note={{ text: "No rate for this basis", tone: "watch" }} />
             </div>
           </Swatch>
           <Swatch label="Focus">
@@ -588,7 +592,7 @@ export default function DesignPage() {
               <span aria-hidden="true" className="h-[3px] w-24 bg-chalk" />
               <p className="flex items-center gap-2 text-body-strong text-ink">
                 <Check size={24} aria-hidden="true" />
-                Logged: Sam, Tom, Jake, Dima
+                Logged: Sam, Tom, Jake
               </p>
             </div>
           </Swatch>
@@ -611,7 +615,7 @@ export default function DesignPage() {
                   {
                     key: "ridge",
                     primary: "Ridge bedding & pointing",
-                    figure: <StatusChip status="not-started" />,
+                    figure: <StatusChip status="done" />,
                     href: "#",
                   },
                 ]}
@@ -776,6 +780,24 @@ export default function DesignPage() {
             <Button variant="secondary" disabled>
               No day to copy yet
             </Button>
+          </Group>
+          <Group title="Stale data">
+            <p className="text-meta text-ink-2">Lists updated 12 minutes ago.</p>
+          </Group>
+          <Group title="Outbox item that needs attention">
+            <div className="flex flex-col gap-3 rounded-group border-group bg-surface p-4">
+              <div>
+                <StatusChip status="needs-attention" />
+              </div>
+              <p className="text-body-strong text-ink">Sheet install, 120 m², Mon 28 Sep</p>
+              <p className="text-body text-ink-2">This stage was marked Done. Pick a different stage.</p>
+              <div className="flex flex-col gap-3">
+                <Button variant="primary">Edit &amp; resend</Button>
+                <Button variant="secondary" tone="danger">
+                  Discard
+                </Button>
+              </div>
+            </div>
           </Group>
           <Group title="Empty">
             <EmptyState message="No jobs yet." actionLabel="Add your first job" href="#" />
