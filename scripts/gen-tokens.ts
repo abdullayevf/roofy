@@ -26,6 +26,10 @@ const COLOR_TOKEN_ORDER = [
   "on-tape",
   "on-over",
   "watch-fill",
+  "over-fill",
+  "on-over-fill",
+  "bar",
+  "on-bar",
 ] as const;
 
 export type ColorTokenName = (typeof COLOR_TOKEN_ORDER)[number];
@@ -116,7 +120,7 @@ function parseElevation(md: string): Elevation {
 
 function buildColors(
   base: Record<string, string>,
-  opts: { chalkLink: string; onTapeFrom: string; onOverFrom: string },
+  opts: { chalkLink: string; onTapeFrom: string; onOverFrom: string; onBarFrom: string },
 ): ColorTokens {
   const required = [
     "galv",
@@ -130,6 +134,8 @@ function buildColors(
     "over",
     "watch",
     "good",
+    "over-fill",
+    "bar",
   ];
   for (const key of required) {
     if (!base[key]) throw new Error(`gen-tokens: missing token "${key}" while building colours`);
@@ -151,6 +157,11 @@ function buildColors(
     "on-tape": opts.onTapeFrom,
     "on-over": opts.onOverFrom,
     "watch-fill": base.tape!,
+    "over-fill": base["over-fill"]!,
+    // Text on a filled destructive button is always white: `over-fill` is dark-toned in both schemes.
+    "on-over-fill": "#ffffff",
+    bar: base.bar!,
+    "on-bar": opts.onBarFrom,
   };
 }
 
@@ -172,11 +183,13 @@ export function generateTokensCss(designMd: string): string {
     chalkLink: lightBase.chalk!,
     onTapeFrom: lightBase.ink!,
     onOverFrom: "#ffffff",
+    onBarFrom: lightBase.surface!,
   });
   const dark = buildColors(darkBase, {
     chalkLink: darkBase["chalk-link"]!,
     onTapeFrom: darkBase.galv!,
     onOverFrom: darkBase.galv!,
+    onBarFrom: darkBase.ink!,
   });
 
   const header =

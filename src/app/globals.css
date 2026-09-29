@@ -27,6 +27,10 @@
   --color-on-tape: var(--on-tape);
   --color-on-over: var(--on-over);
   --color-watch-fill: var(--watch-fill);
+  --color-over-fill: var(--over-fill);
+  --color-on-over-fill: var(--on-over-fill);
+  --color-bar: var(--bar);
+  --color-on-bar: var(--on-bar);
 
   --font-display: var(--font-barlow);
   --font-body: var(--font-atkinson);

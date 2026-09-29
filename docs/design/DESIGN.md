@@ -29,6 +29,8 @@ Contrast ratios verified (WCAG 2.1). Status colour is never the only signal: alw
 | `chalk` | `#1F4FB5` | Primary actions, links, focus ring | 7.4 white-on-chalk · 6.4 on galv |
 | `tape` | `#FFC82C` | Marks: selected crew, today, tape bar fill (always with `ink` text/outline) | ink on tape 8.4 |
 | `over` | `#C62D1F` | Over budget, errors, destructive | 5.5 on surface · 4.8 on galv |
+| `over-fill` | `#C62D1F` | Filled destructive button (confirmation dialogs only), white text | 5.5 white-on-fill |
+| `bar` | `#2F3133` | Offline banner and toast background, `surface` text | 13.1 |
 | `watch` | `#8A5300` | Trending over, warnings (text); fill uses `tape` | 6.3 on surface |
 | `good` | `#256B40` | On track, sent, done | 5.6 on galv |
 
@@ -44,6 +46,8 @@ Contrast ratios verified (WCAG 2.1). Status colour is never the only signal: alw
 | `chalk` (button fill) | `#3563CC` (white text 5.5) · links `#8FB0FF` (6.4) | |
 | `tape` | `#FFC82C` (galv text on tape 10.3) | |
 | `over` | `#FF8A7A` (6.0) · `watch` `#FFC82C` · `good` `#6FCF97` (7.2) | |
+| `over-fill` | `#C62D1F` (white text 5.5) — `#FF8A7A` is for text only, never a fill under text | |
+| `bar` | `#454B4E` (`ink` text 7.5) — a raised grey, not near-white | |
 
 Dark mode is elevation-by-lightness (surfaces get lighter as they rise), no shadows.
 
@@ -71,18 +75,19 @@ Rules: all money, quantities, hours and dates in tables use `font-variant-numeri
 
 ## 4. Components
 
-- **Button** — 52 px tall on phone (48 desktop), radius 10, Atkinson 600 17 px. Primary = `chalk` fill, white text. Secondary = `surface` + 1.5 px `edge` border, `ink` text. Destructive = `over` text on surface; filled only in confirmation sheets. Labels are verbs: "Save day", "Pause stage", "Approve pay run". No trailing arrows.
+- **Button** — 52 px tall on phone (48 desktop), radius 10, Atkinson 600 17 px. Primary = `chalk` fill, white text. Secondary = `surface` + 1.5 px `edge` border, `ink` text. Destructive = `over` text on surface; filled (`over-fill`, white text) only in confirmation dialogs. Labels are verbs: "Save day", "Pause stage", "Approve pay run". No trailing arrows.
 - **Input** — 52 px, radius 10, 1.5 px `edge` border, label above (never placeholder-only), correct `inputmode`. Focus: 3 px `chalk` ring outside the border. Error: `over` border + message below saying how to fix.
 - **Stepper** (hours, days) — − / value / + with 52 px buttons; hours step 0.25, days toggle 1 / ½.
+- **Selection** — one treatment everywhere: a selected segment, day toggle option, choice chip or crew check is `tape` fill with `ink` text and a check. `chalk` is only for actions and focus, never for "selected". Segmented controls are full width on phone.
 - **Crew chip** (crew-day grid) — full-width row on phone: name, usual basis ("Day", "Hourly", "m²") and a large check area. Tapped = `tape` fill with `ink` check. It's the mark a foreman makes on a list.
-- **Tape bar** (progress) — 12 px tall steel-tape track (`surface` with 1 px `ink` outline), `tape` fill, `ink` tick marks every 10% (taller at 50%). The % is always also printed as text beside it. Over-budget stages show an `over` marker at the forecast point, not a red bar.
+- **Tape bar** (progress) — 12 px tall steel-tape track (`surface` with 1 px `ink` outline), `tape` fill, `ink` tick marks every 10% (taller at 50%). The % is always also printed as text beside it, in a fixed-width slot (sized to "100% done") so every track is the same length and ticks line up between rows. Over-budget stages show a marker at the forecast point (`watch` when trending over, `over` when actually over), not a red bar. A forecast past 100% cannot sit on the track, so the marker sits just beyond the end cap, joined to it by a short bar in its colour, further out the bigger the overrun (to a fixed maximum); the exact figure is in the sentence below. The marker's caption is its own row under the track, never inside the marker.
 - **Status chip** — pill, icon + word: Active (chalk), Paused (watch, pause icon + reason), Done (good), Not started (ink-2).
 - **Money cell** — right-aligned `figure`; drill-in affordance on tap (whole row is the target).
-- **List row** — 64 px min on phone, primary text left, figure right, meta below primary. Groups of rows sit on one `surface` block with `line` dividers (iOS-style grouped list), not separate cards.
-- **Bottom sheet** (phone) / **dialog** (desktop) — same content component; sheet has 16 px top radius, grabber, primary action pinned above the home bar.
-- **Navigation** — Phone: bottom tab bar (Home · Jobs · **Log** · Crew · More) with Log as the raised `chalk` circle in the middle; Foreman: Log · Jobs · Outbox. Desktop ≥ 1024: left sidebar 240 px, same items.
+- **List row** — 64 px min on phone, primary text left, figure right, meta below primary. The right column (figure or chip, and the chevron) is fixed: it never wraps or moves, only the label wraps; chip and chevron are vertically centred on the row, and a figure with a status line beneath it lines up with the label's first line. Groups of rows sit on one `surface` block with `line` dividers (iOS-style grouped list), not separate cards.
+- **Bottom sheet** (phone) / **dialog** (desktop) — same content component; sheet has 16 px top radius, grabber, primary action pinned above the home bar. Every sheet and dialog with a form or choices has a 48 px close (X) at top right, on phone and desktop. A confirmation ("Discard this entry?") is a bottom sheet on phone and a dialog on desktop, closes with its Cancel button instead of an X, and uses the same 448 px width as other dialogs.
+- **Navigation** — Phone: bottom tab bar (Home · Jobs · **Log** · Crew · More) with Log as the raised `chalk` circle in the middle; Foreman: Jobs · **Log** · Outbox, Log raised in the middle; Accountant: Home · Pay · Reports · More (no Log, no raised circle). Desktop ≥ 1024: left sidebar 240 px, same items.
 - **Outbox badge** — small `tape` pill with count ("3 to send") at top of screen when non-empty; tap opens Outbox.
-- **Offline banner** — slim `ink` bar: "No signal — entries are saved on this phone and will send automatically."
+- **Offline banner** — slim `bar` strip (`ink` in light, a raised grey in dark), left-aligned: "No signal — entries are saved on this phone and will send automatically."
 - **Needs-attention item** — row with severity icon (over / watch), one-line plain sentence ("Smith job is $775 over on sheet install"), tap-through.
 - **Empty state** — one sentence of direction + the action button ("No jobs yet. Add your first job."). No illustrations.
 - **Skeleton** — `line`-coloured blocks sized exactly like the content; no shimmer.
@@ -103,7 +108,7 @@ Rules: all money, quantities, hours and dates in tables use `font-variant-numeri
 | 0 | Page | `galv` |
 | 1 | Lists, panels | `surface`, radius 12, no shadow (separation by colour) |
 | 2 | Sheets, menus, popovers | `surface`, radius 16 (sheets top only), shadow `0 8px 24px rgb(31 34 36 / 0.18)` |
-| 3 | Toasts | `ink` background, `surface` text, shadow `0 12px 32px rgb(31 34 36 / 0.28)` |
+| 3 | Toasts | `bar` background, `surface` text (`ink` in dark), shadow `0 12px 32px rgb(31 34 36 / 0.28)` |
 
 Radius hierarchy is deliberate: controls 10, groups 12, sheets 16, chips full. Not one radius for everything.
 

@@ -18,6 +18,8 @@ const FIXTURE = `# Roofy — DESIGN.md ("Galvanised")
 | \`chalk\` | \`#1F4FB5\` | Primary actions, links, focus ring | 7.4 white-on-chalk · 6.4 on galv |
 | \`tape\` | \`#FFC82C\` | Marks: selected crew, today, tape bar fill (always with \`ink\` text/outline) | ink on tape 8.4 |
 | \`over\` | \`#C62D1F\` | Over budget, errors, destructive | 5.5 on surface · 4.8 on galv |
+| \`over-fill\` | \`#C62D1F\` | Filled destructive | 5.5 |
+| \`bar\` | \`#2F3133\` | Banner and toast | 13.1 |
 | \`watch\` | \`#8A5300\` | Trending over, warnings (text); fill uses \`tape\` | 6.3 on surface |
 | \`good\` | \`#256B40\` | On track, sent, done | 5.6 on galv |
 
@@ -33,6 +35,8 @@ const FIXTURE = `# Roofy — DESIGN.md ("Galvanised")
 | \`chalk\` (button fill) | \`#3563CC\` (white text 5.5) · links \`#8FB0FF\` (6.4) | |
 | \`tape\` | \`#FFC82C\` (galv text on tape 10.3) | |
 | \`over\` | \`#FF8A7A\` (6.0) · \`watch\` \`#FFC82C\` · \`good\` \`#6FCF97\` (7.2) | |
+| \`over-fill\` | \`#C62D1F\` (white text 5.5) | |
+| \`bar\` | \`#454B4E\` (ink text 7.5) | |
 
 Dark mode is elevation-by-lightness (surfaces get lighter as they rise), no shadows.
 
@@ -98,6 +102,21 @@ describe("generateTokensCss", () => {
       /@media \(prefers-color-scheme: dark\)\s*{\s*:root:not\(\[data-theme="light"\]\)\s*{([^}]*)}/s,
     )?.[1];
     expect(mediaBlock).toMatch(/--on-over:\s*#1f2224;/);
+  });
+
+  it("emits the destructive fill and the banner/toast bar in both schemes (dark is not the text-only over)", () => {
+    const rootBlock = css.match(/:root\s*{([^}]*)}/s)?.[1] ?? "";
+    expect(rootBlock).toMatch(/--over-fill:\s*#c62d1f;/);
+    expect(rootBlock).toMatch(/--on-over-fill:\s*#ffffff;/);
+    expect(rootBlock).toMatch(/--bar:\s*#2f3133;/);
+    expect(rootBlock).toMatch(/--on-bar:\s*#ffffff;/);
+    const mediaBlock = css.match(
+      /@media \(prefers-color-scheme: dark\)\s*{\s*:root:not\(\[data-theme="light"\]\)\s*{([^}]*)}/s,
+    )?.[1];
+    expect(mediaBlock).toMatch(/--over-fill:\s*#c62d1f;/);
+    expect(mediaBlock).toMatch(/--on-over-fill:\s*#ffffff;/);
+    expect(mediaBlock).toMatch(/--bar:\s*#454b4e;/);
+    expect(mediaBlock).toMatch(/--on-bar:\s*#eceeec;/);
   });
 
   it("emits elevation shadows on :root from §6", () => {

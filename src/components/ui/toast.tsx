@@ -17,7 +17,7 @@ export function ToastView({ message, className }: ToastViewProps) {
   return (
     <div
       className={cx(
-        "flex items-center rounded-control bg-ink px-4 py-3 text-body-strong text-surface shadow-toast",
+        "flex items-center rounded-control bg-bar px-4 py-3 text-body-strong text-on-bar shadow-toast",
         className,
       )}
     >

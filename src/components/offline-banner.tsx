@@ -10,7 +10,7 @@ export function OfflineBanner({ className }: OfflineBannerProps) {
     <div
       role="status"
       className={cx(
-        "flex min-h-10 items-center bg-ink px-4 py-2 text-left text-body text-surface",
+        "flex min-h-10 items-center bg-bar px-4 py-2 text-left text-body text-on-bar",
         className,
       )}
     >

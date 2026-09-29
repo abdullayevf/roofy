@@ -48,7 +48,7 @@ function variantClasses(props: ButtonProps): string {
   if (props.disabled) return DISABLED;
   if (props.tone === "danger") {
     return props.filled
-      ? "bg-over text-on-over border border-transparent"
+      ? "bg-over-fill text-on-over-fill border border-transparent"
       : "bg-transparent text-over border border-transparent";
   }
   switch (props.variant ?? "primary") {
