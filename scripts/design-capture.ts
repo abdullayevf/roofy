@@ -94,7 +94,7 @@ function parseArgs(argv: string[]): { group: string; screensFilter?: string[]; b
 /**
  * Full-page shots of long screens get shrunk to an unreadable strip by any
  * image viewer (critics included), so every capture also gets viewport-sized
- * slices: `slices/<label>--p01.png`, `--p02.png`, … (max 15). Pinned bars
+ * slices: `slices/<label>--p01.png`, `--p02.png`, … (max 40). Pinned bars
  * repeat on every slice, exactly as a person scrolling would see them.
  */
 async function screenshotSlices(page: Page, outDir: string, label: string): Promise<void> {
@@ -104,7 +104,7 @@ async function screenshotSlices(page: Page, outDir: string, label: string): Prom
     total: document.documentElement.scrollHeight,
     step: window.innerHeight,
   }));
-  const count = Math.min(15, Math.max(1, Math.ceil(total / step)));
+  const count = Math.min(40, Math.max(1, Math.ceil(total / step)));
   for (let i = 0; i < count; i++) {
     await page.evaluate((y) => window.scrollTo(0, y), i * step);
     await page.screenshot({ path: join(sliceDir, `${label}--p${String(i + 1).padStart(2, "0")}.png`) });
