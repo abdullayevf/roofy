@@ -110,4 +110,26 @@ describe("SheetPanel (the phone sheet's markup)", () => {
     await userEvent.click(close);
     expect(onClose).toHaveBeenCalledOnce();
   });
+
+  it("shows a More below cue when the body is taller than its box, and not otherwise", () => {
+    const size = (scrollHeight: number) =>
+      vi.spyOn(Element.prototype, "scrollHeight", "get").mockReturnValue(scrollHeight);
+    vi.spyOn(Element.prototype, "clientHeight", "get").mockReturnValue(200);
+    size(500);
+    const { unmount } = render(
+      <SheetPanel title="Record payout">
+        <p>Body</p>
+      </SheetPanel>,
+    );
+    expect(screen.getByTestId("sheet-more-below")).toHaveTextContent("More below");
+    unmount();
+    size(200);
+    render(
+      <SheetPanel title="Record payout">
+        <p>Body</p>
+      </SheetPanel>,
+    );
+    expect(screen.queryByTestId("sheet-more-below")).not.toBeInTheDocument();
+    vi.restoreAllMocks();
+  });
 });

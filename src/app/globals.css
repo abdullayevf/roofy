@@ -35,6 +35,9 @@
   --font-display: var(--font-barlow);
   --font-body: var(--font-atkinson);
 
+  /* DESIGN.md §8: 600-1023 is the large-phone / tablet band. */
+  --breakpoint-tablet: 600px;
+
   --radius-control: 10px;
   --radius-group: 12px;
   --radius-sheet: 16px;

@@ -51,8 +51,21 @@ export type SidebarProps = {
   className?: string;
 };
 
+/** The active item's 4 px `ink` edge bar (with a filled icon and a `galv` background): never a chalk fill, chalk is for actions. */
+function ActiveBar() {
+  return <span aria-hidden="true" className="absolute inset-y-2 left-0 w-1 rounded-full bg-ink" />;
+}
+
 /** DESIGN.md §4 navigation, desktop >= 1024: 240 px sidebar, same items as the phone tab bar. */
-export function Sidebar({ role, active, workspaceName, extra, activeExtra, focusKey, className }: SidebarProps) {
+export function Sidebar({
+  role,
+  active,
+  workspaceName,
+  extra,
+  activeExtra,
+  focusKey,
+  className,
+}: SidebarProps) {
   const items = ITEMS[role];
   return (
     <nav
@@ -70,11 +83,12 @@ export function Sidebar({ role, active, workspaceName, extra, activeExtra, focus
             prefetch={false}
             aria-current={isActive ? "page" : undefined}
             className={cx(
-              "flex min-h-12 items-center gap-3 rounded-control px-3 text-body-strong",
-              isActive ? "bg-chalk text-on-chalk" : "text-ink",
+              "relative flex min-h-12 items-center gap-3 rounded-control px-3 text-body-strong text-ink",
+              isActive && "bg-galv",
               focusRing(focusKey === item.key),
             )}
           >
+            {isActive ? <ActiveBar /> : null}
             <Glyph size={24} weight={isActive ? "fill" : "regular"} aria-hidden="true" />
             {item.label}
           </Link>
@@ -92,11 +106,12 @@ export function Sidebar({ role, active, workspaceName, extra, activeExtra, focus
                 prefetch={false}
                 aria-current={isActive ? "page" : undefined}
                 className={cx(
-                  "flex min-h-12 items-center rounded-control pl-12 pr-3 text-body-strong",
-                  isActive ? "bg-chalk text-on-chalk" : "text-ink",
+                  "relative flex min-h-12 items-center rounded-control pl-12 pr-3 text-body-strong text-ink",
+                  isActive && "bg-galv",
                   focusRing(false),
                 )}
               >
+                {isActive ? <ActiveBar /> : null}
                 {item.label}
               </Link>
             );

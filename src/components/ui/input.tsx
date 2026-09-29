@@ -25,8 +25,9 @@ export function Input({ invalid, suffix, leading, focusVisible, className, ...pr
       aria-invalid={invalid || undefined}
       className={cx(
         "h-[52px] w-full rounded-control bg-surface px-4 text-ink lg:h-12",
-        // Numbers are Barlow (DESIGN.md §3): Atkinson's zero is slashed, which reads as a second typeface beside the figures.
-        props.inputMode === "decimal" || props.inputMode === "numeric" ? "text-figure num" : "text-body",
+        // DESIGN.md §3: input values are Atkinson (its slashed zero is the 0/O legibility feature); numbers stay tabular.
+        "text-body",
+        (props.inputMode === "decimal" || props.inputMode === "numeric") && "num",
         suffix && "pr-14",
         leading && "pl-8",
         invalid ? "border-2 border-over" : "border-[1.5px] border-edge",

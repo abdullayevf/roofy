@@ -156,7 +156,7 @@ The budget is achievable because the grid pre-fills from the last logged day. **
 1. Tap the active job row on Home (e.g. "Smith job — Ryde re-roof"). → `/jobs/[id]`. _(1)_
 2. Tap the active stage row ("Sheet install"). → `/jobs/[id]/stages/[stageId]`. _(2)_
 3. Tap **Pause stage**. Opens a bottom sheet with reason chips: Weather, Waiting on materials, Waiting on client/builder, Crew on another job, Other. _(3)_
-4. Tap the **Weather** chip — selecting a reason pauses immediately (no separate confirm), sheet closes. _(4)_
+4. Tap the **Weather** chip — selecting a reason pauses immediately (no separate confirm), sheet closes. _(4)_ The optional note sits above the chips ("Add a note first (optional)"), because a reason tap ends the sheet; skipping it costs no taps.
 
 **After save:** stage status chip changes to **Paused** (watch colour, pause icon, "Weather"); the open stage segment closes at today's date.
 

@@ -37,7 +37,7 @@ export function NeedsAttentionItem({
     <Link
       href={href}
       className={cx(
-        "flex min-h-[64px] lg:min-h-12 w-full items-center gap-3 px-4 py-2 lg:py-1",
+        "flex min-h-[64px] lg:min-h-12 w-full items-center gap-3 px-4 py-2 first:rounded-t-group last:rounded-b-group lg:py-1",
         focusVisible
           ? "outline outline-[3px] -outline-offset-3 outline-chalk-link"
           : "focus-visible:outline focus-visible:outline-[3px] focus-visible:-outline-offset-3 focus-visible:outline-chalk-link",

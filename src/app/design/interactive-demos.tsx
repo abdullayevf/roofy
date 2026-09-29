@@ -48,17 +48,15 @@ export function PauseStageSheetDemo() {
         ) : undefined
       }
     >
-      <p className="-mt-2 mb-3 text-meta text-ink-2">Tap a reason to pause now.</p>
+      <Field
+        label="Add a note first (optional)"
+        inputMode="text"
+        hint="e.g. Forecast clearing Thursday"
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+      />
+      <p className="mb-3 mt-4 text-body-strong text-ink">Then tap a reason to pause now.</p>
       <ChoiceChip legend="Reason" name="pause-reason" value={reason} onChange={setReason} options={REASONS} />
-      <div className="mt-4">
-        <Field
-          label="Note (optional)"
-          inputMode="text"
-          hint="e.g. Forecast clearing Thursday"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-        />
-      </div>
       {reasonLabel ? (
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <StatusChip status="paused" reason={reasonLabel} />

@@ -34,10 +34,10 @@ const TONE = {
   over: { marker: "bg-over", text: "text-over", icon: WarningCircle },
 } as const;
 
-/** How far past the end cap the marker can sit, in px: the 16 px gap before the % slot minus the marker's half-width and some air. */
-const MAX_OVERRUN_PX = 12;
+/** How far past the end cap the marker can sit, in px. The 28 px gap before the % slot leaves at least 12 px clear of the marker. */
+const MAX_OVERRUN_PX = 14;
 /** A forecast this many points past 100% (or more) sits at the full extension; the exact figure is in the note. */
-const OVERRUN_FULL_AT = 25;
+const OVERRUN_FULL_AT = 20;
 
 export type MarkerPosition = {
   /** Where the marker sits along the 0-100% track, as a whole percent. Never past 100. */
@@ -83,11 +83,11 @@ export function TapeBar({
   const marker = forecastPercent === undefined ? undefined : markerPosition(forecastPercent);
   const t = TONE[tone];
   const Glyph = t.icon;
-  // Caption hangs off the marker's near side: right-aligned to it from the middle of the track on, left-aligned before.
-  const captionAtEnd = marker !== undefined && marker.percent >= 50;
+  // The caption sits centred under its marker (left-aligned only when the marker is at the very start of the track).
+  const captionAtStart = marker !== undefined && marker.percent < 12;
 
   return (
-    <div className={cx("grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-x-4 gap-y-1", className)}>
+    <div className={cx("grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-x-7 gap-y-1", className)}>
       <div className="relative h-3">
         <div
           role="progressbar"
@@ -98,10 +98,7 @@ export function TapeBar({
           aria-valuetext={`${clamped}% done`}
           className="relative h-full overflow-visible rounded-full border border-ink bg-surface"
         >
-          <div
-            className="absolute inset-y-0 left-0 rounded-full bg-tape"
-            style={{ width: `${clamped}%` }}
-          />
+          <div className="absolute inset-y-0 left-0 rounded-full bg-tape" style={{ width: `${clamped}%` }} />
           {TICK_STOPS.map((stop) => (
             <span
               key={stop}
@@ -139,11 +136,10 @@ export function TapeBar({
         <div className="relative h-5">
           <span
             className={cx("absolute top-0 whitespace-nowrap text-meta", t.text)}
-            style={
-              captionAtEnd
-                ? { right: `${-marker.overrunPx}px` }
-                : { left: `${marker.percent}%`, transform: "translateX(-2px)" }
-            }
+            style={{
+              left: marker.overrunPx > 0 ? `calc(100% + ${marker.overrunPx}px)` : `${marker.percent}%`,
+              transform: captionAtStart ? "translateX(-2px)" : "translateX(-50%)",
+            }}
           >
             {forecastLabel}
           </span>

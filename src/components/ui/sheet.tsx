@@ -1,9 +1,17 @@
 "use client";
 
-import { useLayoutEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { Drawer } from "vaul";
 import { Dialog } from "radix-ui";
-import { X } from "@phosphor-icons/react";
+import { CaretDown, X } from "@phosphor-icons/react";
 import { cx } from "@/lib/cx";
 import { Button } from "./button";
 
@@ -36,19 +44,48 @@ function useIsDesktop(): boolean {
   );
 }
 
-/** The title/body/pinned-action content, shared by the phone sheet and the desktop dialog chrome. */
+/**
+ * The title/body/pinned-action content, shared by the phone sheet and the desktop dialog chrome.
+ * When the body has more below the fold (a short landscape phone, a big text size) a "More below"
+ * strip shows above the pinned action, so the hidden fields are never a surprise.
+ */
 function SheetBody({ title, children, primaryAction }: SheetContentProps) {
+  const scroller = useRef<HTMLDivElement>(null);
+  const [moreBelow, setMoreBelow] = useState(false);
+  const measure = useCallback(() => {
+    const el = scroller.current;
+    if (el) setMoreBelow(el.scrollHeight - el.scrollTop - el.clientHeight > 8);
+  }, []);
+  useEffect(() => {
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [measure]);
+
   return (
     <div className="flex max-h-[85vh] flex-col overflow-hidden">
-      <div className="flex-1 overflow-y-auto px-4 pb-4 pt-4 lg:px-6 lg:pt-6">
+      <div
+        ref={scroller}
+        onScroll={measure}
+        className="flex-1 overflow-y-auto px-4 pb-4 pt-4 lg:px-6 lg:pt-6"
+      >
         <h2 className="text-heading text-ink pr-14">{title}</h2>
         <div className="mt-4">{children}</div>
       </div>
+      {moreBelow ? (
+        <p
+          data-testid="sheet-more-below"
+          className="flex items-center justify-center gap-1 border-t border-line py-1 text-meta text-ink-2"
+        >
+          <CaretDown size={24} aria-hidden="true" />
+          More below
+        </p>
+      ) : null}
       {primaryAction ? (
         // Same horizontal padding as the body above; the pinned action fills
         // the width, and clears the home indicator (real or simulated).
         <div
-          className="border-t border-line px-4 pt-4 *:w-full lg:px-6"
+          className={cx("px-4 pt-4 *:w-full lg:px-6", !moreBelow && "border-t border-line")}
           style={{ paddingBottom: "calc(max(var(--sab-sim, 0px), env(safe-area-inset-bottom)) + 16px)" }}
         >
           {primaryAction}
@@ -77,14 +114,14 @@ export function SheetPanel({
     <div
       data-sheet-panel=""
       className={cx(
-        "relative rounded-t-sheet bg-surface shadow-sheet lg:mx-auto lg:max-w-md lg:rounded-sheet",
+        "relative rounded-t-sheet bg-surface shadow-sheet lg:mx-auto lg:w-full lg:max-w-md lg:rounded-sheet",
         className,
       )}
     >
       <div aria-hidden="true" className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-line lg:hidden" />
       {/* A 48 px+ Close top right on phone and desktop: the grabber alone is not a control you can find with a thumb. */}
       <span className="absolute right-4 top-4">
-        <Button iconOnly icon={X} label="Close" variant="secondary" onClick={onClose} />
+        <Button iconOnly icon={X} label="Close" variant="ghost" onClick={onClose} />
       </span>
       <SheetBody title={title} primaryAction={primaryAction}>
         {children}
@@ -136,7 +173,7 @@ export function Sheet({ open, onOpenChange, title, children, primaryAction }: Sh
             <Dialog.Title className="sr-only">{title}</Dialog.Title>
             <Dialog.Close
               aria-label="Close"
-              className="absolute right-4 top-4 flex h-12 w-12 items-center justify-center text-ink-2"
+              className="absolute right-4 top-4 flex h-12 w-12 items-center justify-center text-ink"
             >
               <X size={24} aria-hidden="true" />
             </Dialog.Close>

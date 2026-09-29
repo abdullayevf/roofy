@@ -50,6 +50,8 @@ export type TabBarProps = {
   fixed?: boolean;
   /** Demo-only: forces the focus ring on one item (by key) so it shows up in a static screenshot. */
   focusKey?: string;
+  /** Pads the bottom for the home-bar inset. Defaults to `fixed`: only the bar actually pinned at the bottom needs it. */
+  inset?: boolean;
   className?: string;
 };
 
@@ -62,7 +64,7 @@ export type TabBarProps = {
  * Labels are Barlow Semi Condensed and wrap rather than overflow at large
  * text sizes.
  */
-export function TabBar({ role, active, fixed = true, focusKey, className }: TabBarProps) {
+export function TabBar({ role, active, fixed = true, focusKey, inset = fixed, className }: TabBarProps) {
   const items = ITEMS[role];
   return (
     <nav
@@ -72,7 +74,7 @@ export function TabBar({ role, active, fixed = true, focusKey, className }: TabB
         "flex items-stretch justify-around border-t border-line bg-surface",
         className,
       )}
-      style={{ paddingBottom: "max(var(--sab-sim, 0px), env(safe-area-inset-bottom))" }}
+      style={inset ? { paddingBottom: "max(var(--sab-sim, 0px), env(safe-area-inset-bottom))" } : undefined}
     >
       {items.map((item) => {
         const isActive = item.key === active;
@@ -98,7 +100,12 @@ export function TabBar({ role, active, fixed = true, focusKey, className }: TabB
                   className="text-on-chalk"
                 />
               </span>
-              <span className="max-w-full text-center text-tab text-ink [overflow-wrap:anywhere]">
+              <span
+                className={cx(
+                  "max-w-full text-center text-tab [overflow-wrap:anywhere]",
+                  isActive ? "text-chalk-link" : "text-ink",
+                )}
+              >
                 {item.label}
               </span>
             </Link>

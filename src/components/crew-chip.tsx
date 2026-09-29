@@ -2,11 +2,32 @@
 
 import { useState } from "react";
 import { Check, Info, WarningDiamond } from "@phosphor-icons/react";
+import type { ReactNode } from "react";
 import { cx } from "@/lib/cx";
 import { DayToggle } from "./ui/day-toggle";
 import { Stepper } from "./ui/stepper";
 
 export type CrewBasisLabel = "Day" | "Hourly" | "m²";
+
+/**
+ * A grouped `surface` block of crew rows with `line` dividers. From 600 px up
+ * to the desktop breakpoint (DESIGN.md §8) the rows run in two columns; the
+ * cells are separated by 1 px `line` gaps and an odd last row spans both.
+ */
+export function CrewGroup({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      className={cx(
+        "divide-y divide-line overflow-hidden rounded-group border-group bg-surface",
+        "tablet:max-lg:grid tablet:max-lg:grid-cols-2 tablet:max-lg:gap-px tablet:max-lg:divide-y-0 tablet:max-lg:bg-line",
+        "tablet:max-lg:[&>*:last-child:nth-child(odd)]:col-span-2",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
 
 export type CrewChipProps = {
   name: string;
@@ -47,7 +68,7 @@ export function CrewChip({
   const NoteIcon = note?.tone === "watch" ? WarningDiamond : Info;
 
   return (
-    <div className={cx("flex flex-col", className)}>
+    <div className={cx("flex flex-col bg-surface", className)}>
       <button
         type="button"
         aria-pressed={pressed}
@@ -57,7 +78,11 @@ export function CrewChip({
           setPressed(next);
           onPressedChange?.(next);
         }}
-        className="group flex min-h-[64px] w-full items-center justify-between gap-4 px-4 py-2 text-left outline-none active:bg-galv lg:min-h-12 lg:py-1"
+        className={cx(
+          "group flex min-h-[64px] w-full items-center justify-between gap-4 px-4 py-2 text-left outline-none active:bg-galv lg:min-h-12 lg:py-1",
+          // The whole row is the target, so the whole ticked row is tinted, not just the box.
+          pressed && "bg-tape/10",
+        )}
       >
         <span className="flex min-w-0 flex-col items-start">
           <span className={cx("text-body-strong", disabled ? "text-ink-2" : "text-ink")}>{name}</span>

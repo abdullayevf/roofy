@@ -94,6 +94,7 @@ const SCHEMES = ["light", "dark"] as const;
 
 const SAFE_AREA_TOP_PX = 47;
 const SAFE_AREA_BOTTOM_PX = 34;
+const SAFE_AREA_SIDE_PX = 47;
 
 type CheckRecord = {
   screen: string;
@@ -244,12 +245,18 @@ async function captureInstalled(opts: {
   screen: ScreenSpec;
   outDir: string;
   webkitAvailable: boolean;
+  /** iPhone on its side: 844x390 with the notch-side left/right insets (and a home-bar inset, no status-bar inset). */
+  landscape?: boolean;
 }): Promise<void> {
-  const { browsers, base, screen, outDir, webkitAvailable } = opts;
+  const { browsers, base, screen, outDir, webkitAvailable, landscape = false } = opts;
   const engine = engineFor({ name: "iphone", width: 390, height: 844 }, webkitAvailable);
+  const size = landscape ? { width: 844, height: 390 } : { width: 390, height: 844 };
+  const insets = landscape
+    ? { top: 0, bottom: 21, left: SAFE_AREA_SIDE_PX, right: SAFE_AREA_SIDE_PX }
+    : { top: SAFE_AREA_TOP_PX, bottom: SAFE_AREA_BOTTOM_PX, left: 0, right: 0 };
 
   const context = await browsers[engine].newContext({
-    viewport: { width: 390, height: 844 },
+    viewport: size,
     colorScheme: "light",
     reducedMotion: "reduce",
   });
@@ -268,7 +275,7 @@ async function captureInstalled(opts: {
 
   const url = new URL(resolveRoute(screen.route), base);
   const response = await page.goto(url.toString(), { waitUntil: "networkidle" }).catch(() => null);
-  const fileName = `${screen.id}-installed-iphone.png`;
+  const fileName = `${screen.id}-installed-${landscape ? "landscape" : "iphone"}.png`;
 
   if (!response || response.status() === 404) {
     console.warn(`design-capture: skipping installed-mode shot for ${screen.id} (route not built yet).`);
@@ -276,16 +283,17 @@ async function captureInstalled(opts: {
     return;
   }
 
-  await page.evaluate(
-    ([top, bottom]) => {
-      document.documentElement.style.setProperty("--sat-sim", `${top}px`);
-      document.documentElement.style.setProperty("--sab-sim", `${bottom}px`);
-    },
-    [SAFE_AREA_TOP_PX, SAFE_AREA_BOTTOM_PX],
-  );
+  await page.evaluate(({ top, bottom, left, right }) => {
+    document.documentElement.style.setProperty("--sat-sim", `${top}px`);
+    document.documentElement.style.setProperty("--sab-sim", `${bottom}px`);
+    document.documentElement.style.setProperty("--sal-sim", `${left}px`);
+    document.documentElement.style.setProperty("--sar-sim", `${right}px`);
+  }, insets);
   await page.evaluate(() => document.fonts.ready).catch(() => undefined);
-  await page.screenshot({ path: join(outDir, fileName), fullPage: true });
-  await screenshotSlices(page, outDir, fileName.replace(/\.png$/, ""));
+  if (!landscape) {
+    await page.screenshot({ path: join(outDir, fileName), fullPage: true });
+    await screenshotSlices(page, outDir, fileName.replace(/\.png$/, ""));
+  }
 
   // The one long image can't be reviewed, so the first and last screen a person would see are also written as
   // plain viewport shots: the top inset over the page header, and the bottom inset with the tab bar (and any
@@ -309,7 +317,7 @@ async function captureInstalled(opts: {
   }
   await page.evaluate(() => window.scrollTo(0, 0));
 
-  if (engine !== "chromium") {
+  if (engine !== "chromium" && !landscape) {
     console.warn(
       `design-capture: WebKit cannot emulate \`display-mode: standalone\` (CDP-only) — ${fileName} has the safe-area simulation but not the standalone media feature.`,
     );
@@ -510,6 +518,7 @@ async function main(): Promise<void> {
         }
       }
       await captureInstalled({ browsers, base, screen, outDir, webkitAvailable });
+      await captureInstalled({ browsers, base, screen, outDir, webkitAvailable, landscape: true });
 
       // Landscape phone and tablet: the normal state, first role, light only.
       const firstRole: Role | null = screen.roles[0] ?? null;

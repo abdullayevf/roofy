@@ -15,3 +15,7 @@ Built the loop's tooling ahead of any screen group running through it: `tests/e2
 ## 2026-09-28 — Type scale moved to rem
 
 Resolves the deviation above. `globals.css` type utilities and the body size are now rem (px ÷ 16), so `checkTextZoom`'s `html { font-size: 200% }` and users' browser text-size settings scale Roofy's type (DESIGN.md §8, WCAG 1.4.4). Pixel sizes at the default root size are unchanged.
+
+## 2026-09-29 — System loop iteration 5 rulings
+
+Input values (numbers, ABN, amounts) are Atkinson with tabular figures; Barlow is for read-only figures (DESIGN.md §3). The iteration-4 Barlow inputs were reverted and i4-D6 closed as won't fix. The desktop sidebar's active item is no longer a chalk fill (filled icon, `galv` background, `ink` edge bar); the pause sheet puts the optional note above the reason chips (flows.md updated); crew rows run in two columns from 600 to 1023 px; DESIGN.md §4 records all three.

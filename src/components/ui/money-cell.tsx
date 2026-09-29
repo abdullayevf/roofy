@@ -21,6 +21,17 @@ export type MoneyCellProps = {
   | { tone: MoneyTone; status: string }
 );
 
+/** The tone's icon beside left-aligned meta text in the tone's colour: the one "over" pattern (money cell, tape bar, list rows). */
+export function StatusLine({ tone, text, className }: { tone: MoneyTone; text: string; className?: string }) {
+  const t = TONE[tone];
+  return (
+    <span className={cx("flex items-start gap-1 text-left text-meta", t.className, className)}>
+      <t.icon size={24} aria-hidden="true" className="shrink-0" />
+      <span className="min-w-0">{keepAmountsTogether(text)}</span>
+    </span>
+  );
+}
+
 /**
  * DESIGN.md §4 money cell: right-aligned figure (never wraps), tabular
  * numerals, true minus. An optional status line sits under it, in the same
@@ -28,16 +39,10 @@ export type MoneyCellProps = {
  * text ("$775.00 over budget"), in that tone's colour.
  */
 export function MoneyCell({ cents, tone, status, className }: MoneyCellProps) {
-  const t = tone ? TONE[tone] : undefined;
   return (
     <span className={cx("inline-flex max-w-full flex-col items-end gap-0.5", className)}>
       <span className="whitespace-nowrap text-figure num text-ink">{formatMoney(cents)}</span>
-      {t && status ? (
-        <span className={cx("flex items-start gap-1 text-left text-meta", t.className)}>
-          <t.icon size={24} aria-hidden="true" className="shrink-0" />
-          <span className="min-w-0 [overflow-wrap:anywhere]">{keepAmountsTogether(status)}</span>
-        </span>
-      ) : null}
+      {tone && status ? <StatusLine tone={tone} text={status} /> : null}
     </span>
   );
 }

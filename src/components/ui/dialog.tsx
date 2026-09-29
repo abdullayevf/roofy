@@ -37,7 +37,7 @@ export function DialogPanel({
     <div
       className={cx(
         // A bottom sheet on phone (grabber, 16 px top radius, clears the home bar), the shared 448 px dialog from 1024 px.
-        "relative rounded-t-sheet bg-surface px-6 pt-2 shadow-sheet lg:mx-auto lg:max-w-md lg:rounded-sheet lg:pt-6",
+        "relative rounded-t-sheet bg-surface px-6 pt-2 shadow-sheet lg:mx-auto lg:w-full lg:max-w-md lg:rounded-sheet lg:pt-6",
         className,
       )}
       style={{ paddingBottom: "calc(max(var(--sab-sim, 0px), env(safe-area-inset-bottom)) + 24px)" }}

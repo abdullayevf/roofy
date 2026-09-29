@@ -20,7 +20,7 @@ import { SheetPanel } from "@/components/ui/sheet";
 import { DialogPanel } from "@/components/ui/dialog";
 import { ToastView } from "@/components/ui/toast";
 import { TapeBar } from "@/components/tape-bar";
-import { CrewChip } from "@/components/crew-chip";
+import { CrewChip, CrewGroup } from "@/components/crew-chip";
 import { NeedsAttentionItem } from "@/components/needs-attention-item";
 import { EmptyState } from "@/components/empty-state";
 import { OutboxBadge } from "@/components/outbox-badge";
@@ -74,7 +74,7 @@ const GROUP = "divide-y divide-line rounded-group bg-surface border-group";
 export default function DesignPage() {
   return (
     <main
-      className="mx-auto flex max-w-6xl flex-col gap-12 px-4 lg:px-8"
+      className="mx-auto flex max-w-6xl flex-col gap-12 pl-[calc(max(var(--sal-sim,0px),env(safe-area-inset-left))+1rem)] pr-[calc(max(var(--sar-sim,0px),env(safe-area-inset-right))+1rem)] lg:px-8"
       // Clears the status bar / notch in an installed app (real inset, or simulated in captures) plus the normal padding.
       style={{
         paddingTop: "calc(max(var(--sat-sim, 0px), env(safe-area-inset-top)) + 2rem)",
@@ -123,6 +123,11 @@ export default function DesignPage() {
               <TabBar role="manager" active="home" fixed={false} />
             </div>
           </Swatch>
+          <Swatch label="Phone, manager, installed (home-bar inset under the fixed bar)">
+            <div className="pt-8">
+              <TabBar role="manager" active="home" fixed={false} inset />
+            </div>
+          </Swatch>
           <Swatch label="Phone, manager, focus">
             <div className="pt-8">
               <TabBar role="manager" active="home" fixed={false} focusKey="jobs" />
@@ -130,7 +135,7 @@ export default function DesignPage() {
           </Swatch>
           <Swatch label="Phone, foreman">
             <div className="pt-8">
-              <TabBar role="foreman" active="log" fixed={false} />
+              <TabBar role="foreman" active="jobs" fixed={false} />
             </div>
           </Swatch>
           <Swatch label="Phone, accountant">
@@ -171,9 +176,11 @@ export default function DesignPage() {
             </Button>
           </Swatch>
           <Swatch label="Loading (keeps its width and its verb)">
-            <Button loading loadingLabel="Saving day">
-              Save day
-            </Button>
+            <div>
+              <Button loading loadingLabel="Saving day">
+                Save day
+              </Button>
+            </div>
           </Swatch>
           <Swatch label="Icon only (requires a label)">
             <IconOnlyButtonDemo />
@@ -435,15 +442,15 @@ export default function DesignPage() {
                 {
                   key: "forecast",
                   primary: "Forecast labour",
-                  figure: <MoneyCell cents={477500} tone="watch" status="Trending $775.00 over budget" />,
-                  figureAlign: "top",
+                  figure: <MoneyCell cents={477500} />,
+                  status: { tone: "watch", text: "Trending $775.00 over budget" },
                   href: "#",
                 },
                 {
                   key: "ridge",
                   primary: "Ridge bedding & pointing",
-                  figure: <MoneyCell cents={230000} tone="over" status="$300.00 over budget" />,
-                  figureAlign: "top",
+                  figure: <MoneyCell cents={230000} />,
+                  status: { tone: "over", text: "$300.00 over budget" },
                   href: "#",
                 },
                 { key: "advance", primary: "Advance", figure: <MoneyCell cents={-30000} />, href: "#" },
@@ -565,8 +572,8 @@ export default function DesignPage() {
 
       <Section title="Crew chip">
         <ThemePair>
-          <Swatch label="Ticked rows carry their own exception control">
-            <div className={GROUP}>
+          <Swatch label="Ticked rows carry their own exception control (two columns from 600 px up to 1023 px)">
+            <CrewGroup>
               <CrewChip name="Sam" basis="Day" exception="half-day" defaultPressed />
               <CrewChip name="Tom" basis="Hourly" exception="hours" defaultPressed />
               <CrewChip
@@ -577,7 +584,7 @@ export default function DesignPage() {
               />
               <CrewChip name="Dima" basis="m²" />
               <CrewChip name="Lee" basis="Day" note={{ text: "No rate for this basis", tone: "watch" }} />
-            </div>
+            </CrewGroup>
           </Swatch>
           <Swatch label="Focus">
             <div className={GROUP}>
@@ -624,10 +631,10 @@ export default function DesignPage() {
                 ]}
               />
               <TapeBar label="Sheet install progress" percent={30} />
-              <div className={GROUP}>
+              <CrewGroup>
                 <CrewChip name="Sam" basis="Day" defaultPressed />
                 <CrewChip name="Tom" basis="Hourly" />
-              </div>
+              </CrewGroup>
             </div>
           </Swatch>
         </ThemePair>
@@ -644,7 +651,7 @@ export default function DesignPage() {
               />
               <NeedsAttentionItem
                 severity="over"
-                sentence="Ridge bedding & pointing is $300 over budget."
+                sentence="Smith job is $300 over on ridge bedding & pointing."
                 href="#"
               />
               <NeedsAttentionItem severity="watch" sentence="No log for Jake in 3 working days." href="#" />
@@ -695,8 +702,6 @@ export default function DesignPage() {
           <Swatch label="Record payout: a form, so it keeps a pinned Save">
             <SheetPanel title="Record payout" primaryAction={<Button variant="primary">Save payout</Button>}>
               <div className="flex flex-col gap-4">
-                <Field label="Date" inputMode="text" defaultValue="Mon 28 Sep" />
-                <MoneyField label="Amount" defaultCents={148200} />
                 <Group title="Advance or payment">
                   <ChoiceChip
                     legend="Advance or payment"
@@ -707,6 +712,8 @@ export default function DesignPage() {
                     ]}
                   />
                 </Group>
+                <MoneyField label="Amount" defaultCents={148200} />
+                <Field label="Date" inputMode="text" defaultValue="Mon 28 Sep" />
                 <Group title="Method">
                   <ChoiceChip
                     legend="Method"
@@ -750,7 +757,7 @@ export default function DesignPage() {
 
       <Section title="States">
         <ThemePair>
-          <Group title="Couldn't load this">
+          <Group title="Error">
             <div className="flex flex-col items-start gap-3 rounded-group border-group bg-surface p-4">
               <p className="text-body text-ink">Couldn&apos;t load this. Try again.</p>
               <Button variant="secondary">Try again</Button>
