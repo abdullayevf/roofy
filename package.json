@@ -23,7 +23,8 @@
     "test:coverage": "vitest run --coverage",
     "check:examples": "tsx scripts/check-examples.ts",
     "db:up": "docker compose -f ops/compose.dev.yml up -d --wait",
-    "db:down": "docker compose -f ops/compose.dev.yml down"
+    "db:down": "docker compose -f ops/compose.dev.yml down",
+    "icons:gen": "tsx scripts/gen-icons.ts"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
