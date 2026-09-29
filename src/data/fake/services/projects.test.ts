@@ -265,12 +265,16 @@ describe("crew this week (foreman) leaves out adjustments", () => {
     const { fakeSession } = await import("./testing");
     const { data, actor, store, as } = fakeSession("foreman");
     const base = store.tables.workLogs.find(
-      (l) => l.projectId === meta.projects.smith && l.date === "2026-09-25" && l.hours > 0 && l.deletedAt === null,
+      (l) =>
+        l.projectId === meta.projects.smith && l.date === "2026-09-25" && l.hours > 0 && l.deletedAt === null,
     )!;
     const before = await data.projects.get(actor, meta.projects.smith);
     // A pay-run artefact for someone with no other log on the job this week, plus one for someone with logs.
     const other = seed.crewMembers.find(
-      (c) => !store.tables.workLogs.some((l) => l.projectId === meta.projects.smith && l.crewMemberId === c.id && l.date >= "2026-09-22"),
+      (c) =>
+        !store.tables.workLogs.some(
+          (l) => l.projectId === meta.projects.smith && l.crewMemberId === c.id && l.date >= "2026-09-22",
+        ),
     )!;
     store.write((t) => {
       for (const crewMemberId of [other.id, base.crewMemberId]) {

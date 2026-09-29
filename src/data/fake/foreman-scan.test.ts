@@ -140,7 +140,14 @@ describe("foreman scan: field entries (push results and EntryResults)", () => {
   const smith = meta.projects.smith;
   const sheet = meta.stages.smithSheetInstall;
   const envelope = (type: MutationEnvelope["type"], payload: unknown) =>
-    ({ id: uuidv7(), type, schemaVersion: 1, appVersion: "0.1.0", createdAt: TEST_NOW.toISOString(), payload }) as MutationEnvelope;
+    ({
+      id: uuidv7(),
+      type,
+      schemaVersion: 1,
+      appVersion: "0.1.0",
+      createdAt: TEST_NOW.toISOString(),
+      payload,
+    }) as MutationEnvelope;
   const materials = seed.expenseCategories.find((x) => x.name === "Materials")!.id;
   // Every type, on assigned and unassigned jobs, valid and invalid, with pay-only warnings (Ben has no daily rate; 16 Sep is approved).
   const batch = (): MutationEnvelope[] => [
@@ -165,11 +172,24 @@ describe("foreman scan: field entries (push results and EntryResults)", () => {
       photoFileId: null,
       note: null,
     }),
-    envelope("progress", { stageId: sheet, date: "2026-09-28", quantity: 0, crewMemberIds: [], shares: { mode: "equal" }, photoFileId: null, note: null }),
+    envelope("progress", {
+      stageId: sheet,
+      date: "2026-09-28",
+      quantity: 0,
+      crewMemberIds: [],
+      shares: { mode: "equal" },
+      photoFileId: null,
+      note: null,
+    }),
     envelope("no_work", { crewMemberIds: [meta.crew.nick], date: "2026-09-28", reason: "rain", note: null }),
     envelope("stage_pause", { stageId: sheet, date: "2026-09-29", reason: "weather", note: null }),
     envelope("stage_resume", { stageId: sheet, date: "2026-10-01" }),
-    envelope("stage_pause", { stageId: meta.stages.patelSheetInstall, date: "2026-09-29", reason: "weather", note: null }),
+    envelope("stage_pause", {
+      stageId: meta.stages.patelSheetInstall,
+      date: "2026-09-29",
+      reason: "weather",
+      note: null,
+    }),
     envelope("expense", {
       date: "2026-09-16",
       supplier: "Bunnings",
@@ -218,7 +238,8 @@ describe("foreman scan: field entries (push results and EntryResults)", () => {
     );
     expectNoMoney(first, "push (foreman)");
     expectNoMoney(repeat, "push repeat (foreman)");
-    for (const r of first.results) if (r.status === "applied") expect(r.result.flags).not.toContain("missing_rate");
+    for (const r of first.results)
+      if (r.status === "applied") expect(r.result.flags).not.toContain("missing_rate");
   });
 
   it("the manager's results for the same entries do carry the pay flags (the strip is real)", async () => {
@@ -227,5 +248,92 @@ describe("foreman scan: field entries (push results and EntryResults)", () => {
     const flags = res.results.flatMap((r) => (r.status === "applied" ? r.result.flags : []));
     expect(flags).toContain("missing_rate");
     expect(flags).toContain("late_entry");
+  });
+});
+
+describe("foreman scan: admin writes refuse a foreman, money-free", () => {
+  it("every admin write method is forbidden", async () => {
+    const { data, actor } = fakeSession("foreman");
+    const s = meta.stages.smithSheetInstall;
+    const calls: Call[] = [
+      [
+        "workspace.saveLevel",
+        () => data.workspace.saveLevel(actor, { id: null, name: "X", floorRateCents: 1 }),
+      ],
+      [
+        "workspace.saveCategory",
+        () => data.workspace.saveCategory(actor, { id: null, name: "X", position: 1 }),
+      ],
+      ["workspace.setAssignments", () => data.workspace.setAssignments(actor, foremanMember.id, [])],
+      [
+        "workspace.inviteMember",
+        () => data.workspace.inviteMember(actor, { email: "x@y.au", name: "X", role: "foreman" }),
+      ],
+      ["projects.update", () => data.projects.update(actor, meta.projects.smith, { nickname: "X" })],
+      ["projects.updateStage", () => data.projects.updateStage(actor, s, { labourBudgetCents: 1 })],
+      [
+        "projects.createClient",
+        () => data.projects.createClient(actor, { name: "X", phone: null, email: null, address: null }),
+      ],
+      ["stages.start", () => data.stages.start(actor, s, "2026-09-28")],
+      [
+        "stages.confirmDone",
+        () =>
+          data.stages.confirmDone(actor, {
+            stageId: s,
+            completedOn: "2026-09-28",
+            note: null,
+            photoFileId: null,
+            crewMemberIds: [],
+            shares: { mode: "equal" },
+          }),
+      ],
+      ["stages.reopen", () => data.stages.reopen(actor, meta.stages.patelSheetInstall)],
+      ["stages.setManualPct", () => data.stages.setManualPct(actor, s, 5000)],
+      ["crew.update", () => data.crew.update(actor, meta.crew.sam, { phone: null })],
+      [
+        "crew.setRate",
+        () =>
+          data.crew.setRate(actor, {
+            crewMemberId: meta.crew.sam,
+            basis: "daily",
+            unit: null,
+            amountCents: 1,
+            effectiveFrom: "2026-09-28",
+            projectId: null,
+          }),
+      ],
+      ["logs.editLog", () => data.logs.editLog(actor, meta.logs.lateEntry, { hours: 800 })],
+      ["logs.deleteLog", () => data.logs.deleteLog(actor, meta.logs.lateEntry)],
+      ["expenses.update", () => data.expenses.update(actor, meta.expenses.smithSheets, { supplier: "X" })],
+      ["payRuns.approve", () => data.payRuns.approve(actor, meta.payRuns.review)],
+      ["payRuns.reopen", () => data.payRuns.reopen(actor, meta.payRuns.lastApproved)],
+      ["payRuns.exportCsv", () => data.payRuns.exportCsv(actor, meta.payRuns.lastApproved)],
+      [
+        "payRuns.shareStatement",
+        () => data.payRuns.shareStatement(actor, meta.payRuns.lastApproved, meta.crew.dima),
+      ],
+      [
+        "ledger.recordPayout",
+        () =>
+          data.ledger.recordPayout(actor, {
+            crewMemberId: meta.crew.dima,
+            date: "2026-09-28",
+            amountCents: 1,
+            kind: "payment",
+            method: "cash",
+            note: null,
+          }),
+      ],
+    ];
+    for (const [name, run] of calls) {
+      const error = await run().then(
+        () => null,
+        (e: unknown) => e,
+      );
+      expect(error, name).toBeInstanceOf(DataError);
+      expect((error as DataError).code, name).toBe("forbidden");
+      expect(scanForMoney((error as DataError).message), name).toEqual([]);
+    }
   });
 });

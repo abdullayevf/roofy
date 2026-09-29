@@ -950,7 +950,6 @@ export interface BalanceRow {
 
 // ─── Home ───────────────────────────────────────────────────────────────────
 
-
 interface AttentionBase {
   id: string;
   severity: Severity;
@@ -986,8 +985,20 @@ export type AttentionItem =
       period: PayPeriod;
       gaps: { crewMemberId: Id; name: string; dates: LocalDate[] }[];
     })
-  | (AttentionBase & { kind: "unpaid_too_long"; crewMemberId: Id; name: string; balanceCents: Cents; since: LocalDate })
-  | (AttentionBase & { kind: "below_floor"; crewMemberId: Id; name: string; payRunId: Id; shortfallCents: Cents })
+  | (AttentionBase & {
+      kind: "unpaid_too_long";
+      crewMemberId: Id;
+      name: string;
+      balanceCents: Cents;
+      since: LocalDate;
+    })
+  | (AttentionBase & {
+      kind: "below_floor";
+      crewMemberId: Id;
+      name: string;
+      payRunId: Id;
+      shortfallCents: Cents;
+    })
   | (AttentionBase & { kind: "outbox_attention"; count: number });
 
 export type AttentionKind = AttentionItem["kind"];

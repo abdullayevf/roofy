@@ -69,7 +69,8 @@ export function safeNextPath(value: unknown): string {
     return "/";
   }
   const risky = (path: string) => path.startsWith("//") || path.includes("\\");
-  if (url.origin !== base || risky(url.pathname) || risky(decoded) || /%2f|%5c/i.test(url.pathname)) return "/";
+  if (url.origin !== base || risky(url.pathname) || risky(decoded) || /%2f|%5c/i.test(url.pathname))
+    return "/";
   return `${url.pathname}${url.search}${url.hash}`;
 }
 

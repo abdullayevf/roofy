@@ -1,9 +1,12 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
+import { addDays } from "@/domain/dates";
 import { ledgerBalance } from "@/domain/ledger";
+import { formatDecimal } from "@/lib/format";
 import {
   DataError,
   type Actor,
   type BalanceRow,
+  type ExportFile,
   type Id,
   type LedgerRow,
   type LedgerService,
@@ -12,12 +15,45 @@ import {
   type PayRunListItem,
   type PayRunReview,
   type PayRunService,
+  type PayoutInput,
   type Statement,
   type StatementLinkService,
+  type StatementShare,
 } from "../../contracts";
 import type { RunLine, RunPerson } from "../figures";
-import { notFound, notYet, type FakeContext } from "./context";
+import { forbidden, notFound, type FakeContext } from "./context";
 import { ledgerRows } from "./crew";
+import { toCsv } from "./reports";
+import { conflict, dateText, invalid, requireApprover, write } from "./writes";
+
+/** Statement links live 90 days (architecture §6). */
+const LINK_DAYS = 90;
+
+const BASIS_WORDS: Record<PayLineDto["basis"], string> = {
+  hourly: "Hourly",
+  daily: "Daily",
+  per_unit: "Per unit",
+  lump_sum: "Lump sum",
+  time_only: "Time only",
+};
+const LABEL_WORDS = { normal: "", late: " (late entry)", adjustment: " (adjustment)" } as const;
+
+/** Pay-run CSV columns a bookkeeper can key into Xero/MYOB. */
+export const PAY_RUN_CSV_HEADER = [
+  "Date",
+  "Person",
+  "ABN",
+  "Job",
+  "Stage",
+  "Basis",
+  "Qty",
+  "Unit",
+  "Hours",
+  "Rate",
+  "Amount",
+  "GST",
+  "Total",
+];
 
 export function createPayRunService(c: FakeContext): PayRunService {
   function requireRun(runId: Id) {
@@ -84,10 +120,244 @@ export function createPayRunService(c: FakeContext): PayRunService {
       return statementOf(c, payRunId, crewMemberId);
     },
 
-    approve: () => notYet("payRuns.approve"),
-    reopen: () => notYet("payRuns.reopen"),
-    exportCsv: () => notYet("payRuns.exportCsv"),
-    shareStatement: () => notYet("payRuns.shareStatement"),
+    /**
+     * Approve (Owner/Manager; pay rules §9): freezes every line of the draft as computed by the domain
+     * (`buildPayRun`, contractor GST, reimbursements), locks the logs, marks crew-paid expenses
+     * reimbursed and posts one ledger credit per person. Blocked while Owner 2FA is off, and by a
+     * missing rate unless waived (audited). The oldest draft goes first. A draft for the following
+     * period is opened if there isn't one, so late entries have somewhere to land.
+     */
+    async approve(
+      actor: Actor,
+      payRunId: Id,
+      options?: { waiveMissingRate?: boolean },
+    ): Promise<PayRunReview> {
+      requireApprover(c, actor);
+      const run = requireRun(payRunId);
+      if (run.status !== "draft") throw conflict("This pay run is already approved.");
+      const earlier = c.t.payRuns
+        .filter((r) => r.status === "draft" && r.periodStart < run.periodStart)
+        .sort((a, b) => a.periodStart.localeCompare(b.periodStart))[0];
+      if (earlier) {
+        throw conflict(
+          `Approve the pay run for ${dateText(c, earlier.periodStart)} – ${dateText(c, earlier.periodEnd)} first.`,
+        );
+      }
+      const f = c.fig.run(run.id);
+      if (f.blockedBy.includes("owner_2fa_off"))
+        throw conflict("Turn on two-factor before you approve a pay run.");
+      const waived = f.blockedBy.includes("missing_rate");
+      if (waived && !options?.waiveMissingRate) throw conflict("Fix the missing rate before you approve.");
+      const today = c.today;
+      write(c, actor, "pay_run_approve", (w) => {
+        const logs = new Map(w.t.workLogs.map((l) => [l.id, l]));
+        const expenses = new Map(w.t.expenses.map((e) => [e.id, e]));
+        for (const p of f.people) {
+          const line = { payRunId: run.id, crewMemberId: p.crew.id };
+          for (const l of p.lines) {
+            logs.get(l.logId)!.payRunId = run.id;
+            w.t.payRunLines.push({
+              ...line,
+              ...w.base(),
+              kind: "log",
+              refId: l.logId,
+              snapshot: {
+                kind: "log",
+                date: l.date,
+                projectId: l.projectId,
+                stageId: l.stageId,
+                basis: l.basis,
+                unit: l.unit,
+                quantity: l.quantity,
+                hours: l.hours,
+                multiplier: l.multiplier,
+                rateCents: l.rateCents,
+                label: l.label,
+              },
+              amountCents: l.amountCents,
+            });
+          }
+          for (const r of p.reimbursements) {
+            expenses.get(r.expenseId)!.reimbursedInPayRunId = run.id;
+            w.t.payRunLines.push({
+              ...line,
+              ...w.base(),
+              kind: "reimbursement",
+              refId: r.expenseId,
+              snapshot: { kind: "reimbursement", date: r.date, projectId: r.projectId, supplier: r.supplier },
+              amountCents: r.amountCents,
+            });
+          }
+          if (p.totals.gstCents !== 0) {
+            w.t.payRunLines.push({
+              ...line,
+              ...w.base(),
+              kind: "gst",
+              refId: null,
+              snapshot: { kind: "gst", subtotalCents: p.totals.subtotalCents },
+              amountCents: p.totals.gstCents,
+            });
+          }
+          w.t.ledgerEntries.push({
+            ...w.base(),
+            crewMemberId: p.crew.id,
+            date: today,
+            kind: "payrun_credit",
+            amountCents: p.totals.totalCents,
+            method: null,
+            note: null,
+            payRunId: run.id,
+          });
+        }
+        run.status = "approved";
+        run.approvedBy = actor.userId;
+        run.approvedAt = w.at;
+        run.updatedAt = w.at;
+        w.audit(
+          "pay_run",
+          run.id,
+          "update",
+          { status: "draft" },
+          { status: "approved", waivedMissingRate: waived },
+        );
+        const nextStart = addDays(run.periodEnd, 1);
+        if (!w.t.payRuns.some((r) => r.periodStart >= nextStart)) {
+          const period = c.fig.periodContaining(nextStart);
+          w.t.payRuns.push({
+            ...w.base(),
+            periodStart: period.start,
+            periodEnd: period.end,
+            status: "draft",
+            approvedBy: null,
+            approvedAt: null,
+            exportedAt: null,
+          });
+        }
+      });
+      return review(actor, run.id);
+    },
+
+    /**
+     * Reopen (Owner/Manager; pay rules §9) only while no later run is approved: deletes its ledger
+     * credits and frozen lines, unlocks its logs and reimbursements. Audited.
+     */
+    async reopen(actor: Actor, payRunId: Id): Promise<PayRunReview> {
+      requireApprover(c, actor);
+      const run = requireRun(payRunId);
+      if (run.status === "draft")
+        throw conflict("This pay run isn't approved yet, so there's nothing to reopen.");
+      if (c.t.payRuns.some((r) => r.status !== "draft" && r.periodStart > run.periodStart))
+        throw conflict("A later pay run is approved. Reopen that one first.");
+      write(c, actor, "pay_run_reopen", (w) => {
+        const before = { status: run.status, approvedAt: run.approvedAt };
+        w.t.ledgerEntries = w.t.ledgerEntries.filter(
+          (e) => !(e.payRunId === run.id && e.kind === "payrun_credit"),
+        );
+        w.t.payRunLines = w.t.payRunLines.filter((l) => l.payRunId !== run.id);
+        for (const l of w.t.workLogs) if (l.payRunId === run.id) l.payRunId = null;
+        for (const e of w.t.expenses) if (e.reimbursedInPayRunId === run.id) e.reimbursedInPayRunId = null;
+        run.status = "draft";
+        run.approvedBy = null;
+        run.approvedAt = null;
+        run.exportedAt = null;
+        run.updatedAt = w.at;
+        w.audit("pay_run", run.id, "update", before, { status: "draft" });
+      });
+      return review(actor, run.id);
+    },
+
+    /**
+     * CSV of an approved run (Owner, Manager, Accountant); marks it Exported (re-export allowed). One
+     * row per line and reimbursement, then a "Total" row per person with subtotal, GST and total.
+     */
+    async exportCsv(actor: Actor, payRunId: Id): Promise<ExportFile> {
+      if (!c.access(actor).canExport) throw forbidden();
+      const run = requireRun(payRunId);
+      if (run.status === "draft") throw conflict("Approve the pay run before you export it.");
+      const f = c.fig.run(run.id);
+      const money = (cents: number | null) => (cents === null ? null : formatDecimal(cents));
+      const rows = f.people.flatMap((p) => {
+        const who = [p.crew.name, p.crew.abn];
+        return [
+          ...p.lines.map((l) => {
+            const d = lineDto(c, l);
+            return [
+              d.date,
+              ...who,
+              d.projectName,
+              d.stageName,
+              `${BASIS_WORDS[d.basis]}${LABEL_WORDS[d.label]}`,
+              formatDecimal(d.quantity),
+              d.unit,
+              formatDecimal(d.hours),
+              money(d.rateCents),
+              money(d.amountCents),
+              null,
+              null,
+            ];
+          }),
+          ...reimbursementDtos(c, p).map((r) => [
+            r.date,
+            ...who,
+            r.projectName,
+            null,
+            `Reimbursement (${r.supplier})`,
+            null,
+            null,
+            null,
+            null,
+            money(r.amountCents),
+            null,
+            null,
+          ]),
+          [
+            f.period.end,
+            ...who,
+            null,
+            null,
+            "Total",
+            null,
+            null,
+            formatDecimal(p.hours),
+            null,
+            money(p.totals.subtotalCents),
+            money(p.totals.gstCents),
+            money(p.totals.totalCents),
+          ],
+        ];
+      });
+      write(c, actor, "pay_run_export", (w) => {
+        run.status = "exported";
+        run.exportedAt = w.at;
+        run.updatedAt = w.at;
+      });
+      return {
+        filename: `pay-run-${f.period.start}-to-${f.period.end}.csv`,
+        contentType: "text/csv; charset=utf-8",
+        body: toCsv(PAY_RUN_CSV_HEADER, rows),
+      };
+    },
+
+    /** A private statement link (Owner/Manager): 32 random bytes, stored hashed, 90 days (§6). */
+    async shareStatement(actor: Actor, payRunId: Id, crewMemberId: Id): Promise<StatementShare> {
+      requireApprover(c, actor);
+      const run = requireRun(payRunId);
+      if (run.status === "draft") throw conflict("Approve the pay run before you share statements.");
+      if (!c.fig.run(run.id).people.some((p) => p.crew.id === crewMemberId)) throw notFound("statement");
+      const token = randomBytes(32).toString("hex");
+      const expiresAt = new Date(c.now().getTime() + LINK_DAYS * 86_400_000).toISOString();
+      write(c, actor, "statement_share", (w) => {
+        w.t.statementLinks.push({
+          ...w.base(),
+          payRunId: run.id,
+          crewMemberId,
+          tokenHash: createHash("sha256").update(token).digest("hex"),
+          expiresAt,
+          revokedAt: null,
+        });
+      });
+      return { token, path: `/s/${token}`, expiresAt };
+    },
   };
 }
 
@@ -225,6 +495,27 @@ export function createLedgerService(c: FakeContext): LedgerService {
       return ledgerRows(c, crewMemberId);
     },
 
-    recordPayout: () => notYet("ledger.recordPayout"),
+    /** Advance or payment (Owner/Manager; pay rules §15). Record only — no money moves. Audited. */
+    async recordPayout(actor: Actor, input: PayoutInput): Promise<{ id: Id; balanceCents: number }> {
+      requireApprover(c, actor);
+      if (!c.ix.crew.has(input.crewMemberId)) throw notFound("crew member");
+      if (input.amountCents <= 0) throw invalid("Add an amount before saving.");
+      const id = write(c, actor, "payout", (w) => {
+        const row = {
+          ...w.base(),
+          crewMemberId: input.crewMemberId,
+          date: input.date,
+          kind: input.kind,
+          amountCents: input.amountCents,
+          method: input.method,
+          note: input.note,
+          payRunId: null,
+        };
+        w.t.ledgerEntries.push(row);
+        w.audit("ledger_entry", row.id, "insert", null, { kind: row.kind, amountCents: row.amountCents });
+        return row.id;
+      });
+      return { id, balanceCents: c.fig.ledger(input.crewMemberId).balanceCents };
+    },
   };
 }

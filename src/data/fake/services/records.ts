@@ -27,7 +27,8 @@ import { createLogService, createNoWorkService, createProgressService } from "./
 import { createStageService } from "./stages";
 import { toCsv } from "./reports";
 
-export const OTHER_ACCOUNT = "This entry was already sent from another account. Discard it and enter it again.";
+export const OTHER_ACCOUNT =
+  "This entry was already sent from another account. Discard it and enter it again.";
 
 /**
  * The fake `POST /api/sync/push` (architecture §7), one mutation at a time in the order sent:
@@ -64,7 +65,8 @@ function createPush(c: FakeContext) {
     const id = raw.id;
     const stored = c.t.clientMutations.find((m) => m.id === id);
     if (stored) {
-      if (stored.userId !== actor.userId) return { id, status: "rejected", code: "conflict", message: OTHER_ACCOUNT };
+      if (stored.userId !== actor.userId)
+        return { id, status: "rejected", code: "conflict", message: OTHER_ACCOUNT };
       return { id, status: "applied", result: stored.result as EntryResult };
     }
     const parsed = parseMutation(raw);

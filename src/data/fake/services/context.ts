@@ -240,10 +240,5 @@ export function actorFor(tables: Seed, role: Role): Actor {
   return { userId: member.userId, workspaceId: tables.workspace.id, role, name: member.name };
 }
 
-/** Write methods land in Task 7; until then they say so. */
-export function notYet(method: string): never {
-  throw new Error(`${method}: fake writes arrive in Phase 2 Task 7.`);
-}
-
 /** "Smith job — Ryde re-roof" → "Smith job". */
 export const shortName = (nickname: string): string => nickname.split(" — ")[0]!;

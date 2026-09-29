@@ -54,7 +54,11 @@ const byRecent = (a: WorkLogRow, b: WorkLogRow) =>
 
 function logList(c: FakeContext, actor: Actor, logs: WorkLogRow[]): LogList {
   if (c.isForeman(actor)) {
-    return { view: "foreman", access: FIELD_ACCESS, rows: FakeContext.fieldLogs(logs).map((l) => c.logForeman(l)) };
+    return {
+      view: "foreman",
+      access: FIELD_ACCESS,
+      rows: FakeContext.fieldLogs(logs).map((l) => c.logForeman(l)),
+    };
   }
   return { view: "manager", access: c.access(actor), rows: logs.map((l) => c.logManager(l)) };
 }
@@ -353,12 +357,21 @@ function entryStage(c: FakeContext, actor: Actor, stageId: Id): StageRow {
 function saveCrewDay(c: FakeContext, actor: Actor, input: CrewDayInput, mutationId: Id | null): EntryResult {
   const stage = entryStage(c, actor, input.stageId);
   c.requireProject(actor, input.projectId);
-  if (stage.projectId !== input.projectId) throw invalid("That stage isn't on this job. Pick the stage again.");
+  if (stage.projectId !== input.projectId)
+    throw invalid("That stage isn't on this job. Pick the stage again.");
   const std = c.t.workspace.standardDayHours;
   const lines = input.entries.map((e) => {
     const crew = requireCrewOn(c, e.crewMemberId, input.date);
     if (e.basis === "time_only") {
-      return { crew, basis: e.basis, quantity: 0, hours: e.hours, multiplier: null, rateCents: null, missingRate: false };
+      return {
+        crew,
+        basis: e.basis,
+        quantity: 0,
+        hours: e.hours,
+        multiplier: null,
+        rateCents: null,
+        missingRate: false,
+      };
     }
     const rateCents = rateFor(c.ix.ratesOf(crew.id), crew.id, e.basis, null, stage.projectId, input.date);
     const days = e.basis === "daily" ? (e.days ?? 100) : null;
@@ -414,13 +427,19 @@ function saveCrewDay(c: FakeContext, actor: Actor, input: CrewDayInput, mutation
  * Progress entry (pay rules §4): the entry, its shares, and one per-unit log per person from
  * `pieceRateLines` (their own rate for the stage's unit; none → $0.00, flagged).
  */
-function recordProgress(c: FakeContext, actor: Actor, input: ProgressInput, mutationId: Id | null): EntryResult {
+function recordProgress(
+  c: FakeContext,
+  actor: Actor,
+  input: ProgressInput,
+  mutationId: Id | null,
+): EntryResult {
   const stage = entryStage(c, actor, input.stageId);
   const unit = stage.unit;
   if (unit === null) {
     throw invalid("This stage has no unit, so progress isn't measured on it. Log the crew-day instead.");
   }
-  if (unit === "each" && input.quantity % 100 !== 0) throw invalid("Count whole items for this stage, like 12.");
+  if (unit === "each" && input.quantity % 100 !== 0)
+    throw invalid("Count whole items for this stage, like 12.");
   const crew = input.crewMemberIds.map((id) => requireCrewOn(c, id, input.date));
   let lines;
   try {
@@ -493,11 +512,7 @@ function recordProgress(c: FakeContext, actor: Actor, input: ProgressInput, muta
     );
     return { entryId: entry.id, logs, autoStarted };
   });
-  return entryResult(
-    actor,
-    [entryId, ...logs.map((l) => l.id)],
-    entryFlags(c, logs, autoStarted),
-  );
+  return entryResult(actor, [entryId, ...logs.map((l) => l.id)], entryFlags(c, logs, autoStarted));
 }
 
 /**
@@ -590,13 +605,17 @@ function editLog(
   input: { hours?: Hundredths; days?: Hundredths; quantity?: Hundredths },
 ): EntryResult {
   const log = editableLog(c, actor, logId, "edited");
-  if (log.source === "adjustment") throw invalid("An adjustment can't be edited. Edit the original line instead.");
+  if (log.source === "adjustment")
+    throw invalid("An adjustment can't be edited. Edit the original line instead.");
   const std = c.t.workspace.standardDayHours;
   let edited: { quantity: Hundredths; hours: Hundredths };
   if (log.basis === "daily") {
     const days = input.days ?? log.quantity;
     if (days !== 100 && days !== 50) throw invalid("A day is 1 or ½.");
-    edited = { quantity: days, hours: input.hours ?? (input.days !== undefined ? defaultHours(days, std) : log.hours) };
+    edited = {
+      quantity: days,
+      hours: input.hours ?? (input.days !== undefined ? defaultHours(days, std) : log.hours),
+    };
   } else {
     const hours = input.hours ?? log.hours;
     edited = { quantity: log.basis === "hourly" ? hours : log.quantity, hours };

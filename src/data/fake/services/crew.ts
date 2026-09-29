@@ -4,16 +4,30 @@ import { resolveRate } from "@/domain/rates";
 import type {
   Actor,
   CrewDetail,
+  CrewInput,
   CrewList,
   CrewRowForeman,
   CrewService,
   Id,
   LedgerRow,
   RateDto,
+  RateInput,
   StatementRef,
 } from "../../contracts";
-import type { CrewMemberRow } from "../rows";
-import { FIELD_ACCESS, notFound, notYet, type FakeContext } from "./context";
+import type { CrewMemberRow, RateRow } from "../rows";
+import { FIELD_ACCESS, notFound, type FakeContext } from "./context";
+import { amountOf, invalid, rateFor, requireEditor, snapshot, write } from "./writes";
+
+/** Level, pay basis and dates that a crew record must agree on, else `invalid`. */
+function checkCrew(c: FakeContext, input: CrewInput): void {
+  if (input.levelId !== null && !c.ix.levels.has(input.levelId)) throw invalid("Pick a level from the list.");
+  if (input.defaultBasis === "per_unit" && input.defaultUnit === null)
+    throw invalid("Pick the unit this person is paid by: m², lm or each.");
+  if (input.activeTo !== null && input.activeTo < input.activeFrom)
+    throw invalid("The last day can't be before the first day.");
+  if (input.type === "employee" && input.gstRegistered)
+    throw invalid("Only an ABN contractor can be registered for GST.");
+}
 
 /** How many recent logs a crew member's page shows. */
 const RECENT_LOGS = 20;
@@ -184,8 +198,112 @@ export function createCrewService(c: FakeContext): CrewService {
       return rates(requireCrew(crewMemberId));
     },
 
-    create: () => notYet("crew.create"),
-    update: () => notYet("crew.update"),
-    setRate: () => notYet("crew.setRate"),
+    async create(actor: Actor, input: CrewInput): Promise<{ id: Id }> {
+      requireEditor(c, actor);
+      checkCrew(c, input);
+      const id = write(c, actor, "crew_create", (w) => {
+        const row: CrewMemberRow = {
+          ...w.base(),
+          ...input,
+          defaultUnit: input.defaultBasis === "per_unit" ? input.defaultUnit : null,
+        };
+        w.t.crewMembers.push(row);
+        w.audit("crew_member", row.id, "insert", null, snapshot(row));
+        return row.id;
+      });
+      return { id };
+    },
+
+    async update(actor: Actor, crewMemberId: Id, input: Partial<CrewInput>): Promise<{ id: Id }> {
+      requireEditor(c, actor);
+      const m = requireCrew(crewMemberId);
+      const next: CrewInput = {
+        name: input.name ?? m.name,
+        phone: input.phone !== undefined ? input.phone : m.phone,
+        type: input.type ?? m.type,
+        levelId: input.levelId !== undefined ? input.levelId : m.levelId,
+        abn: input.abn !== undefined ? input.abn : m.abn,
+        gstRegistered: input.gstRegistered ?? m.gstRegistered,
+        activeFrom: input.activeFrom ?? m.activeFrom,
+        activeTo: input.activeTo !== undefined ? input.activeTo : m.activeTo,
+        defaultBasis: input.defaultBasis ?? m.defaultBasis,
+        defaultUnit: input.defaultUnit !== undefined ? input.defaultUnit : m.defaultUnit,
+      };
+      checkCrew(c, next);
+      write(c, actor, "crew_update", (w) => {
+        const before = snapshot(m);
+        Object.assign(m, next, {
+          defaultUnit: next.defaultBasis === "per_unit" ? next.defaultUnit : null,
+          updatedAt: w.at,
+        });
+        w.audit("crew_member", m.id, "update", before, snapshot(m));
+      });
+      return { id: m.id };
+    },
+
+    /**
+     * A dated rate, optionally for one job (pay rules §1; history kept). The same person, basis, unit,
+     * job and start date replaces that rate's amount rather than adding a twin. Existing logs keep
+     * their snapshot — except $0.00 "missing rate" logs not yet in an approved pay run, which take the
+     * rate that now applies to them: that is how a missing rate is fixed before approval (§9).
+     */
+    async setRate(actor: Actor, input: RateInput): Promise<RateDto> {
+      requireEditor(c, actor);
+      const m = requireCrew(input.crewMemberId);
+      if (input.projectId !== null && !c.ix.projects.has(input.projectId))
+        throw invalid("Pick a job from the list, or leave it blank for the usual rate.");
+      const unit = input.basis === "per_unit" ? input.unit : null;
+      if (input.basis === "per_unit" && unit === null)
+        throw invalid("Pick the unit this rate is for: m², lm or each.");
+      const rateId = write(c, actor, "rate_set", (w) => {
+        const same = w.t.rates.find(
+          (r) =>
+            r.crewMemberId === m.id &&
+            r.basis === input.basis &&
+            r.unit === unit &&
+            r.projectId === input.projectId &&
+            r.effectiveFrom === input.effectiveFrom,
+        );
+        let rate: RateRow;
+        if (same) {
+          w.audit(
+            "rate",
+            same.id,
+            "update",
+            { amountCents: same.amountCents },
+            { amountCents: input.amountCents },
+          );
+          same.amountCents = input.amountCents;
+          same.updatedAt = w.at;
+          rate = same;
+        } else {
+          rate = { ...w.base(), ...input, unit };
+          w.t.rates.push(rate);
+          w.audit("rate", rate.id, "insert", null, snapshot(rate));
+        }
+        const rates = w.t.rates.filter((r) => r.crewMemberId === m.id);
+        for (const log of w.t.workLogs) {
+          if (
+            log.crewMemberId !== m.id ||
+            !log.missingRate ||
+            log.payRunId !== null ||
+            log.deletedAt !== null ||
+            log.basis !== input.basis ||
+            log.unit !== unit
+          )
+            continue;
+          const cents = rateFor(rates, m.id, input.basis, unit, log.projectId, log.date);
+          if (cents === null) continue;
+          const before = { rateCents: log.rateCents, amountCents: log.amountCents };
+          log.rateCents = cents;
+          log.amountCents = amountOf(log.basis, cents, log);
+          log.missingRate = false;
+          log.updatedAt = w.at;
+          w.audit("work_log", log.id, "update", before, { rateCents: cents, amountCents: log.amountCents });
+        }
+        return rate.id;
+      });
+      return rates(requireCrew(m.id)).find((r) => r.id === rateId)!;
+    },
   };
 }
