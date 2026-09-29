@@ -4,12 +4,11 @@
 
 - Phase: 2 — Design system and full prototype. Branch `phase/2-design-prototype` (local on the VPS, not pushed, not merged). Plan: `docs/plans/03-design-prototype.md`.
 - Paused 2026-09-30 (usage limit). Head `20d77fe` plus this docs commit. Tree clean. Task ledger (git-ignored, local only): `.superpowers/sdd/03-design-prototype/progress.md` — every ruling, deferred minor and fix round is there; the files `implementer-rules.md` and `reviewer-rules.md` beside it are reused by every dispatch.
-- Done and reviewed: Tasks 1–7 and 9.
+- Done and reviewed: Tasks 1–9.
   - Task 7: spec review (opus) settled the open question — re-pricing $0.00 missing-rate logs when a rate is added is spec-compliant (it is the only "fix" before approval). Fixed: re-pricing skipped adjustments (crash + half-saved rate), `FakeStore.write` is all-or-nothing, seed perf guard measures thread CPU time. Re-review clean.
   - Task 9: shell, nav, PWA manifest, placeholders for every nav target, error/not-found/no-permission. Review fixes: Workspace export Owner-only, tab bar side insets, theme colours generated at build time. Re-review clean.
-- **Task 8 (design system page) — waiting on the owner.** Loop scores (design / field): i1 72/69 · i2 75/70 · i3 90/87 · i4 82/82 · i5 87/87 · i6 87/87 (0 P0/P1, checks green). The 6-iteration cap was reached below 90. Logged in `docs/design/loop/DECISIONS.md` (2026-09-30), with 19 open i6 rows in `ISSUES.md` (P2: i6-D1, D2, F1, F2). Owner page (private): https://claude.ai/artifact/FpXvidGzcdPtNsWrUx3hGY
-  - Owner options: A accept 87 and carry i6-F1 (undo toast after one-tap pause) and i6-F2 (landscape row width) into the screen tasks; B one more fix round (iteration 7); C pause.
-  - After the decision: one sonnet task review of Task 8's code (`git diff 7faba77^..HEAD -- src tests scripts`), then Task 10.
+- Done and reviewed: Task 8 (2026-09-30). Loop stopped at the 6-iteration cap at 87/87 (0 P0/P1); owner accepted 87. Code review fixes in `797f9e8` (toast props/ref, inert disabled link buttons, phone sheet autofocus bug, dialog focus, demo money via formatMoney); re-review clean.
+- **Next: Task 10** (D2 A/B). Dispatch notes: `.superpowers/sdd/03-design-prototype/task-10-dispatch.md`.
 - Then: Tasks 10–23 in order (D2 A/B, nine screen groups, tap-budget suite, foreman sweep, baselines + PWA, phase gate).
 - Environment: real WebKit works on the VPS (`pnpm test:e2e` all three projects green). `ROOFY_NO_WEBKIT` / `ROOFY_CHROMIUM_EXECUTABLE` are not needed here. Never stop the server with `pkill -f "next start"` (it matches the calling shell); kill the PID from `ss -ltnp | grep 3100`.
 
@@ -97,6 +96,10 @@ Quality gates stay the same (TDD, per-task review, design loop ≥ 90 with no P0
 
 ## Open issues (carried forward)
 
+- Phase 2 Task 11: `/design` uses a local `whole()` that trims `.00` from `formatMoney`; when a screen needs whole-dollar sentences ("$775 over"), add a whole-dollar option to `formatMoney` (drop `.00` only when cents % 100 = 0) with a test and use it in both places.
+- Phase 2 (no task): Field/Select overwrite a caller's own `aria-describedby`; MoneyField's minus mark can go stale on "-0" or a cleared field; a disabled selected ChoiceChip looks enabled; Checkbox has no name/value.
+- Phase 2 Task 14: pausing a stage is one tap on a reason; show a toast "<stage> paused: <reason>" with Undo (48 px) (design issue i6-F1).
+- Phase 2 Tasks 11–19: grouped rows and money rows in phone landscape (844 px) need a max width of about 600 px so label and amount stay together (i6-F2).
 - Phase 5: the fake push saves the entry and its repeat-id record as two separate writes; the real push must do both in one transaction. The outbox badge / offline banner in the `(app)` layout read demo state per layout render and go stale on soft navigation — drive them from a client outbox store.
 - Phase 3: `(app)` layout's `workspaceNameFor` swallows every error (falls back to "Roofy"); narrow it to the demo error once real data exists.
 - Phase 2 Task 12: keyboard-open capture uses the static Record payout panel on `/design`; add a live-sheet keyboard capture with the Log/expense screens.

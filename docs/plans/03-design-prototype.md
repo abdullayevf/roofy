@@ -144,7 +144,7 @@ opus: Tasks 5, 6, 7 (data contracts, foreman DTO hiding, domain-derived figures,
 - [x] TapeBar: 12 px track, 1 px ink outline, tape fill, ticks every 10% (taller at 50%), % printed beside, optional over marker at forecast point; `role="progressbar"` with `aria-valuenow`.
 - [x] Component tests (jsdom): Stepper steps (hours 0.25, days 1/½) and bounds; CrewChip toggles `aria-pressed`; MoneyCell renders `formatMoney` with true minus; StatusChip always renders icon + word; Sheet traps focus and restores it.
 - [x] `/design` shows every component × state (default, hover-free focus, pressed, disabled, error, loading) in light and dark side by side (`data-theme` wrappers).
-- [ ] Design loop on `/design` (group "system"): capture, guards, contrast, both critics ≥ 90, no P0/P1 (≤ 6 iterations). (i1–i5 scored; i6 fixed + captured, critics pending — see PROGRESS.md Current)
+- [x] Design loop on `/design` (group "system"): capture, guards, contrast, both critics ≥ 90, no P0/P1 (≤ 6 iterations). Stopped at the cap at 87 (0 P0/P1); owner accepted 87 on 2026-09-30 (DECISIONS.md).
 
 ### Task 9: App shell, navigation and PWA
 
