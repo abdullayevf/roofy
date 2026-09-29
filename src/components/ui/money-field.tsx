@@ -16,9 +16,10 @@ export type MoneyFieldProps = {
   className?: string;
 };
 
-// The "$" is drawn as a leading mark inside the field, so the text itself is
-// the amount without it: "1,482.00".
-const show = (cents: Cents) => formatMoney(cents).replace("$", "");
+// The currency mark is drawn as a leading mark inside the field, so the text
+// itself is the unsigned amount: "1,482.00". A negative amount puts the minus
+// before the "$" as formatMoney does ("−$1,482.00"), so the mark is "−$".
+const show = (cents: Cents) => formatMoney(Math.abs(cents)).replace("$", "");
 
 /**
  * A dollar amount field: "$" (ink-2) inside the field, decimal keypad, and on
@@ -27,6 +28,7 @@ const show = (cents: Cents) => formatMoney(cents).replace("$", "");
  */
 export function MoneyField({ label, hint, defaultCents, onCentsChange, className }: MoneyFieldProps) {
   const [text, setText] = useState(defaultCents === undefined ? "" : show(defaultCents));
+  const [negative, setNegative] = useState((defaultCents ?? 0) < 0);
   const [error, setError] = useState<string | undefined>();
 
   function commit() {
@@ -39,6 +41,7 @@ export function MoneyField({ label, hint, defaultCents, onCentsChange, className
     try {
       const cents = toCents(raw);
       setText(show(cents));
+      setNegative(cents < 0);
       setError(undefined);
       onCentsChange?.(cents);
     } catch {
@@ -51,7 +54,7 @@ export function MoneyField({ label, hint, defaultCents, onCentsChange, className
     <Field
       label={label}
       inputMode="decimal"
-      leading="$"
+      leading={negative ? "\u2212$" : "$"}
       hint={hint}
       error={error}
       value={text}

@@ -86,3 +86,35 @@ describe("Button", () => {
     expect(screen.queryByText("This should not show.")).not.toBeInTheDocument();
   });
 });
+
+describe("Button as a link", () => {
+  it("renders a real link when enabled", () => {
+    render(<Button href="/jobs">Open jobs</Button>);
+    expect(screen.getByRole("link", { name: "Open jobs" })).toHaveAttribute("href", "/jobs");
+  });
+
+  it.each([{ disabled: true }, { loading: true }])(
+    "does not navigate or sit in the tab order when %o",
+    (state) => {
+      render(
+        <Button href="/jobs" {...state}>
+          Open jobs
+        </Button>,
+      );
+      expect(document.querySelector("a")).toBeNull();
+      const el = document.querySelector("[aria-disabled]")!;
+      expect(el).toHaveAttribute("aria-disabled", "true");
+      expect(el).not.toHaveAttribute("href");
+      expect(el.getAttribute("tabindex")).not.toBe("0");
+    },
+  );
+
+  it("marks a loading link busy", () => {
+    render(
+      <Button href="/jobs" loading>
+        Open jobs
+      </Button>,
+    );
+    expect(document.querySelector("[aria-busy='true']")).not.toBeNull();
+  });
+});

@@ -29,7 +29,7 @@ export function Input({ invalid, suffix, leading, focusVisible, className, ...pr
         "text-body",
         (props.inputMode === "decimal" || props.inputMode === "numeric") && "num",
         suffix && "pr-14",
-        leading && "pl-8",
+        leading && (leading.length > 1 ? "pl-11" : "pl-8"),
         invalid ? "border-2 border-over" : "border-[1.5px] border-edge",
         "disabled:border-line disabled:bg-galv disabled:text-ink-2",
         focusRing(focusVisible),

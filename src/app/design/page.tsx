@@ -27,6 +27,7 @@ import { OutboxBadge } from "@/components/outbox-badge";
 import { OfflineBanner } from "@/components/offline-banner";
 import { TabBar } from "@/components/nav/tab-bar";
 import { Sidebar } from "@/components/nav/sidebar";
+import { formatMoney } from "@/lib/format";
 
 export const metadata: Metadata = {
   title: "Design system",
@@ -71,6 +72,16 @@ const PAUSE_REASONS = [
 /** A grouped `surface` block (radius 12, `line` dividers) for rows that aren't a List. */
 const GROUP = "divide-y divide-line rounded-group bg-surface border-group";
 
+// One story, in integer cents; every dollar figure below is formatted from
+// these by formatMoney so the demo text cannot drift from the numbers.
+const FORECAST = 477500;
+const BUDGET = 400000;
+const OVER_FORECAST = FORECAST - BUDGET; // 77500
+const RIDGE_COST = 230000;
+const RIDGE_BUDGET = 200000;
+const RIDGE_OVER = RIDGE_COST - RIDGE_BUDGET; // 30000
+const whole = (cents: number) => formatMoney(cents).replace(/\.00$/, "");
+
 export default function DesignPage() {
   return (
     <main
@@ -94,7 +105,7 @@ export default function DesignPage() {
         <ThemePair>
           <Swatch label="Scale, with real content">
             <div className="flex flex-col gap-3">
-              <p className="text-figure-xl num text-ink [overflow-wrap:anywhere]">$4,775.00</p>
+              <p className="text-figure-xl num text-ink [overflow-wrap:anywhere]">{formatMoney(FORECAST)}</p>
               <p className="text-title text-ink">Smith job — Ryde re-roof</p>
               <p className="text-heading text-ink">Sheet install</p>
               <p className="text-figure num text-ink">120 m²</p>
@@ -442,15 +453,15 @@ export default function DesignPage() {
                 {
                   key: "forecast",
                   primary: "Forecast labour",
-                  figure: <MoneyCell cents={477500} />,
-                  status: { tone: "watch", text: "Trending $775.00 over budget" },
+                  figure: <MoneyCell cents={FORECAST} />,
+                  status: { tone: "watch", text: `Trending ${formatMoney(OVER_FORECAST)} over budget` },
                   href: "#",
                 },
                 {
                   key: "ridge",
                   primary: "Ridge bedding & pointing",
-                  figure: <MoneyCell cents={230000} />,
-                  status: { tone: "over", text: "$300.00 over budget" },
+                  figure: <MoneyCell cents={RIDGE_COST} />,
+                  status: { tone: "over", text: `${formatMoney(RIDGE_OVER)} over budget` },
                   href: "#",
                 },
                 { key: "advance", primary: "Advance", figure: <MoneyCell cents={-30000} />, href: "#" },
@@ -535,7 +546,7 @@ export default function DesignPage() {
               forecastPercent={119}
               forecastLabel="Forecast"
               tone="watch"
-              note="$775.00 over — forecast $4,775.00 of $4,000.00"
+              note={`${formatMoney(OVER_FORECAST)} over — forecast ${formatMoney(FORECAST)} of ${formatMoney(BUDGET)}`}
             />
           </Swatch>
           <Swatch label="Over budget (manager view)">
@@ -545,7 +556,7 @@ export default function DesignPage() {
               forecastPercent={115}
               forecastLabel="Cost so far"
               tone="over"
-              note="$300.00 over — cost $2,300.00 of $2,000.00"
+              note={`${formatMoney(RIDGE_OVER)} over — cost ${formatMoney(RIDGE_COST)} of ${formatMoney(RIDGE_BUDGET)}`}
             />
           </Swatch>
           <Swatch label="Paused">
@@ -646,12 +657,12 @@ export default function DesignPage() {
             <div className={GROUP}>
               <NeedsAttentionItem
                 severity="watch"
-                sentence="Smith job is trending $775 over on sheet install."
+                sentence={`Smith job is trending ${whole(OVER_FORECAST)} over on sheet install.`}
                 href="#"
               />
               <NeedsAttentionItem
                 severity="over"
-                sentence="Smith job is $300 over on ridge bedding & pointing."
+                sentence={`Smith job is ${whole(RIDGE_OVER)} over on ridge bedding & pointing.`}
                 href="#"
               />
               <NeedsAttentionItem severity="watch" sentence="No log for Jake in 3 working days." href="#" />
@@ -750,7 +761,9 @@ export default function DesignPage() {
       <Section title="Toast">
         <ThemePair>
           <Swatch label="Toast confirms a save, then goes">
-            <ToastView message="Day logged" />
+            <ol className="m-0 list-none p-0">
+              <ToastView message="Day logged" />
+            </ol>
           </Swatch>
         </ThemePair>
       </Section>

@@ -60,6 +60,7 @@ export function Stepper({
         label={`Decrease ${label}`}
         variant="secondary"
         disabled={disabled || value <= lo}
+        focusableWhenDisabled
         onClick={() => step_(-HOURS_STEP)}
       />
       <span
@@ -74,6 +75,7 @@ export function Stepper({
         label={`Increase ${label}`}
         variant="secondary"
         disabled={disabled || value >= hi}
+        focusableWhenDisabled
         onClick={() => step_(HOURS_STEP)}
       />
     </div>

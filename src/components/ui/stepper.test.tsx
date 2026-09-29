@@ -28,18 +28,32 @@ describe("Stepper", () => {
     const user = userEvent.setup();
     render(<Controlled initial={0} min={0} label="Jake's hours" />);
     const minus = screen.getByRole("button", { name: "Decrease Jake's hours" });
-    expect(minus).toBeDisabled();
+    expect(minus).toHaveAttribute("aria-disabled", "true");
     await user.click(minus);
     expect(screen.getByText("0 h")).toBeInTheDocument();
   });
 
   it("respects a maximum bound", () => {
     render(<Controlled initial={2400} max={2400} label="Lee's hours" />);
-    expect(screen.getByRole("button", { name: "Increase Lee's hours" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Increase Lee's hours" })).toHaveAttribute("aria-disabled", "true");
   });
 
   it("the value is in an aria-live region so screen readers hear each change", () => {
     render(<Controlled initial={700} label="Sam's hours" />);
     expect(screen.getByText("7 h")).toHaveAttribute("aria-live", "polite");
+  });
+});
+
+describe("Stepper focus at a bound", () => {
+  it("keeps focus on the button after it reaches the bound", async () => {
+    const user = userEvent.setup();
+    render(<Controlled initial={50} min={25} label="Sam's hours" />);
+    const dec = screen.getByRole("button", { name: "Decrease Sam's hours" });
+    await user.click(dec);
+    expect(screen.getByText("0.25 h")).toBeInTheDocument();
+    expect(dec).toHaveFocus();
+    expect(dec).toHaveAttribute("aria-disabled", "true");
+    await user.click(dec);
+    expect(screen.getByText("0.25 h")).toBeInTheDocument();
   });
 });

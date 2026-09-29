@@ -18,6 +18,8 @@ type Shared = {
   /** The verb shown while loading, e.g. "Saving day". Defaults to the button's own label. */
   loadingLabel?: string;
   disabled?: boolean;
+  /** With `disabled`: stays focusable (aria-disabled) instead of dropping focus, e.g. a stepper button that hits its bound. Never for links. */
+  focusableWhenDisabled?: boolean;
   /** Shown directly under a disabled button, in meta size (the one helper-text style), when there's a reason to explain. */
   reason?: string;
   /** Demo-only: forces the focus ring so it shows up in a static screenshot. */
@@ -79,7 +81,7 @@ export function Button(props: ButtonProps) {
     isLink && !props.iconOnly ? "text-body-strong" : "",
     props.iconOnly && "w-[52px] lg:w-12 px-0",
     variantClasses(props),
-    props.disabled && "pointer-events-none",
+    props.disabled && !props.focusableWhenDisabled && "pointer-events-none",
     focusRing(props.focusVisible),
     props.className,
   );
@@ -111,11 +113,24 @@ export function Button(props: ButtonProps) {
   // DESIGN.md §4/§8: every button meets the 48 px target, except a true
   // inline link (variant="link") — which still gets a 48 px tall tap area
   // here, but is marked so automated checks can tell it apart.
-  const control = props.href ? (
+  const inactiveLink = props.href && (props.disabled || props.loading);
+  const soft = props.disabled && props.focusableWhenDisabled;
+  const control = inactiveLink ? (
+    // A disabled or loading link must not navigate (Enter on a focused <a>
+    // still would) nor sit in the tab order, so it is not an <a> at all.
+    <span
+      role="link"
+      aria-disabled="true"
+      aria-busy={props.loading || undefined}
+      data-variant={props.variant ?? "primary"}
+      className={cx(className, "pointer-events-none")}
+    >
+      {content}
+    </span>
+  ) : props.href ? (
     <Link
       href={props.href}
       prefetch={false}
-      aria-disabled={props.disabled || undefined}
       data-variant={props.variant ?? "primary"}
       className={className}
     >
@@ -124,9 +139,10 @@ export function Button(props: ButtonProps) {
   ) : (
     <button
       type={props.type ?? "button"}
-      disabled={props.disabled || props.loading}
+      disabled={(props.disabled && !soft) || props.loading}
+      aria-disabled={soft || undefined}
       aria-busy={props.loading || undefined}
-      onClick={props.onClick}
+      onClick={soft ? undefined : props.onClick}
       name={props.name}
       value={props.value}
       data-variant={props.variant ?? "primary"}

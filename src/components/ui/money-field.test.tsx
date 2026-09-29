@@ -45,3 +45,11 @@ describe("MoneyField", () => {
     expect(screen.getByLabelText("Amount")).toHaveValue("1,482.00");
   });
 });
+
+describe("MoneyField negative", () => {
+  it("puts the minus before the $ (formatMoney's convention)", () => {
+    const { container } = render(<MoneyField label="Adjustment" defaultCents={-148200} />);
+    expect(container.textContent).toContain("−$");
+    expect((container.querySelector("input") as HTMLInputElement).value).toBe("1,482.00");
+  });
+});

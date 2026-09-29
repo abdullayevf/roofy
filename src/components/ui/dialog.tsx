@@ -1,7 +1,9 @@
 "use client";
 
+import { useRef } from "react";
 import { Dialog as RadixDialog } from "radix-ui";
 import { Button } from "./button";
+import { useRestoreFocus } from "./restore-focus";
 import { cx } from "@/lib/cx";
 
 export type DialogContentProps = {
@@ -49,9 +51,11 @@ export function DialogPanel({
         <Button variant="primary" tone={tone} filled={tone === "danger"} onClick={onConfirm}>
           {confirmLabel}
         </Button>
-        <Button variant="secondary" onClick={onCancel}>
-          {cancelLabel}
-        </Button>
+        <span data-dialog-cancel="" className="contents">
+          <Button variant="secondary" onClick={onCancel}>
+            {cancelLabel}
+          </Button>
+        </span>
       </div>
     </div>
   );
@@ -64,11 +68,21 @@ export type DialogProps = DialogContentProps & {
 
 /** DESIGN.md §4 dialog: confirmation, Radix Dialog, rounded-sheet, shadow-sheet. */
 export function Dialog({ open, onOpenChange, onConfirm, ...panelProps }: DialogProps) {
+  const restoreFocus = useRestoreFocus(open);
+  const content = useRef<HTMLDivElement>(null);
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="fixed inset-0 z-40 bg-ink/40" />
         <RadixDialog.Content
+          ref={content}
+          onCloseAutoFocus={restoreFocus}
+          onOpenAutoFocus={(event) => {
+            // A destructive confirmation opens on the safe action, not the destructive one.
+            if (panelProps.tone !== "danger") return;
+            event.preventDefault();
+            content.current?.querySelector<HTMLElement>("[data-dialog-cancel] button")?.focus();
+          }}
           className={cx(
             "fixed inset-x-0 bottom-0 z-50 lg:inset-auto lg:left-1/2 lg:top-1/2 lg:w-full lg:max-w-md lg:-translate-x-1/2 lg:-translate-y-1/2",
             "duration-[220ms] ease-out data-[state=closed]:opacity-0 data-[state=open]:opacity-100",

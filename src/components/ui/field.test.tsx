@@ -30,3 +30,23 @@ describe("Field", () => {
     expect(screen.getByLabelText("Hours")).toHaveAttribute("inputmode", "numeric");
   });
 });
+
+describe("aria-describedby only references ids that render", () => {
+  it("Field with hint and error", async () => {
+    const { Field: F } = await import("./field");
+    const { container } = render(<F label="Total" inputMode="decimal" hint="Optional" error="Add a total." />);
+    const ids = (container.querySelector("input")!.getAttribute("aria-describedby") ?? "").split(" ").filter(Boolean);
+    expect(ids.length).toBeGreaterThan(0);
+    for (const id of ids) expect(container.querySelector(`[id="${id}"]`)).not.toBeNull();
+  });
+
+  it("Select with hint and error", async () => {
+    const { Select } = await import("./select");
+    const { container } = render(
+      <Select label="Type" options={[{ value: "a", label: "A" }]} hint="Optional" error="Pick one." />,
+    );
+    const ids = (container.querySelector("select")!.getAttribute("aria-describedby") ?? "").split(" ").filter(Boolean);
+    expect(ids.length).toBeGreaterThan(0);
+    for (const id of ids) expect(container.querySelector(`[id="${id}"]`)).not.toBeNull();
+  });
+});

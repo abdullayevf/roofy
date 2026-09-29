@@ -3,7 +3,6 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -14,6 +13,7 @@ import { Dialog } from "radix-ui";
 import { CaretDown, X } from "@phosphor-icons/react";
 import { cx } from "@/lib/cx";
 import { Button } from "./button";
+import { useRestoreFocus } from "./restore-focus";
 
 export type SheetContentProps = {
   title: string;
@@ -139,23 +139,7 @@ export function SheetPanel({
 export function Sheet({ open, onOpenChange, title, children, primaryAction }: SheetProps) {
   const isDesktop = useIsDesktop();
 
-  // Radix's own auto-restore only knows to refocus a <Dialog.Trigger>, which
-  // this fully-controlled component never renders (the caller owns its own
-  // trigger element, often not even a descendant of this tree). We capture
-  // the pre-open active element ourselves in a *layout* effect: all layout
-  // effects for a commit run before any passive effect does, and Radix's own
-  // FocusScope moves focus into the content from a passive `useEffect`, so
-  // this is guaranteed to observe the trigger, not the content, regardless
-  // of the two components' relative position in the tree.
-  const restoreFocusRef = useRef<HTMLElement | null>(null);
-  useLayoutEffect(() => {
-    if (open) restoreFocusRef.current = document.activeElement as HTMLElement;
-  }, [open]);
-  function restoreFocus(event: Event) {
-    event.preventDefault();
-    restoreFocusRef.current?.focus();
-    restoreFocusRef.current = null;
-  }
+  const restoreFocus = useRestoreFocus(open);
 
   if (isDesktop) {
     return (
@@ -187,7 +171,7 @@ export function Sheet({ open, onOpenChange, title, children, primaryAction }: Sh
   }
 
   return (
-    <Drawer.Root open={open} onOpenChange={onOpenChange}>
+    <Drawer.Root open={open} onOpenChange={onOpenChange} autoFocus>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-40 bg-ink/40" />
         <Drawer.Content
