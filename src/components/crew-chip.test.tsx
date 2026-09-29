@@ -61,4 +61,14 @@ describe("CrewChip", () => {
     render(<CrewChip name="Jake" basis="Day" defaultPressed />);
     expect(screen.getByRole("button", { name: /jake/i })).toHaveAttribute("aria-pressed", "true");
   });
+
+  it("can be driven from outside: ticked state and exception value", async () => {
+    const user = userEvent.setup();
+    const days: number[] = [];
+    render(<CrewChip name="Sam" basis="Day" exception="half-day" pressed exceptionValue={100} onExceptionChange={(v) => days.push(v)} />);
+    expect(screen.getByRole("button", { name: /sam/i })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("radio", { name: "1 day" })).toBeChecked();
+    await user.click(screen.getByRole("radio", { name: "½ day" }));
+    expect(days).toEqual([50]);
+  });
 });

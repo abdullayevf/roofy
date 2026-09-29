@@ -36,6 +36,7 @@ export function NeedsAttentionItem({
   return (
     <Link
       href={href}
+      prefetch={false}
       className={cx(
         "flex min-h-[64px] lg:min-h-12 w-full items-center gap-3 px-4 py-2 first:rounded-t-group last:rounded-b-group lg:py-1",
         focusVisible

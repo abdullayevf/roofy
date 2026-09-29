@@ -162,6 +162,10 @@
 @utility pb-tab-bar {
   padding-bottom: var(--tab-bar-height);
 }
+/* Desktop page bottom: 1 rem, plus the device's bottom inset (real, or simulated in captures) so the last row clears it. */
+@utility pb-page {
+  padding-bottom: calc(1rem + max(var(--sab-sim, 0px), env(safe-area-inset-bottom)));
+}
 
 @utility num {
   font-variant-numeric: tabular-nums;

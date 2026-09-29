@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { Check, Info, WarningDiamond } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
+import type { Hundredths } from "@/domain/types";
 import { cx } from "@/lib/cx";
 import { DayToggle } from "./ui/day-toggle";
 import { Stepper } from "./ui/stepper";
 
-export type CrewBasisLabel = "Day" | "Hourly" | "m²";
+export type CrewBasisLabel = "Day" | "Hourly" | "m²" | "lm" | "Each" | "Hours only";
 
 /**
  * A grouped `surface` block of crew rows with `line` dividers. From 600 px up
@@ -38,6 +39,11 @@ export type CrewChipProps = {
   /** When ticked, show the inline exception control: a full/half day toggle, or an hours stepper. */
   exception?: "half-day" | "hours";
   defaultPressed?: boolean;
+  /** Controlled tick; omit to let the chip hold its own. */
+  pressed?: boolean;
+  /** Controlled exception value (100 = 1 day, 50 = ½ day; or hours in hundredths); omit to let the control hold its own. */
+  exceptionValue?: Hundredths;
+  onExceptionChange?: (value: Hundredths) => void;
   onPressedChange?: (pressed: boolean) => void;
   disabled?: boolean;
   /** Demo-only: forces the focus ring on the check box so it shows up in a static screenshot. */
@@ -59,12 +65,16 @@ export function CrewChip({
   note,
   exception,
   defaultPressed = false,
+  pressed: controlledPressed,
+  exceptionValue,
+  onExceptionChange,
   onPressedChange,
   disabled,
   focusVisible,
   className,
 }: CrewChipProps) {
-  const [pressed, setPressed] = useState(defaultPressed);
+  const [uncontrolled, setPressed] = useState(defaultPressed);
+  const pressed = controlledPressed ?? uncontrolled;
   const NoteIcon = note?.tone === "watch" ? WarningDiamond : Info;
 
   return (
@@ -115,9 +125,19 @@ export function CrewChip({
       {pressed && exception ? (
         <div className="flex flex-wrap items-center gap-3 px-4 pb-3">
           {exception === "half-day" ? (
-            <DayToggle label={`${name}'s day`} defaultValue={50} />
+            <DayToggle
+              label={`${name}'s day`}
+              value={exceptionValue}
+              defaultValue={exceptionValue === undefined ? 50 : undefined}
+              onChange={onExceptionChange}
+            />
           ) : (
-            <Stepper label={`${name}'s hours`} defaultValue={650} />
+            <Stepper
+              label={`${name}'s hours`}
+              value={exceptionValue}
+              defaultValue={exceptionValue === undefined ? 650 : undefined}
+              onChange={onExceptionChange}
+            />
           )}
         </div>
       ) : null}
