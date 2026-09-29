@@ -432,7 +432,8 @@ export async function checkSafeAreas(page: Page): Promise<GuardResult> {
 // on-screen-keyboard viewport").
 // ---------------------------------------------------------------------------
 
-const KEYBOARD_HEIGHT_PX = 336;
+/** Height the on-screen keyboard takes off a phone viewport (also used by design-capture's keyboard-open shot). */
+export const KEYBOARD_HEIGHT_PX = 336;
 const PRIMARY_ACTION_SELECTOR = "[data-primary-action]";
 const TEXT_INPUT_SELECTOR =
   'input[type="text"], input[type="email"], input[type="tel"], input[type="number"], input[type="password"], input[type="search"], input[type="url"], input:not([type]), textarea';

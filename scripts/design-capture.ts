@@ -27,6 +27,14 @@
  *
  *   docs/design/loop/shots/<group>/<screen>-installed-iphone.png
  *
+ * Extra responsive captures for the normal state (first role, light):
+ * `<screen>-normal-<role>-landscape-light.png` (844x390), `...-tablet-light.png`
+ * (820x1180), and for screens with a `keyboard` entry in the manifest
+ * `<screen>-keyboard-iphone.png` (viewport shrunk by the keyboard's height,
+ * field focused). The installed shot also writes `-installed-iphone-top.png`
+ * and `-installed-iphone-bottom.png`: the first and last screen at viewport
+ * size, showing the top inset and the bottom inset with the tab bar.
+ *
  * and the automated-checks summary for the whole run:
  *
  *   docs/design/loop/shots/<group>/checks.json
@@ -43,17 +51,42 @@
 import { chromium, webkit, type Browser, type Page } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { checkScreenHealthy, collectConsole, type GuardResult } from "../tests/e2e/guards";
+import {
+  checkScreenHealthy,
+  collectConsole,
+  KEYBOARD_HEIGHT_PX,
+  type GuardResult,
+} from "../tests/e2e/guards";
 import { resolveRoute, SCREENS, type DemoState, type Role, type ScreenSpec } from "../tests/e2e/screens";
 
 type Engine = "chromium" | "webkit";
 
-type Viewport = { name: "iphone" | "android" | "desktop"; width: number; height: number };
+type Viewport = {
+  name: "iphone" | "android" | "desktop" | "landscape" | "tablet";
+  width: number;
+  height: number;
+  /** Most slices to write for one capture (default 40). */
+  maxSlices?: number;
+  /** Guards to skip because they do not mean anything at this size. */
+  skip?: Parameters<typeof checkScreenHealthy>[1]["skip"];
+};
 
 const VIEWPORTS: Viewport[] = [
   { name: "iphone", width: 390, height: 844 },
   { name: "android", width: 412, height: 915 },
   { name: "desktop", width: 1440, height: 900 },
+];
+
+/**
+ * DESIGN.md §8 responsive cases beyond the three main viewports, captured for
+ * the normal state, first role, light scheme only: a phone on its side and a
+ * tablet-width screen (600-1023, phone layout with wider content).
+ */
+const EXTRA_VIEWPORTS: Viewport[] = [
+  // The keyboard guard shrinks the viewport by 336 px, which leaves nothing at 390 px tall; the keyboard is
+  // captured on its own, in portrait (see captureKeyboard).
+  { name: "landscape", width: 844, height: 390, maxSlices: 90, skip: { keyboard: true } },
+  { name: "tablet", width: 820, height: 1180 },
 ];
 
 const SCHEMES = ["light", "dark"] as const;
@@ -97,14 +130,14 @@ function parseArgs(argv: string[]): { group: string; screensFilter?: string[]; b
  * slices: `slices/<label>--p01.png`, `--p02.png`, … (max 40). Pinned bars
  * repeat on every slice, exactly as a person scrolling would see them.
  */
-async function screenshotSlices(page: Page, outDir: string, label: string): Promise<void> {
+async function screenshotSlices(page: Page, outDir: string, label: string, maxSlices = 40): Promise<void> {
   const sliceDir = join(outDir, "slices");
   mkdirSync(sliceDir, { recursive: true });
   const { total, step } = await page.evaluate(() => ({
     total: document.documentElement.scrollHeight,
     step: window.innerHeight,
   }));
-  const count = Math.min(40, Math.max(1, Math.ceil(total / step)));
+  const count = Math.min(maxSlices, Math.max(1, Math.ceil(total / step)));
   for (let i = 0; i < count; i++) {
     await page.evaluate((y) => window.scrollTo(0, y), i * step);
     await page.screenshot({ path: join(sliceDir, `${label}--p${String(i + 1).padStart(2, "0")}.png`) });
@@ -178,11 +211,12 @@ async function captureOne(opts: {
 
   const fileName = `${label}.png`;
   await page.screenshot({ path: join(outDir, fileName), fullPage: true });
-  await screenshotSlices(page, outDir, label);
+  await screenshotSlices(page, outDir, label, viewport.maxSlices);
 
   const results = await checkScreenHealthy(page, {
     phone: viewport.name !== "desktop",
     console: consoleCollector,
+    skip: viewport.skip,
   });
 
   await context.close();
@@ -252,12 +286,106 @@ async function captureInstalled(opts: {
   await page.screenshot({ path: join(outDir, fileName), fullPage: true });
   await screenshotSlices(page, outDir, fileName.replace(/\.png$/, ""));
 
+  // The one long image can't be reviewed, so the first and last screen a person would see are also written as
+  // plain viewport shots: the top inset over the page header, and the bottom inset with the tab bar (and any
+  // pinned sheet action) above it.
+  const base_ = fileName.replace(/\.png$/, "");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: join(outDir, `${base_}-top.png`) });
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.screenshot({ path: join(outDir, `${base_}-bottom.png`) });
+  await page.evaluate(() => window.scrollTo(0, 0));
+
   if (engine !== "chromium") {
     console.warn(
       `design-capture: WebKit cannot emulate \`display-mode: standalone\` (CDP-only) — ${fileName} has the safe-area simulation but not the standalone media feature.`,
     );
   }
   await context.close();
+}
+
+/**
+ * Keyboard-open capture (DESIGN.md §8: "sheet content scrolls above the
+ * keyboard; primary action stays visible"): an iPhone-size viewport shrunk by
+ * the keyboard's height with the named field focused, as a viewport shot plus
+ * a check that the field and the named primary action are both fully inside
+ * the viewport and not covered. The shell's tab bar is hidden for the shot:
+ * a real sheet opens above it, whereas a gallery panel sits in the page.
+ */
+async function captureKeyboard(opts: {
+  browsers: Record<Engine, Browser>;
+  base: string;
+  screen: ScreenSpec;
+  role: Role | null;
+  outDir: string;
+  webkitAvailable: boolean;
+}): Promise<CheckRecord | undefined> {
+  const { browsers, base, screen, role, outDir, webkitAvailable } = opts;
+  if (!screen.keyboard) return undefined;
+  const viewport: Viewport = { name: "iphone", width: 390, height: 844 };
+  const engine = engineFor(viewport, webkitAvailable);
+  const context = await browsers[engine].newContext({
+    viewport: { width: viewport.width, height: viewport.height },
+    colorScheme: "light",
+    reducedMotion: "reduce",
+  });
+  if (role) await context.addCookies([{ name: "roofy_role", value: role, url: base }]);
+  const page = await context.newPage();
+  const response = await page
+    .goto(new URL(resolveRoute(screen.route), base).toString(), { waitUntil: "networkidle" })
+    .catch(() => null);
+  if (!response || response.status() === 404) {
+    await context.close();
+    return undefined;
+  }
+  await page.evaluate(() => document.fonts.ready).catch(() => undefined);
+
+  const { field: fieldLabel, action: actionName } = screen.keyboard;
+  const field = page.getByLabel(fieldLabel, { exact: true }).first();
+  await field.scrollIntoViewIfNeeded();
+  await field.focus();
+  await page.addStyleTag({ content: 'nav[aria-label="Primary"] { display: none !important; }' });
+  await page.setViewportSize({ width: viewport.width, height: viewport.height - KEYBOARD_HEIGHT_PX });
+  await field.evaluate((el) => {
+    el.closest("[data-sheet-panel]")?.scrollIntoView({ block: "center" });
+    el.scrollIntoView({ block: "nearest" });
+  });
+  const action = page.getByRole("button", { name: actionName, exact: true }).first();
+
+  const failures: string[] = [];
+  for (const [what, locator] of [
+    [`field "${fieldLabel}"`, field],
+    [`action "${actionName}"`, action],
+  ] as const) {
+    const visible = await locator.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const inside =
+        r.top >= 0 && r.bottom <= window.innerHeight && r.left >= 0 && r.right <= window.innerWidth;
+      const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return {
+        inside,
+        covered: !(top && (top === el || el.contains(top) || top.contains(el))),
+        r: `top=${r.top.toFixed(0)} bottom=${r.bottom.toFixed(0)} viewport height=${window.innerHeight}`,
+      };
+    });
+    if (!visible.inside)
+      failures.push(`${what} is not fully inside the keyboard-open viewport (${visible.r})`);
+    else if (visible.covered) failures.push(`${what} is covered by another element`);
+  }
+
+  const fileName = `${screen.id}-keyboard-iphone.png`;
+  await page.screenshot({ path: join(outDir, fileName) });
+  await context.close();
+  return {
+    screen: screen.id,
+    state: "normal",
+    role,
+    viewport: "iphone",
+    scheme: "light",
+    engine,
+    file: fileName,
+    results: [{ name: "keyboard-open", ok: failures.length === 0, failures }],
+  };
 }
 
 function writeChecksReport(outDir: string, group: string, records: CheckRecord[], skipped: string[]): void {
@@ -369,6 +497,35 @@ async function main(): Promise<void> {
         }
       }
       await captureInstalled({ browsers, base, screen, outDir, webkitAvailable });
+
+      // Landscape phone and tablet: the normal state, first role, light only.
+      const firstRole: Role | null = screen.roles[0] ?? null;
+      if (screen.states.includes("normal") && !screen.desktopOnly) {
+        for (const viewport of EXTRA_VIEWPORTS) {
+          const result = await captureOne({
+            browsers,
+            base,
+            screen,
+            state: "normal",
+            role: firstRole,
+            viewport,
+            scheme: "light",
+            outDir,
+            webkitAvailable,
+          });
+          if (result.status === "skipped") skipped.push(result.label);
+          else if (result.checkRecord) records.push(result.checkRecord);
+        }
+        const keyboard = await captureKeyboard({
+          browsers,
+          base,
+          screen,
+          role: firstRole,
+          outDir,
+          webkitAvailable,
+        });
+        if (keyboard) records.push(keyboard);
+      }
     }
   } finally {
     await chromiumBrowser.close();

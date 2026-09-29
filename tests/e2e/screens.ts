@@ -58,6 +58,12 @@ export type ScreenSpec = {
   phoneOnly?: boolean;
   /** Capture the desktop viewport only. */
   desktopOnly?: boolean;
+  /**
+   * Adds a keyboard-open iPhone capture (DESIGN.md §8): focus the field with
+   * this label, shrink the viewport by the keyboard's height, and check the
+   * field and the named primary action are both still visible and unobstructed.
+   */
+  keyboard?: { field: string; action: string };
 };
 
 // All states a field-entry screen a foreman can reach should design: real
@@ -87,7 +93,15 @@ const ENTRY_STATES: DemoState[] = ["normal", "error"];
 
 export const SCREENS: ScreenSpec[] = [
   // --- system (Task 8) ------------------------------------------------
-  { id: "design", group: "system", route: "/design", states: ["normal"], roles: ["owner"] },
+  {
+    id: "design",
+    group: "system",
+    route: "/design",
+    states: ["normal"],
+    roles: ["owner"],
+    // The Record payout sheet's amount field, with its pinned Save payout.
+    keyboard: { field: "Amount", action: "Save payout" },
+  },
 
   // --- field-1 (Task 11): Home manager (4), Home foreman (5) ----------
   {
