@@ -499,7 +499,8 @@ async function main(): Promise<void> {
           for (const viewport of VIEWPORTS) {
             if (screen.phoneOnly && viewport.name === "desktop") continue;
             if (screen.desktopOnly && viewport.name !== "desktop") continue;
-            for (const scheme of SCHEMES) {
+            if (screen.viewports && !screen.viewports.includes(viewport.name as "iphone" | "android" | "desktop")) continue;
+            for (const scheme of screen.lightOnly ? (["light"] as const) : SCHEMES) {
               const result = await captureOne({
                 browsers,
                 base,
@@ -517,6 +518,7 @@ async function main(): Promise<void> {
           }
         }
       }
+      if (screen.noExtras) continue;
       await captureInstalled({ browsers, base, screen, outDir, webkitAvailable });
       await captureInstalled({ browsers, base, screen, outDir, webkitAvailable, landscape: true });
 

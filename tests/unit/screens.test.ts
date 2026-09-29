@@ -12,6 +12,7 @@ const KNOWN_GROUPS: ScreenGroup[] = [
   "pay",
   "reports",
   "entry-settings",
+  "direction",
 ];
 
 describe("SCREENS manifest", () => {
@@ -31,6 +32,19 @@ describe("SCREENS manifest", () => {
   it("covers every screen group used by plan Tasks 8 and 11-19", () => {
     const covered = new Set(SCREENS.map((s) => s.group));
     for (const group of KNOWN_GROUPS) expect(covered.has(group)).toBe(true);
+  });
+
+  it("the direction group is the two screens in both directions, phone and desktop, light only", () => {
+    const direction = SCREENS.filter((s) => s.group === "direction");
+    expect(direction.map((s) => s.id).sort()).toEqual([
+      "home-challenger",
+      "home-galvanised",
+      "log-challenger",
+      "log-galvanised",
+    ]);
+    for (const s of direction) {
+      expect(s).toMatchObject({ viewports: ["iphone", "desktop"], lightOnly: true, noExtras: true });
+    }
   });
 
   it("every dynamic route segment has a placeholder id", () => {

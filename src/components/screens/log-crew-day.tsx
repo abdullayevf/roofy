@@ -28,14 +28,17 @@ function chipNote(person: GridCrewForeman | GridCrewManager): CrewChipProps["not
 }
 
 /** `?demo=` (and only that) rides along when the job or stage changes, so a demo state survives a pick. */
-function logUrl(params: { project?: string; stage?: string; crew?: string[]; demo?: string }): string {
+function logUrl(
+  basePath: string,
+  params: { project?: string; stage?: string; crew?: string[]; demo?: string },
+): string {
   const q = new URLSearchParams();
   if (params.project) q.set("project", params.project);
   if (params.stage) q.set("stage", params.stage);
   if (params.crew && params.crew.length > 0) q.set("crew", params.crew.join(","));
   if (params.demo) q.set("demo", params.demo);
   const s = q.toString();
-  return s ? `/log?${s}` : "/log";
+  return s ? `${basePath}?${s}` : basePath;
 }
 
 export type LogCrewDayProps = {
@@ -44,6 +47,8 @@ export type LogCrewDayProps = {
   initialTicked?: string[];
   /** The `?demo=` value, if any, to keep across picks. */
   demo?: string;
+  /** The address this screen lives at (the temporary A/B page has its own). */
+  basePath?: string;
 };
 
 /**
@@ -52,7 +57,7 @@ export type LogCrewDayProps = {
  * "Same as yesterday" fills all three and ticks the same crew. The page remounts this with a new `key`
  * whenever those change, so its state always starts from what the address says.
  */
-export function LogCrewDay({ defaults, initialTicked = [], demo }: LogCrewDayProps) {
+export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/log" }: LogCrewDayProps) {
   const router = useRouter();
   const [navigating, startNav] = useTransition();
   const [ticked, setTicked] = useState<Set<string>>(
@@ -123,7 +128,7 @@ export function LogCrewDay({ defaults, initialTicked = [], demo }: LogCrewDayPro
           loading={navigating}
           loadingLabel="Copying"
           onClick={() =>
-            same && go(logUrl({ project: same.projectId, stage: same.stageId, crew: same.crewMemberIds, demo }))
+            same && go(logUrl(basePath, { project: same.projectId, stage: same.stageId, crew: same.crewMemberIds, demo }))
           }
           className="w-full"
         >
@@ -133,7 +138,7 @@ export function LogCrewDay({ defaults, initialTicked = [], demo }: LogCrewDayPro
           label="Job"
           value={project?.id ?? ""}
           disabled={saved !== null}
-          onChange={(e) => go(logUrl({ project: e.target.value || undefined, demo }))}
+          onChange={(e) => go(logUrl(basePath, { project: e.target.value || undefined, demo }))}
           options={[
             { value: "", label: "Choose a job" },
             ...defaults.projects.map((p) => ({ value: p.id, label: p.name })),
@@ -143,7 +148,7 @@ export function LogCrewDay({ defaults, initialTicked = [], demo }: LogCrewDayPro
           label="Stage"
           value={stage?.id ?? ""}
           disabled={project === null || saved !== null}
-          onChange={(e) => project && go(logUrl({ project: project.id, stage: e.target.value || undefined, demo }))}
+          onChange={(e) => project && go(logUrl(basePath, { project: project.id, stage: e.target.value || undefined, demo }))}
           options={[
             { value: "", label: "Choose a stage" },
             ...(project?.stages ?? [])

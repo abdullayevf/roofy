@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { generateTokensCss } from "./gen-tokens";
 
@@ -205,6 +205,9 @@ describe("gen-tokens drift check", () => {
   it("the committed tokens.css matches what the generator produces from DESIGN.md", () => {
     const md = readFileSync(new URL("../docs/design/DESIGN.md", import.meta.url), "utf8");
     const committed = readFileSync(new URL("../src/app/tokens.css", import.meta.url), "utf8");
-    expect(committed).toEqual(generateTokensCss(md));
+    // The temporary A/B challenger block (scripts/challenger-tokens.css) rides along while that file exists.
+    const extraUrl = new URL("./challenger-tokens.css", import.meta.url);
+    const extra = existsSync(extraUrl) ? readFileSync(extraUrl, "utf8") : "";
+    expect(committed).toEqual(generateTokensCss(md) + extra);
   });
 });

@@ -135,3 +135,78 @@
   --shadow-sheet: 0 8px 24px rgb(31 34 36 / 0.18);
   --shadow-toast: 0 12px 32px rgb(31 34 36 / 0.28);
 }
+
+/*
+ * TEMPORARY (Phase 2 Task 10, A/B): the "Docket" challenger direction. Paper white, black ink, one signal-red
+ * accent, dense table-like rows, actions at the top. Same components; only tokens and density change.
+ * Appended to tokens.css by scripts/gen-tokens.ts while this file exists. Deleted after the verdict.
+ */
+[data-direction="challenger"] {
+  color-scheme: light;
+  --galv: #ffffff;
+  --surface: #ffffff;
+  --ink: #000000;
+  --ink-2: #3d3d3d;
+  --line: #000000;
+  --edge: #000000;
+  --chalk: #d10a1e;
+  --chalk-link: #b00016;
+  --tape: #d10a1e;
+  --over: #d10a1e;
+  --watch: #000000;
+  --good: #000000;
+  --on-chalk: #ffffff;
+  --on-tape: #ffffff;
+  --on-over: #ffffff;
+  --watch-fill: #000000;
+  --over-fill: #d10a1e;
+  --on-over-fill: #ffffff;
+  --bar: #000000;
+  --on-bar: #ffffff;
+  --shadow-sheet: none;
+  --shadow-toast: none;
+  background: var(--galv);
+  color: var(--ink);
+}
+
+/* Density: square corners, ruled groups, tighter rows and gaps (rows stay 48 px, the phone touch minimum). */
+[data-direction="challenger"] .rounded-control,
+[data-direction="challenger"] .rounded-group,
+[data-direction="challenger"] .rounded-3xl {
+  border-radius: 2px;
+}
+[data-direction="challenger"] .border-group {
+  border: 1px solid #000000;
+}
+[data-direction="challenger"] .min-h-\[64px\] {
+  min-height: 48px;
+}
+[data-direction="challenger"] .py-3 {
+  padding-block: 8px;
+}
+[data-direction="challenger"] .gap-6 {
+  gap: 16px;
+}
+[data-direction="challenger"] main {
+  padding-top: 12px;
+  padding-inline: 12px;
+}
+@media (min-width: 1024px) {
+  [data-direction="challenger"] main {
+    padding-top: 16px;
+    padding-inline: 24px;
+  }
+}
+
+/* Top-aligned actions: on Log the Save day button sits directly under the title and stays in view. */
+[data-direction="challenger"] [data-screen="log"] > h1 {
+  order: -2;
+}
+[data-direction="challenger"] [data-screen="log"] > [data-slot="primary-action"] {
+  order: -1;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding-block: 8px;
+  background: var(--galv);
+}

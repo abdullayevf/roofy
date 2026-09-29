@@ -39,7 +39,8 @@ export type ScreenGroup =
   | "expenses" // Task 16 — Expenses list, add/edit
   | "pay" // Task 17 — Pay runs, review, statement
   | "reports" // Task 18 — Reports, record history, workspace export
-  | "entry-settings"; // Task 19 — Sign in/up, onboarding, install, settings, more
+  | "entry-settings" // Task 19 — Sign in/up, onboarding, install, settings, more
+  | "direction"; // Task 10 — temporary A/B of the visual direction (deleted after the verdict)
 
 export type ScreenSpec = {
   /** Stable id used in the screenshot filename and by --screens filtering. */
@@ -70,6 +71,12 @@ export type ScreenSpec = {
    * (the gallery shows the tab bars and pinned sheet actions in place).
    */
   installedSections?: string[];
+  /** Capture only these viewports (default: iphone, android, desktop). */
+  viewports?: ("iphone" | "android" | "desktop")[];
+  /** Capture the light scheme only (default: light and dark). */
+  lightOnly?: boolean;
+  /** Skip the extra installed-mode, landscape, tablet and keyboard captures. */
+  noExtras?: boolean;
 };
 
 // All states a field-entry screen a foreman can reach should design: real
@@ -109,6 +116,28 @@ export const SCREENS: ScreenSpec[] = [
     keyboard: { field: "Amount", action: "Save payout" },
     installedSections: ["Navigation", "Sheet"],
   },
+
+  // --- direction (Task 10): the same two screens in Galvanised and in the Docket challenger, phone and desktop,
+  // light only. Temporary; the controller blinds and scores these, then deletes the challenger and these rows.
+  ...(["home", "log"] as const).flatMap((screen) =>
+    (["galvanised", "challenger"] as const).map(
+      (direction): ScreenSpec => ({
+        id: `${screen}-${direction}`,
+        group: "direction",
+        route:
+          direction === "galvanised"
+            ? screen === "home"
+              ? "/"
+              : "/log?same=1"
+            : `/design/challenger/${screen}${screen === "log" ? "?same=1" : ""}`,
+        states: ["normal"],
+        roles: ["manager"],
+        viewports: ["iphone", "desktop"],
+        lightOnly: true,
+        noExtras: true,
+      }),
+    ),
+  ),
 
   // --- field-1 (Task 11): Home manager (4), Home foreman (5) ----------
   {
