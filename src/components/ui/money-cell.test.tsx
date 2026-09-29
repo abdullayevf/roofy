@@ -16,9 +16,9 @@ describe("MoneyCell", () => {
 
   it("pairs a tone with an icon and a plain word, never colour alone", () => {
     render(<MoneyCell cents={477500} tone="watch" status="$775.00 over budget" />);
-    const status = screen.getByText("$775.00 over budget");
-    expect(status).toHaveClass("text-watch");
-    expect(status.querySelector("svg")).toBeInTheDocument();
+    const line = screen.getByText("$775.00 over budget").parentElement;
+    expect(line).toHaveClass("text-watch");
+    expect(line?.querySelector("svg")).toBeInTheDocument();
   });
 
   it("shows no status line without a tone", () => {

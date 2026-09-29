@@ -1,6 +1,7 @@
 import {
   CheckCircle,
   Circle,
+  PlayCircle,
   Clock,
   FileText,
   Lock,
@@ -35,7 +36,7 @@ export type Status =
 const CONFIG: Record<Status, { word: string; icon: PhosphorIcon; className: string }> = {
   active: {
     word: "Active",
-    icon: Circle,
+    icon: PlayCircle,
     className: "bg-surface text-chalk-link border-[1.5px] border-edge",
   },
   paused: {
@@ -89,7 +90,11 @@ export function StatusChip({ status, reason, className }: StatusChipProps) {
   const { word, icon, className: toneClass } = CONFIG[status];
   return (
     <span
-      className={cx("inline-flex max-w-full items-center gap-1.5 min-h-10 px-3 py-1 rounded-3xl text-meta", toneClass, className)}
+      className={cx(
+        "inline-flex max-w-full items-center gap-1.5 min-h-10 px-3 py-1 rounded-3xl text-meta",
+        toneClass,
+        className,
+      )}
     >
       <Icon icon={icon} size={24} />
       <span>{reason ? `${word}: ${reason}` : word}</span>

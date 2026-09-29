@@ -5,6 +5,7 @@ import { Drawer } from "vaul";
 import { Dialog } from "radix-ui";
 import { X } from "@phosphor-icons/react";
 import { cx } from "@/lib/cx";
+import { Button } from "./button";
 
 export type SheetContentProps = {
   title: string;
@@ -40,13 +41,15 @@ function SheetBody({ title, children, primaryAction }: SheetContentProps) {
   return (
     <div className="flex max-h-[85vh] flex-col overflow-hidden">
       <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2 lg:px-6 lg:pt-6">
-        <h2 className="text-heading text-ink">{title}</h2>
+        <h2 className="text-heading text-ink lg:pr-12">{title}</h2>
         <div className="mt-4">{children}</div>
       </div>
       {primaryAction ? (
+        // Same horizontal padding as the body above; the pinned action fills
+        // the width, and clears the home indicator (real or simulated).
         <div
-          className="border-t border-line px-4 pt-4"
-          style={{ paddingBottom: "calc(16px + env(safe-area-inset-bottom))" }}
+          className="border-t border-line px-4 pt-4 *:w-full lg:px-6"
+          style={{ paddingBottom: "calc(max(var(--sab-sim, 0px), env(safe-area-inset-bottom)) + 16px)" }}
         >
           {primaryAction}
         </div>
@@ -70,8 +73,17 @@ export function SheetPanel({
   className,
 }: SheetContentProps & { className?: string }) {
   return (
-    <div className={cx("rounded-t-sheet bg-surface shadow-sheet lg:mx-auto lg:max-w-md lg:rounded-sheet", className)}>
+    <div
+      className={cx(
+        "relative rounded-t-sheet bg-surface shadow-sheet lg:mx-auto lg:max-w-md lg:rounded-sheet",
+        className,
+      )}
+    >
       <div aria-hidden="true" className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-line lg:hidden" />
+      {/* In the dialog form (>= 1024) there's no grabber, so a labelled Close stands in. */}
+      <span className="absolute right-4 top-4 hidden lg:block">
+        <Button iconOnly icon={X} label="Close" variant="secondary" />
+      </span>
       <SheetBody title={title} primaryAction={primaryAction}>
         {children}
       </SheetBody>

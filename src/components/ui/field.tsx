@@ -13,6 +13,8 @@ export type FieldProps = Omit<ComponentPropsWithoutRef<"input">, "id"> & {
   error?: string;
   /** In-field unit suffix shown inside the box, e.g. "m²" on a quantity field. */
   suffix?: string;
+  /** In-field leading mark shown inside the box, e.g. "$" on an amount field. */
+  leading?: string;
   focusVisible?: boolean;
   className?: string;
 };
@@ -27,6 +29,7 @@ export function Field({
   hint,
   error,
   suffix,
+  leading,
   focusVisible,
   className,
   ...inputProps
@@ -47,6 +50,7 @@ export function Field({
         inputMode={inputMode}
         invalid={Boolean(error)}
         suffix={suffix}
+        leading={leading}
         focusVisible={focusVisible}
         aria-describedby={describedBy}
       />

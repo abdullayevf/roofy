@@ -34,8 +34,8 @@ export function Checkbox({
   return (
     <label
       className={cx(
-        "inline-flex min-h-12 items-center gap-3",
-        disabled ? "cursor-not-allowed" : "cursor-pointer",
+        "flex min-h-[64px] w-full items-center gap-1 rounded-group border-group px-2 pr-4 lg:min-h-12",
+        disabled ? "cursor-not-allowed bg-galv" : "cursor-pointer bg-surface active:bg-galv",
         className,
       )}
     >
@@ -55,14 +55,14 @@ export function Checkbox({
       >
         <span
           className={cx(
-            "flex h-6 w-6 items-center justify-center rounded-[3px] border-[1.5px] border-edge",
+            "flex h-7 w-7 items-center justify-center rounded-md border-[1.5px] border-edge",
             disabled ? "bg-galv" : "bg-surface",
             "group-data-[state=checked]:border-transparent group-data-[state=checked]:bg-chalk",
             focusVisible ? BOX_FOCUS_FORCED : BOX_FOCUS,
           )}
         >
           <RadixCheckbox.Indicator>
-            <Check size={16} weight="bold" className="text-on-chalk" />
+            <Check size={20} weight="bold" className="text-on-chalk" />
           </RadixCheckbox.Indicator>
         </span>
       </RadixCheckbox.Root>

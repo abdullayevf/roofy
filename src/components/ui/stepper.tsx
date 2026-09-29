@@ -62,7 +62,10 @@ export function Stepper({
         disabled={disabled || value <= lo}
         onClick={() => step_(-HOURS_STEP)}
       />
-      <span aria-live="polite" className="min-w-[64px] text-center text-figure num text-ink">
+      <span
+        aria-live="polite"
+        className={cx("min-w-[64px] text-center text-figure num", disabled ? "text-ink-2" : "text-ink")}
+      >
         {formatHours(value)}
       </span>
       <Button

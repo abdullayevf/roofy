@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { Check } from "@phosphor-icons/react/dist/ssr";
-import { Group, Section, Swatch, ThemePair } from "./section";
+import { Group, Section, Swatch } from "./section";
+import { ThemePair } from "./theme-pair";
 import { IconOnlyButtonDemo, PauseStageSheetDemo } from "./interactive-demos";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { MoneyField } from "@/components/ui/money-field";
 import { Select } from "@/components/ui/select";
 import { Segmented } from "@/components/ui/segmented";
 import { ChoiceChip } from "@/components/ui/choice-chip";
@@ -71,7 +73,11 @@ const GROUP = "divide-y divide-line rounded-group bg-surface border-group";
 
 export default function DesignPage() {
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-12 px-4 py-8 lg:px-8">
+    <main
+      className="mx-auto flex max-w-6xl flex-col gap-12 px-4 pb-8 lg:px-8"
+      // Clears the status bar / notch in an installed app (real inset, or simulated in captures) plus the normal padding.
+      style={{ paddingTop: "calc(max(var(--sat-sim, 0px), env(safe-area-inset-top)) + 2rem)" }}
+    >
       <header className="flex flex-col gap-2">
         <h1 className="text-title text-ink">Design system</h1>
         <p className="max-w-[70ch] text-body text-ink-2">
@@ -420,18 +426,33 @@ export default function DesignPage() {
           <Swatch label="Inside labelled rows; a tone is always an icon plus words">
             <List
               rows={[
-                { key: "labour", primary: "Labour so far", figure: <MoneyCell cents={143250} /> },
+                { key: "labour", primary: "Labour so far", figure: <MoneyCell cents={143250} />, href: "#" },
                 {
                   key: "forecast",
                   primary: "Forecast labour",
                   figure: <MoneyCell cents={477500} tone="watch" status="$775.00 over budget" />,
+                  href: "#",
                 },
                 {
                   key: "ridge",
                   primary: "Ridge bedding & pointing",
                   figure: <MoneyCell cents={200000} tone="good" status="On budget" />,
+                  href: "#",
                 },
-                { key: "advance", primary: "Advance", figure: <MoneyCell cents={-30000} /> },
+                { key: "advance", primary: "Advance", figure: <MoneyCell cents={-30000} />, href: "#" },
+              ]}
+            />
+          </Swatch>
+          <Swatch label="Focus (inset ring on a tappable row)">
+            <List
+              rows={[
+                {
+                  key: "labour-focus",
+                  primary: "Labour so far",
+                  figure: <MoneyCell cents={143250} />,
+                  href: "#",
+                  focusVisible: true,
+                },
               ]}
             />
           </Swatch>
@@ -443,7 +464,7 @@ export default function DesignPage() {
           <Swatch label="Crew rows show what each person has earned">
             <List
               rows={[
-                { key: "sam", primary: "Sam", meta: "Day", figure: <MoneyCell cents={143250} />, href: "#" },
+                { key: "sam", primary: "Sam", meta: "Day", figure: <MoneyCell cents={64000} />, href: "#" },
                 {
                   key: "tom",
                   primary: "Tom",
@@ -516,13 +537,17 @@ export default function DesignPage() {
           <Swatch label="Paused">
             <div className="flex flex-col gap-2">
               <TapeBar label="Sheet install progress" percent={30} />
-              <StatusChip status="paused" reason="Weather" />
+              <div>
+                <StatusChip status="paused" reason="Weather" />
+              </div>
             </div>
           </Swatch>
           <Swatch label="Done">
             <div className="flex flex-col gap-2">
               <TapeBar label="Site setup and safety progress" percent={100} />
-              <StatusChip status="done" />
+              <div>
+                <StatusChip status="done" />
+              </div>
             </div>
           </Swatch>
           <Swatch label="Foreman view (no forecast, no money)">
@@ -606,11 +631,26 @@ export default function DesignPage() {
           <Swatch label="Severity icon plus one plain sentence, tap-through">
             <div className={GROUP}>
               <NeedsAttentionItem
-                severity="over"
-                sentence="Smith job is $775 over on sheet install."
+                severity="watch"
+                sentence="Smith job is trending $775 over on sheet install."
                 href="#"
               />
-              <NeedsAttentionItem severity="watch" sentence="Jake hasn't logged a day in 3 days." href="#" />
+              <NeedsAttentionItem
+                severity="over"
+                sentence="Ridge bedding & pointing is $300 over budget."
+                href="#"
+              />
+              <NeedsAttentionItem severity="watch" sentence="No log for Jake in 3 working days." href="#" />
+            </div>
+          </Swatch>
+          <Swatch label="Focus (inset ring)">
+            <div className={GROUP}>
+              <NeedsAttentionItem
+                severity="watch"
+                sentence="No log for Jake in 3 working days."
+                href="#"
+                focusVisible
+              />
             </div>
           </Swatch>
         </ThemePair>
@@ -649,7 +689,7 @@ export default function DesignPage() {
             <SheetPanel title="Record payout" primaryAction={<Button variant="primary">Save payout</Button>}>
               <div className="flex flex-col gap-4">
                 <Field label="Date" inputMode="text" defaultValue="Mon 28 Sep" />
-                <Field label="Amount" inputMode="decimal" defaultValue="1482.00" />
+                <MoneyField label="Amount" defaultCents={148200} />
                 <Group title="Advance or payment">
                   <ChoiceChip
                     legend="Advance or payment"
@@ -664,6 +704,7 @@ export default function DesignPage() {
                   <ChoiceChip
                     legend="Method"
                     name="payout-method"
+                    defaultValue="bank"
                     options={[
                       { value: "bank", label: "Bank transfer" },
                       { value: "cash", label: "Cash" },
