@@ -9,18 +9,13 @@ import {
   DEMO_COOKIE,
   ROLE_COOKIE,
   ROLES,
-  SESSION_COOKIE_OPTIONS,
   isDemoSessionId,
   isHttps,
   newDemoSessionId,
   parseRole,
   safeNextPath,
+  serializeSessionCookie as cookie,
 } from "@/data/session";
-
-function cookie(name: string, value: string, secure: boolean): string {
-  const o = SESSION_COOKIE_OPTIONS;
-  return `${name}=${value}; Path=${o.path}; Max-Age=${o.maxAge}; HttpOnly; SameSite=Lax${secure ? "; Secure" : ""}`;
-}
 
 export async function GET(request: NextRequest): Promise<Response> {
   if (!isFakeMode()) return new Response("Not found", { status: 404 });

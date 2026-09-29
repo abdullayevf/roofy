@@ -28,13 +28,13 @@
  */
 import { todayIn } from "@/domain/dates";
 import type { LocalDate } from "@/domain/types";
-import type { Actor, DataServices } from "./contracts";
+import type { Actor, DataServices, Role } from "./contracts";
 import { fakeNow } from "./fake/clock";
 import { demoFlags, parseDemoState, type DemoFlags } from "./fake/demo";
 import { createFakeServices } from "./fake/services";
 import { actorFor } from "./fake/services/context";
 import { emptyStore, sessionStore, sharedStore } from "./fake/store";
-import { readDemoParam, readSession, type SearchParamsInput } from "./session";
+import { ensureDemoSession, readDemoParam, readSession, type SearchParamsInput } from "./session";
 
 export type { DemoFlags } from "./fake/demo";
 export { isLoadingDemo } from "./fake/demo";
@@ -98,4 +98,39 @@ export async function getData(options: { searchParams?: SearchParamsInput } = {}
     today: todayIn(store.tables.workspace.timezone, now),
     demo: demoFlags(state, store.tables, now),
   };
+}
+
+export interface WriteContext {
+  mode: DataMode;
+  data: DataServices;
+  actor: Actor;
+  today: LocalDate;
+}
+
+/**
+ * Services for a write (fake mode): always the demo session's own store — never the shared, read-only
+ * seed or `?demo=empty` — and no forced demo state, so a write lands where the session's next page
+ * render (`getData()` with the same `roofy_demo` cookie) reads it back.
+ */
+export function writeContext(session: { role: Role; demoSessionId: string }): WriteContext {
+  const mode = dataMode();
+  const store = sessionStore(session.demoSessionId);
+  const now = fakeNow();
+  return {
+    mode,
+    data: createFakeServices(store, { now: () => now, demo: null }),
+    actor: actorFor(store.tables, session.role),
+    today: todayIn(store.tables.workspace.timezone, now),
+  };
+}
+
+/**
+ * `writeContext` for a Server Function: reads the role cookie and creates the demo-session cookie if
+ * the browser has none (Server Functions may set cookies; Server Components may not).
+ */
+export async function getWriteData(): Promise<WriteContext> {
+  dataMode();
+  const session = await readSession();
+  const demoSessionId = await ensureDemoSession();
+  return writeContext({ role: session.role, demoSessionId });
 }

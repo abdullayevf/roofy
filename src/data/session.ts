@@ -29,6 +29,12 @@ export const SESSION_COOKIE_OPTIONS = {
   maxAge: 60 * 60 * 24 * 30,
 } as const;
 
+/** A `Set-Cookie` value for a prototype cookie (Route Handlers that build their own Response). */
+export function serializeSessionCookie(name: string, value: string, secure: boolean): string {
+  const o = SESSION_COOKIE_OPTIONS;
+  return `${name}=${value}; Path=${o.path}; Max-Age=${o.maxAge}; HttpOnly; SameSite=Lax${secure ? "; Secure" : ""}`;
+}
+
 export function parseRole(value: unknown): Role | null {
   return typeof value === "string" && (ROLES as readonly string[]).includes(value) ? (value as Role) : null;
 }
