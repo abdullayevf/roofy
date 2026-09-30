@@ -1,6 +1,6 @@
 import type { NoWorkReason, OutboxEntry, OutboxItem, OutboxState } from "@/data/contracts";
 import { splitByShares } from "@/domain/split";
-import type { BasisPoints, Hundredths } from "@/domain/types";
+import type { BasisPoints, Hundredths, LocalDate } from "@/domain/types";
 
 /** A typed number with at most two decimals ("120", "12.5") as hundredths; null when it isn't one. */
 export function parseHundredths(text: string): Hundredths | null {
@@ -77,24 +77,65 @@ export function outboxLine(item: OutboxItem): { kind: string; detail: string } {
   return { kind, detail: [where, who].filter(Boolean).join(": ") };
 }
 
-/** The original entry screen, filled in from what was entered ("Edit and resend"). */
+/** A `YYYY-MM-DD` date that exists on the calendar, or null (an address can say anything). */
+export function parseLocalDate(text: string | undefined): LocalDate | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text ?? "");
+  if (!m) return null;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const at = new Date(Date.UTC(y, mo - 1, d));
+  return at.getUTCFullYear() === y && at.getUTCMonth() === mo - 1 && at.getUTCDate() === d ? (text as LocalDate) : null;
+}
+
+const OVERTIME: readonly Hundredths[] = [150, 200];
+
+/**
+ * Each person's days (daily) or hours (everyone else) and overtime, as the edit address carries them:
+ * `id:value` or `id:value:multiplier`, comma separated. Anything else is ignored.
+ */
+export function parseEntryPicks(text: string | undefined): { values: Record<string, Hundredths>; multipliers: Record<string, Hundredths> } {
+  const values: Record<string, Hundredths> = {};
+  const multipliers: Record<string, Hundredths> = {};
+  for (const part of (text ?? "").split(",")) {
+    const [id, value, multiplier] = part.split(":");
+    if (!id || !value || !/^\d+$/.test(value) || Number(value) <= 0) continue;
+    values[id] = Number(value);
+    if (multiplier && /^\d+$/.test(multiplier) && OVERTIME.includes(Number(multiplier))) multipliers[id] = Number(multiplier);
+  }
+  return { values, multipliers };
+}
+
+/** The original entry screen, filled in from everything that was entered ("Edit and resend"). */
 export function editHref(entry: OutboxEntry): string {
   const q = new URLSearchParams();
   switch (entry.type) {
     case "crew_day":
+      q.set("date", entry.input.date);
       q.set("project", entry.input.projectId);
       q.set("stage", entry.input.stageId);
       q.set("crew", entry.input.entries.map((e) => e.crewMemberId).join(","));
+      q.set(
+        "ex",
+        entry.input.entries
+          .map((e) => {
+            const value = e.basis === "daily" ? e.days : e.hours;
+            const overtime = e.multiplier !== null && e.multiplier !== 100 ? `:${e.multiplier}` : "";
+            return `${e.crewMemberId}:${value ?? 0}${overtime}`;
+          })
+          .join(","),
+      );
       return `/log?${q}`;
     case "progress":
+      q.set("date", entry.input.date);
       q.set("stage", entry.input.stageId);
       q.set("qty", String(entry.input.quantity));
       q.set("crew", entry.input.crewMemberIds.join(","));
       if (entry.input.shares.mode === "custom") q.set("shares", entry.input.shares.bp.join(","));
       return `/log/progress?${q}`;
     case "no_work":
+      q.set("date", entry.input.date);
       q.set("crew", entry.input.crewMemberIds.join(","));
       q.set("reason", entry.input.reason);
+      if (entry.input.note) q.set("note", entry.input.note);
       return `/log/no-work?${q}`;
     default:
       return "/outbox";

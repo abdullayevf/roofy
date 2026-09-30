@@ -22,7 +22,8 @@ export function activeNavKey(pathname: string, role: NavRole, layout: NavLayout)
   const first = pathname.split("/")[1] ?? "";
   if (first === "") return "home";
   const own = FIRST_SEGMENT_KEY[first];
-  if (own) return role === "foreman" || own !== "outbox" ? own : "";
+  if (own === "outbox") return role === "foreman" ? own : "more";
+  if (own) return own;
   if (role === "foreman") return "";
   if (role === "accountant" && (first === "pay" || first === "reports")) return first;
   if (layout === "desktop" && role === "manager" && MANAGE_PAGES.has(first)) return "";

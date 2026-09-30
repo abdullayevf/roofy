@@ -11,21 +11,13 @@
  * | `attention` | `demo.outbox` holds 1 rejected entry with its reason; Home lists it             |
  * | `noperm`    | every service method throws `DataError("forbidden")` → the no-permission state  |
  * | `blocked`   | Owner 2FA reads as off → the pay run's Approve is blocked (`owner_2fa_off`)     |
+ * | `mixed`     | `demo.outbox` holds one entry in each group: Needs attention, Sending, Waiting, Sent |
  */
-import { todayIn } from "@/domain/dates";
-import type { DemoState, Id, OutboxEntry, OutboxItem } from "../contracts";
+import { addDays, todayIn } from "@/domain/dates";
+import { DEMO_STATES, type DemoState, type Id, type OutboxEntry, type OutboxItem } from "../contracts";
 import type { Seed } from "./seed";
 
-export const DEMO_STATES: readonly DemoState[] = [
-  "empty",
-  "loading",
-  "error",
-  "offline",
-  "waiting",
-  "attention",
-  "noperm",
-  "blocked",
-];
+export { DEMO_STATES };
 
 /** A `searchParams` value (string or repeated) → a demo state, or null. */
 export function parseDemoState(value: unknown): DemoState | null {
@@ -59,9 +51,9 @@ export function demoFlags(state: DemoState | null, tables: Seed, now: Date): Dem
 /** Instant `minutes` before `now`. */
 const before = (now: Date, minutes: number) => new Date(now.getTime() - minutes * 60_000).toISOString();
 
-/** The fixed outbox for `waiting` (3 waiting) and `attention` (1 rejected); empty otherwise. */
+/** The fixed outbox for `waiting` (3 waiting), `attention` (1 rejected) and `mixed` (one in each group); empty otherwise. */
 export function demoOutbox(state: DemoState | null, tables: Seed, now: Date): OutboxItem[] {
-  if (state !== "waiting" && state !== "attention") return [];
+  if (state !== "waiting" && state !== "attention" && state !== "mixed") return [];
   const today = todayIn(tables.workspace.timezone, now);
   const name = (rows: { id: Id; name?: string; nickname?: string }[], id: Id) => {
     const row = rows.find((r) => r.id === id);
@@ -72,91 +64,68 @@ export function demoOutbox(state: DemoState | null, tables: Seed, now: Date): Ou
   const projectName = (id: Id) => name(tables.projects, id);
   const stageName = (id: Id) => name(tables.stages, id);
 
-  if (state === "attention") {
-    const entry: OutboxEntry = {
-      id: "01923b6a-7a00-7c3e-9d1f-4b2a6c8e0f01",
-      type: "crew_day",
-      createdAt: before(now, 95),
-      input: {
-        date: today,
-        projectId: meta.projects.smith,
-        stageId: meta.stages.smithSheetInstall,
-        entries: [
-          { crewMemberId: meta.crew.sam, basis: "time_only", days: null, hours: 800, multiplier: null },
-          { crewMemberId: meta.crew.dima, basis: "time_only", days: null, hours: 800, multiplier: null },
-        ],
-      },
-    };
-    return [
-      {
-        entry,
-        state: "needs_attention",
-        date: today,
-        projectName: projectName(meta.projects.smith),
-        stageName: stageName(meta.stages.smithSheetInstall),
-        crewNames: [crewName(meta.crew.sam), crewName(meta.crew.dima)],
-        rejection: {
-          code: "forbidden",
-          message: "You don't have access to this job any more. Ask your manager.",
-        },
-      },
-    ];
-  }
-
   const smith = meta.projects.smith;
   const sheet = meta.stages.smithSheetInstall;
-  const items: [OutboxEntry, Id[]][] = [
-    [
-      {
-        id: "01923b6a-7a00-7c3e-9d1f-4b2a6c8e0f11",
-        type: "crew_day",
-        createdAt: before(now, 30),
-        input: {
-          date: today,
-          projectId: smith,
-          stageId: sheet,
-          entries: [
-            { crewMemberId: meta.crew.sam, basis: "time_only", days: null, hours: 800, multiplier: null },
-            { crewMemberId: meta.crew.dima, basis: "time_only", days: null, hours: 800, multiplier: null },
-          ],
-        },
-      },
-      [meta.crew.sam, meta.crew.dima],
-    ],
-    [
-      {
-        id: "01923b6a-7a00-7c3e-9d1f-4b2a6c8e0f12",
-        type: "progress",
-        createdAt: before(now, 20),
-        input: {
-          stageId: sheet,
-          date: today,
-          quantity: 4000,
-          crewMemberIds: [meta.crew.sam, meta.crew.dima],
-          shares: { mode: "equal" },
-          photoFileId: null,
-          note: null,
-        },
-      },
-      [meta.crew.sam, meta.crew.dima],
-    ],
-    [
-      {
-        id: "01923b6a-7a00-7c3e-9d1f-4b2a6c8e0f13",
-        type: "no_work",
-        createdAt: before(now, 10),
-        input: { crewMemberIds: [meta.crew.jake], date: today, reason: "rain", note: null },
-      },
-      [meta.crew.jake],
-    ],
-  ];
-  return items.map(([entry, crewIds]) => ({
+  const pair = [meta.crew.sam, meta.crew.dima];
+  const crewDay = (id: string, minutes: number, date = today): OutboxEntry => ({
+    id,
+    type: "crew_day",
+    createdAt: before(now, minutes),
+    input: {
+      date,
+      projectId: smith,
+      stageId: sheet,
+      entries: pair.map((crewMemberId) => ({ crewMemberId, basis: "time_only", days: null, hours: 800, multiplier: null })),
+    },
+  });
+  const progress = (id: string, minutes: number): OutboxEntry => ({
+    id,
+    type: "progress",
+    createdAt: before(now, minutes),
+    input: {
+      stageId: sheet,
+      date: today,
+      quantity: 4000,
+      crewMemberIds: pair,
+      shares: { mode: "equal" },
+      photoFileId: null,
+      note: null,
+    },
+  });
+  const noWork = (id: string, minutes: number): OutboxEntry => ({
+    id,
+    type: "no_work",
+    createdAt: before(now, minutes),
+    input: { crewMemberIds: [meta.crew.jake], date: today, reason: "rain", note: null },
+  });
+
+  const item = (entry: OutboxEntry, itemState: OutboxItem["state"], crewIds: Id[], date = today): OutboxItem => ({
     entry,
-    state: "waiting",
-    date: today,
+    state: itemState,
+    date,
     projectName: entry.type === "no_work" ? null : projectName(smith),
     stageName: entry.type === "no_work" ? null : stageName(sheet),
     crewNames: crewIds.map(crewName),
     rejection: null,
-  }));
+  });
+  const attention = (): OutboxItem => ({
+    ...item(crewDay("01923b6a-7a00-7c3e-9d1f-4b2a6c8e0f01", 95), "needs_attention", pair),
+    rejection: { code: "forbidden", message: "You don't have access to this job any more. Ask your manager." },
+  });
+
+  if (state === "attention") return [attention()];
+  if (state === "mixed") {
+    const yesterday = addDays(today, -1);
+    return [
+      attention(),
+      item(progress("01923b6a-7a00-7c3e-9d1f-4b2a6c8e0f22", 2), "sending", pair),
+      item(noWork("01923b6a-7a00-7c3e-9d1f-4b2a6c8e0f23", 10), "waiting", [meta.crew.jake]),
+      item(crewDay("01923b6a-7a00-7c3e-9d1f-4b2a6c8e0f24", 26 * 60, yesterday), "sent", pair, yesterday),
+    ];
+  }
+  return [
+    item(crewDay("01923b6a-7a00-7c3e-9d1f-4b2a6c8e0f11", 30), "waiting", pair),
+    item(progress("01923b6a-7a00-7c3e-9d1f-4b2a6c8e0f12", 20), "waiting", pair),
+    item(noWork("01923b6a-7a00-7c3e-9d1f-4b2a6c8e0f13", 10), "waiting", [meta.crew.jake]),
+  ];
 }

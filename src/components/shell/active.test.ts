@@ -9,6 +9,8 @@ describe("activeNavKey", () => {
     expect(activeNavKey("/log/progress", "manager", "phone")).toBe("log");
     expect(activeNavKey("/crew/dima/payout", "manager", "phone")).toBe("crew");
     expect(activeNavKey("/outbox", "foreman", "phone")).toBe("outbox");
+    expect(activeNavKey("/outbox", "manager", "phone")).toBe("more");
+    expect(activeNavKey("/outbox", "manager", "desktop")).toBe("more");
     expect(activeNavKey("/jobsx", "manager", "phone")).toBe("");
   });
   it("puts the pages behind More under More on a phone", () => {

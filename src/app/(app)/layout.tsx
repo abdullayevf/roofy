@@ -25,7 +25,7 @@ export default async function AppLayout({ children }: Readonly<{ children: React
       role={navRoleFor(ctx.actor.role)}
       workspaceName={await workspaceNameFor(ctx)}
       offline={ctx.demo.offline}
-      waiting={ctx.demo.outbox.filter((i) => i.state !== "needs_attention").length}
+      waiting={ctx.demo.outbox.filter((i) => i.state === "waiting" || i.state === "sending").length}
       attention={ctx.demo.outbox.filter((i) => i.state === "needs_attention").length}
     >
       {children}

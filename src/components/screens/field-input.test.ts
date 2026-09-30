@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   editHref,
+  parseEntryPicks,
+  parseLocalDate,
   equalShares,
   groupOutbox,
   hundredthsText,
@@ -84,12 +86,50 @@ describe("outbox", () => {
     expect(outboxLine(item({ entry: noWork, state: "waiting", projectName: null, stageName: null, crewNames: ["Jake"] }))).toEqual({ kind: "No work", detail: "Rain: Jake" });
   });
 
-  it("opens the original screen filled in from what was entered", () => {
-    expect(editHref(crewDay)).toBe("/log?project=p&stage=s&crew=c1");
-    expect(editHref(progress)).toBe("/log/progress?stage=s&qty=4000&crew=c1%2Cc2");
-    expect(editHref({ ...progress, input: { ...progress.input, shares: { mode: "custom", bp: [6000, 4000] } } })).toBe(
-      "/log/progress?stage=s&qty=4000&crew=c1%2Cc2&shares=6000%2C4000",
+  it("opens the original screen filled in with everything that was entered", () => {
+    expect(editHref(crewDay)).toBe("/log?date=2026-09-28&project=p&stage=s&crew=c1&ex=c1%3A100");
+    const yesterday = {
+      ...crewDay,
+      input: {
+        ...crewDay.input,
+        date: "2026-09-27",
+        entries: [
+          { crewMemberId: "c1", basis: "daily" as const, days: 50, hours: 400, multiplier: null },
+          { crewMemberId: "c2", basis: "hourly" as const, days: null, hours: 950, multiplier: 150 },
+          { crewMemberId: "c3", basis: "time_only" as const, days: null, hours: 800, multiplier: null },
+        ],
+      },
+    };
+    expect(editHref(yesterday)).toBe(
+      "/log?date=2026-09-27&project=p&stage=s&crew=c1%2Cc2%2Cc3&ex=c1%3A50%2Cc2%3A950%3A150%2Cc3%3A800",
     );
-    expect(editHref(noWork)).toBe("/log/no-work?crew=c3&reason=rain");
+    expect(editHref(progress)).toBe("/log/progress?date=2026-09-28&stage=s&qty=4000&crew=c1%2Cc2");
+    expect(editHref({ ...progress, input: { ...progress.input, shares: { mode: "custom", bp: [6000, 4000] } } })).toBe(
+      "/log/progress?date=2026-09-28&stage=s&qty=4000&crew=c1%2Cc2&shares=6000%2C4000",
+    );
+    expect(editHref(noWork)).toBe("/log/no-work?date=2026-09-28&crew=c3&reason=rain");
+    expect(editHref({ ...noWork, input: { ...noWork.input, date: "2026-09-27", note: "Site flooded" } })).toBe(
+      "/log/no-work?date=2026-09-27&crew=c3&reason=rain&note=Site+flooded",
+    );
+  });
+});
+
+describe("reading an edit address", () => {
+  it("accepts a real calendar date and nothing else", () => {
+    expect(parseLocalDate("2026-09-27")).toBe("2026-09-27");
+    for (const bad of ["", undefined, "2026-9-27", "2026-02-30", "2026-13-01", "yesterday", "2026-09-27x", "27/09/2026"])
+      expect(parseLocalDate(bad)).toBeNull();
+  });
+
+  it("reads each person's days or hours, and overtime, from the address", () => {
+    expect(parseEntryPicks("c1:50,c2:950:150,c3:800")).toEqual({
+      values: { c1: 50, c2: 950, c3: 800 },
+      multipliers: { c2: 150 },
+    });
+    expect(parseEntryPicks(undefined)).toEqual({ values: {}, multipliers: {} });
+  });
+
+  it("ignores anything that is not a whole number or a known overtime rate", () => {
+    expect(parseEntryPicks("c1:abc,c2:-5,c3:800:175,:100,c4:2.5,c5:0")).toEqual({ values: { c3: 800 }, multipliers: {} });
   });
 });

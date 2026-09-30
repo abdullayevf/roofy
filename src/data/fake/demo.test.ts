@@ -6,7 +6,7 @@ import { getSeed } from "./store";
 const NOW = new Date("2026-09-27T21:00:00Z");
 
 describe("parseDemoState", () => {
-  it("accepts the eight states and nothing else", () => {
+  it("accepts the nine states and nothing else", () => {
     expect(DEMO_STATES).toEqual([
       "empty",
       "loading",
@@ -16,6 +16,7 @@ describe("parseDemoState", () => {
       "attention",
       "noperm",
       "blocked",
+      "mixed",
     ]);
     for (const s of DEMO_STATES) expect(parseDemoState(s)).toBe(s);
     expect(parseDemoState(["waiting", "error"])).toBe("waiting");
@@ -80,8 +81,18 @@ describe("demo flags", () => {
     expect(assigned).toContain(projectId);
   });
 
+  it("mixed: one entry in each group, with progress and no-work shown too, and none of them money", () => {
+    const items = demoOutbox("mixed", getSeed(), NOW);
+    expect(items.map((i) => i.state).sort()).toEqual(["needs_attention", "sending", "sent", "waiting"]);
+    expect(items.find((i) => i.state === "needs_attention")!.rejection?.message).toBeTruthy();
+    expect(items.filter((i) => i.state !== "needs_attention").every((i) => i.rejection === null)).toBe(true);
+    expect(items.some((i) => i.entry.type === "progress")).toBe(true);
+    expect(new Set(items.map((i) => i.entry.id)).size).toBe(items.length);
+    expectNoMoney(items, "outbox mixed");
+  });
+
   it("every other state has an empty outbox", () => {
-    for (const s of DEMO_STATES.filter((x) => x !== "waiting" && x !== "attention")) {
+    for (const s of DEMO_STATES.filter((x) => x !== "waiting" && x !== "attention" && x !== "mixed")) {
       expect(demoOutbox(s, getSeed(), NOW)).toEqual([]);
     }
     expect(demoOutbox(null, getSeed(), NOW)).toEqual([]);

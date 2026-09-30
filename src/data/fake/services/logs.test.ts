@@ -83,6 +83,38 @@ describe("crew-day grid defaults", () => {
     );
   });
 
+  it("foreman: only crew who have logged on the foreman's jobs, in the same order as a manager sees them", async () => {
+    const { data, actor } = fake("foreman");
+    const d = await data.logs.crewDayDefaults(actor, { projectId: meta.projects.smith });
+    const names = d.crew.map((c) => c.name);
+    expect(names).not.toContain("Mick");
+    expect(names).not.toContain("Kev");
+    expect(names).toContain("Jake");
+    const p = await data.progress.defaults(actor);
+    expect(p.crew.map((c) => c.name)).not.toContain("Mick");
+  });
+
+  it("crew who logged on the chosen job in the last 7 days come first, then everyone else A to Z", async () => {
+    const { data, actor } = fake("manager");
+    const d = await data.logs.crewDayDefaults(actor, { projectId: meta.projects.smith });
+    const names = d.crew.map((c) => c.name);
+    // Smith, 21 to 27 Sep: Jake, Josh, Ben, Sam, Dima.
+    expect(names.slice(0, 5)).toEqual(["Ben", "Dima", "Jake", "Josh", "Sam"]);
+    const rest = names.slice(5);
+    expect(rest).toEqual([...rest].sort((a, b) => a.localeCompare(b)));
+  });
+
+  it("with no job chosen everyone is A to Z; Progress orders by the stage it is opened on", async () => {
+    const { data, actor } = fake("manager");
+    const none = await data.logs.crewDayDefaults(actor);
+    const names = none.crew.map((c) => c.name);
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
+    const p = await data.progress.defaults(actor);
+    expect(p.crew.map((c) => c.name)).toEqual(names);
+    const onSmith = await data.progress.defaults(actor, { stageId: meta.stages.smithSheetInstall });
+    expect(onSmith.crew.map((c) => c.name).slice(0, 5)).toEqual(["Ben", "Dima", "Jake", "Josh", "Sam"]);
+  });
+
   it("a new workspace has nothing to copy yet", async () => {
     const { data, actor } = fake("manager", { demo: "empty" });
     const d = await data.logs.crewDayDefaults(actor);

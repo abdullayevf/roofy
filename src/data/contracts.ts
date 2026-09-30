@@ -1267,10 +1267,21 @@ export interface OutboxItem {
 
 /**
  * Design states forced with `?demo=<state>` in fake mode (plan Task 6); ignored otherwise.
- * empty · loading · error · offline · waiting · attention · noperm · blocked (Owner 2FA off).
+ * empty · loading · error · offline · waiting · attention · noperm · blocked (Owner 2FA off) · mixed (an outbox
+ * with all four groups).
  */
-export type DemoState =
-  "empty" | "loading" | "error" | "offline" | "waiting" | "attention" | "noperm" | "blocked";
+export const DEMO_STATES = [
+  "empty",
+  "loading",
+  "error",
+  "offline",
+  "waiting",
+  "attention",
+  "noperm",
+  "blocked",
+  "mixed",
+] as const;
+export type DemoState = (typeof DEMO_STATES)[number];
 
 // ─── Audit and export ───────────────────────────────────────────────────────
 

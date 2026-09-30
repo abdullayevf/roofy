@@ -33,7 +33,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Sea
     <HomeManagerBody
       home={home}
       role={actor.role === "foreman" ? "manager" : actor.role}
-      outbox={{ waiting: demo.outbox.length - attention, attention }}
+      outbox={{ waiting: demo.outbox.filter((i) => i.state === "waiting" || i.state === "sending").length, attention }}
       deviceItems={demo.outbox}
       offline={demo.offline}
     />

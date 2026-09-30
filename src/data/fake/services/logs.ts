@@ -1,4 +1,5 @@
 import { adjustmentDelta, reversal } from "@/domain/adjustments";
+import { addDays } from "@/domain/dates";
 import { defaultHours } from "@/domain/lines";
 import { pieceRateLines } from "@/domain/piece";
 import { resolveRate } from "@/domain/rates";
@@ -25,7 +26,7 @@ import type {
   SameAsYesterday,
 } from "../../contracts";
 import { gridBasisFor } from "../grid-basis";
-import type { StageRow, WorkLogRow } from "../rows";
+import type { CrewMemberRow, StageRow, WorkLogRow } from "../rows";
 import { FakeContext, FIELD_ACCESS, forbidden, notFound, shortName } from "./context";
 import { crewRowForeman } from "./crew";
 import { progressRowForeman, progressRowManager } from "./stages";
@@ -51,6 +52,32 @@ export const LATEST_STAGES = 5;
 
 const byRecent = (a: WorkLogRow, b: WorkLogRow) =>
   b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt);
+
+/** How far back "recently logged on this job" reaches, in days. */
+export const RECENT_CREW_DAYS = 7;
+
+/**
+ * The crew an entry screen lists. A foreman sees the crew who have worked on their own jobs (flows.md: assigned
+ * crew), or everyone when nobody has yet. On a chosen job, crew who logged there in the last 7 days come first,
+ * then everyone else; each part A to Z.
+ */
+export function entryCrew(c: FakeContext, actor: Actor, date: LocalDate, projectId: Id | null): CrewMemberRow[] {
+  const visible = c.visibleProjects(actor);
+  let crew = c.t.crewMembers.filter((m) => m.activeFrom <= date && (m.activeTo === null || m.activeTo >= date));
+  if (visible !== null) {
+    const worked = new Set(c.ix.liveLogs.filter((l) => visible.has(l.projectId)).map((l) => l.crewMemberId));
+    const assigned = crew.filter((m) => worked.has(m.id));
+    if (assigned.length > 0) crew = assigned;
+  }
+  const since = addDays(c.today, -RECENT_CREW_DAYS);
+  const recent = new Set(
+    projectId === null
+      ? []
+      : c.ix.liveLogs.filter((l) => l.projectId === projectId && l.date >= since && l.date <= c.today).map((l) => l.crewMemberId),
+  );
+  const byName = (a: CrewMemberRow, b: CrewMemberRow) => a.name.localeCompare(b.name);
+  return [...crew.filter((m) => recent.has(m.id)).sort(byName), ...crew.filter((m) => !recent.has(m.id)).sort(byName)];
+}
 
 function logList(c: FakeContext, actor: Actor, logs: WorkLogRow[]): LogList {
   if (c.isForeman(actor)) {
@@ -150,9 +177,7 @@ export function createLogService(c: FakeContext): LogService {
         latest.push({ projectId: project.id, stageId: st.id, label: stageLabel(c, st) });
       }
       const noWork = c.ix.noWorkDays;
-      const crew: GridCrewForeman[] = c.t.crewMembers
-        .filter((m) => m.activeFrom <= date && (m.activeTo === null || m.activeTo >= date))
-        .sort((a, b) => a.name.localeCompare(b.name))
+      const crew: GridCrewForeman[] = entryCrew(c, actor, date, chosenProject)
         .map((m) => {
           const basis = gridBasisFor(m, stage === null ? undefined : stage.unit);
           return {
@@ -272,15 +297,13 @@ export function createProgressService(c: FakeContext): ProgressService {
         });
       }
       const date = query?.date ?? c.today;
+      const stageProject = query?.stageId ? c.ix.stages.get(query.stageId)!.projectId : null;
       return {
         view: c.isForeman(actor) ? "foreman" : "manager",
         date,
         latestStages: latest,
         projects: pickableProjects(c, actor, undefined, true).filter((p) => p.stages.length > 0),
-        crew: c.t.crewMembers
-          .filter((m) => m.activeFrom <= date && (m.activeTo === null || m.activeTo >= date))
-          .sort((a, b) => a.name.localeCompare(b.name))
-          .map((m) => crewRowForeman(m, c.today)),
+        crew: entryCrew(c, actor, date, stageProject).map((m) => crewRowForeman(m, c.today)),
       };
     },
 
