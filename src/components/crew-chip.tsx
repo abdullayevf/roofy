@@ -6,7 +6,14 @@ import type { ReactNode } from "react";
 import type { Hundredths } from "@/domain/types";
 import { cx } from "@/lib/cx";
 import { DayToggle } from "./ui/day-toggle";
+import { Segmented } from "./ui/segmented";
 import { Stepper } from "./ui/stepper";
+
+const OVERTIME = [
+  { value: "100", label: "Normal" },
+  { value: "150", label: "×1.5" },
+  { value: "200", label: "×2" },
+];
 
 export type CrewBasisLabel = "Day" | "Hourly" | "m²" | "lm" | "Each" | "Hours only";
 
@@ -44,6 +51,9 @@ export type CrewChipProps = {
   /** Controlled exception value (100 = 1 day, 50 = ½ day; or hours in hundredths); omit to let the control hold its own. */
   exceptionValue?: Hundredths;
   onExceptionChange?: (value: Hundredths) => void;
+  /** Hourly people: overtime as a multiplier in hundredths (100 = normal, 150 = ×1.5, 200 = ×2). Shown with the hours stepper when `onMultiplierChange` is given. */
+  multiplier?: Hundredths;
+  onMultiplierChange?: (value: Hundredths) => void;
   onPressedChange?: (pressed: boolean) => void;
   disabled?: boolean;
   /** Demo-only: forces the focus ring on the check box so it shows up in a static screenshot. */
@@ -68,6 +78,8 @@ export function CrewChip({
   pressed: controlledPressed,
   exceptionValue,
   onExceptionChange,
+  multiplier = 100,
+  onMultiplierChange,
   onPressedChange,
   disabled,
   focusVisible,
@@ -91,7 +103,7 @@ export function CrewChip({
         className={cx(
           "group flex min-h-[64px] w-full items-center justify-between gap-4 px-4 py-2 text-left outline-none active:bg-galv lg:min-h-12 lg:py-1",
           // The whole row is the target, so the whole ticked row is tinted, not just the box.
-          pressed && "bg-tape/10",
+          pressed && "bg-tape/25",
         )}
       >
         <span className="flex min-w-0 flex-col items-start">
@@ -112,8 +124,8 @@ export function CrewChip({
         <span
           aria-hidden="true"
           className={cx(
-            "flex h-12 w-12 shrink-0 items-center justify-center rounded-control border-[1.5px]",
-            pressed ? "border-transparent bg-tape" : disabled ? "border-edge bg-galv" : "border-ink bg-surface",
+            "flex h-12 w-12 shrink-0 items-center justify-center rounded-control border-2",
+            pressed ? "border-ink bg-tape" : disabled ? "border-edge bg-galv" : "border-ink bg-surface",
             focusVisible
               ? "outline outline-[3px] outline-offset-2 outline-chalk-link"
               : "group-focus-visible:outline group-focus-visible:outline-[3px] group-focus-visible:outline-offset-2 group-focus-visible:outline-chalk-link",
@@ -139,6 +151,15 @@ export function CrewChip({
               onChange={onExceptionChange}
             />
           )}
+          {exception === "hours" && onMultiplierChange ? (
+            <Segmented
+              legend={`${name}'s overtime`}
+              name={`${name}-overtime`}
+              options={OVERTIME}
+              value={String(multiplier)}
+              onChange={(v) => onMultiplierChange(Number(v))}
+            />
+          ) : null}
         </div>
       ) : null}
     </div>

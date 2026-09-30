@@ -228,6 +228,12 @@ body {
   background: var(--surface);
   border-top: 1.5px solid var(--ink);
 }
+/* On a phone, a field brought into view on a screen with a pinned bar scrolls clear of that bar and the tab bar. */
+@media (max-width: 1023px) {
+  html:has(.pin-action) {
+    scroll-padding-bottom: 16rem;
+  }
+}
 @media (min-width: 1024px) {
   .pin-action {
     position: sticky;

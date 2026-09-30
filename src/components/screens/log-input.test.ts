@@ -56,4 +56,10 @@ describe("crew-day grid input", () => {
     expect(pickableIds(people, ["a", "b", "c", "zzz"])).toEqual(["a"]);
     expect(buildEntries(people, new Set(["a", "b", "c"]), {}).map((e) => e.crewMemberId)).toEqual(["a"]);
   });
+
+  it("hourly people carry their overtime multiplier; others never do", () => {
+    const people = [crew({ crewMemberId: "a", basis: "hourly" }), crew({ crewMemberId: "b", basis: "hourly" }), crew({ crewMemberId: "c", basis: "time_only" })];
+    const entries = buildEntries(people, new Set(["a", "b", "c"]), {}, { a: 150, c: 200 });
+    expect(entries.map((e) => e.multiplier)).toEqual([150, 100, null]);
+  });
 });

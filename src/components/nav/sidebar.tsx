@@ -58,6 +58,8 @@ export type SidebarProps = {
   outboxCount?: number;
   /** One of those entries needs attention: the chip turns `over` red. */
   outboxAttention?: boolean;
+  /** Where the Outbox item goes (the prototype keeps its `?demo=` state on the way). */
+  outboxHref?: string;
   /** Key of the active extra item. */
   activeExtra?: string;
   /** Demo-only: forces the focus ring on one item (by key) so it shows up in a static screenshot. */
@@ -79,6 +81,7 @@ export function Sidebar({
   activeExtra,
   outboxCount = 0,
   outboxAttention = false,
+  outboxHref = "/outbox",
   focusKey,
   className,
 }: SidebarProps) {
@@ -95,7 +98,7 @@ export function Sidebar({
         return (
           <Link
             key={item.key}
-            href={item.href}
+            href={item.key === "outbox" ? outboxHref : item.href}
             prefetch={false}
             aria-current={isActive ? "page" : undefined}
             className={cx(
@@ -130,7 +133,7 @@ export function Sidebar({
             return (
               <Link
                 key={item.key}
-                href={item.href}
+                href={item.key === "outbox" ? outboxHref : item.href}
                 prefetch={false}
                 aria-current={isActive ? "page" : undefined}
                 className={cx(

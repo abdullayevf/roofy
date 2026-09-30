@@ -53,6 +53,8 @@ export type TabBarProps = {
   outboxCount?: number;
   /** One of those entries needs attention: the chip turns `over` red. */
   outboxAttention?: boolean;
+  /** Where the Outbox tab goes (the prototype keeps its `?demo=` state on the way). */
+  outboxHref?: string;
   /** Demo-only: forces the focus ring on one item (by key) so it shows up in a static screenshot. */
   focusKey?: string;
   /** Pads the bottom for the home-bar inset. Defaults to `fixed`: only the bar actually pinned at the bottom needs it. */
@@ -69,7 +71,7 @@ export type TabBarProps = {
  * Labels are Barlow Semi Condensed and wrap rather than overflow at large
  * text sizes.
  */
-export function TabBar({ role, active, fixed = true, outboxCount = 0, outboxAttention = false, focusKey, inset = fixed, className }: TabBarProps) {
+export function TabBar({ role, active, fixed = true, outboxCount = 0, outboxAttention = false, outboxHref = "/outbox", focusKey, inset = fixed, className }: TabBarProps) {
   const items = ITEMS[role];
   return (
     <nav
@@ -90,7 +92,7 @@ export function TabBar({ role, active, fixed = true, outboxCount = 0, outboxAtte
             <Link
               prefetch={false}
               key={item.key}
-              href={item.href}
+              href={item.key === "outbox" ? outboxHref : item.href}
               aria-current={isActive ? "page" : undefined}
               className={cx(
                 "relative flex min-h-16 min-w-0 flex-1 flex-col items-center justify-end gap-1 rounded-control px-1 pb-2 pt-1",
@@ -120,7 +122,7 @@ export function TabBar({ role, active, fixed = true, outboxCount = 0, outboxAtte
           <Link
             prefetch={false}
             key={item.key}
-            href={item.href}
+            href={item.key === "outbox" ? outboxHref : item.href}
             aria-current={isActive ? "page" : undefined}
             className={cx(
               "flex min-h-16 min-w-0 flex-1 flex-col items-center justify-end gap-1 rounded-control px-1 pb-2 pt-1",

@@ -40,6 +40,8 @@ export function buildEntries(
   crew: Loggable[],
   ticked: ReadonlySet<string>,
   exceptions: Readonly<Record<string, Hundredths>>,
+  /** Overtime for hourly people: 100 (normal), 150 or 200. */
+  multipliers: Readonly<Record<string, Hundredths>> = {},
 ): CrewDayEntry[] {
   return crew
     .filter((p) => ticked.has(p.crewMemberId) && canLog(p))
@@ -55,7 +57,7 @@ export function buildEntries(
         };
       }
       if (p.basis === "hourly") {
-        return { crewMemberId: p.crewMemberId, basis: "hourly", days: null, hours: value, multiplier: 100 };
+        return { crewMemberId: p.crewMemberId, basis: "hourly", days: null, hours: value, multiplier: multipliers[p.crewMemberId] ?? 100 };
       }
       return { crewMemberId: p.crewMemberId, basis: "time_only", days: null, hours: value, multiplier: null };
     });

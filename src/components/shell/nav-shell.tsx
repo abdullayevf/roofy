@@ -5,13 +5,15 @@
  * the active item with `activeNavKey`. Both navs are in the DOM; CSS shows one (the hidden one is
  * `display: none`, so it is out of the accessibility tree and the tab order).
  */
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { TabBar } from "@/components/nav/tab-bar";
 import { Sidebar } from "@/components/nav/sidebar";
+import { outboxHref } from "./demo-href";
 import { activeManageKey, activeNavKey, manageNavItems, type NavRole } from "./active";
 
 export function ShellSidebar({ role, workspaceName, outboxCount, outboxAttention }: { role: NavRole; workspaceName: string; outboxCount: number; outboxAttention: boolean }) {
   const pathname = usePathname();
+  const outbox = outboxHref(useSearchParams()?.get("demo"));
   return (
     <Sidebar
       role={role}
@@ -19,6 +21,7 @@ export function ShellSidebar({ role, workspaceName, outboxCount, outboxAttention
       workspaceName={workspaceName}
       outboxCount={outboxCount}
       outboxAttention={outboxAttention}
+      outboxHref={outbox}
       extra={manageNavItems(role)}
       activeExtra={activeManageKey(pathname)}
       className="min-h-dvh"
@@ -28,12 +31,14 @@ export function ShellSidebar({ role, workspaceName, outboxCount, outboxAttention
 
 export function ShellTabBar({ role, outboxCount, outboxAttention }: { role: NavRole; outboxCount: number; outboxAttention: boolean }) {
   const pathname = usePathname();
+  const outbox = outboxHref(useSearchParams()?.get("demo"));
   // Left and right padding keeps the outer tabs clear of the notch and rounded corners in landscape.
   return (
     <TabBar
       role={role}
       outboxCount={outboxCount}
       outboxAttention={outboxAttention}
+      outboxHref={outbox}
       active={activeNavKey(pathname, role, "phone")}
       className="pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
     />

@@ -1,6 +1,10 @@
+"use client";
+
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { cx } from "@/lib/cx";
+import { outboxHref } from "./shell/demo-href";
 
 export type OutboxBadgeProps = {
   /** Entries waiting to send ("3 to send"). */
@@ -17,9 +21,10 @@ export type OutboxBadgeProps = {
  * "entry needs attention" icon everywhere (the `over` icon).
  */
 export function OutboxBadge({ count, attention = 0, className }: OutboxBadgeProps) {
+  const href = outboxHref(useSearchParams()?.get("demo"));
   if (count === 0 && attention === 0) return null;
   return (
-    <Link href="/outbox" prefetch={false} className={cx("inline-flex min-h-12 max-w-full items-center", className)}>
+    <Link href={href} prefetch={false} className={cx("inline-flex min-h-12 max-w-full items-center", className)}>
       {attention > 0 ? (
         <span className="flex min-h-12 items-center gap-2 rounded-full border-[1.5px] border-over bg-surface px-3 py-1 text-body-strong text-over">
           <WarningCircle size={24} aria-hidden="true" className="shrink-0" />

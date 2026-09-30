@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type CSSProperties } from "react";
+import { useEffect, useRef, useState, useTransition, type CSSProperties, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { CrewDayDefaults, GridCrewForeman, GridCrewManager } from "@/data/contracts";
 import type { Hundredths } from "@/domain/types";
 import { submit } from "@/offline/submit";
-import { formatDate } from "@/lib/format";
 import { cx } from "@/lib/cx";
 import { CrewChip, CrewGroup, type CrewChipProps } from "@/components/crew-chip";
 import { Button } from "@/components/ui/button";
@@ -13,9 +12,8 @@ import { ErrorMessage } from "@/components/ui/error-message";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusChip } from "@/components/ui/status-chip";
+import { ENTRY_WIDTH as WIDTH, EntryDate, EntryEmpty, EntryTabs, withDemo } from "./field-entry";
 import { basisLabel, buildEntries, canLog, exceptionFor, initialException, pickableIds } from "./log-input";
-
-const WIDTH = "max-w-150";
 
 type Saved = { state: "logged" | "waiting"; names: string[]; stageLabel: string };
 
@@ -25,20 +23,6 @@ function chipNote(person: GridCrewForeman | GridCrewManager): CrewChipProps["not
   if ("missingRate" in person && person.missingRate) return { text: "No rate for this basis", tone: "watch" };
   if (person.loggedOnDate) return { text: "Already logged today", tone: "info" };
   return undefined;
-}
-
-/** `?demo=` (and only that) rides along when the job or stage changes, so a demo state survives a pick. */
-function logUrl(
-  basePath: string,
-  params: { project?: string; stage?: string; crew?: string[]; demo?: string },
-): string {
-  const q = new URLSearchParams();
-  if (params.project) q.set("project", params.project);
-  if (params.stage) q.set("stage", params.stage);
-  if (params.crew && params.crew.length > 0) q.set("crew", params.crew.join(","));
-  if (params.demo) q.set("demo", params.demo);
-  const s = q.toString();
-  return s ? `${basePath}?${s}` : basePath;
 }
 
 export type LogCrewDayProps = {
@@ -66,6 +50,7 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
   /** People saved in this visit: shown as logged, so a second save can't log them twice. */
   const [justLogged, setJustLogged] = useState<Set<string>>(new Set());
   const [exceptions, setExceptions] = useState<Record<string, Hundredths>>({});
+  const [multipliers, setMultipliers] = useState<Record<string, Hundredths>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<Saved | null>(null);
@@ -93,13 +78,16 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
   }, [saved]);
 
   const go = (url: string) => startNav(() => router.replace(url));
+  /** The address for a new pick: the job and stage, and whoever is ticked stays ticked. */
+  const url = (projectId?: string, stageId?: string, crewIds: string[] = [...ticked]) =>
+    withDemo(basePath, { project: projectId, stage: stageId, crew: crewIds.join(",") }, demo);
 
   async function save() {
     if (!project || !stage) return;
     setSaving(true);
     setError(null);
     try {
-      const entries = buildEntries(crew, ticked, exceptions);
+      const entries = buildEntries(crew, ticked, exceptions, multipliers);
       const result = await submit("crew_day", {
         date: defaults.date,
         projectId: project.id,
@@ -124,10 +112,41 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
     }
   }
 
+  const crewRef = useRef<HTMLElement>(null);
+  /** Desktop keyboard (DESIGN.md §8): arrows move between people, Space ticks (the button's own), Enter saves. */
+  function onCrewKeyDown(e: KeyboardEvent<HTMLElement>) {
+    const row = (e.target as HTMLElement).closest<HTMLButtonElement>("button[aria-pressed]");
+    if (!row) return;
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (ready && !saving) void save();
+    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const rows = [...(crewRef.current?.querySelectorAll<HTMLButtonElement>("button[aria-pressed]:not(:disabled)") ?? [])];
+      const at = rows.indexOf(row);
+      rows[Math.max(0, Math.min(rows.length - 1, at + (e.key === "ArrowDown" ? 1 : -1)))]?.focus();
+    }
+  }
+
   function logAnother() {
     setSaved(null);
     setTicked(new Set());
     setExceptions({});
+    setMultipliers({});
+  }
+
+  if (defaults.projects.length === 0) {
+    return (
+      <div data-screen="log" className={cx("flex flex-col gap-6", WIDTH)}>
+        <EntryTabs active="crew-day" demo={demo} />
+        <EntryEmpty
+          foreman={defaults.view === "foreman"}
+          managerMessage="No jobs yet. Add your first job."
+          actionLabel="Add your first job"
+          href="/jobs/new"
+        />
+      </div>
+    );
   }
 
   return (
@@ -136,21 +155,8 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
       style={saved ? undefined : ({ "--pin-action-height": barHeight } as CSSProperties)}
       className={cx("flex flex-col gap-6", WIDTH, saved ? null : "max-lg:pb-[var(--pin-action-height)]")}
     >
-      <h1 className="text-title text-ink">Log</h1>
-
-      <div className="flex flex-col gap-2">
-        <p className="text-meta text-ink-2">Date</p>
-        <p className="text-heading text-ink">Today, {formatDate(defaults.date, defaults.date)}</p>
-        <span aria-hidden="true" data-slot="date-rule" className="relative block h-[1.5px] bg-ink">
-          <span
-            data-testid="chalk-line"
-            className={cx(
-              "absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-chalk transition-[width] duration-300 ease-out motion-reduce:transition-none",
-              saved ? "w-full" : "w-0",
-            )}
-          />
-        </span>
-      </div>
+      <EntryTabs active="crew-day" demo={demo} />
+      <EntryDate date={defaults.date} today={defaults.date} saved={saved !== null} />
 
       <div data-slot="fields" className="flex flex-col gap-4">
         <Button
@@ -159,7 +165,7 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
           loading={navigating}
           loadingLabel="Copying"
           onClick={() =>
-            same && go(logUrl(basePath, { project: same.projectId, stage: sameStageOpen ? same.stageId : undefined, crew: same.crewMemberIds, demo }))
+            same && go(url(same.projectId, sameStageOpen ? same.stageId : undefined, same.crewMemberIds))
           }
           className="w-full"
         >
@@ -169,7 +175,7 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
           label="Job"
           value={project?.id ?? ""}
           disabled={saved !== null}
-          onChange={(e) => go(logUrl(basePath, { project: e.target.value || undefined, demo }))}
+          onChange={(e) => go(url(e.target.value || undefined))}
           options={[
             { value: "", label: "Choose a job" },
             ...defaults.projects.map((p) => ({ value: p.id, label: p.name })),
@@ -179,7 +185,7 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
           label="Stage"
           value={stage?.id ?? ""}
           disabled={project === null || saved !== null}
-          onChange={(e) => project && go(logUrl(basePath, { project: project.id, stage: e.target.value || undefined, demo }))}
+          onChange={(e) => project && go(url(project.id, e.target.value || undefined))}
           options={[
             { value: "", label: "Choose a stage" },
             ...(project?.stages ?? [])
@@ -209,8 +215,9 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
 
       {saved ? null : (
         <>
-          <section className="flex flex-col gap-2">
+          <section ref={crewRef} onKeyDown={onCrewKeyDown} className="flex flex-col gap-2">
             <h2 className="text-heading text-ink">Who worked</h2>
+            <p className="hidden text-meta text-ink-2 lg:block">Arrow keys move, Space ticks, Enter saves the day.</p>
             {crew.length === 0 ? (
               <p className="text-body text-ink-2">No crew yet. Add your crew first.</p>
             ) : (
@@ -234,6 +241,12 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
                     }
                     exceptionValue={exceptions[person.crewMemberId] ?? initialException(person)}
                     onExceptionChange={(v) => setExceptions((prev) => ({ ...prev, [person.crewMemberId]: v }))}
+                    multiplier={multipliers[person.crewMemberId] ?? 100}
+                    onMultiplierChange={
+                      person.basis === "hourly"
+                        ? (v) => setMultipliers((prev) => ({ ...prev, [person.crewMemberId]: v }))
+                        : undefined
+                    }
                   />
                 ))}
               </CrewGroup>
@@ -264,6 +277,7 @@ export function LogSkeleton() {
   return (
     <div data-screen="log" aria-busy="true" className={cx("flex flex-col gap-6", WIDTH)}>
       <h1 className="text-title text-ink">Log</h1>
+      <Skeleton height={60} />
       <div className="flex flex-col gap-2">
         <Skeleton width={60} height={20} />
         <Skeleton width={200} height={24} />

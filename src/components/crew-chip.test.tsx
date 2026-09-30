@@ -72,3 +72,25 @@ describe("CrewChip", () => {
     expect(days).toEqual([50]);
   });
 });
+
+describe("CrewChip overtime", () => {
+  it("offers Normal, ×1.5 and ×2 under the hours stepper when a person is ticked and overtime is wired", async () => {
+    const user = userEvent.setup();
+    const values: number[] = [];
+    render(<CrewChip name="Tom" basis="Hourly" pressed exception="hours" exceptionValue={800} multiplier={100} onMultiplierChange={(v) => values.push(v)} />);
+    expect(screen.getByRole("radio", { name: "Normal" })).toBeChecked();
+    await user.click(screen.getByRole("radio", { name: "×1.5" }));
+    await user.click(screen.getByRole("radio", { name: "×2" }));
+    expect(values).toEqual([150, 200]);
+  });
+
+  it("shows no overtime control for a half-day person or without a handler", () => {
+    render(
+      <>
+        <CrewChip name="Sam" basis="Day" pressed exception="half-day" onMultiplierChange={() => {}} />
+        <CrewChip name="Tom" basis="Hourly" pressed exception="hours" />
+      </>,
+    );
+    expect(screen.queryByRole("radio", { name: "×1.5" })).toBeNull();
+  });
+});

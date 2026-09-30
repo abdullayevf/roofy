@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { collectConsole, expectScreenHealthy } from "./guards";
+import { expectNoMoney } from "./money-scan";
 
 const isPhone = (name: string) => name !== "desktop";
 
@@ -94,5 +95,110 @@ test.describe("Log crew-day grid", () => {
   test("?demo=noperm shows no access", async ({ page }) => {
     await signInAs(page, "manager", "/log?demo=noperm");
     await expect(page.getByText("You don't have access to this. Ask your manager.")).toBeVisible();
+  });
+
+  test("switching to Progress and No work is one tap and keeps a demo state", async ({ page }) => {
+    await signInAs(page, "manager", "/log?demo=waiting");
+    await page.getByRole("radio", { name: "Progress" }).click();
+    await expect(page).toHaveURL(/\/log\/progress\?demo=waiting/);
+    await page.getByRole("radio", { name: "No work" }).click();
+    await expect(page).toHaveURL(/\/log\/no-work\?demo=waiting/);
+    await page.getByRole("radio", { name: "Crew day" }).click();
+    await expect(page).toHaveURL(/\/log\?demo=waiting/);
+  });
+
+  test("an hourly person's overtime (x1.5) is sent with the day", async ({ page }) => {
+    await signInAs(page, "manager");
+    await page.getByLabel("Job", { exact: true }).selectOption({ index: 1 });
+    await expect(page).toHaveURL(/project=/);
+    await expect(page.getByLabel("Stage", { exact: true })).toBeEnabled();
+    await page.getByLabel("Stage", { exact: true }).selectOption({ index: 1 });
+    await expect(page).toHaveURL(/stage=/);
+    await expect(page.getByLabel("Stage", { exact: true })).not.toHaveValue("");
+    await page.getByRole("button", { name: /Hourly/ }).first().click();
+    await page.getByRole("radio", { name: "×1.5" }).click();
+    const push = page.waitForRequest((r) => r.url().endsWith("/api/sync/push"));
+    await page.getByRole("button", { name: "Save day" }).click();
+    expect((await push).postData()).toContain('"multiplier":150');
+    await expect(page.getByRole("status").filter({ hasText: "Logged" })).toBeVisible();
+  });
+
+  test("picking another stage keeps the people already ticked", async ({ page }) => {
+    await signInAs(page, "manager");
+    await page.getByRole("button", { name: "Same as yesterday" }).click();
+    await expect(page.getByRole("button", { name: /^Sam\s/ })).toHaveAttribute("aria-pressed", "true");
+    const stage = page.getByLabel("Stage", { exact: true });
+    const other = await stage.locator("option").evaluateAll((os, cur) => (os as HTMLOptionElement[]).find((o) => o.value && o.value !== cur)?.value ?? "", await stage.inputValue());
+    await stage.selectOption(other);
+    await expect(stage).toHaveValue(other);
+    await expect(page.getByRole("button", { name: /^Sam\s/ })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("desktop keyboard: arrows move between people, Space ticks, Enter saves", async ({ page }, testInfo) => {
+    test.skip(isPhone(testInfo.project.name), "the keyboard is for the desktop");
+    await signInAs(page, "manager");
+    await expect(page.getByText("Arrow keys move, Space ticks, Enter saves the day.")).toBeVisible();
+    await page.getByRole("button", { name: "Same as yesterday" }).click();
+    const sam = page.getByRole("button", { name: /^Sam\s/ });
+    await expect(sam).toHaveAttribute("aria-pressed", "true");
+    await sam.focus();
+    await page.keyboard.press("ArrowDown");
+    await expect(page.locator(":focus")).not.toHaveText(/^Sam/);
+    await page.keyboard.press("ArrowUp");
+    await expect(sam).toBeFocused();
+    await page.keyboard.press("Space");
+    await expect(sam).toHaveAttribute("aria-pressed", "false");
+    await page.keyboard.press("Space");
+    await expect(sam).toHaveAttribute("aria-pressed", "true");
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("status").filter({ hasText: "Logged" })).toContainText("Sam");
+  });
+
+  test("the chalk line snaps under the date instantly with reduced motion", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await signInAs(page, "manager");
+    await page.getByRole("button", { name: "Same as yesterday" }).click();
+    await page.getByRole("button", { name: "Save day" }).click();
+    await expect(page.getByTestId("chalk-line")).toHaveCSS("transition-duration", "0s");
+    await expect(page.getByTestId("chalk-line")).toHaveClass(/w-full/);
+  });
+
+  test("the date stroke and the ticked check box are the heavy ones", async ({ page }) => {
+    await signInAs(page, "manager");
+    expect(await page.locator('[data-slot="date-rule"]').evaluate((el) => getComputedStyle(el).height)).toBe("2px");
+    await page.getByRole("button", { name: "Same as yesterday" }).click();
+    const box = page.getByRole("button", { name: /^Sam\s/ }).locator('span[aria-hidden="true"]');
+    await expect(box).toHaveCSS("border-top-width", "2px");
+  });
+
+  test("?demo=empty tells a manager to add a job, and a foreman they can log once a manager adds them", async ({ page }, testInfo) => {
+    const consoleLog = collectConsole(page);
+    await signInAs(page, "manager", "/log?demo=empty");
+    await expect(page.getByText("No jobs yet. Add your first job.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Add your first job" })).toBeVisible();
+    await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
+    await signInAs(page, "foreman", "/log?demo=empty");
+    await expect(page.getByText("You can log once a manager adds you to a job.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Add your first job" })).toHaveCount(0);
+    await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
+  });
+
+  test("?demo=offline shows the banner; ?demo=waiting and ?demo=attention show the outbox badge", async ({ page }, testInfo) => {
+    const consoleLog = collectConsole(page);
+    await signInAs(page, "manager", "/log?demo=offline");
+    await expect(page.getByText("No signal — entries are saved on this device and will send automatically.")).toBeVisible();
+    await signInAs(page, "manager", "/log?demo=waiting");
+    await expect(page.getByRole("link", { name: "3 to send" })).toBeVisible();
+    await signInAs(page, "manager", "/log?demo=attention");
+    await expect(page.getByRole("link", { name: "1 entry needs attention" })).toBeVisible();
+    await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
+  });
+
+  test("a foreman's Log has no money in any state, and passes the guards", async ({ page }, testInfo) => {
+    const consoleLog = collectConsole(page);
+    await signInAs(page, "foreman");
+    await page.getByRole("button", { name: "Same as yesterday" }).click();
+    await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
+    await expectNoMoney(page, ["/log", "/log?demo=empty", "/log?demo=loading", "/log?demo=offline", "/log?demo=waiting", "/log?demo=attention", "/log?demo=noperm"]);
   });
 });
