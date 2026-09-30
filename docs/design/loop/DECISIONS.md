@@ -35,3 +35,9 @@ The A/B (Galvanised vs the Docket challenger, Home and Log crew-day) split: the 
 - B3. Tighter radius hierarchy: controls 6, groups 8, sheets 12 (top only), chips full (was 10, 12, 16). Why: the critics read the larger radii as a generic app look; smaller radii keep the hierarchy and look more like tools.
 
 The Docket challenger is unchanged (its own radius, edge and top-action overrides). Round 2 captures re-run before any new score.
+
+## 2026-09-30 — D2 outcome: Galvanised wins
+
+Round 1 split: the design critic preferred the challenger 74 to 73, the field critic preferred Galvanised 75 to 72. Galvanised was revised (Save day pinned in thumb reach, `ink` edges on unticked boxes and the date rule plus a 1 px `edge` outline on groups, radii 6/8/12) and round 2 ran blind with a fresh mapping: Galvanised won 83 to 72 with the design critic and 79 to 67 with the field critic. The challenger code and tokens are deleted (scripts/challenger-tokens.css, src/app/design/challenger/, the "direction" capture rows, the gen-tokens hook).
+
+Lessons carried to Tasks 11 and 12: darker small text and borders for glare, a heavier check box and date stroke, a stronger ticked-row tint, and a denser Needs attention list on phone.

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -244,10 +244,7 @@ function main(): void {
   const root = process.cwd();
   const mdPath = join(root, "docs/design/DESIGN.md");
   const outPath = join(root, "src/app/tokens.css");
-  // Temporary (Phase 2 Task 10 A/B): the challenger direction's tokens ride along while this file exists.
-  const extraPath = join(root, "scripts/challenger-tokens.css");
-  const extra = existsSync(extraPath) ? readFileSync(extraPath, "utf8") : "";
-  const generated = generateTokensCss(readFileSync(mdPath, "utf8")) + extra;
+  const generated = generateTokensCss(readFileSync(mdPath, "utf8"));
 
   if (process.argv.includes("--check")) {
     const current = readFileSync(outPath, "utf8");
