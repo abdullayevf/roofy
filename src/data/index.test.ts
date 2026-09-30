@@ -105,6 +105,8 @@ describe("getData", () => {
     const error = await getData({ searchParams: { demo: "error" } });
     await expect(error.data.home.get(error.actor)).rejects.toMatchObject({ code: "unavailable" });
     await expect(error.data.projects.list(error.actor)).rejects.toBeInstanceOf(DataError);
+    // The shell still names the workspace when every read fails.
+    expect(error.workspaceName).toBe("Harbour Roofing");
     const noperm = await getData({ searchParams: { demo: "noperm" } });
     await expect(noperm.data.home.get(noperm.actor)).rejects.toMatchObject({
       code: "forbidden",

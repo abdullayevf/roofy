@@ -694,6 +694,9 @@ export default function DesignPage() {
           <Swatch label="Only shows when something is waiting">
             <OutboxBadge count={3} />
           </Swatch>
+          <Swatch label="A failed entry wins: it needs a person">
+            <OutboxBadge count={0} attention={1} />
+          </Swatch>
         </ThemePair>
       </Section>
 

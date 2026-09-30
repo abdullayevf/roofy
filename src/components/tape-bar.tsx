@@ -146,7 +146,7 @@ export function TapeBar({
         </div>
       ) : null}
       {note ? (
-        <p className={cx("col-span-2 flex items-start gap-2 text-left text-meta", t.text)}>
+        <p className={cx("col-span-2 flex items-start gap-2 text-left text-body-strong", t.text)}>
           <Glyph size={24} aria-hidden="true" className="shrink-0" />
           <span className="min-w-0">{keepAmountsTogether(note)}</span>
         </p>

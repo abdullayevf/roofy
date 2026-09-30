@@ -560,6 +560,7 @@ const PROJECTS: ScriptedProject[] = [
       1: { doneOn: "2026-08-24" },
       2: { doneOn: "2026-08-28" },
       3: { labourBudgetCents: 150000, manualPctBp: 5000 },
+      4: { manualPctBp: 8200 },
       5: { budgetQty: 26000 },
     },
   },

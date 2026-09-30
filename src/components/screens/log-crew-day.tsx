@@ -194,7 +194,7 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
         <div className="flex flex-col items-start gap-3 rounded-group border-group bg-surface p-4">
           <StatusChip status={saved.state === "logged" ? "sent" : "waiting"} />
           <p className="text-body-strong text-ink">
-            {saved.state === "logged" ? "Logged" : "Saved on this phone"}: {saved.names.join(", ")}
+            {saved.state === "logged" ? "Logged" : "Saved on this device"}: {saved.names.join(", ")}
           </p>
           <p className="text-meta text-ink-2">
             {saved.stageLabel}.

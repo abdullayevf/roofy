@@ -1,5 +1,5 @@
 import { OfflineBanner } from "@/components/offline-banner";
-import { OutboxBadge } from "@/components/outbox-badge";
+import { OutboxBadgeSlot } from "./outbox-badge-slot";
 import { ShellSidebar, ShellTabBar } from "./nav-shell";
 import type { NavRole } from "./active";
 
@@ -9,15 +9,17 @@ export type AppFrameProps = {
   offline: boolean;
   /** Entries waiting to send ("N to send"). */
   waiting: number;
+  /** Entries that failed and need attention ("N needs attention"). */
+  attention: number;
   children: React.ReactNode;
 };
 
 /**
  * The app shell (DESIGN.md §4): tab bar on a phone, 240 px sidebar from 1024 px, an offline banner and the
- * "N to send" badge above the page. It pads with the device's safe-area insets; `--sat-sim` is the simulated
+ * outbox badge ("N to send", or "N needs attention") above the page. It pads with the device's safe-area insets; `--sat-sim` is the simulated
  * inset the design guards set on iPhone captures. Props only; the (app) layout passes the role and demo state.
  */
-export function AppFrame({ role, workspaceName, offline, waiting, children }: AppFrameProps) {
+export function AppFrame({ role, workspaceName, offline, waiting, attention, children }: AppFrameProps) {
   return (
     <div className="min-h-dvh lg:flex">
       <div className="hidden lg:sticky lg:top-0 lg:block lg:h-dvh lg:shrink-0 lg:overflow-y-auto">
@@ -32,11 +34,7 @@ export function AppFrame({ role, workspaceName, offline, waiting, children }: Ap
         }}
       >
         {offline ? <OfflineBanner /> : null}
-        {waiting > 0 ? (
-          <div className="flex justify-end px-4 pt-2">
-            <OutboxBadge count={waiting} />
-          </div>
-        ) : null}
+        <OutboxBadgeSlot waiting={waiting} attention={attention} />
         <main className="flex-1 p-4 pb-tab-bar lg:pb-page">{children}</main>
       </div>
       <div className="lg:hidden">

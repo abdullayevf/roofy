@@ -78,6 +78,8 @@ export interface DataContext {
   /** The work date in the workspace timezone. */
   today: LocalDate;
   demo: DemoFlags;
+  /** The workspace name, readable even when every service call fails (`?demo=error`), for the shell. */
+  workspaceName: string;
 }
 
 export async function getData(options: { searchParams?: SearchParamsInput } = {}): Promise<DataContext> {
@@ -97,6 +99,7 @@ export async function getData(options: { searchParams?: SearchParamsInput } = {}
     actor: actorFor(store.tables, session.role),
     today: todayIn(store.tables.workspace.timezone, now),
     demo: demoFlags(state, store.tables, now),
+    workspaceName: store.tables.workspace.name,
   };
 }
 

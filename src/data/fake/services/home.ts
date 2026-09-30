@@ -64,7 +64,7 @@ const UNIT_ORDER: readonly Unit[] = ["m2", "lm", "each"];
 export function createHomeService(c: FakeContext): HomeService {
   const activeProjects = () => c.t.projects.filter((p) => p.status === "active");
 
-  function needsAttention(lastWeek: PayPeriod): AttentionItem[] {
+  function allAttention(lastWeek: PayPeriod): AttentionItem[] {
     const fig = c.fig;
     const items: AttentionItem[] = [];
     for (const project of activeProjects()) {
@@ -158,7 +158,7 @@ export function createHomeService(c: FakeContext): HomeService {
         });
       }
     }
-    return sortAttention(items).slice(0, ATTENTION_LIMIT);
+    return sortAttention(items);
   }
 
   function activeJobs(): ActiveJobRow[] {
@@ -166,6 +166,7 @@ export function createHomeService(c: FakeContext): HomeService {
     return activeProjects()
       .map((p) => {
         const f = c.fig.project(p.id);
+        const worst = f.alert ? f.stages.find((s) => s.alert === f.alert) : undefined;
         return {
           projectId: p.id,
           name: p.nickname,
@@ -176,6 +177,8 @@ export function createHomeService(c: FakeContext): HomeService {
           forecastMarginCents: f.margins.forecastMarginCents,
           daysSinceLastLog: f.daysSinceLastLog,
           alert: f.alert,
+          alertStageName: worst?.stage.name ?? null,
+          forecastBp: f.alert ? ratioBp(f.labourExpectedCents, f.labourBudgetCents) : null,
           href: `/jobs/${p.id}`,
         };
       })
@@ -211,6 +214,13 @@ export function createHomeService(c: FakeContext): HomeService {
       utilisationBp: ratioBp(sum(util.map((u) => u.workedDays)), sum(util.map((u) => u.availableDays))),
       gaps: fig.gaps(period).length,
     };
+  }
+
+  /** Today's logs on the jobs the foreman can see: the job names and how many different people were logged. */
+  function loggedToday(visible: ReadonlySet<string>): { jobs: string[]; crewCount: number } {
+    const logs = [...c.ix.logsOn(c.today)].filter((l) => visible.has(l.projectId));
+    const jobs = [...new Set(logs.map((l) => c.ix.projects.get(l.projectId)!.nickname))].sort();
+    return { jobs, crewCount: new Set(logs.map((l) => l.crewMemberId)).size };
   }
 
   function payPeriod(): PayPeriodFigures | null {
@@ -254,17 +264,24 @@ export function createHomeService(c: FakeContext): HomeService {
           access: FIELD_ACCESS,
           today,
           jobs,
+          loggedToday: loggedToday(visible),
           logToday: { href: "/log", projectId: jobs.length === 1 ? jobs[0]!.projectId : null },
         };
       }
       const access = c.access(actor);
       const current = c.fig.periodContaining(today);
       const lastWeek = c.fig.periodContaining(addDays(current.start, -1));
+      const attention = allAttention(lastWeek);
+      const now = c.now();
       return {
         view: "manager",
         access,
         today,
-        needsAttention: needsAttention(lastWeek),
+        needsAttention: attention.slice(0, ATTENTION_LIMIT),
+        needsAttentionMore: Math.max(0, attention.length - ATTENTION_LIMIT),
+        // Offline, the figures are the last ones the phone loaded: 40 minutes ago in the demo.
+        asOf: c.options.demo === "offline" ? new Date(now.getTime() - 40 * 60_000).toISOString() : now.toISOString(),
+        timeZone: c.t.workspace.timezone,
         activeJobs: activeJobs(),
         lastWeek: lastWeekFigures(lastWeek),
         payPeriod: payPeriod(),

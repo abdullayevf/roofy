@@ -38,8 +38,8 @@ export function attentionSentence(item: AttentionItem, today: string): string {
       return `${item.name} is ${formatMoney(item.shortfallCents)} under the award minimum in this pay run.`;
     case "outbox_attention":
       return item.count === 1
-        ? "1 entry on this phone needs attention."
-        : `${item.count} entries on this phone need attention.`;
+        ? "1 entry on this device needs attention."
+        : `${item.count} entries on this device need attention.`;
   }
 }
 
@@ -50,11 +50,17 @@ export function daysSinceText(days: number | null): string {
   return `Last logged ${days} days ago`;
 }
 
-export function jobAlertText(alert: ActiveJobRow["alert"]): { tone: "over" | "watch"; text: string } | null {
+/** The stage alert on a job card, worded with the stage it belongs to ("Sheet install is trending $775.00 over its labour budget."). */
+export function jobAlertText(
+  alert: ActiveJobRow["alert"],
+  stageName: string | null,
+): { tone: "over" | "watch"; text: string } | null {
   if (alert === null) return null;
+  const who = stageName ? `${stageName} is ` : "";
+  const over = `${formatMoney(alert.byCents)} over its labour budget.`;
   return alert.level === "over"
-    ? { tone: "over", text: `${formatMoney(alert.byCents)} over budget` }
-    : { tone: "watch", text: `Trending ${formatMoney(alert.byCents)} over budget` };
+    ? { tone: "over", text: `${who}${over}` }
+    : { tone: "watch", text: `${who}trending ${over}` };
 }
 
 /** "Sheet install, Flashings (paused: weather)" for a job's current stages. */
@@ -77,5 +83,22 @@ export function outboxStatus(items: { state: OutboxState }[]): OutboxStatus {
   if (waiting > 0) {
     return { tone: "waiting", text: waiting === 1 ? "1 entry is waiting to send." : `${waiting} entries are waiting to send.` };
   }
-  return { tone: "clear", text: "Everything on this phone has been sent." };
+  return { tone: "clear", text: "Everything on this device has been sent." };
+}
+
+/** "3 more things to check": what the 7-item cap left off Needs attention. */
+export const moreAttentionText = (n: number): string => (n === 1 ? "1 more thing to check" : `${n} more things to check`);
+
+/** The foreman Home's lead line: whether today's crew is logged. */
+export function logStatusText(logged: { jobs: string[]; crewCount: number }): string {
+  if (logged.jobs.length === 0) return "Not logged yet today";
+  const where = logged.jobs.length === 1 ? logged.jobs[0] : `${logged.jobs.length} jobs`;
+  return `Logged: ${where}, ${logged.crewCount} crew`;
+}
+
+/** The line under This pay period's figures: what to check, worded for who is reading. */
+export function payFlagsText(count: number, blocking: boolean, role: "owner" | "manager" | "accountant"): string {
+  const things = count === 1 ? "1 thing to check" : `${count} things to check`;
+  if (role === "accountant") return `${things} in this pay run.`;
+  return `${things} before you approve.${blocking ? " One of them stops approval." : ""}`;
 }

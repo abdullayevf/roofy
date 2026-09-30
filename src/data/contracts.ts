@@ -1012,7 +1012,11 @@ export interface ActiveJobRow {
   labourBudgetCents: Cents;
   forecastMarginCents: Cents;
   daysSinceLastLog: number | null;
+  /** The worst stage alert on the job (pay rules §12 is per stage), with the stage it belongs to. */
   alert: BudgetAlertDto | null;
+  alertStageName: string | null;
+  /** The whole job's expected labour ÷ its labour budget (the tape bar's forecast marker); set only when `alert` is. */
+  forecastBp: BasisPoints | null;
   href: string;
 }
 
@@ -1048,6 +1052,11 @@ export interface HomeManager {
   today: LocalDate;
   /** Max 7, most severe first. Outbox items are added on the device. */
   needsAttention: AttentionItem[];
+  /** How many more items there were beyond the 7 shown. */
+  needsAttentionMore: number;
+  /** When these figures were read, and the workspace timezone to show it in (offline: the last time they loaded). */
+  asOf: Instant;
+  timeZone: string;
   activeJobs: ActiveJobRow[];
   lastWeek: LastWeekFigures;
   payPeriod: PayPeriodFigures | null;
@@ -1070,6 +1079,8 @@ export interface HomeForeman {
   access: FieldAccess;
   today: LocalDate;
   jobs: ForemanJobRow[];
+  /** Today's logging on the jobs this person can see: which jobs and how many people, or nothing yet. */
+  loggedToday: { jobs: string[]; crewCount: number };
   logToday: { href: string; projectId: Id | null };
 }
 

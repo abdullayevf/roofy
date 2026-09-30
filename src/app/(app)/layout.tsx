@@ -7,13 +7,13 @@ export const metadata: Metadata = {
   title: { template: "%s | Roofy", default: "Roofy" },
 };
 
-/** The workspace name for the sidebar; "Roofy" when the data can't be read (`?demo=error`, `?demo=noperm`). */
+/** The workspace name for the sidebar; the context's own copy when the data can't be read (`?demo=error`, `?demo=noperm`). */
 async function workspaceNameFor(ctx: Awaited<ReturnType<typeof getData>>): Promise<string> {
   try {
     const view = await ctx.data.workspace.settings(ctx.actor);
     return view.view === "manager" ? view.settings.name : view.workspace.name;
   } catch {
-    return "Roofy";
+    return ctx.workspaceName;
   }
 }
 
@@ -25,7 +25,8 @@ export default async function AppLayout({ children }: Readonly<{ children: React
       role={navRoleFor(ctx.actor.role)}
       workspaceName={await workspaceNameFor(ctx)}
       offline={ctx.demo.offline}
-      waiting={ctx.demo.outbox.length}
+      waiting={ctx.demo.outbox.filter((i) => i.state !== "needs_attention").length}
+      attention={ctx.demo.outbox.filter((i) => i.state === "needs_attention").length}
     >
       {children}
     </AppFrame>

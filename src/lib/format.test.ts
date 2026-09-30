@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatDays, formatDecimal, formatHours, formatMoney, formatQuantity } from "./format";
+import { formatDate, formatDateTime, formatDays, formatDecimal, formatHours, formatMoney, formatQuantity } from "./format";
 
 describe("format", () => {
   it("formats AUD with a true minus sign", () => {
@@ -32,5 +32,18 @@ describe("format", () => {
     expect(formatDecimal(5)).toBe("0.05");
     expect(formatDecimal(-30_000)).toBe("-300.00");
     expect(formatDecimal(0)).toBe("0.00");
+  });
+});
+
+describe("formatDateTime", () => {
+  it("shows the date and a 12-hour time in the given timezone", () => {
+    // 20:20 UTC on 27 Sep is 6:20 am on Mon 28 Sep in Sydney (AEST +10 until 4 Oct, then +11).
+    expect(formatDateTime("2026-09-27T20:20:00.000Z", "Australia/Sydney", "2026-09-28")).toBe("Mon 28 Sep, 6:20 am");
+    expect(formatDateTime("2026-09-28T04:05:00.000Z", "Australia/Sydney", "2026-09-28")).toBe("Mon 28 Sep, 2:05 pm");
+    expect(formatDateTime("2026-09-27T14:00:00.000Z", "Australia/Sydney", "2026-09-28")).toBe("Mon 28 Sep, 12:00 am");
+  });
+  it("adds the year when it isn't today's year, and uses the timezone's date", () => {
+    expect(formatDateTime("2025-12-31T14:30:00.000Z", "Australia/Sydney", "2026-09-28")).toBe("Thu 1 Jan, 1:30 am");
+    expect(formatDateTime("2025-12-30T14:30:00.000Z", "Australia/Sydney", "2026-09-28")).toBe("Wed 31 Dec 2025, 1:30 am");
   });
 });

@@ -17,7 +17,7 @@ async function navLabels(page: Page): Promise<string[]> {
 
 const PHONE_ITEMS: Record<"manager" | "foreman" | "accountant", string[]> = {
   manager: ["Home", "Jobs", "Log", "Crew", "More"],
-  // Log is raised on the phone bar; the desktop sidebar lists it right after Home.
+  // The phone bar and the desktop sidebar list the same order; Log is raised on the phone bar.
   foreman: ["Home", "Jobs", "Log", "Outbox"],
   accountant: ["Home", "Pay", "Reports", "More"],
 };
@@ -69,8 +69,7 @@ test.describe("navigation by role", () => {
   ] as const) {
     test(`${role} sees the ${navRole} items with the right one active`, async ({ page }, testInfo) => {
       await signInAs(page, role, role === "foreman" ? "/log" : "/");
-      const phone = isPhone(testInfo.project.name);
-      const expected = navRole === "foreman" && !phone ? ["Home", "Log", "Jobs", "Outbox"] : PHONE_ITEMS[navRole];
+      const expected = PHONE_ITEMS[navRole];
       const desktopExtras =
         navRole === "manager" && !isPhone(testInfo.project.name) ? ["Expenses", "Pay runs", "Reports", "Settings"] : [];
       expect(await navLabels(page)).toEqual([...expected, ...desktopExtras]);
@@ -184,7 +183,7 @@ test.describe("demo states in the shell", () => {
     await page.goto("/?demo=waiting");
     await expect(page.getByRole("link", { name: "3 to send" })).toBeVisible();
     await page.goto("/?demo=attention");
-    await expect(page.getByRole("link", { name: "1 to send" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "1 needs attention" })).toBeVisible();
     await page.goto("/");
     await expect(page.getByRole("link", { name: /to send/ })).toHaveCount(0);
   });

@@ -14,7 +14,7 @@ export function OfflineBanner({ className }: OfflineBannerProps) {
         className,
       )}
     >
-      No signal — entries are saved on this phone and will send automatically.
+      No signal — entries are saved on this device and will send automatically.
     </div>
   );
 }

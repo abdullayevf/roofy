@@ -10,7 +10,7 @@ import {
 } from "@/domain/progress";
 import type { DemoState, HomeForeman, HomeManager } from "../../contracts";
 import { getSeed } from "../store";
-import { fake } from "./testing";
+import { fake, fakeSession } from "./testing";
 
 const seed = getSeed();
 const live = seed.workLogs.filter((l) => l.deletedAt === null);
@@ -80,10 +80,38 @@ describe("home (manager)", () => {
       labourBudgetCents: sum(o.figs.map((f) => f.st.labourBudgetCents)),
       forecastMarginCents: o.margins.forecastMarginCents,
       alert: { level: "trending", severity: "watch", byCents: 77500 },
+      alertStageName: "Sheet install",
       daysSinceLastLog: 3,
       href: `/jobs/${seed.meta.projects.smith}`,
     });
     expect(smith.currentStages.map((s) => [s.name, s.status])).toEqual([["Sheet install", "active"]]);
+  });
+
+  it("the forecast marker is the job's expected labour ÷ its labour budget, only on a job with an alert", async () => {
+    const home = await managerHome();
+    const smith = home.activeJobs.find((j) => j.projectId === seed.meta.projects.smith)!;
+    // 22,795.00 expected (done stages at cost, sheet install at its forecast, the rest at budget) of 24,600.00.
+    expect(smith.forecastBp).toBe(Math.round((2279500 * 10_000) / 2460000));
+    for (const row of home.activeJobs) expect(row.forecastBp === null).toBe(row.alert === null);
+  });
+
+  it("Ryde heritage's re-bed stage carries its progress, so the job's % done and spend add up", async () => {
+    const row = (await managerHome()).activeJobs.find((j) => j.name === "Ryde heritage")!;
+    const spent = row.labourActualCents / row.labourBudgetCents;
+    expect(Math.abs(row.pctBp / 10_000 - spent)).toBeLessThan(0.15);
+  });
+
+  it("says how many needs-attention items were left off after the 7 shown", async () => {
+    const home = await managerHome("attention");
+    expect(home.needsAttention).toHaveLength(7);
+    expect(home.needsAttentionMore).toBeGreaterThan(0);
+    expect((await managerHome()).needsAttentionMore).toBe(0);
+  });
+
+  it("figures are as of now, or 40 minutes earlier when offline, in the workspace timezone", async () => {
+    const online = await managerHome();
+    expect(online).toMatchObject({ asOf: "2026-09-27T21:00:00.000Z", timeZone: "Australia/Sydney" });
+    expect((await managerHome("offline")).asOf).toBe("2026-09-27T20:20:00.000Z");
   });
 
   it("every active job row equals its src/domain figures", async () => {
@@ -238,5 +266,27 @@ describe("home (foreman)", () => {
     expect(home.jobs.every((j) => !j.loggedToday)).toBe(true);
     expect(home.logToday).toEqual({ href: "/log", projectId: null });
     expect(home.access).toEqual({ role: "foreman", canLog: true, canPause: true, canMarkDone: false });
+  });
+
+  it("nothing logged yet today, then the job and the number of people once a day is saved", async () => {
+    const { data, actor, as } = fakeSession("foreman");
+    const first = (await data.home.get(actor)) as HomeForeman;
+    expect(first.loggedToday).toEqual({ jobs: [], crewCount: 0 });
+    const { crew, projects, stages } = seed.meta;
+    await as("manager").data.logs.saveCrewDay(as("manager").actor, {
+      date: "2026-09-28",
+      projectId: projects.smith,
+      stageId: stages.smithSheetInstall,
+      entries: [crew.sam, crew.dima].map((crewMemberId) => ({
+        crewMemberId,
+        basis: "time_only" as const,
+        days: null,
+        hours: 800,
+        multiplier: null,
+      })),
+    });
+    const after = (await data.home.get(actor)) as HomeForeman;
+    expect(after.loggedToday).toEqual({ jobs: ["Smith job — Ryde re-roof"], crewCount: 2 });
+    expect(after.jobs.find((j) => j.name.startsWith("Smith"))!.loggedToday).toBe(true);
   });
 });

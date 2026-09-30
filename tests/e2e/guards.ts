@@ -248,6 +248,21 @@ export function checkConsole(collector: ConsoleCollector, opts: { allowlist?: Re
 }
 
 // ---------------------------------------------------------------------------
+// Foreman money: a foreman-role capture must show no dollar amount at all.
+// ---------------------------------------------------------------------------
+
+/** Fails when the page's visible text has a dollar amount ("$775", "$1,200.00"). Run it on every foreman-role capture. */
+export async function checkNoMoney(page: Page): Promise<GuardResult> {
+  const text = await page.locator("body").innerText();
+  const found = text.match(/\$\s?\d[\d,]*(?:\.\d+)?/g) ?? [];
+  return {
+    name: "foreman-no-money",
+    ok: found.length === 0,
+    failures: found.map((m) => `foreman-facing page shows an amount: ${m}`),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // DOM contrast: every visible text node against its effective background.
 // ---------------------------------------------------------------------------
 

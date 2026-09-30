@@ -53,6 +53,7 @@ import { chromium, webkit, type Browser, type Page } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  checkNoMoney,
   checkScreenHealthy,
   collectConsole,
   KEYBOARD_HEIGHT_PX,
@@ -220,6 +221,8 @@ async function captureOne(opts: {
     console: consoleCollector,
     skip: viewport.skip,
   });
+  // A foreman never sees an amount, in any state or viewport.
+  if (cookieRole === "foreman") results.push(await checkNoMoney(page));
 
   await context.close();
 
@@ -245,10 +248,12 @@ async function captureInstalled(opts: {
   screen: ScreenSpec;
   outDir: string;
   webkitAvailable: boolean;
+  /** The screen's role: the shot is signed in as them (a foreman's installed shots must be the foreman's screen). */
+  role: Role | null;
   /** iPhone on its side: 844x390 with the notch-side left/right insets (and a home-bar inset, no status-bar inset). */
   landscape?: boolean;
-}): Promise<void> {
-  const { browsers, base, screen, outDir, webkitAvailable, landscape = false } = opts;
+}): Promise<CheckRecord | undefined> {
+  const { browsers, base, screen, outDir, webkitAvailable, role, landscape = false } = opts;
   const engine = engineFor({ name: "iphone", width: 390, height: 844 }, webkitAvailable);
   const size = landscape ? { width: 844, height: 390 } : { width: 390, height: 844 };
   const insets = landscape
@@ -280,7 +285,7 @@ async function captureInstalled(opts: {
   if (!response || response.status() === 404) {
     console.warn(`design-capture: skipping installed-mode shot for ${screen.id} (route not built yet).`);
     await context.close();
-    return;
+    return undefined;
   }
 
   await page.evaluate(({ top, bottom, left, right }) => {
@@ -322,7 +327,22 @@ async function captureInstalled(opts: {
       `design-capture: WebKit cannot emulate \`display-mode: standalone\` (CDP-only) — ${fileName} has the safe-area simulation but not the standalone media feature.`,
     );
   }
+  // Only the foreman check runs on installed shots; the other guards ran on the same route's ordinary captures.
+  const record: CheckRecord | undefined =
+    role === "foreman"
+      ? {
+          screen: screen.id,
+          state: "normal",
+          role,
+          viewport: "iphone",
+          scheme: "light",
+          engine,
+          file: fileName,
+          results: [await checkNoMoney(page)],
+        }
+      : undefined;
   await context.close();
+  return record;
 }
 
 /**
@@ -519,8 +539,19 @@ async function main(): Promise<void> {
         }
       }
       if (screen.noExtras) continue;
-      await captureInstalled({ browsers, base, screen, outDir, webkitAvailable });
-      await captureInstalled({ browsers, base, screen, outDir, webkitAvailable, landscape: true });
+      const installedRole: Role | null = screen.roles[0] ?? null;
+      for (const landscape of [false, true]) {
+        const installed = await captureInstalled({
+          browsers,
+          base,
+          screen,
+          outDir,
+          webkitAvailable,
+          role: installedRole,
+          landscape,
+        });
+        if (installed) records.push(installed);
+      }
 
       // Landscape phone and tablet: the normal state, first role, light only.
       const firstRole: Role | null = screen.roles[0] ?? null;

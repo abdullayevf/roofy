@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { AttentionItem } from "@/data/contracts";
-import { attentionSentence, daysSinceText, jobAlertText, outboxStatus, stageLine } from "./home-text";
+import {
+  attentionSentence,
+  daysSinceText,
+  jobAlertText,
+  logStatusText,
+  moreAttentionText,
+  outboxStatus,
+  payFlagsText,
+  stageLine,
+} from "./home-text";
 
 const base = { id: "a", severity: "watch" as const, href: "/x" };
 const TODAY = "2026-09-28";
@@ -53,8 +62,8 @@ describe("attentionSentence", () => {
     expect(
       attentionSentence({ ...base, kind: "below_floor", crewMemberId: "c", name: "Tom", payRunId: "r", shortfallCents: 4250 }, TODAY),
     ).toBe("Tom is $42.50 under the award minimum in this pay run.");
-    expect(attentionSentence({ ...base, kind: "outbox_attention", count: 1 }, TODAY)).toBe("1 entry on this phone needs attention.");
-    expect(attentionSentence({ ...base, kind: "outbox_attention", count: 3 }, TODAY)).toBe("3 entries on this phone need attention.");
+    expect(attentionSentence({ ...base, kind: "outbox_attention", count: 1 }, TODAY)).toBe("1 entry on this device needs attention.");
+    expect(attentionSentence({ ...base, kind: "outbox_attention", count: 3 }, TODAY)).toBe("3 entries on this device need attention.");
   });
 });
 
@@ -67,9 +76,16 @@ describe("home text helpers", () => {
   });
 
   it("job alert text", () => {
-    expect(jobAlertText({ level: "over", severity: "over", byCents: 5000 })).toEqual({ tone: "over", text: "$50.00 over budget" });
-    expect(jobAlertText({ level: "trending", severity: "watch", byCents: 77500 })).toEqual({ tone: "watch", text: "Trending $775.00 over budget" });
-    expect(jobAlertText(null)).toBeNull();
+    expect(jobAlertText({ level: "over", severity: "over", byCents: 5000 }, "Clean-up")).toEqual({
+      tone: "over",
+      text: "Clean-up is $50.00 over its labour budget.",
+    });
+    expect(jobAlertText({ level: "trending", severity: "watch", byCents: 77500 }, "Sheet install")).toEqual({
+      tone: "watch",
+      text: "Sheet install is trending $775.00 over its labour budget.",
+    });
+    expect(jobAlertText(null, null)).toBeNull();
+    expect(jobAlertText({ level: "over", severity: "over", byCents: 5000 }, null)?.text).toBe("$50.00 over its labour budget.");
   });
 
   it("stage line lists current stages with pause reasons", () => {
@@ -86,8 +102,8 @@ describe("home text helpers", () => {
 
 describe("outboxStatus", () => {
   it("says everything is sent when nothing is waiting", () => {
-    expect(outboxStatus([])).toEqual({ tone: "clear", text: "Everything on this phone has been sent." });
-    expect(outboxStatus([{ state: "sent" }])).toEqual({ tone: "clear", text: "Everything on this phone has been sent." });
+    expect(outboxStatus([])).toEqual({ tone: "clear", text: "Everything on this device has been sent." });
+    expect(outboxStatus([{ state: "sent" }])).toEqual({ tone: "clear", text: "Everything on this device has been sent." });
   });
 
   it("counts entries waiting or sending", () => {
@@ -104,5 +120,29 @@ describe("outboxStatus", () => {
       text: "1 entry needs attention.",
     });
     expect(outboxStatus([{ state: "needs_attention" }, { state: "needs_attention" }]).text).toBe("2 entries need attention.");
+  });
+});
+
+describe("moreAttentionText", () => {
+  it("counts the items left off", () => {
+    expect(moreAttentionText(1)).toBe("1 more thing to check");
+    expect(moreAttentionText(3)).toBe("3 more things to check");
+  });
+});
+
+describe("logStatusText", () => {
+  it("says nothing is logged yet, or which job and how many people", () => {
+    expect(logStatusText({ jobs: [], crewCount: 0 })).toBe("Not logged yet today");
+    expect(logStatusText({ jobs: ["Smith job"], crewCount: 3 })).toBe("Logged: Smith job, 3 crew");
+    expect(logStatusText({ jobs: ["Smith job", "Patel job"], crewCount: 5 })).toBe("Logged: 2 jobs, 5 crew");
+  });
+});
+
+describe("payFlagsText", () => {
+  it("asks a manager to check before approving, and an accountant to check the run", () => {
+    expect(payFlagsText(1, false, "manager")).toBe("1 thing to check before you approve.");
+    expect(payFlagsText(6, true, "owner")).toBe("6 things to check before you approve. One of them stops approval.");
+    expect(payFlagsText(6, true, "accountant")).toBe("6 things to check in this pay run.");
+    expect(payFlagsText(1, false, "accountant")).toBe("1 thing to check in this pay run.");
   });
 });

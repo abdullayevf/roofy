@@ -3,37 +3,23 @@ import { CaretRight, CheckCircle, Tray, WarningDiamond } from "@phosphor-icons/r
 import type { ForemanJobRow, HomeForeman, OutboxState } from "@/data/contracts";
 import { formatDate } from "@/lib/format";
 import { cx } from "@/lib/cx";
-import { TapeBar } from "@/components/tape-bar";
+import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { daysSinceText, outboxStatus, stageLine } from "./home-text";
-
-/** Same width rule as the manager Home: rows stay within ~600 px on a wide phone or tablet (i6-F2). */
-const GROUP_WIDTH = "max-w-150 lg:max-w-none";
-const GROUP = "divide-y divide-line rounded-group border-group bg-surface";
-const FOCUS =
-  "focus-visible:outline focus-visible:outline-[3px] focus-visible:-outline-offset-3 focus-visible:outline-chalk-link";
-
-const whole = (bp: number) => Math.round(bp / 100);
+import { daysSinceText, logStatusText, outboxStatus, stageLine } from "./home-text";
+import { COLUMN, FOCUS, GROUP, HomeTitle, JobCard, KeyFigure, ROW, Section, whole } from "./home-parts";
 
 const STATUS_ICON = {
   clear: { icon: CheckCircle, className: "text-ink-2" },
   waiting: { icon: Tray, className: "text-ink" },
-  attention: { icon: WarningDiamond, className: "text-watch" },
+  attention: { icon: WarningDiamond, className: "text-over" },
 } as const;
 
 function OutboxStatusRow({ items }: { items: { state: OutboxState }[] }) {
   const status = outboxStatus(items);
   const { icon: Glyph, className } = STATUS_ICON[status.tone];
   return (
-    <Link
-      href="/outbox"
-      prefetch={false}
-      className={cx(
-        "flex min-h-14 items-center gap-3 px-4 py-2 active:bg-galv first:rounded-t-group last:rounded-b-group",
-        FOCUS,
-      )}
-    >
+    <Link href="/outbox" prefetch={false} className={cx(ROW, FOCUS)}>
       <Glyph size={24} aria-hidden="true" className={cx("shrink-0", className)} />
       <span className="min-w-0 flex-1 text-body text-ink [overflow-wrap:anywhere]">{status.text}</span>
       <CaretRight size={24} aria-hidden="true" className="shrink-0 text-ink-2" />
@@ -43,90 +29,107 @@ function OutboxStatusRow({ items }: { items: { state: OutboxState }[] }) {
 
 function JobRow({ job }: { job: ForemanJobRow }) {
   return (
-    <Link
+    <JobCard
       href={job.href}
-      prefetch={false}
-      className={cx("block min-h-[64px] px-4 py-3 first:rounded-t-group last:rounded-b-group active:bg-galv lg:py-2", FOCUS)}
+      name={job.name}
+      lines={[job.siteAddress, stageLine(job.currentStages)]}
+      tape={{ label: `${job.name} progress`, percent: whole(job.pctBp) }}
     >
-      <span className="flex items-start justify-between gap-3">
-        <span className="min-w-0">
-          <span className="block text-body-strong text-ink [overflow-wrap:anywhere]">{job.name}</span>
-          <span className="block text-meta text-ink [overflow-wrap:anywhere]">{job.siteAddress}</span>
-          <span className="block text-meta text-ink [overflow-wrap:anywhere]">{stageLine(job.currentStages)}</span>
-        </span>
-        <CaretRight size={24} aria-hidden="true" className="mt-3 shrink-0 text-ink-2" />
-      </span>
-      <TapeBar className="mt-2" label={`${job.name} progress`} percent={whole(job.pctBp)} />
       <span className="mt-2 block text-meta text-ink">
         {job.loggedToday ? "Logged today" : daysSinceText(job.daysSinceLastLog)}
       </span>
-    </Link>
+    </JobCard>
   );
 }
 
-/**
- * Home for a foreman (flows.md screen 5): Log today, the outbox status and the assigned jobs. No dollars: the
- * data has none. `outbox` is the phone's own queue (device-local), passed in by the page.
- */
-export function HomeForemanBody({ home, outbox }: { home: HomeForeman; outbox: { state: OutboxState }[] }) {
+/** Log today, pinned above the tab bar like Log's Save day (in the form column from 1024 px). */
+function LogTodayBar({ href }: { href: string }) {
   return (
-    <div data-screen="home" className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-title text-ink">Home</h1>
-        <p className="text-meta text-ink">{formatDate(home.today, home.today)}</p>
-      </header>
-
-      <div className={cx("flex flex-col gap-4", GROUP_WIDTH)}>
-        {home.jobs.length > 0 ? (
-          <Button variant="primary" href={home.logToday.href}>
-            Log today
-          </Button>
-        ) : null}
-        <section className="flex flex-col gap-2">
-          <h2 className="text-heading text-ink">On this phone</h2>
-          <div className={GROUP}>
-            <OutboxStatusRow items={outbox} />
-          </div>
-        </section>
-      </div>
-
-      <section className={cx("flex flex-col gap-2", GROUP_WIDTH)}>
-        <h2 className="text-heading text-ink">Your jobs</h2>
-        {home.jobs.length === 0 ? (
-          <p className="text-body text-ink-2">No jobs yet. Ask your manager to add you to a job.</p>
-        ) : (
-          <div className={GROUP}>
-            {home.jobs.map((job) => (
-              <JobRow key={job.projectId} job={job} />
-            ))}
-          </div>
-        )}
-      </section>
+    <div data-slot="primary-action" className="pin-action">
+      <Button variant="primary" href={href} className="w-full">
+        Log today
+      </Button>
     </div>
   );
 }
 
-/** Foreman Home while it loads (`?demo=loading`). */
-export function HomeForemanSkeleton() {
+// The page pads its bottom so the pinned Log today bar never hides the last job.
+const WITH_BAR = "pb-28 lg:pb-0";
+
+export type HomeForemanProps = {
+  home: HomeForeman;
+  /** This device's own queue (device-local), passed in by the page. */
+  outbox: { state: OutboxState }[];
+};
+
+/**
+ * Home for a foreman (flows.md screen 5): today's log status as the lead figure, the outbox status, the assigned
+ * jobs and a pinned Log today. No dollars: the data has none.
+ */
+export function HomeForemanBody({ home, outbox }: HomeForemanProps) {
+  const waiting = outbox.filter((i) => i.state === "waiting" || i.state === "sending").length;
+  const attention = outbox.filter((i) => i.state === "needs_attention").length;
+  if (home.jobs.length === 0) {
+    return (
+      <div data-screen="home" className={COLUMN}>
+        <HomeTitle waiting={waiting} attention={attention} />
+        <EmptyState message="No jobs yet. Ask your manager to add you to a job." />
+      </div>
+    );
+  }
   return (
-    <div data-screen="home" aria-busy="true" className="flex flex-col gap-6">
-      <h1 className="text-title text-ink">Home</h1>
-      <Skeleton width={120} height={20} />
-      <div className={cx("flex flex-col gap-4", GROUP_WIDTH)}>
-        <Skeleton height={52} />
+    <div data-screen="home" className={cx(COLUMN, WITH_BAR)}>
+      <header className="flex flex-col gap-1">
+        <HomeTitle waiting={waiting} attention={attention} />
+        <p className="text-meta text-ink">{formatDate(home.today, home.today)}</p>
+        <KeyFigure>{logStatusText(home.loggedToday)}</KeyFigure>
+      </header>
+
+      <Section title="On this device">
+        <div className={GROUP}>
+          <OutboxStatusRow items={outbox} />
+        </div>
+      </Section>
+
+      <Section title="Your jobs">
+        <div className={GROUP}>
+          {home.jobs.map((job) => (
+            <JobRow key={job.projectId} job={job} />
+          ))}
+        </div>
+      </Section>
+
+      <LogTodayBar href={home.logToday.href} />
+    </div>
+  );
+}
+
+/** Foreman Home while it loads (`?demo=loading`): the title, date, headings and Log today are real; only the jobs are blocks. */
+export function HomeForemanSkeleton({ today }: { today: string }) {
+  return (
+    <div data-screen="home" aria-busy="true" className={cx(COLUMN, WITH_BAR)}>
+      <header className="flex flex-col gap-2">
+        <h1 className="text-title text-ink">Home</h1>
+        <p className="text-meta text-ink">{formatDate(today, today)}</p>
+        <Skeleton width={240} height={44} />
+      </header>
+      <Section title="On this device">
         <div className={cx(GROUP, "overflow-hidden")}>
-          <div className="px-4 py-3">
+          <div className="flex min-h-14 items-center px-4">
             <Skeleton height={24} />
           </div>
         </div>
-      </div>
-      <div className={cx(GROUP, "overflow-hidden", GROUP_WIDTH)}>
-        {[0, 1].map((i) => (
-          <div key={i} className="px-4 py-3">
-            <Skeleton height={100} />
-          </div>
-        ))}
-      </div>
+      </Section>
+      <Section title="Your jobs">
+        <div className={cx(GROUP, "overflow-hidden")}>
+          {[0, 1].map((i) => (
+            <div key={i} className="flex items-center px-4" style={{ minHeight: 152 }}>
+              <Skeleton height={104} />
+            </div>
+          ))}
+        </div>
+      </Section>
+      <LogTodayBar href="/log" />
     </div>
   );
 }

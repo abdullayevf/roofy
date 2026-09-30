@@ -4,7 +4,8 @@ import { cx } from "@/lib/cx";
 export type EmptyStateProps = {
   /** One sentence of direction, e.g. "No jobs yet." */
   message: string;
-  actionLabel: string;
+  /** Omit when the reader can't do anything about it (a foreman with no jobs). */
+  actionLabel?: string;
   href?: string;
   onClick?: () => void;
   className?: string;
@@ -15,9 +16,11 @@ export function EmptyState({ message, actionLabel, href, onClick, className }: E
   return (
     <div className={cx("flex flex-col items-center gap-4 px-4 py-12 text-center", className)}>
       <p className="text-body text-ink-2">{message}</p>
-      <Button variant="primary" href={href} onClick={onClick}>
-        {actionLabel}
-      </Button>
+      {actionLabel ? (
+        <Button variant="primary" href={href} onClick={onClick}>
+          {actionLabel}
+        </Button>
+      ) : null}
     </div>
   );
 }

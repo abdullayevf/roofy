@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
   checkAxe,
   checkKeyboard,
+  checkNoMoney,
   checkSafeAreas,
   checkTouchTargets,
   checkScreenHealthy,
@@ -386,4 +387,13 @@ test.describe("guards ignore scrolling content and supplementary labels", () => 
     expect(safe.ok).toBe(false);
     expect(safe.failures.some((f) => f.includes("bottom safe-area inset"))).toBe(true);
   });
+});
+
+test("checkNoMoney fails on a whole-dollar or cents amount and passes on money-free text", async ({ page }) => {
+  await page.setContent("<body><p>Tom is $32.03 under</p><p>Job $775 over</p><p>$1,200 of it</p><p>Price in AUD</p></body>");
+  const bad = await checkNoMoney(page);
+  expect(bad.ok).toBe(false);
+  expect(bad.failures).toHaveLength(3);
+  await page.setContent("<body><p>Logged: Smith job, 3 crew</p><p>US$ is not a thing here, and a $ sign alone is fine</p></body>");
+  expect((await checkNoMoney(page)).ok).toBe(true);
 });

@@ -42,6 +42,22 @@ export function formatDate(date: string, today: string): string {
   return date.slice(0, 4) === today.slice(0, 4) ? base : `${base} ${date.slice(0, 4)}`;
 }
 
+/** "Mon 28 Sep, 7:40 am": the date and time of an instant in `timeZone` (never the server's zone). */
+export function formatDateTime(instant: string, timeZone: string, today: string): string {
+  const parts = new Intl.DateTimeFormat("en-AU", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "numeric",
+    minute: "2-digit",
+    hourCycle: "h12",
+  }).formatToParts(new Date(instant));
+  const get = (type: string) => parts.find((p) => p.type === type)!.value;
+  const date = `${get("year")}-${get("month")}-${get("day")}`;
+  return `${formatDate(date, today)}, ${get("hour")}:${get("minute")} ${get("dayPeriod").toLowerCase()}`;
+}
+
 /** Hundredths (cents, quantities, hours) as a plain decimal for CSV: 143250 → "1432.50", ASCII minus. */
 export function formatDecimal(value: number): string {
   const digits = String(Math.abs(value)).padStart(3, "0");
