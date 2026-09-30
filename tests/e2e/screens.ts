@@ -15,6 +15,9 @@
  */
 
 import type { Page } from "@playwright/test";
+import { getSeed } from "../../src/data/fake/store";
+
+const { meta } = getSeed();
 
 /**
  * `?demo=` states, per `src/data/fake/demo.ts` (Task 6), PLUS the literal
@@ -25,7 +28,16 @@ import type { Page } from "@playwright/test";
  * "States every screen designs" in docs/design/flows.md.
  */
 export type DemoState =
-  "normal" | "empty" | "loading" | "error" | "offline" | "waiting" | "attention" | "noperm" | "foreman";
+  | "normal"
+  | "empty"
+  | "loading"
+  | "error"
+  | "offline"
+  | "waiting"
+  | "attention"
+  | "mixed" // an outbox with one entry in each group
+  | "noperm"
+  | "foreman";
 
 export type Role = "owner" | "manager" | "foreman" | "accountant";
 
@@ -76,6 +88,10 @@ export type ScreenSpec = {
   lightOnly?: boolean;
   /** Skip the extra installed-mode, landscape, tablet and keyboard captures. */
   noExtras?: boolean;
+  /** Labels of buttons pressed in order once the page has loaded, before the shot (a save, then "Log another stage"). */
+  steps?: string[];
+  /** Cut the network after the page has loaded and before `steps`, so a save is kept on the phone. */
+  goOffline?: boolean;
 };
 
 // All states a field-entry screen a foreman can reach should design: real
@@ -171,7 +187,7 @@ export const SCREENS: ScreenSpec[] = [
     id: "outbox",
     group: "field-2",
     route: "/outbox",
-    states: ["normal", "loading", "waiting", "attention"],
+    states: ["normal", "loading", "attention", "mixed"],
     roles: ["manager"],
   },
   {
@@ -180,6 +196,91 @@ export const SCREENS: ScreenSpec[] = [
     route: "/outbox",
     states: ["attention"],
     roles: ["foreman"],
+  },
+
+  // The filled flows, opened with the route's own prefill (the address an outbox "Edit and resend" builds) and,
+  // where the shot is of an outcome, the buttons a person presses. Light, phone and desktop only.
+  {
+    // Smith job, Sheet install, Sam and Dima ticked, Sam on a half day.
+    id: "log-crew-day-filled",
+    group: "field-2",
+    route: `/log?same=1&ex=${meta.crew.sam}:50`,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // The ticked chips have folded into "Logged" under the date.
+    id: "log-crew-day-saved",
+    group: "field-2",
+    route: "/log?same=1",
+    states: ["normal"],
+    roles: ["manager"],
+    steps: ["Save day"],
+    viewports: ["iphone"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // After a save, the same people are on the grid again marked "Already logged today".
+    id: "log-crew-day-logged-today",
+    group: "field-2",
+    route: "/log?same=1",
+    states: ["normal"],
+    roles: ["manager"],
+    steps: ["Save day", "Log another stage"],
+    viewports: ["iphone"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // No signal: the save is kept on the phone ("Saved on this device") and the badge says "1 to send".
+    id: "log-crew-day-offline-saved",
+    group: "field-2",
+    route: "/log?same=1",
+    states: ["offline"],
+    roles: ["manager"],
+    goOffline: true,
+    steps: ["Save day"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // 120 m² between Sam and Dima: 60 m² each, and the stage's tape at 30%.
+    id: "log-progress-split",
+    group: "field-2",
+    route: `/log/progress?stage=${meta.stages.smithSheetInstall}&qty=12000&crew=${meta.crew.sam},${meta.crew.dima}`,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // A custom split that adds up to 92%: the message under the shares, Save progress off.
+    id: "log-progress-split-error",
+    group: "field-2",
+    route: `/log/progress?stage=${meta.stages.smithSheetInstall}&qty=12000&crew=${meta.crew.sam},${meta.crew.dima}&shares=6000,3200`,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // Saved: the tape has moved to 60%.
+    id: "log-progress-saved",
+    group: "field-2",
+    route: `/log/progress?stage=${meta.stages.smithSheetInstall}&qty=12000&crew=${meta.crew.sam},${meta.crew.dima}`,
+    states: ["normal"],
+    roles: ["manager"],
+    steps: ["Save progress"],
+    viewports: ["iphone"],
+    lightOnly: true,
+    noExtras: true,
   },
 
   // --- jobs-1 (Task 13): Jobs list (9), New/edit job (10) --------------

@@ -1,6 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { collectConsole, expectScreenHealthy } from "./guards";
+import { getSeed } from "../../src/data/fake/store";
 import { expectNoMoney } from "./money-scan";
+
+const { meta } = getSeed();
 
 const isPhone = (name: string) => name !== "desktop";
 
@@ -24,10 +27,10 @@ test.describe("Progress entry", () => {
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
-  test("choosing a recent stage shows what is budgeted and measured so far", async ({ page }) => {
+  test("choosing a recent stage shows how far along it is: 120 of 400 m² on the tape", async ({ page }) => {
     await signInAs(page, "manager");
     await page.getByRole("radiogroup", { name: "Recent stages" }).getByRole("radio", { name: /Sheet install/ }).first().click();
-    await expect(page.getByText(/Budgeted 400 m², measured so far 120 m²\./)).toBeVisible();
+    await expect(page.getByText("120 of 400 m²")).toBeVisible();
     await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "30");
   });
 
@@ -35,8 +38,8 @@ test.describe("Progress entry", () => {
     await signInAs(page, "manager");
     await page.getByRole("radiogroup", { name: "Recent stages" }).getByRole("radio", { name: /Sheet install/ }).first().click();
     await page.getByLabel("Quantity done").fill("120");
-    await chip(page, /^Sam\s/).click();
-    await chip(page, /^Dima\s/).click();
+    await chip(page, /^Sam\b/).click();
+    await chip(page, /^Dima\b/).click();
     await expect(page.getByText("Sam 60 m², Dima 60 m²")).toBeVisible();
     await page.getByRole("button", { name: "Save progress" }).click();
     const status = page.getByRole("status").filter({ hasText: "Logged" });
@@ -46,15 +49,15 @@ test.describe("Progress entry", () => {
     await expect(page.getByTestId("chalk-line")).toHaveClass(/w-full/);
     await page.getByRole("button", { name: "Log more progress" }).click();
     await expect(page.getByLabel("Quantity done")).toHaveValue("");
-    await expect(page.getByText(/measured so far 240 m²\./)).toBeVisible();
+    await expect(page.getByText("240 of 400 m²")).toBeVisible();
   });
 
   test("a custom split must add up to 100%, and says what it adds up to now", async ({ page }) => {
     await signInAs(page, "manager");
     await page.getByRole("radiogroup", { name: "Recent stages" }).getByRole("radio", { name: /Sheet install/ }).first().click();
     await page.getByLabel("Quantity done").fill("120");
-    await chip(page, /^Sam\s/).click();
-    await chip(page, /^Dima\s/).click();
+    await chip(page, /^Sam\b/).click();
+    await chip(page, /^Dima\b/).click();
     await page.getByRole("radio", { name: "Custom split" }).click();
     await expect(page.getByLabel("Sam's share")).toHaveValue("50");
     await page.getByLabel("Sam's share").fill("60");
@@ -66,6 +69,43 @@ test.describe("Progress entry", () => {
     await expect(page.getByText("Sam 72 m², Dima 48 m²")).toBeVisible();
     await page.getByRole("button", { name: "Save progress" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Logged" })).toBeVisible();
+  });
+
+  test("the crew rows show names only: pay type belongs to the crew-day grid", async ({ page }) => {
+    await signInAs(page, "manager");
+    const list = page.getByRole("button", { name: /^Sam\b/ });
+    await expect(list).toBeVisible();
+    await expect(page.getByText(/^(Day|Hourly|Hours only)$/)).toHaveCount(0);
+  });
+
+  test("an address with the day, stage, quantity, crew and shares opens the form filled in and sends that day", async ({ page }) => {
+    const { sam, dima } = meta.crew;
+    await signInAs(page, "manager", `/log/progress?date=2026-09-27&stage=${meta.stages.smithSheetInstall}&qty=12000&crew=${sam},${dima}&shares=6000,4000`);
+    await expect(page.getByText("Yesterday, Sun 27 Sep")).toBeVisible();
+    await expect(page.getByLabel("Quantity done")).toHaveValue("120");
+    await expect(page.getByRole("button", { name: /^Sam\b/ })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("radio", { name: "Custom split" })).toBeChecked();
+    await expect(page.getByLabel("Sam's share")).toHaveValue("60");
+    await expect(page.getByLabel("Dima's share")).toHaveValue("40");
+    const push = page.waitForRequest((r) => r.url().endsWith("/api/sync/push"));
+    await page.getByRole("button", { name: "Save progress" }).click();
+    expect((await push).postData()).toContain('"date":"2026-09-27"');
+  });
+
+  test("an address with a date that is not a date falls back to today", async ({ page }) => {
+    await signInAs(page, "manager", "/log/progress?date=2026-02-30");
+    await expect(page.getByText("Today, Mon 28 Sep")).toBeVisible();
+  });
+
+  test("with the keyboard up the Save progress bar sits on the visible screen, not mid-page", async ({ page }, testInfo) => {
+    test.skip(!isPhone(testInfo.project.name), "the on-screen keyboard is a phone thing");
+    await signInAs(page, "manager");
+    await page.getByLabel("Quantity done").focus();
+    const bar = page.locator('[data-slot="primary-action"]');
+    await expect(bar).toHaveAttribute("data-keyboard", "true");
+    const box = (await bar.boundingBox())!;
+    const height = page.viewportSize()!.height;
+    expect(Math.abs(box.y + box.height - height)).toBeLessThanOrEqual(1);
   });
 
   test("a quantity that is not a number says how to fix it", async ({ page }) => {
@@ -81,7 +121,7 @@ test.describe("Progress entry", () => {
     await page.getByLabel("Job", { exact: true }).selectOption({ index: 1 });
     await page.getByLabel("Stage", { exact: true }).selectOption({ index: 1 });
     await page.getByLabel("Quantity done").fill("10");
-    await chip(page, /^Sam\s/).click();
+    await chip(page, /^Sam\b/).click();
     await expect(page.getByRole("button", { name: "Save progress" })).toBeEnabled();
   });
 
@@ -90,12 +130,12 @@ test.describe("Progress entry", () => {
     await signInAs(page, "foreman");
     await page.getByRole("radiogroup", { name: "Recent stages" }).getByRole("radio", { name: /Sheet install/ }).first().click();
     await page.getByLabel("Quantity done").fill("120");
-    await chip(page, /^Sam\s/).click();
-    await chip(page, /^Dima\s/).click();
+    await chip(page, /^Sam\b/).click();
+    await chip(page, /^Dima\b/).click();
     await expect(page.getByText("Sam 60 m², Dima 60 m²")).toBeVisible();
     await page.getByRole("button", { name: "Save progress" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Logged" })).toBeVisible();
-    expect(await page.locator("main").innerText()).not.toMatch(/\$\d|rate/i);
+    expect(await page.locator("main").innerText()).not.toMatch(/\$\d|\brate\b/i);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog, skip: { keyboard: true } });
     await expectNoMoney(page, ["/log/progress", "/log/progress?demo=empty", "/log/progress?demo=loading", "/log/progress?demo=offline", "/log/progress?demo=waiting", "/log/progress?demo=attention", "/log/progress?demo=noperm"]);
   });
@@ -116,8 +156,12 @@ test.describe("Progress entry", () => {
     await expect(page.getByRole("link")).not.toContainText(["Add your first job"]);
   });
 
-  test("?demo=error reaches the error screen and ?demo=noperm shows no access", async ({ page }) => {
+  test("?demo=error keeps the title and switch and says so in the form area; ?demo=noperm shows no access", async ({ page }) => {
     await signInAs(page, "manager", "/log/progress?demo=error");
+    await expect(page.getByRole("heading", { level: 1, name: "Log" })).toBeVisible();
+    await expect(page.getByRole("radio", { name: "Progress" })).toBeChecked();
+    await expect(page.getByText("Couldn't load this. Try again.")).toBeVisible();
+    await expect(page.getByText("Check your signal")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
     await signInAs(page, "manager", "/log/progress?demo=noperm");
     await expect(page.getByText("You don't have access to this. Ask your manager.")).toBeVisible();

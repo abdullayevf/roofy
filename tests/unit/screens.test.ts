@@ -43,6 +43,31 @@ describe("SCREENS manifest", () => {
   });
 });
 
+describe("field-2 filled-flow captures", () => {
+  const field2 = SCREENS.filter((s) => s.group === "field-2");
+  const byId = (id: string) => field2.find((s) => s.id === id);
+
+  it("shows the crew-day filled, saved, already-logged and saved-with-no-signal, and the outbox with all four groups", () => {
+    expect(byId("log-crew-day-filled")?.route).toMatch(/^\/log\?same=1&ex=.+:50$/);
+    expect(byId("log-crew-day-saved")?.steps).toEqual(["Save day"]);
+    expect(byId("log-crew-day-logged-today")?.steps).toEqual(["Save day", "Log another stage"]);
+    expect(byId("log-crew-day-offline-saved")).toMatchObject({ states: ["offline"], goOffline: true, steps: ["Save day"] });
+    expect(byId("outbox")?.states).toContain("mixed");
+  });
+
+  it("shows progress split two ways, the split that does not add up, and the saved tape", () => {
+    expect(byId("log-progress-split")?.route).toMatch(/^\/log\/progress\?stage=.+&qty=12000&crew=.+,.+$/);
+    expect(byId("log-progress-split-error")?.route).toMatch(/&shares=6000,3200$/);
+    expect(byId("log-progress-saved")?.steps).toEqual(["Save progress"]);
+  });
+
+  it("keeps the filled captures small: light, phone and desktop, no extras", () => {
+    for (const id of ["log-crew-day-filled", "log-progress-split", "log-crew-day-offline-saved"]) {
+      expect(byId(id)).toMatchObject({ lightOnly: true, noExtras: true });
+    }
+  });
+});
+
 describe("resolveRoute", () => {
   it("substitutes a single dynamic segment", () => {
     expect(resolveRoute("/jobs/:jobId", { jobId: "abc" })).toBe("/jobs/abc");

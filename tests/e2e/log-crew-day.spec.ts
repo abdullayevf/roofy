@@ -1,6 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { collectConsole, expectScreenHealthy } from "./guards";
+import { getSeed } from "../../src/data/fake/store";
 import { expectNoMoney } from "./money-scan";
+
+const { meta } = getSeed();
 
 const isPhone = (name: string) => name !== "desktop";
 
@@ -87,9 +90,78 @@ test.describe("Log crew-day grid", () => {
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog, skip: { axe: true } });
   });
 
-  test("?demo=error reaches the error screen with Try again", async ({ page }) => {
+  test("?demo=error keeps the title and switch and says so in the form area, without signal wording", async ({ page }) => {
     await signInAs(page, "manager", "/log?demo=error");
+    await expect(page.getByRole("heading", { level: 1, name: "Log" })).toBeVisible();
+    await expect(page.getByRole("radio", { name: "Crew day" })).toBeChecked();
+    await expect(page.getByText("Couldn't load this. Try again.")).toBeVisible();
+    await expect(page.getByText(/signal/i)).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
+    await page.getByRole("radio", { name: "Progress" }).click();
+    await expect(page).toHaveURL(/\/log\/progress\?demo=error/);
+  });
+
+  test("?demo=loading keeps the switch live", async ({ page }) => {
+    await signInAs(page, "manager", "/log?demo=loading");
+    await expect(page.locator('[data-screen="log"][aria-busy="true"]')).toBeVisible();
+    await page.getByRole("radio", { name: "No work" }).click();
+    await expect(page).toHaveURL(/\/log\/no-work\?demo=loading/);
+  });
+
+  test("on a chosen job, crew who logged there in the last 7 days come first, then the rest A to Z", async ({ page }) => {
+    await signInAs(page, "manager", `/log?project=${meta.projects.smith}`);
+    const names = await page.locator('[data-screen="log"] section button[aria-pressed]').evaluateAll((els) => els.map((e) => (e.textContent ?? "").split(/Day|Hourly|Hours only|m²|lm|Each/)[0]!.trim()));
+    expect(names.slice(0, 5)).toEqual(["Ben", "Dima", "Jake", "Josh", "Sam"]);
+    const rest = names.slice(5);
+    expect(rest).toEqual([...rest].sort((a, b) => a.localeCompare(b)));
+  });
+
+  test("a foreman is offered only the crew who have worked on their jobs", async ({ page }) => {
+    await signInAs(page, "foreman", `/log?project=${meta.projects.smith}`);
+    await expect(page.getByRole("button", { name: /^Jake\s/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Mick\s/ })).toHaveCount(0);
+  });
+
+  test("an address with the day, job, stage, crew and each person's day or hours opens the grid filled in and sends that day", async ({ page }) => {
+    const { sam, jake } = meta.crew;
+    await signInAs(
+      page,
+      "manager",
+      `/log?date=2026-09-27&project=${meta.projects.smith}&stage=${meta.stages.smithSheetInstall}&crew=${sam},${jake}&ex=${sam}:50,${jake}:950:150`,
+    );
+    await expect(page.getByText("Yesterday, Sun 27 Sep")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Sam\s/ })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("radio", { name: "½ day" }).first()).toBeChecked();
+    await expect(page.getByRole("radio", { name: "×1.5" })).toBeChecked();
+    const push = page.waitForRequest((r) => r.url().endsWith("/api/sync/push"));
+    await page.getByRole("button", { name: "Save day" }).click();
+    const body = (await push).postData() ?? "";
+    expect(body).toContain('"date":"2026-09-27"');
+    expect(body).toContain('"days":50');
+    expect(body).toContain('"hours":950');
+    expect(body).toContain('"multiplier":150');
+  });
+
+  test("a job or stage change keeps the day and hours already picked", async ({ page }) => {
+    const { sam } = meta.crew;
+    await signInAs(page, "manager", `/log?date=2026-09-27&project=${meta.projects.smith}&stage=${meta.stages.smithSheetInstall}&crew=${sam}&ex=${sam}:50`);
+    const stage = page.getByLabel("Stage", { exact: true });
+    const other = await stage.locator("option").evaluateAll((os, cur) => (os as HTMLOptionElement[]).find((o) => o.value && o.value !== cur)?.value ?? "", await stage.inputValue());
+    await stage.selectOption(other);
+    await expect(page).toHaveURL(new RegExp(`stage=${other}`));
+    await expect(page.getByText("Yesterday, Sun 27 Sep")).toBeVisible();
+    await expect(page.getByRole("radio", { name: "½ day" }).first()).toBeChecked();
+  });
+
+  test("saved with no signal: the panel says so and the badge counts 1 to send", async ({ page, context }) => {
+    await signInAs(page, "manager", "/log?demo=offline");
+    await page.getByRole("button", { name: "Same as yesterday" }).click();
+    await expect(page.getByRole("button", { name: /^Sam\s/ })).toHaveAttribute("aria-pressed", "true");
+    await context.setOffline(true);
+    await page.getByRole("button", { name: "Save day" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Saved on this device:" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "1 to send" })).toBeVisible();
+    await context.setOffline(false);
   });
 
   test("?demo=noperm shows no access", async ({ page }) => {
@@ -200,5 +272,47 @@ test.describe("Log crew-day grid", () => {
     await page.getByRole("button", { name: "Same as yesterday" }).click();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
     await expectNoMoney(page, ["/log", "/log?demo=empty", "/log?demo=loading", "/log?demo=offline", "/log?demo=waiting", "/log?demo=attention", "/log?demo=noperm"]);
+  });
+
+  test.describe("the pinned Save day bar", () => {
+    const bar = (page: Page) => page.locator('[data-slot="primary-action"]');
+
+    test("on a phone it sits flush on the tab bar, on a solid surface, with no gap", async ({ page }, testInfo) => {
+      test.skip(!isPhone(testInfo.project.name), "the bar is only fixed on a phone");
+      await signInAs(page, "manager");
+      const box = (await bar(page).boundingBox())!;
+      const tabs = (await page.getByRole("navigation", { name: "Primary" }).boundingBox())!;
+      expect(Math.abs(box.y + box.height - tabs.y)).toBeLessThanOrEqual(1);
+      expect(await bar(page).evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
+    });
+
+    test("on a phone on its side (under 500 px tall) it is in the page, not pinned", async ({ page }, testInfo) => {
+      test.skip(!isPhone(testInfo.project.name), "phones only");
+      await page.setViewportSize({ width: 844, height: 390 });
+      await signInAs(page, "manager");
+      expect(await bar(page).evaluate((el) => getComputedStyle(el).position)).toBe("static");
+    });
+
+    test("on a tablet it is as wide as the content column and no wider", async ({ page }, testInfo) => {
+      test.skip(!isPhone(testInfo.project.name), "phones and tablets only");
+      await page.setViewportSize({ width: 820, height: 1180 });
+      await signInAs(page, "manager");
+      const box = (await bar(page).boundingBox())!;
+      const screen = (await page.locator('[data-screen="log"]').boundingBox())!;
+      expect(Math.abs(box.width - screen.width)).toBeLessThanOrEqual(1);
+      expect(box.width).toBeLessThanOrEqual(600);
+    });
+
+    test("on desktop it has a line rule and 16 px padding, not the ink rule", async ({ page }, testInfo) => {
+      test.skip(isPhone(testInfo.project.name), "desktop only");
+      await signInAs(page, "manager");
+      const style = await bar(page).evaluate((el) => {
+        const s = getComputedStyle(el);
+        return { top: s.borderTopColor, width: s.borderTopWidth, pad: s.paddingTop, left: s.paddingLeft };
+      });
+      const ink = await page.locator('[data-slot="date-rule"]').evaluate((el) => getComputedStyle(el).backgroundColor);
+      expect(style.top).not.toBe(ink);
+      expect([style.pad, style.left]).toEqual(["16px", "0px"]);
+    });
   });
 });

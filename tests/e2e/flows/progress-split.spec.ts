@@ -11,12 +11,12 @@ for (const role of ["manager", "foreman"]) {
     await expect(page).toHaveURL(/\/log\/progress/);
     await page.waitForLoadState("networkidle"); // the page is interactive before the first tap
     await taps.tap(page.getByRole("radiogroup", { name: "Recent stages" }).getByRole("radio", { name: /Sheet install/ }).first());
-    await expect(page.getByText(/Budgeted 400 m², measured so far 120 m²\./)).toBeVisible();
+    await expect(page.getByText("120 of 400 m²")).toBeVisible();
     const quantity = page.getByLabel("Quantity done");
     await taps.tap(quantity);
     await quantity.fill("120");
-    await taps.tap(page.getByRole("button", { name: /^Sam\s/ }));
-    await taps.tap(page.getByRole("button", { name: /^Dima\s/ }));
+    await taps.tap(page.getByRole("button", { name: /^Sam\b/ }));
+    await taps.tap(page.getByRole("button", { name: /^Dima\b/ }));
     await expect(page.getByText("Sam 60 m², Dima 60 m²")).toBeVisible();
     await taps.tap(page.getByRole("button", { name: "Save progress" }));
     const status = page.getByRole("status").filter({ hasText: "Logged" });
