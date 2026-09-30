@@ -24,7 +24,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Sea
       return <NoPermission backHref={back.href} backLabel={back.label} />;
     }
     // Home stays on screen with its own message and Try again; other screens use the route's error page.
-    if (isDataError(e) && e.code === "unavailable") return <HomeError foreman={foreman} today={today} />;
+    if (isDataError(e) && e.code === "unavailable") return <HomeError foreman={foreman} today={today} outbox={demo.outbox} />;
     throw e;
   }
   if (home.view === "foreman") return <HomeForemanBody home={home} outbox={demo.outbox} offline={demo.offline} />;

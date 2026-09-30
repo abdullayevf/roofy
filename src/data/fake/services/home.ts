@@ -136,6 +136,7 @@ export function createHomeService(c: FakeContext): HomeService {
         severity: "over",
         href: "/outbox",
         count: outbox.length,
+        entries: outbox.map((i) => ({ type: i.entry.type, crewNames: i.crewNames, jobName: i.projectName })),
       });
     }
     for (const crew of c.t.crewMembers) {
@@ -256,6 +257,9 @@ export function createHomeService(c: FakeContext): HomeService {
       outstandingBalancesCents: sum(c.t.crewMembers.map((m) => Math.max(c.fig.ledger(m.id).balanceCents, 0))),
       flagCount: run.flags.length,
       blocking: run.blockedBy.length > 0,
+      blockers: run.flags
+        .filter((f) => f.blocking && (f.kind === "missing_rate" || f.kind === "owner_2fa_off"))
+        .map((f) => ({ kind: f.kind as "missing_rate" | "owner_2fa_off", crewName: f.crewName })),
       href: `/pay/${review.id}`,
     };
   }

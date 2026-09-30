@@ -1,6 +1,6 @@
-import type { ActiveJobRow, AttentionItem, OutboxState, StageChip } from "@/data/contracts";
+import type { ActiveJobRow, AttentionItem, MutationType, OutboxState, PayPeriodFigures, StageChip } from "@/data/contracts";
 import type { PauseReason } from "@/domain/segments";
-import { formatDate, formatMoney, formatTime } from "@/lib/format";
+import { formatDate, formatDateTime, formatMoney, formatTime } from "@/lib/format";
 
 const REASON: Record<PauseReason, string> = {
   weather: "weather",
@@ -12,6 +12,35 @@ const REASON: Record<PauseReason, string> = {
 
 export const pauseReasonText = (reason: PauseReason): string => REASON[reason];
 
+const WAITING_ON: Record<PauseReason, string> = { ...REASON, client: "the client", other: "something else" };
+
+const ENTRY_WORD: Record<MutationType, string> = {
+  crew_day: "hours",
+  progress: "progress",
+  no_work: "no-work note",
+  stage_pause: "pause",
+  stage_resume: "restart",
+  expense: "expense",
+};
+
+/** "Mick", "Mick and Josh", "Mick and 2 others". */
+function joinNames(names: string[]): string {
+  if (names.length <= 2) return names.join(" and ");
+  const n = names.length - 1;
+  return `${names[0]} and ${n} ${n === 1 ? "other" : "others"}`;
+}
+
+const possessive = (s: string) => (s.endsWith("s") ? `${s}'` : `${s}'s`);
+
+/** "Kev's hours for Smith job didn't send. Tap to fix." (a count when several failed). */
+function outboxAttentionSentence(count: number, entries: { type: MutationType; crewNames: string[]; jobName: string | null }[]): string {
+  const [e] = entries;
+  if (count !== 1 || !e) return `${count} entries on this device didn't send. Tap to fix.`;
+  const what = ENTRY_WORD[e.type];
+  const subject = e.crewNames.length > 0 ? `${possessive(joinNames(e.crewNames))} ${what}` : what.charAt(0).toUpperCase() + what.slice(1);
+  return `${subject}${e.jobName ? ` for ${e.jobName}` : ""} didn't send. Tap to fix.`;
+}
+
 const lower = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 
 /** One plain sentence for a Needs attention row (product spec §5.9). */
@@ -22,7 +51,7 @@ export function attentionSentence(item: AttentionItem, today: string): string {
     case "trending_over":
       return `${item.projectName} is trending ${formatMoney(item.byCents)} over on ${lower(item.stageName)}.`;
     case "paused_too_long":
-      return `${item.stageName} on ${item.projectName} has been paused ${item.workingDays} working days (${pauseReasonText(item.reason)}).`;
+      return `${item.stageName} on ${item.projectName}: paused ${item.workingDays} working days, waiting on ${WAITING_ON[item.reason]}.`;
     case "logging_gaps": {
       const [first, ...rest] = item.gaps;
       if (!first) return "Some days last week have no log.";
@@ -37,9 +66,7 @@ export function attentionSentence(item: AttentionItem, today: string): string {
     case "below_floor":
       return `${item.name} is ${formatMoney(item.shortfallCents)} under the award minimum in this pay run.`;
     case "outbox_attention":
-      return item.count === 1
-        ? "1 entry on this device needs attention."
-        : `${item.count} entries on this device need attention.`;
+      return outboxAttentionSentence(item.count, item.entries);
   }
 }
 
@@ -100,26 +127,52 @@ export function logStatusText(logged: { jobs: string[]; crewCount: number }): st
   return `Logged: ${where}, ${logged.crewCount} crew`;
 }
 
+type DeviceItem = { state: OutboxState; date: string; entry: { type: string; input: object } };
+const UNSENT: OutboxState[] = ["waiting", "sending", "needs_attention"];
+const isUnsentCrewDay = (i: DeviceItem, today: string) => i.entry.type === "crew_day" && i.date === today && UNSENT.includes(i.state);
+
 /** True when this device holds a crew-day for today that hasn't been sent yet (waiting, sending or needing attention). */
-export function loggedOnDevice(items: { state: OutboxState; date: string; entry: { type: string } }[], today: string): boolean {
-  return items.some(
-    (i) => i.entry.type === "crew_day" && i.date === today && (i.state === "waiting" || i.state === "sending" || i.state === "needs_attention"),
+export const loggedOnDevice = (items: DeviceItem[], today: string): boolean => items.some((i) => isUnsentCrewDay(i, today));
+
+/** The jobs with a crew-day for today still on this device: their card says "Logged today, not sent yet". */
+export function unsentJobIds(items: DeviceItem[], today: string): Set<string> {
+  return new Set(
+    items.filter((i) => isUnsentCrewDay(i, today)).map((i) => (i.entry.input as { projectId?: string }).projectId ?? ""),
   );
 }
 
-/** The foreman Home's key figure: what the server has for today, else a crew-day still on this device, else nothing yet. */
-export function foremanLogStatus(logged: { jobs: string[]; crewCount: number }, onDevice: boolean): string {
-  if (logged.jobs.length === 0 && onDevice) return "Logged, waiting to send";
-  return logStatusText(logged);
+/**
+ * The foreman Home's headline and whether the main button is "Fix entry". A failed entry comes first, then a crew-day
+ * waiting on this device, then what the server has for today.
+ */
+export function foremanHeadline(
+  logged: { jobs: string[]; crewCount: number },
+  items: DeviceItem[],
+  today: string,
+): { text: string; fix: boolean } {
+  const failed = items.filter((i) => i.state === "needs_attention").length;
+  if (failed > 0) return { text: failed === 1 ? "1 entry needs fixing" : `${failed} entries need fixing`, fix: true };
+  if (logged.jobs.length === 0 && loggedOnDevice(items, today)) return { text: "Logged, not sent yet", fix: false };
+  return { text: logStatusText(logged), fix: false };
 }
 
-/** The foreman Home's offline date line: "Mon 28 Sep · last updated 6:20 am". */
-export const offlineDateLine = (today: string, asOf: string, timeZone: string): string =>
-  `${formatDate(today, today)} · last updated ${formatTime(asOf, timeZone)}`;
+/** "Figures from 6:20 am." (with the date when they are from another day). One wording on both Homes. */
+export function figuresFromText(asOf: string, timeZone: string, today: string): string {
+  const full = formatDateTime(asOf, timeZone, today);
+  const todayPrefix = `${formatDate(today, today)}, `;
+  return `Figures from ${full.startsWith(todayPrefix) ? formatTime(asOf, timeZone) : full}.`;
+}
 
-/** The line under This pay period's figures: what to check, worded for who is reading. */
-export function payFlagsText(count: number, blocking: boolean, role: "owner" | "manager" | "accountant"): string {
+/** The line under This pay period's figures: what to check and what blocks approval, worded for who is reading. */
+export function payFlagsText(count: number, blockers: PayPeriodFigures["blockers"], role: "owner" | "manager" | "accountant"): string {
   const things = count === 1 ? "1 thing to check" : `${count} things to check`;
   if (role === "accountant") return `${things} in this pay run.`;
-  return `${things} before you approve.${blocking ? " One of them stops approval." : ""}`;
+  const [first, ...rest] = blockers;
+  if (!first) return `${things} before you approve.`;
+  const stops =
+    first.kind === "missing_rate"
+      ? `Missing rate${first.crewName ? ` for ${first.crewName}` : ""} stops approval.`
+      : "Two-factor sign-in is off and stops approval.";
+  const more = rest.length > 0 ? ` ${rest.length} more also ${rest.length === 1 ? "stops it" : "stop it"}.` : "";
+  return `${things} before you approve. ${stops}${more}`;
 }

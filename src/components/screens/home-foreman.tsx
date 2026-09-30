@@ -5,8 +5,22 @@ import { formatDate } from "@/lib/format";
 import { cx } from "@/lib/cx";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { daysSinceText, foremanLogStatus, loggedOnDevice, offlineDateLine, outboxStatus, stageLine } from "./home-text";
-import { COLUMN, FOCUS, GROUP, HomeEmpty, HomeTitle, JobCard, JobCardSkeleton, KeyFigure, ROW, Section, whole } from "./home-parts";
+import { daysSinceText, figuresFromText, foremanHeadline, loggedOnDevice, outboxStatus, stageLine, unsentJobIds } from "./home-text";
+import {
+  COLUMN,
+  FOCUS,
+  GROUP,
+  HOME_BUTTON,
+  HomeEmpty,
+  HomeTitle,
+  JobCard,
+  JobCardSkeleton,
+  KeyFigure,
+  KeyFigureSkeleton,
+  ROW,
+  Section,
+  whole,
+} from "./home-parts";
 
 const STATUS_ICON = {
   clear: { icon: CheckCircle, className: "text-ink-2" },
@@ -26,7 +40,8 @@ function OutboxStatusRow({ items }: { items: { state: OutboxState }[] }) {
   );
 }
 
-function OnThisDevice({ outbox }: { outbox: { state: OutboxState }[] }) {
+/** The "On this device" section: what is still to send. Also under the error, since logging works without the server. */
+export function OnThisDevice({ outbox }: { outbox: { state: OutboxState }[] }) {
   return (
     <Section title="On this device">
       <div className={GROUP}>
@@ -36,7 +51,7 @@ function OnThisDevice({ outbox }: { outbox: { state: OutboxState }[] }) {
   );
 }
 
-function JobRow({ job }: { job: ForemanJobRow }) {
+function JobRow({ job, unsent }: { job: ForemanJobRow; unsent: boolean }) {
   return (
     <JobCard
       href={job.href}
@@ -45,7 +60,7 @@ function JobRow({ job }: { job: ForemanJobRow }) {
       tape={{ label: `${job.name} progress`, percent: whole(job.pctBp) }}
     >
       <span className="mt-2 block text-meta text-ink">
-        {job.loggedToday ? "Logged today" : daysSinceText(job.daysSinceLastLog)}
+        {unsent ? "Logged today, not sent yet" : job.loggedToday ? "Logged today" : daysSinceText(job.daysSinceLastLog)}
       </span>
     </JobCard>
   );
@@ -54,19 +69,18 @@ function JobRow({ job }: { job: ForemanJobRow }) {
 export type HomeForemanProps = {
   home: HomeForeman;
   /** This device's own queue (device-local), passed in by the page. */
-  outbox: { state: OutboxState; date: string; entry: { type: string } }[];
+  outbox: { state: OutboxState; date: string; entry: { type: string; input: object } }[];
   /** No signal: the jobs are the last ones the phone loaded. */
   offline: boolean;
 };
 
 /**
- * Home for a foreman (flows.md screen 5): today's log status as the lead figure, the outbox status, the assigned
- * jobs and a Log today button under it. No dollars: the data has none.
+ * Home for a foreman (flows.md screen 5): the headline (a failed entry, else a crew-day not sent yet, else today's
+ * log status), its button, the outbox status and the assigned jobs. No dollars: the data has none.
  */
 export function HomeForemanBody({ home, outbox, offline }: HomeForemanProps) {
   const waiting = outbox.filter((i) => i.state === "waiting" || i.state === "sending").length;
   const attention = outbox.filter((i) => i.state === "needs_attention").length;
-  const onDevice = loggedOnDevice(outbox, home.today);
   if (home.jobs.length === 0) {
     return (
       <div data-screen="home" className={COLUMN}>
@@ -76,22 +90,27 @@ export function HomeForemanBody({ home, outbox, offline }: HomeForemanProps) {
       </div>
     );
   }
+  const headline = foremanHeadline(home.loggedToday, outbox, home.today);
+  // Today is logged on this device already (or a failed entry needs fixing): Log today steps back.
+  const stepBack = headline.fix || loggedOnDevice(outbox, home.today);
+  const unsent = unsentJobIds(outbox, home.today);
   return (
     <div data-screen="home" className={COLUMN}>
       <header className="flex flex-col gap-1">
         <HomeTitle waiting={waiting} attention={attention} />
-        <p className="text-meta text-ink">
-          {offline ? offlineDateLine(home.today, home.asOf, home.timeZone) : formatDate(home.today, home.today)}
-        </p>
-        {/* A crew-day waiting on this device counts as logged, so Log today is no longer the main action. */}
-        <KeyFigure>{foremanLogStatus(home.loggedToday, onDevice)}</KeyFigure>
-        <Button
-          variant={onDevice ? "secondary" : "primary"}
-          href={home.logToday.href}
-          className="mt-3 w-full sm:w-auto sm:min-w-72 sm:self-start"
-        >
-          Log today
-        </Button>
+        <p className="text-meta text-ink">{formatDate(home.today, home.today)}</p>
+        {offline ? <p className="text-meta text-ink">{figuresFromText(home.asOf, home.timeZone, home.today)}</p> : null}
+        <KeyFigure>{headline.text}</KeyFigure>
+        <div className="mt-3 flex flex-col gap-3">
+          {headline.fix ? (
+            <Button variant="primary" href="/outbox" className={HOME_BUTTON}>
+              Fix entry
+            </Button>
+          ) : null}
+          <Button variant={stepBack ? "secondary" : "primary"} href={home.logToday.href} className={HOME_BUTTON}>
+            Log today
+          </Button>
+        </div>
       </header>
 
       <OnThisDevice outbox={outbox} />
@@ -99,11 +118,10 @@ export function HomeForemanBody({ home, outbox, offline }: HomeForemanProps) {
       <Section title="Your jobs">
         <div className={GROUP}>
           {home.jobs.map((job) => (
-            <JobRow key={job.projectId} job={job} />
+            <JobRow key={job.projectId} job={job} unsent={unsent.has(job.projectId)} />
           ))}
         </div>
       </Section>
-
     </div>
   );
 }
@@ -115,22 +133,28 @@ export function HomeForemanSkeleton({ today }: { today: string }) {
       <header className="flex flex-col gap-1">
         <HomeTitle waiting={0} attention={0} />
         <p className="text-meta text-ink">{formatDate(today, today)}</p>
-        <Skeleton width={240} height={44} />
-        <Button variant="primary" href="/log" className="mt-3 w-full sm:w-auto sm:min-w-72 sm:self-start">
-          Log today
-        </Button>
+        <KeyFigureSkeleton width={240} />
+        <div className="mt-3 flex flex-col gap-3">
+          <Button variant="primary" href="/log" className={HOME_BUTTON}>
+            Log today
+          </Button>
+        </div>
       </header>
       <Section title="On this device">
         <div className={cx(GROUP, "overflow-hidden")}>
-          <div className="flex min-h-14 items-center px-4">
-            <Skeleton height={24} />
+          <div className="flex min-h-14 items-center gap-3 px-4 py-2 lg:min-h-12">
+            <Skeleton width={24} height={24} rounded="full" className="shrink-0" />
+            <div className="flex-1">
+              <Skeleton width={220} height={20} />
+            </div>
+            <Skeleton width={24} height={24} className="shrink-0" />
           </div>
         </div>
       </Section>
       <Section title="Your jobs">
         <div className={cx(GROUP, "overflow-hidden")}>
           {[0, 1].map((i) => (
-            <JobCardSkeleton key={i} lines={2} figures={1} />
+            <JobCardSkeleton key={i} lines={2} figures={0} />
           ))}
         </div>
       </Section>

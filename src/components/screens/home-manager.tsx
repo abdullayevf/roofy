@@ -1,16 +1,32 @@
 import type { ActiveJobRow, HomeManager } from "@/data/contracts";
 import type { Unit } from "@/domain/types";
 import { WarningCircle, WarningDiamond } from "@phosphor-icons/react/dist/ssr";
-import { formatDate, formatDateTime, formatMoney, formatRoundedQuantity } from "@/lib/format";
+import { formatDate, formatMoney, formatRoundedQuantity } from "@/lib/format";
 import { cx } from "@/lib/cx";
 import { KeepTogether } from "@/components/keep-together";
 import { Button } from "@/components/ui/button";
 import { List, type ListRow } from "@/components/ui/list";
 import { MoneyCell } from "@/components/ui/money-cell";
 import { Skeleton } from "@/components/ui/skeleton";
-import { attentionSentence, jobAlertText, payFlagsText, showMoreText, stageForecastLine, stageLine } from "./home-text";
+import { attentionSentence, figuresFromText, jobAlertText, payFlagsText, showMoreText, stageForecastLine, stageLine } from "./home-text";
 import { AttentionList } from "./attention-list";
-import { COLUMN, FOCUS, GROUP, HomeEmpty, HomeTitle, JobCard, JobCardSkeleton, KeyFigure, Section, whole } from "./home-parts";
+import {
+  AttentionRowSkeleton,
+  CARD_BLOCK,
+  COLUMN,
+  FOCUS,
+  GROUP,
+  HOME_BUTTON,
+  HomeEmpty,
+  HomeTitle,
+  JobCard,
+  JobCardSkeleton,
+  KeyFigure,
+  KeyFigureSkeleton,
+  ListRowSkeleton,
+  Section,
+  whole,
+} from "./home-parts";
 
 const figure = (text: string) => <span className="whitespace-nowrap text-figure num text-ink">{text}</span>;
 
@@ -42,7 +58,6 @@ function JobRow({ job }: { job: ActiveJobRow }) {
       lines={[stageLine(job.currentStages)]}
       tape={{
         label: `${job.name} progress`,
-        scope: "Whole job",
         percent: whole(job.pctBp),
         tone: alert?.tone,
         markerTone: job.labourActualCents > job.labourBudgetCents ? "over" : "watch",
@@ -56,7 +71,7 @@ function JobRow({ job }: { job: ActiveJobRow }) {
           <KeepTogether text={stageForecast} />
         </p>
       ) : null}
-      <dl className="mt-2 grid lg:max-w-100 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-1">
+      <dl className={`mt-2 grid ${CARD_BLOCK} grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-1`}>
         <dt className="text-meta text-ink">Labour so far</dt>
         <dd className="text-right text-figure num text-ink">
           {formatMoney(job.labourActualCents)} of {formatMoney(job.labourBudgetCents)}
@@ -131,7 +146,7 @@ export function HomeManagerBody({ home, role, outbox, offline }: HomeManagerProp
     return (
       <div data-screen="home" className={COLUMN}>
         <HomeTitle {...outbox} />
-        <HomeEmpty message="No jobs yet. Add your first job." actionLabel="Add your first job" href="/jobs/new" />
+        <HomeEmpty message="No jobs yet." actionLabel="Add your first job" href="/jobs/new" />
       </div>
     );
   }
@@ -149,7 +164,7 @@ export function HomeManagerBody({ home, role, outbox, offline }: HomeManagerProp
       <header className="flex flex-col gap-1">
         <HomeTitle {...outbox} />
         {offline ? (
-          <p className="text-meta text-ink">Figures from {formatDateTime(home.asOf, home.timeZone, home.today)}.</p>
+          <p className="text-meta text-ink">{figuresFromText(home.asOf, home.timeZone, home.today)}</p>
         ) : null}
         {flagged > 0 ? (
           <a href="#needs-attention" className={cx("mt-2 block max-w-fit rounded-control", FOCUS)}>
@@ -179,7 +194,7 @@ export function HomeManagerBody({ home, role, outbox, offline }: HomeManagerProp
 
           <Section title="Active jobs">
             {home.activeJobs.length === 0 ? (
-              <HomeEmpty message="No jobs yet. Add your first job." actionLabel="Add your first job" href="/jobs/new" />
+              <HomeEmpty message="No jobs yet." actionLabel="Add your first job" href="/jobs/new" />
             ) : (
               <div className={GROUP}>
                 {home.activeJobs.map((job) => (
@@ -195,7 +210,7 @@ export function HomeManagerBody({ home, role, outbox, offline }: HomeManagerProp
             <p className="text-meta text-ink">
               Labour, {formatDate(week.period.start, home.today)} to {formatDate(week.period.end, home.today)}
             </p>
-            <KeyFigure>{formatMoney(week.labourCostCents)}</KeyFigure>
+            <p className="text-figure num text-ink">{formatMoney(week.labourCostCents)}</p>
             <List rows={lastWeekRows(home)} reserveChevron />
           </Section>
           {pay ? (
@@ -208,12 +223,13 @@ export function HomeManagerBody({ home, role, outbox, offline }: HomeManagerProp
                   ) : (
                     <WarningDiamond size={24} aria-hidden="true" className="shrink-0" />
                   )}
-                  <span>{payFlagsText(pay.flagCount, pay.blocking, role)}</span>
+                  <span>{payFlagsText(pay.flagCount, pay.blockers, role)}</span>
                 </p>
               ) : null}
-              <Button variant="secondary" href={pay.href} className="sm:self-start">
+              <Button variant="secondary" href={pay.href} className={HOME_BUTTON}>
                 {role === "accountant" ? "Open pay run" : "Review pay run"}
               </Button>
+              {offline && role !== "accountant" ? <p className="text-meta text-ink">Needs signal to approve.</p> : null}
             </Section>
           ) : null}
         </div>
@@ -222,13 +238,11 @@ export function HomeManagerBody({ home, role, outbox, offline }: HomeManagerProp
   );
 }
 
-function SkeletonGroup({ rows, height }: { rows: number; height: number }) {
+function SkeletonGroup({ rows, row: Row }: { rows: number; row: () => React.ReactElement }) {
   return (
     <div className={cx(GROUP, "overflow-hidden")}>
       {Array.from({ length: rows }, (_, i) => (
-        <div key={i} className="flex items-center px-4" style={{ minHeight: height }}>
-          <Skeleton height={24} />
-        </div>
+        <Row key={i} />
       ))}
     </div>
   );
@@ -236,22 +250,25 @@ function SkeletonGroup({ rows, height }: { rows: number; height: number }) {
 
 /**
  * Home while it loads (`?demo=loading`): the title and headings are real, only the fetched figures are blocks,
- * shaped like what replaces them (the real number of 56 px attention rows, job cards with a tape slot, 64 px list rows) so nothing jumps.
+ * shaped like what replaces them (the real number of attention rows, job cards with a tape slot, list rows with
+ * a label, a figure and the chevron's slot) so nothing jumps.
  */
 export function HomeSkeleton() {
   return (
     <div data-screen="home" aria-busy="true" className={cx(COLUMN, "lg:max-w-5xl")}>
       <header className="flex flex-col gap-1">
         <HomeTitle waiting={0} attention={0} />
-        <div className="mt-2 flex flex-col gap-1">
-          <Skeleton width={140} height={44} />
-          <Skeleton width={260} height={20} />
+        <div className="mt-2">
+          <KeyFigureSkeleton width={140} />
+          <div className="flex h-5 items-center">
+            <Skeleton width={260} height={14} />
+          </div>
         </div>
       </header>
       <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-10">
         <div className="flex flex-col gap-8 lg:gap-10">
           <Section title="Needs attention">
-            <SkeletonGroup rows={7} height={56} />
+            <SkeletonGroup rows={7} row={AttentionRowSkeleton} />
           </Section>
           <Section title="Active jobs">
             <div className={cx(GROUP, "overflow-hidden")}>
@@ -263,12 +280,16 @@ export function HomeSkeleton() {
         </div>
         <div className="flex flex-col gap-8 lg:gap-10">
           <Section title="Last week">
-            <Skeleton width={220} height={16} />
-            <Skeleton width={180} height={44} />
-            <SkeletonGroup rows={7} height={64} />
+            <div className="flex h-5 items-center">
+              <Skeleton width={220} height={14} />
+            </div>
+            <div className="flex h-6 items-center">
+              <Skeleton width={140} height={20} />
+            </div>
+            <SkeletonGroup rows={7} row={ListRowSkeleton} />
           </Section>
           <Section title="This pay period">
-            <SkeletonGroup rows={4} height={64} />
+            <SkeletonGroup rows={4} row={ListRowSkeleton} />
           </Section>
         </div>
       </div>

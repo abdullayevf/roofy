@@ -185,6 +185,21 @@ describe("home (manager)", () => {
     expect(home.needsAttention[1]).toMatchObject({ severity: "over", count: 1, href: "/outbox" });
   });
 
+  it("the outbox row names the entry: what it is, whose, and which job (from the device's own outbox item)", async () => {
+    const home = await managerHome("attention");
+    const row = home.needsAttention.find((i) => i.kind === "outbox_attention");
+    expect(row).toMatchObject({
+      count: 1,
+      entries: [{ type: "crew_day", crewNames: ["Mick", "Josh"], jobName: expect.stringContaining("Harris") }],
+    });
+  });
+
+  it("the pay period names what blocks approval", async () => {
+    const pay = (await managerHome()).payPeriod!;
+    expect(pay.blocking).toBe(true);
+    expect(pay.blockers).toEqual([{ kind: "missing_rate", crewName: expect.any(String) }]);
+  });
+
   it("last week: figures from src/domain over 21–27 Sep", async () => {
     const { lastWeek } = await managerHome();
     const inWeek = live.filter((l) => l.date >= "2026-09-21" && l.date <= "2026-09-27");

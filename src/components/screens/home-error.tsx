@@ -2,14 +2,17 @@ import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { formatDate } from "@/lib/format";
 import { RetryButton } from "@/components/retry-button";
 import { Button } from "@/components/ui/button";
-import { COLUMN, HomeTitle } from "./home-parts";
+import type { OutboxState } from "@/data/contracts";
+import { OnThisDevice } from "./home-foreman";
+import { COLUMN, HOME_BUTTON, HomeTitle } from "./home-parts";
 
 /**
  * Home when its figures can't load (`?demo=error`): the page stays. The message sits under the title with the
- * `over` icon, Try again is the one primary, and a foreman's Log today is the secondary. No link back to Home:
- * this is Home.
+ * `over` icon. A manager's Try again is the primary. A foreman's Log today is the primary (logging works without the
+ * server: it goes to this device) with Try again secondary, and On this device stays under the message. No link back
+ * to Home: this is Home.
  */
-export function HomeError({ foreman, today }: { foreman: boolean; today: string }) {
+export function HomeError({ foreman, today, outbox }: { foreman: boolean; today: string; outbox: { state: OutboxState }[] }) {
   return (
     <div data-screen="home" className={COLUMN}>
       <header className="flex flex-col gap-1">
@@ -24,15 +27,20 @@ export function HomeError({ foreman, today }: { foreman: boolean; today: string 
             <p className="text-body text-ink">Check your connection, then try again.</p>
           </div>
         </div>
-        <div className="flex flex-col gap-3 sm:max-w-72">
-          <RetryButton className="w-full" />
+        <div className="flex flex-col gap-3">
           {foreman ? (
-            <Button variant="secondary" href="/log" className="w-full">
-              Log today
-            </Button>
-          ) : null}
+            <>
+              <Button variant="primary" href="/log" className={HOME_BUTTON}>
+                Log today
+              </Button>
+              <RetryButton variant="secondary" className={HOME_BUTTON} />
+            </>
+          ) : (
+            <RetryButton className={HOME_BUTTON} />
+          )}
         </div>
       </section>
+      {foreman ? <OnThisDevice outbox={outbox} /> : null}
     </div>
   );
 }

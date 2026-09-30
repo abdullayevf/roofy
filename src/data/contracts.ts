@@ -999,7 +999,12 @@ export type AttentionItem =
       payRunId: Id;
       shortfallCents: Cents;
     })
-  | (AttentionBase & { kind: "outbox_attention"; count: number });
+  | (AttentionBase & {
+      kind: "outbox_attention";
+      count: number;
+      /** What each failed entry is (foreman-safe words only: no rates or amounts). */
+      entries: { type: MutationType; crewNames: string[]; jobName: string | null }[];
+    });
 
 export type AttentionKind = AttentionItem["kind"];
 
@@ -1046,6 +1051,8 @@ export interface PayPeriodFigures {
   outstandingBalancesCents: Cents;
   flagCount: number;
   blocking: boolean;
+  /** What blocks approval, so Home can name it ("Missing rate for Tom"). */
+  blockers: { kind: "missing_rate" | "owner_2fa_off"; crewName: string | null }[];
   href: string;
 }
 

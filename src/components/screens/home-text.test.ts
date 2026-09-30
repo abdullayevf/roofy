@@ -11,8 +11,9 @@ import {
   stageLine,
   stageForecastLine,
   loggedOnDevice,
-  foremanLogStatus,
-  offlineDateLine,
+  figuresFromText,
+  foremanHeadline,
+  unsentJobIds,
 } from "./home-text";
 
 const base = { id: "a", severity: "watch" as const, href: "/x" };
@@ -40,7 +41,7 @@ describe("attentionSentence", () => {
       ...base, kind: "paused_too_long", projectId: "p", projectName: "Kelly job", stageId: "s",
       stageName: "Flashings", reason: "materials", since: "2026-09-14", workingDays: 10,
     };
-    expect(attentionSentence(item, TODAY)).toBe("Flashings on Kelly job has been paused 10 working days (materials).");
+    expect(attentionSentence(item, TODAY)).toBe("Flashings on Kelly job: paused 10 working days, waiting on materials.");
   });
 
   it("logging gaps: one person, then several", () => {
@@ -66,8 +67,22 @@ describe("attentionSentence", () => {
     expect(
       attentionSentence({ ...base, kind: "below_floor", crewMemberId: "c", name: "Tom", payRunId: "r", shortfallCents: 4250 }, TODAY),
     ).toBe("Tom is $42.50 under the award minimum in this pay run.");
-    expect(attentionSentence({ ...base, kind: "outbox_attention", count: 1 }, TODAY)).toBe("1 entry on this device needs attention.");
-    expect(attentionSentence({ ...base, kind: "outbox_attention", count: 3 }, TODAY)).toBe("3 entries on this device need attention.");
+    const one = { ...base, kind: "outbox_attention" as const, count: 1 };
+    expect(attentionSentence({ ...one, entries: [{ type: "crew_day", crewNames: ["Kev"], jobName: "Smith job" }] }, TODAY)).toBe(
+      "Kev's hours for Smith job didn't send. Tap to fix.",
+    );
+    expect(attentionSentence({ ...one, entries: [{ type: "progress", crewNames: ["Mick", "Josh"], jobName: null }] }, TODAY)).toBe(
+      "Mick and Josh's progress didn't send. Tap to fix.",
+    );
+    expect(attentionSentence({ ...one, entries: [{ type: "no_work", crewNames: ["A", "B", "C"], jobName: null }] }, TODAY)).toBe(
+      "A and 2 others' no-work note didn't send. Tap to fix.",
+    );
+    expect(attentionSentence({ ...one, entries: [{ type: "expense", crewNames: [], jobName: "Smith job" }] }, TODAY)).toBe(
+      "Expense for Smith job didn't send. Tap to fix.",
+    );
+    expect(attentionSentence({ ...base, kind: "outbox_attention", count: 3, entries: [] }, TODAY)).toBe(
+      "3 entries on this device didn't send. Tap to fix.",
+    );
   });
 });
 
@@ -144,10 +159,18 @@ describe("logStatusText", () => {
 
 describe("payFlagsText", () => {
   it("asks a manager to check before approving, and an accountant to check the run", () => {
-    expect(payFlagsText(1, false, "manager")).toBe("1 thing to check before you approve.");
-    expect(payFlagsText(6, true, "owner")).toBe("6 things to check before you approve. One of them stops approval.");
-    expect(payFlagsText(6, true, "accountant")).toBe("6 things to check in this pay run.");
-    expect(payFlagsText(1, false, "accountant")).toBe("1 thing to check in this pay run.");
+    expect(payFlagsText(1, [], "manager")).toBe("1 thing to check before you approve.");
+    expect(payFlagsText(6, [{ kind: "missing_rate", crewName: "Tom" }], "owner")).toBe(
+      "6 things to check before you approve. Missing rate for Tom stops approval.",
+    );
+    expect(payFlagsText(6, [{ kind: "owner_2fa_off", crewName: null }], "manager")).toBe(
+      "6 things to check before you approve. Two-factor sign-in is off and stops approval.",
+    );
+    expect(
+      payFlagsText(6, [{ kind: "missing_rate", crewName: "Tom" }, { kind: "missing_rate", crewName: "Kev" }], "owner"),
+    ).toBe("6 things to check before you approve. Missing rate for Tom stops approval. 1 more also stops it.");
+    expect(payFlagsText(6, [], "accountant")).toBe("6 things to check in this pay run.");
+    expect(payFlagsText(1, [], "accountant")).toBe("1 thing to check in this pay run.");
   });
 });
 
@@ -161,7 +184,7 @@ describe("loggedOnDevice", () => {
   const item = (state: "waiting" | "sending" | "needs_attention" | "sent", type: string, date: string) => ({
     state,
     date,
-    entry: { type },
+    entry: { type, input: {} },
   });
   it("is true for a crew-day for today that is waiting, sending or needs attention", () => {
     for (const state of ["waiting", "sending", "needs_attention"] as const)
@@ -174,18 +197,48 @@ describe("loggedOnDevice", () => {
   });
 });
 
-describe("foremanLogStatus", () => {
-  it("says an entry waiting on this device counts as logged", () => {
-    expect(foremanLogStatus({ jobs: [], crewCount: 0 }, true)).toBe("Logged, waiting to send");
+describe("foremanHeadline", () => {
+  const none = { jobs: [], crewCount: 0 };
+  const item = (state: "waiting" | "needs_attention" | "sent", type = "crew_day", date = TODAY) => ({
+    state,
+    date,
+    entry: { type, input: { projectId: "p1" } },
   });
-  it("prefers what the server already has", () => {
-    expect(foremanLogStatus({ jobs: ["Smith job"], crewCount: 3 }, true)).toBe("Logged: Smith job, 3 crew");
-    expect(foremanLogStatus({ jobs: [], crewCount: 0 }, false)).toBe("Not logged yet today");
+  it("an entry needing attention comes first, with the fix button", () => {
+    expect(foremanHeadline(none, [item("needs_attention")], TODAY)).toEqual({ text: "1 entry needs fixing", fix: true });
+    expect(foremanHeadline({ jobs: ["Smith job"], crewCount: 2 }, [item("needs_attention"), item("needs_attention", "progress")], TODAY)).toEqual({
+      text: "2 entries need fixing",
+      fix: true,
+    });
+  });
+  it("then a crew-day waiting on this device", () => {
+    expect(foremanHeadline(none, [item("waiting")], TODAY)).toEqual({ text: "Logged, not sent yet", fix: false });
+  });
+  it("then what the server has, else not logged yet", () => {
+    expect(foremanHeadline({ jobs: ["Smith job"], crewCount: 3 }, [], TODAY)).toEqual({ text: "Logged: Smith job, 3 crew", fix: false });
+    expect(foremanHeadline(none, [item("sent"), item("waiting", "progress")], TODAY)).toEqual({ text: "Not logged yet today", fix: false });
   });
 });
 
-describe("offlineDateLine", () => {
-  it("is one line: the date, then when the phone last loaded", () => {
-    expect(offlineDateLine("2026-09-28", "2026-09-27T20:20:00.000Z", "Australia/Sydney")).toBe("Mon 28 Sep · last updated 6:20 am");
+describe("unsentJobIds", () => {
+  it("is the jobs with a crew-day for today that is waiting or needs attention", () => {
+    const mk = (state: "waiting" | "sent" | "needs_attention", type: string, date: string, projectId: string) => ({
+      state, date, entry: { type, input: { projectId } },
+    });
+    const ids = unsentJobIds(
+      [mk("waiting", "crew_day", TODAY, "a"), mk("needs_attention", "crew_day", TODAY, "b"), mk("sent", "crew_day", TODAY, "c"),
+       mk("waiting", "crew_day", "2026-09-25", "d"), mk("waiting", "progress", TODAY, "e")],
+      TODAY,
+    );
+    expect([...ids].sort()).toEqual(["a", "b"]);
+  });
+});
+
+describe("figuresFromText", () => {
+  it("is one sentence with the time when the figures are from today", () => {
+    expect(figuresFromText("2026-09-27T20:20:00.000Z", "Australia/Sydney", "2026-09-28")).toBe("Figures from 6:20 am.");
+  });
+  it("adds the date when they are from another day", () => {
+    expect(figuresFromText("2026-09-25T20:20:00.000Z", "Australia/Sydney", "2026-09-28")).toBe("Figures from Sat 26 Sep, 6:20 am.");
   });
 });
