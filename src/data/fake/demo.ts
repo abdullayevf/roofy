@@ -79,11 +79,11 @@ export function demoOutbox(state: DemoState | null, tables: Seed, now: Date): Ou
       createdAt: before(now, 95),
       input: {
         date: today,
-        projectId: meta.projects.harris,
-        stageId: meta.stages.harrisTile,
+        projectId: meta.projects.smith,
+        stageId: meta.stages.smithSheetInstall,
         entries: [
-          { crewMemberId: meta.crew.mick, basis: "daily", days: 100, hours: 800, multiplier: null },
-          { crewMemberId: meta.crew.josh, basis: "hourly", days: null, hours: 800, multiplier: 100 },
+          { crewMemberId: meta.crew.sam, basis: "time_only", days: null, hours: 800, multiplier: null },
+          { crewMemberId: meta.crew.dima, basis: "time_only", days: null, hours: 800, multiplier: null },
         ],
       },
     };
@@ -92,9 +92,9 @@ export function demoOutbox(state: DemoState | null, tables: Seed, now: Date): Ou
         entry,
         state: "needs_attention",
         date: today,
-        projectName: projectName(meta.projects.harris),
-        stageName: stageName(meta.stages.harrisTile),
-        crewNames: [crewName(meta.crew.mick), crewName(meta.crew.josh)],
+        projectName: projectName(meta.projects.smith),
+        stageName: stageName(meta.stages.smithSheetInstall),
+        crewNames: [crewName(meta.crew.sam), crewName(meta.crew.dima)],
         rejection: {
           code: "forbidden",
           message: "You don't have access to this job any more. Ask your manager.",

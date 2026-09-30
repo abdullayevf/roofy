@@ -30,7 +30,7 @@ test.describe("Home (manager)", () => {
     await expect(lastWeek.locator("div.divide-y > *").first()).toHaveText(/^Labour\$[\d,]+\.\d{2}$/);
     // Needs attention: the Smith job is trending over on sheet install.
     await expect(page.getByRole("heading", { level: 2, name: "Needs attention" })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Smith job.*Sheet install: trending \$775\.00 over budget\./ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Smith job is trending \$775\.00 over budget on sheet install\./ })).toBeVisible();
     // Active jobs: a card with a tape bar, labour, forecast margin and the last log.
     await expect(page.getByRole("heading", { level: 2, name: "Active jobs" })).toBeVisible();
     const smith = page.getByRole("link", { name: /Smith job/ }).last();
@@ -130,7 +130,7 @@ test.describe("Home (manager)", () => {
   test("Last week's total is a row, not a second hero; the paused row reads as one sentence", async ({ page }) => {
     await signInAs(page, "manager");
     await expect(page.locator('[data-screen="home"] p.text-figure-xl')).toHaveCount(1);
-    await expect(page.getByRole("link", { name: "Ryde heritage — Coat / paint: paused 11 working days, waiting on materials." })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Coat / paint on Ryde heritage is paused 11 working days, waiting on materials." })).toBeVisible();
   });
 
   test("the pay note names what stops approval; offline it says Review pay run needs signal", async ({ page }) => {
@@ -240,7 +240,7 @@ test.describe("Home (manager)", () => {
     await signInAs(page, "manager", "/?demo=offline");
     await expect(page.getByRole("status")).toContainText("No signal");
     await expect(page.getByRole("status")).toContainText("saved on this device");
-    await expect(page.getByText(/^Figures from 6:20 am\.$/)).toBeVisible();
+    await expect(page.getByText(/^Last updated 6:20 am\.$/)).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "Needs attention" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "Active jobs" })).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
@@ -250,7 +250,7 @@ test.describe("Home (manager)", () => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "manager", "/?demo=attention");
     await expectBadgeBesideTitle(page, "1 entry needs attention");
-    const item = page.getByRole("link", { name: /^.*Harris.*: Mick and Josh's hours didn't send\. Tap to fix\.$/ });
+    const item = page.getByRole("link", { name: /^Sam and Dima's hours for Smith job didn't send\.$/ });
     await expect(item).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
     await item.click();
@@ -265,9 +265,9 @@ test.describe("Home (manager)", () => {
     expect((await more.boundingBox())!.height).toBeGreaterThanOrEqual(48);
     // Red first: the over-budget row, the pay run that can't be approved, the failed entry, then the amber rows.
     const links = section.getByRole("link");
-    await expect(links.nth(0)).toContainText("Clean-up: $100.00 over budget");
+    await expect(links.nth(0)).toContainText("Wong job is $100.00 over budget on clean-up.");
     await expect(links.nth(1)).toContainText("has no pay rate");
-    await expect(links.nth(2)).toContainText("Mick and Josh's hours didn't send");
+    await expect(links.nth(2)).toContainText("Sam and Dima's hours for Smith job didn't send.");
     await more.click();
     await expect(section.getByRole("button", { name: "Show fewer" })).toHaveAttribute("aria-expanded", "true");
     await expect(section.getByRole("link")).toHaveCount(9);
@@ -277,8 +277,45 @@ test.describe("Home (manager)", () => {
 
   test("the failed-entry row uses the red icon, like the badge", async ({ page }) => {
     await signInAs(page, "manager", "/?demo=attention");
-    const row = page.getByRole("link", { name: /^.*Harris.*: Mick and Josh's hours didn't send\. Tap to fix\.$/ });
+    const row = page.getByRole("link", { name: /^Sam and Dima's hours for Smith job didn't send\.$/ });
     await expect(row.locator("svg").first()).toHaveClass(/text-over/);
+  });
+
+  test("?demo=attention: the manager's own failed entry gets the headline and Fix entry above Needs attention, the count below", async ({ page }) => {
+    await signInAs(page, "manager", "/?demo=attention");
+    const headline = page.locator('[data-screen="home"] p.text-figure-xl').first();
+    await expect(headline).toHaveText("Today's log for Smith job didn't send");
+    const fix = page.getByRole("link", { name: "Fix entry" });
+    await expect(fix).toHaveAttribute("href", "/outbox");
+    const [h, f, count, section] = await Promise.all([
+      headline.boundingBox(),
+      fix.boundingBox(),
+      page.getByRole("link", { name: /^\d+ jobs? over budget/ }).boundingBox(),
+      page.getByRole("heading", { level: 2, name: "Needs attention" }).boundingBox(),
+    ]);
+    expect(f!.y).toBeGreaterThan(h!.y);
+    expect(count!.y).toBeGreaterThan(f!.y);
+    expect(count!.y).toBeLessThan(section!.y);
+    await expect(page.getByRole("link", { name: "Fix entry" })).toHaveClass(/bg-chalk/);
+  });
+
+  test("a job card's labour figure is on one line, with the budget as a line under its label", async ({ page }) => {
+    await signInAs(page, "manager");
+    for (const job of [/Smith job/, /Wong job/, /Ryde heritage/]) {
+      const card = page.getByRole("link", { name: job }).last();
+      const figure = card.locator("dd").first();
+      await expect(figure).toHaveText(/^\$[\d,]+\.\d{2}$/);
+      expect((await figure.boundingBox())!.height).toBeLessThan(32);
+      await expect(card.locator("dt").first()).toContainText(/of \$[\d,]+\.\d{2} budget/);
+    }
+  });
+
+  test("Needs attention rows are plain sentences with no dash chains", async ({ page }) => {
+    await signInAs(page, "manager");
+    const rows = page.locator('[data-screen="home"] section', { has: page.getByRole("heading", { level: 2, name: "Needs attention" }) }).getByRole("link");
+    const texts = await rows.allInnerTexts();
+    for (const t of texts.filter((x) => !x.includes("no pay rate"))) expect(t).not.toContain(" — ");
+    await expect(rows.first()).toContainText("Wong job is $100.00 over budget on clean-up.");
   });
 
   test("?demo=waiting: the badge reads N to send beside the title", async ({ page }) => {
@@ -454,7 +491,7 @@ test.describe("Home (foreman)", () => {
     await signInAs(page, "foreman", "/?demo=offline");
     await expect(page.getByRole("status")).toContainText("No signal");
     // One line: the date and when the phone last loaded the jobs.
-    await expect(page.getByText(/^Mon 28 Sep\. Jobs from 6:20 am\.$/)).toBeVisible();
+    await expect(page.getByText(/^Last updated 6:20 am\.$/)).toBeVisible();
     await expect(page.getByRole("link", { name: "Log today" })).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
@@ -473,20 +510,20 @@ test.describe("Home (foreman)", () => {
     await expect(page.getByRole("link", { name: /Smith job/ }).last()).toContainText("Logged today, not sent yet");
     // The Outbox tab (or sidebar item) carries the count too.
     await expect(page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: /Outbox/ })).toContainText("3");
-    const status = page.getByRole("link", { name: "3 entries", exact: true });
+    const status = page.getByRole("link", { name: "3 entries waiting to send", exact: true });
     await expect(status).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
     await status.click();
     await expect(page).toHaveURL(/\/outbox/);
   });
 
-  test("?demo=attention: N needs attention beside the title and in the status row", async ({ page }, testInfo) => {
+  test("?demo=attention: the failed entry is on a job in Your jobs; N needs attention beside the title, the status row says it didn't send", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "foreman", "/?demo=attention");
     await expectBadgeBesideTitle(page, "1 entry needs attention");
-    await expect(page.getByRole("link", { name: "1 needs attention", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "1 entry didn't send", exact: true })).toBeVisible();
     // A failed entry outranks everything: the headline says so and the main button fixes it.
-    await expect(page.locator('[data-screen="home"] p.text-figure-xl')).toHaveText(/^Today's crew-day for .+ didn't send$/);
+    await expect(page.locator('[data-screen="home"] p.text-figure-xl')).toHaveText(/^Today's log for Smith job didn't send$/);
     const fix = page.getByRole("link", { name: "Fix entry" });
     await expect(fix).toHaveClass(/bg-chalk/);
     await expect(fix).toHaveAttribute("href", "/outbox");

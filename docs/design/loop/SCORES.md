@@ -24,3 +24,4 @@ Score history for every screen group's design loop (`docs/specs/04-design-proces
 | field-1 | 3 | 82 | 82 | 82 | 0 | yes |
 | field-1 | 4 | 85 | 81 | 83 | 1 | yes |
 | field-1 | 5 | 85 | 79 | 82 | 1 | yes |
+| field-1 | 6 | 82 | 82 | 82 | 1 | yes |

@@ -196,7 +196,7 @@ describe("home (manager)", () => {
     const row = home.needsAttention.find((i) => i.kind === "outbox_attention");
     expect(row).toMatchObject({
       count: 1,
-      entries: [{ type: "crew_day", crewNames: ["Mick", "Josh"], jobName: expect.stringContaining("Harris") }],
+      entries: [{ type: "crew_day", crewNames: ["Sam", "Dima"], jobName: expect.stringContaining("Smith") }],
     });
   });
 

@@ -71,6 +71,15 @@ describe("demo flags", () => {
     expectNoMoney(items, "outbox attention");
   });
 
+  it("attention: the entry is on a job the demo foreman is assigned to, so it shows in Your jobs", () => {
+    const seed = getSeed();
+    const [item] = demoOutbox("attention", seed, NOW);
+    const projectId = (item!.entry.input as { projectId: string }).projectId;
+    const foreman = seed.members.find((m) => m.role === "foreman")!;
+    const assigned = seed.projectAssignments.filter((a) => a.memberId === foreman.id).map((a) => a.projectId);
+    expect(assigned).toContain(projectId);
+  });
+
   it("every other state has an empty outbox", () => {
     for (const s of DEMO_STATES.filter((x) => x !== "waiting" && x !== "attention")) {
       expect(demoOutbox(s, getSeed(), NOW)).toEqual([]);

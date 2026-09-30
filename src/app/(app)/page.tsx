@@ -34,6 +34,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Sea
       home={home}
       role={actor.role === "foreman" ? "manager" : actor.role}
       outbox={{ waiting: demo.outbox.length - attention, attention }}
+      deviceItems={demo.outbox}
       offline={demo.offline}
     />
   );

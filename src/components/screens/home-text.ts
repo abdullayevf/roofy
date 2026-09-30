@@ -32,40 +32,42 @@ function joinNames(names: string[]): string {
 
 const possessive = (s: string) => (s.endsWith("s") ? `${s}'` : `${s}'s`);
 
-/** "Smith job: Kev's hours didn't send. Tap to fix." (a count when several failed). */
+/** A job's short name: the part before the dash ("Smith job — Ryde re-roof" is "Smith job"). */
+export const shortJobName = (name: string): string => name.split(" — ")[0]!;
+
+/** "Kev's hours for Smith job didn't send." (a count when several failed). */
 function outboxAttentionSentence(count: number, entries: { type: MutationType; crewNames: string[]; jobName: string | null }[]): string {
   const [e] = entries;
-  if (count !== 1 || !e) return `${count} entries on this device didn't send. Tap to fix.`;
+  if (count !== 1 || !e) return `${count} entries on this device didn't send.`;
   const what = ENTRY_WORD[e.type];
-  const subject = e.crewNames.length > 0 ? `${possessive(joinNames(e.crewNames))} ${what}` : e.jobName ? what : what.charAt(0).toUpperCase() + what.slice(1);
-  return `${e.jobName ? `${e.jobName}: ` : ""}${subject} didn't send. Tap to fix.`;
+  const subject = e.crewNames.length > 0 ? `${possessive(joinNames(e.crewNames))} ${what}` : what.charAt(0).toUpperCase() + what.slice(1);
+  return `${subject}${e.jobName ? ` for ${shortJobName(e.jobName)}` : ""} didn't send.`;
 }
 
-/**
- * One plain sentence for a Needs attention row (product spec §5.9), one pattern: "<Job> — <stage>: <problem>." when
- * the problem has a stage, "<Job>: <problem>." when it has only a job, "<Name>: <problem>." for a person.
- */
+const lower = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
+
+/** One plain sentence for a Needs attention row (product spec §5.9), with the job's short name and no dash chains. */
 export function attentionSentence(item: AttentionItem, today: string): string {
   switch (item.kind) {
     case "over_budget":
-      return `${item.projectName} — ${item.stageName}: ${formatMoney(item.byCents)} over budget.`;
+      return `${shortJobName(item.projectName)} is ${formatMoney(item.byCents)} over budget on ${lower(item.stageName)}.`;
     case "trending_over":
-      return `${item.projectName} — ${item.stageName}: trending ${formatMoney(item.byCents)} over budget.`;
+      return `${shortJobName(item.projectName)} is trending ${formatMoney(item.byCents)} over budget on ${lower(item.stageName)}.`;
     case "paused_too_long":
-      return `${item.projectName} — ${item.stageName}: paused ${item.workingDays} working days, waiting on ${WAITING_ON[item.reason]}.`;
+      return `${item.stageName} on ${shortJobName(item.projectName)} is paused ${item.workingDays} working days, waiting on ${WAITING_ON[item.reason]}.`;
     case "logging_gaps": {
       const [first, ...rest] = item.gaps;
       if (!first) return "Some days last week have no log.";
       if (rest.length === 0) {
         const n = first.dates.length;
-        return `${first.name}: ${n} ${n === 1 ? "day" : "days"} with no log last week.`;
+        return `${first.name} has ${n} ${n === 1 ? "day" : "days"} with no log last week.`;
       }
-      return `${first.name} and ${rest.length} ${rest.length === 1 ? "other" : "others"}: days with no log last week.`;
+      return `${first.name} and ${rest.length} ${rest.length === 1 ? "other have" : "others have"} days with no log last week.`;
     }
     case "unpaid_too_long":
-      return `${item.name}: owed ${formatMoney(item.balanceCents)} since ${formatDate(item.since, today)}.`;
+      return `${item.name} is owed ${formatMoney(item.balanceCents)} since ${formatDate(item.since, today)}.`;
     case "below_floor":
-      return `${item.name}: ${formatMoney(item.shortfallCents)} under the award minimum in this pay run.`;
+      return `${item.name} is ${formatMoney(item.shortfallCents)} under the award minimum in this pay run.`;
     case "pay_blocked":
       return `${item.name} has no pay rate — this pay run can't be approved.`;
     case "outbox_attention":
@@ -119,11 +121,11 @@ export type OutboxStatus = { tone: "clear" | "waiting" | "attention"; text: stri
 export function outboxStatus(items: { state: OutboxState }[]): OutboxStatus {
   const attention = items.filter((i) => i.state === "needs_attention").length;
   if (attention > 0) {
-    return { tone: "attention", text: attention === 1 ? "1 needs attention" : `${attention} need attention` };
+    return { tone: "attention", text: attention === 1 ? "1 entry didn't send" : `${attention} entries didn't send` };
   }
   const waiting = items.filter((i) => i.state === "waiting" || i.state === "sending").length;
   if (waiting > 0) {
-    return { tone: "waiting", text: waiting === 1 ? "1 entry" : `${waiting} entries` };
+    return { tone: "waiting", text: waiting === 1 ? "1 entry waiting to send" : `${waiting} entries waiting to send` };
   }
   return { tone: "clear", text: "Everything on this device has been sent." };
 }
@@ -166,13 +168,13 @@ export function foremanHeadline(
   if (failed.length === 1) {
     const [only] = failed;
     // "Smith job — Ryde re-roof" is too long for a headline: the short name before the dash.
-    const job = (jobNames[(only!.entry.input as { projectId?: string }).projectId ?? ""] ?? only!.projectName)?.split(" — ")[0];
+    const job = shortJobName(jobNames[(only!.entry.input as { projectId?: string }).projectId ?? ""] ?? only!.projectName ?? "");
     if (only!.entry.type === "crew_day" && only!.date === today && job) {
-      return { text: `Today's crew-day for ${job} didn't send`, fix: true };
+      return { text: `Today's log for ${job} didn't send`, fix: true };
     }
-    return { text: "1 entry needs attention", fix: true };
+    return { text: "1 entry didn't send", fix: true };
   }
-  if (failed.length > 1) return { text: `${failed.length} entries need attention`, fix: true };
+  if (failed.length > 1) return { text: `${failed.length} entries didn't send`, fix: true };
   if (logged.jobs.length === 0 && loggedOnDevice(items, today)) return { text: "Logged, not sent yet", fix: false };
   return { text: logStatusText(logged), fix: false };
 }
@@ -184,13 +186,9 @@ function loadedAt(asOf: string, timeZone: string, today: string): string {
   return full.startsWith(todayPrefix) ? formatTime(asOf, timeZone) : full;
 }
 
-/** "Figures from 6:20 am." (with the date when they are from another day). The manager's stale line. */
-export const figuresFromText = (asOf: string, timeZone: string, today: string): string =>
-  `Figures from ${loadedAt(asOf, timeZone, today)}.`;
-
-/** The foreman's offline line: "Mon 28 Sep. Jobs from 6:20 am." (no figures on a foreman's screen). */
-export const jobsFromText = (asOf: string, timeZone: string, today: string): string =>
-  `${formatDate(today, today)}. Jobs from ${loadedAt(asOf, timeZone, today)}.`;
+/** "Last updated 6:20 am." (with the date when it was another day). One wording on both Homes. */
+export const lastUpdatedText = (asOf: string, timeZone: string, today: string): string =>
+  `Last updated ${loadedAt(asOf, timeZone, today)}.`;
 
 /** The line under This pay period's figures: what to check and what blocks approval, worded for who is reading. */
 export function payFlagsText(count: number, blockers: PayPeriodFigures["blockers"], role: "owner" | "manager" | "accountant"): string {

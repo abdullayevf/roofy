@@ -26,6 +26,8 @@ export type ListProps = {
   rows: ListRow[];
   /** Keep the chevron's slot on rows that don't open anything, so every figure ends at one right edge. */
   reserveChevron?: boolean;
+  /** Labels in body weight and `ink-2`, so the figures carry the row (stat groups). Rows keep the strong label by default. */
+  quietLabels?: boolean;
   className?: string;
 };
 
@@ -44,12 +46,12 @@ const FOCUS_FORCED = "outline outline-[3px] -outline-offset-3 outline-chalk-link
  * is fixed and never moves — a long label can't push a chip or a figure onto
  * a second line.
  */
-function RowBody({ row, reserveChevron }: { row: ListRow; reserveChevron?: boolean }) {
+function RowBody({ row, reserveChevron, quietLabels }: { row: ListRow; reserveChevron?: boolean; quietLabels?: boolean }) {
   const interactive = Boolean(row.href || row.onClick);
   return (
     <>
       <span className="flex min-w-0 flex-1 flex-col justify-center py-2 lg:py-1">
-        <span className="text-body-strong text-ink [overflow-wrap:anywhere]">{row.primary}</span>
+        <span className={cx("[overflow-wrap:anywhere]", quietLabels ? "text-body text-ink-2" : "text-body-strong text-ink")}>{row.primary}</span>
         {row.meta ? <span className="text-meta text-ink-2 [overflow-wrap:anywhere]">{row.meta}</span> : null}
       </span>
       {row.figure || interactive ? (
@@ -73,7 +75,7 @@ function RowBody({ row, reserveChevron }: { row: ListRow; reserveChevron?: boole
  * DESIGN.md §4 list row: grouped surface block, line dividers, 64/48 px
  * rows. The whole row is the tap target when it has an `href` or `onClick`.
  */
-export function List({ rows, reserveChevron, className }: ListProps) {
+export function List({ rows, reserveChevron, quietLabels, className }: ListProps) {
   return (
     <div className={cx("divide-y divide-line rounded-group bg-surface border-group", className)}>
       {rows.map((row) => {
@@ -85,7 +87,7 @@ export function List({ rows, reserveChevron, className }: ListProps) {
               prefetch={false}
               className={cx(ROW_LAYOUT, row.focusVisible ? FOCUS_FORCED : FOCUS, PRESSED)}
             >
-              <RowBody row={row} reserveChevron={reserveChevron} />
+              <RowBody row={row} reserveChevron={reserveChevron} quietLabels={quietLabels} />
             </Link>
           );
         }
@@ -97,13 +99,13 @@ export function List({ rows, reserveChevron, className }: ListProps) {
               onClick={row.onClick}
               className={cx(ROW_LAYOUT, row.focusVisible ? FOCUS_FORCED : FOCUS, PRESSED)}
             >
-              <RowBody row={row} reserveChevron={reserveChevron} />
+              <RowBody row={row} reserveChevron={reserveChevron} quietLabels={quietLabels} />
             </button>
           );
         }
         return (
           <div key={row.key} className={ROW_LAYOUT}>
-            <RowBody row={row} reserveChevron={reserveChevron} />
+            <RowBody row={row} reserveChevron={reserveChevron} quietLabels={quietLabels} />
           </div>
         );
       })}

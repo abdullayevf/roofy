@@ -5,7 +5,7 @@ import { formatDate } from "@/lib/format";
 import { cx } from "@/lib/cx";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { daysSinceText, jobsFromText, foremanHeadline, loggedOnDevice, outboxStatus, stageLine, unsentJobIds } from "./home-text";
+import { daysSinceText, lastUpdatedText, foremanHeadline, loggedOnDevice, outboxStatus, stageLine, unsentJobIds } from "./home-text";
 import {
   COLUMN,
   FOCUS,
@@ -103,9 +103,8 @@ export function HomeForemanBody({ home, outbox, offline }: HomeForemanProps) {
     <div data-screen="home" className={COLUMN}>
       <header className="flex flex-col gap-1">
         <HomeTitle waiting={waiting} attention={attention} />
-        <p className="text-meta text-ink">
-          {offline ? jobsFromText(home.asOf, home.timeZone, home.today) : formatDate(home.today, home.today)}
-        </p>
+        <p className="text-meta text-ink">{formatDate(home.today, home.today)}</p>
+        {offline ? <p className="text-meta text-ink">{lastUpdatedText(home.asOf, home.timeZone, home.today)}</p> : null}
         <KeyFigure>{headline.text}</KeyFigure>
         <div className="mt-3 flex flex-col gap-3">
           {headline.fix ? (

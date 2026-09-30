@@ -1,4 +1,4 @@
-import type { ActiveJobRow, HomeManager } from "@/data/contracts";
+import type { ActiveJobRow, HomeManager, OutboxState } from "@/data/contracts";
 import type { Unit } from "@/domain/types";
 import { WarningCircle, WarningDiamond } from "@phosphor-icons/react/dist/ssr";
 import { formatDate, formatMoney, formatRoundedQuantity } from "@/lib/format";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { List, type ListRow } from "@/components/ui/list";
 import { MoneyCell } from "@/components/ui/money-cell";
 import { Skeleton } from "@/components/ui/skeleton";
-import { attentionSentence, figuresFromText, jobAlertText, overBudgetFigure, payFlagsText, showMoreText, stageLine } from "./home-text";
+import { attentionSentence, foremanHeadline, lastUpdatedText, jobAlertText, overBudgetFigure, payFlagsText, showMoreText, stageLine } from "./home-text";
 import { AttentionList } from "./attention-list";
 import {
   AttentionRowSkeleton,
@@ -62,10 +62,11 @@ function JobRow({ job }: { job: ActiveJobRow }) {
       }}
     >
       <dl className={`mt-2 grid ${CARD_BLOCK} grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-4 gap-y-1`}>
-        <dt className="whitespace-nowrap text-meta text-ink">Labour so far</dt>
-        <dd className="text-right text-figure num text-ink [overflow-wrap:anywhere]">
-          {formatMoney(job.labourActualCents)} of {formatMoney(job.labourBudgetCents)}
-        </dd>
+        <dt className="text-meta text-ink">
+          <span className="block whitespace-nowrap">Labour so far</span>
+          <span className="block">of {formatMoney(job.labourBudgetCents)} budget</span>
+        </dt>
+        <dd className="text-right text-figure num text-ink [overflow-wrap:anywhere]">{formatMoney(job.labourActualCents)}</dd>
         <dt className="whitespace-nowrap text-meta text-ink">Forecast margin</dt>
         <dd className="text-right text-figure num text-ink [overflow-wrap:anywhere]">{formatMoney(job.forecastMarginCents)}</dd>
         <dt className="whitespace-nowrap text-meta text-ink">Last log</dt>
@@ -127,12 +128,14 @@ export type HomeManagerProps = {
   role: "owner" | "manager" | "accountant";
   /** Entries waiting to send / failed on this device (device-local, passed in by the page). */
   outbox: { waiting: number; attention: number };
+  /** This device's own queue (device-local, passed in by the page): a failed entry gets the headline and Fix entry. */
+  deviceItems?: { state: OutboxState; date: string; entry: { type: string; input: object }; projectName?: string | null }[];
   /** The phone has no signal: the figures are the last ones it loaded. */
   offline: boolean;
 };
 
 /** Home for an owner, manager or accountant (flows.md screen 4). Props only; the page fetches. */
-export function HomeManagerBody({ home, role, outbox, offline }: HomeManagerProps) {
+export function HomeManagerBody({ home, role, outbox, deviceItems = [], offline }: HomeManagerProps) {
   if (isNewWorkspace(home)) {
     return (
       <div data-screen="home" className={COLUMN}>
@@ -143,6 +146,7 @@ export function HomeManagerBody({ home, role, outbox, offline }: HomeManagerProp
   }
   const flagged = home.activeJobs.filter((j) => j.alert !== null).length;
   const trending = home.activeJobs.filter((j) => j.alert?.level === "trending").length;
+  const fixing = foremanHeadline({ jobs: [], crewCount: 0 }, deviceItems, home.today, Object.fromEntries(home.activeJobs.map((j) => [j.projectId, j.name])));
   const week = home.lastWeek;
   const pay = home.payPeriod;
   const rowOf = (item: HomeManager["needsAttention"][number]) => ({
@@ -155,8 +159,14 @@ export function HomeManagerBody({ home, role, outbox, offline }: HomeManagerProp
     <div data-screen="home" className={cx(COLUMN, "lg:max-w-5xl")}>
       <header className="flex flex-col gap-1">
         <HomeTitle {...outbox} />
-        {offline ? (
-          <p className="text-meta text-ink">{figuresFromText(home.asOf, home.timeZone, home.today)}</p>
+        {offline ? <p className="text-meta text-ink">{lastUpdatedText(home.asOf, home.timeZone, home.today)}</p> : null}
+        {fixing.fix ? (
+          <>
+            <KeyFigure>{fixing.text}</KeyFigure>
+            <Button variant="primary" href="/outbox" className={cx("mt-3", HOME_BUTTON)}>
+              Fix entry
+            </Button>
+          </>
         ) : null}
         {flagged > 0 ? (
           <a href="#needs-attention" className={cx("mt-2 block max-w-fit rounded-control", FOCUS)}>
@@ -200,11 +210,11 @@ export function HomeManagerBody({ home, role, outbox, offline }: HomeManagerProp
             <p className="text-meta text-ink">
               {formatDate(week.period.start, home.today)} to {formatDate(week.period.end, home.today)}
             </p>
-            <List rows={lastWeekRows(home)} reserveChevron />
+            <List rows={lastWeekRows(home)} reserveChevron quietLabels />
           </Section>
           {pay ? (
             <Section title="This pay period">
-              <List rows={payRows(home)} />
+              <List rows={payRows(home)} quietLabels />
               {pay.flagCount > 0 ? (
                 <p className={cx("flex items-start gap-2 text-body-strong", pay.blocking ? "text-over" : "text-watch")}>
                   {pay.blocking ? (
