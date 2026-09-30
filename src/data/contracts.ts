@@ -1260,6 +1260,8 @@ export interface OutboxItem {
   date: LocalDate;
   projectName: string | null;
   stageName: string | null;
+  /** The stage's unit, for a progress entry's quantity ("40 m²"); null for anything else. */
+  unit: Unit | null;
   crewNames: string[];
   /** Needs attention: the server's own rejection, shown verbatim (flows "Outbox needs attention"). */
   rejection: { code: DataErrorCode; message: string } | null;

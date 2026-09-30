@@ -212,6 +212,13 @@ async function captureOne(opts: {
 
   await page.evaluate(() => document.fonts.ready).catch(() => undefined);
 
+  // Screens whose shot is an outcome press their buttons first (a save, then "Log another stage").
+  if (screen.goOffline) await context.setOffline(true);
+  for (const step of screen.steps ?? []) {
+    await page.getByRole("button", { name: step, exact: true }).click();
+    await page.waitForTimeout(300);
+  }
+
   const fileName = `${label}.png`;
   await page.screenshot({ path: join(outDir, fileName), fullPage: true });
   await screenshotSlices(page, outDir, label, viewport.maxSlices);

@@ -1,6 +1,7 @@
 import type { NoWorkReason, OutboxEntry, OutboxItem, OutboxState } from "@/data/contracts";
 import { splitByShares } from "@/domain/split";
-import type { BasisPoints, Hundredths, LocalDate } from "@/domain/types";
+import type { BasisPoints, Hundredths, LocalDate, Unit } from "@/domain/types";
+import { formatQuantity } from "@/lib/format";
 
 /** A typed number with at most two decimals ("120", "12.5") as hundredths; null when it isn't one. */
 export function parseHundredths(text: string): Hundredths | null {
@@ -42,6 +43,13 @@ export function progressAfter(
   return { done, percent };
 }
 
+/** "120 of 400 m²" (quantities only, fine for a foreman), or "120 m² so far" without a budgeted quantity. */
+export function progressLine(done: Hundredths, planned: Hundredths | null, unit: Unit): string {
+  if (planned === null || planned <= 0) return `${formatQuantity(done, unit)} so far`;
+  const suffix = formatQuantity(0, unit).slice(1);
+  return `${formatQuantity(done, unit).slice(0, -suffix.length)} of ${formatQuantity(planned, unit)}`;
+}
+
 // ─── Outbox ─────────────────────────────────────────────────────────────────
 
 const GROUPS: { state: OutboxState; title: string }[] = [
@@ -73,7 +81,8 @@ export function outboxLine(item: OutboxItem): { kind: string; detail: string } {
   const kind = KIND[item.entry.type];
   const who = item.crewNames.join(", ");
   if (item.entry.type === "no_work") return { kind, detail: `${reasonLabel(item.entry.input.reason)}: ${who}` };
-  const where = [item.projectName, item.stageName].filter(Boolean).join(", ");
+  const quantity = item.entry.type === "progress" && item.unit ? formatQuantity(item.entry.input.quantity, item.unit) : null;
+  const where = [item.projectName, item.stageName, quantity].filter(Boolean).join(", ");
   return { kind, detail: [where, who].filter(Boolean).join(": ") };
 }
 
@@ -140,4 +149,13 @@ export function editHref(entry: OutboxEntry): string {
     default:
       return "/outbox";
   }
+}
+
+/** Less than this and the visual viewport is only losing browser chrome, not to a keyboard. */
+const KEYBOARD_MIN_PX = 120;
+
+/** How much of the bottom of the window the on-screen keyboard covers, from the visual viewport (0 when it is not up). */
+export function keyboardInset(windowHeight: number, viewport: { height: number; offsetTop: number }): number {
+  const covered = Math.round(windowHeight - viewport.height - viewport.offsetTop);
+  return covered >= KEYBOARD_MIN_PX ? covered : 0;
 }

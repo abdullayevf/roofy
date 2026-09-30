@@ -86,7 +86,8 @@ describe("demo flags", () => {
     expect(items.map((i) => i.state).sort()).toEqual(["needs_attention", "sending", "sent", "waiting"]);
     expect(items.find((i) => i.state === "needs_attention")!.rejection?.message).toBeTruthy();
     expect(items.filter((i) => i.state !== "needs_attention").every((i) => i.rejection === null)).toBe(true);
-    expect(items.some((i) => i.entry.type === "progress")).toBe(true);
+    expect(items.find((i) => i.entry.type === "progress")).toMatchObject({ stageName: "Sheet install", unit: "m2" });
+    expect(items.filter((i) => i.entry.type !== "progress").every((i) => i.unit === null)).toBe(true);
     expect(new Set(items.map((i) => i.entry.id)).size).toBe(items.length);
     expectNoMoney(items, "outbox mixed");
   });

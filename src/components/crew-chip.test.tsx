@@ -26,6 +26,12 @@ describe("CrewChip", () => {
     expect(values).toEqual([true]);
   });
 
+  it("shows no pay type when none is given (progress and no-work screens)", () => {
+    render(<CrewChip name="Sam" />);
+    expect(screen.getByRole("button", { name: "Sam" })).toBeInTheDocument();
+    expect(screen.queryByText(/day|hourly|hours only/i)).not.toBeInTheDocument();
+  });
+
   it("shows the usual basis label, never a rate or amount", () => {
     render(<CrewChip name="Dima" basis="m²" />);
     expect(screen.getByText("m²")).toBeInTheDocument();

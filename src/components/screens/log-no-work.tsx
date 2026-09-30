@@ -13,8 +13,7 @@ import { ErrorMessage } from "@/components/ui/error-message";
 import { Field } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusChip } from "@/components/ui/status-chip";
-import { ENTRY_WIDTH, EntryDate, EntryEmpty, EntryTabs, usePinnedBar, withDemo } from "./field-entry";
-import { basisLabel } from "./log-input";
+import { CrewRowsSkeleton, ENTRY_WIDTH, EntryDate, EntryEmpty, EntrySkeleton, EntryTabs, FieldSkeleton, usePinnedBar, withDemo } from "./field-entry";
 import { reasonLabel } from "./field-input";
 
 const REASONS: NoWorkReason[] = ["rain", "leave", "sick", "other"];
@@ -22,7 +21,7 @@ const REASONS: NoWorkReason[] = ["rain", "leave", "sick", "other"];
 export type NoWorkEntryProps = {
   defaults: CrewDayDefaults;
   today: string;
-  start: { crewMemberIds: string[]; reason: NoWorkReason | null };
+  start: { crewMemberIds: string[]; reason: NoWorkReason | null; note: string };
   demo?: string;
 };
 
@@ -43,11 +42,11 @@ export function NoWorkEntry({ defaults, today, start, demo }: NoWorkEntryProps) 
   const [, startNav] = useTransition();
   const [people, setPeople] = useState<string[]>(start.crewMemberIds);
   const [reason, setReason] = useState<NoWorkReason | "">(start.reason ?? "");
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(start.note);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<{ state: "logged" | "waiting"; text: string } | null>(null);
-  const { barRef, style } = usePinnedBar(saved);
+  const { style, barProps } = usePinnedBar(saved);
 
   const day = defaults.date === today ? "today" : "that day";
   const ready = people.length > 0 && reason !== "";
@@ -61,8 +60,9 @@ export function NoWorkEntry({ defaults, today, start, demo }: NoWorkEntryProps) 
     );
   }
 
+  /** The address for another day: whoever is chosen, the reason and the note stay. */
   const url = (dayWord: "today" | "yesterday") =>
-    withDemo("/log/no-work", { day: dayWord === "yesterday" ? "yesterday" : undefined, crew: people.join(","), reason }, demo);
+    withDemo("/log/no-work", { day: dayWord === "yesterday" ? "yesterday" : undefined, crew: people.join(","), reason, note: note.trim() }, demo);
 
   async function save() {
     if (reason === "") return;
@@ -90,10 +90,15 @@ export function NoWorkEntry({ defaults, today, start, demo }: NoWorkEntryProps) 
     <div
       data-screen="log-no-work"
       style={saved ? undefined : style}
-      className={cx("flex flex-col gap-6", ENTRY_WIDTH, saved ? null : "max-lg:pb-[var(--pin-action-height)]")}
+      className={cx("flex flex-col gap-6", ENTRY_WIDTH, saved ? null : "pin-pad")}
     >
       <EntryTabs active="no-work" demo={demo} />
-      <EntryDate date={defaults.date} today={today} saved={saved !== null} />
+      <EntryDate
+        date={defaults.date}
+        today={today}
+        saved={saved !== null}
+        onPick={(day) => startNav(() => router.replace(url(day)))}
+      />
 
       <div role="status" className="empty:hidden">
         {saved ? (
@@ -120,34 +125,6 @@ export function NoWorkEntry({ defaults, today, start, demo }: NoWorkEntryProps) 
 
       {saved ? null : (
         <>
-          <ChoiceChip
-            legend="Day"
-            name="no-work-day"
-            value={defaults.date === today ? "today" : "yesterday"}
-            options={[
-              { value: "today", label: "Today" },
-              { value: "yesterday", label: "Yesterday" },
-            ]}
-            onChange={(v) => startNav(() => router.replace(url(v === "yesterday" ? "yesterday" : "today")))}
-          />
-
-          <section className="flex flex-col gap-2">
-            <h2 className="text-heading text-ink">Who didn&apos;t work</h2>
-            <CrewGroup>
-              {defaults.crew.map((p) => (
-                <CrewChip
-                  key={p.crewMemberId}
-                  name={p.name}
-                  basis={basisLabel(p)}
-                  note={chipNote(p, day)}
-                  disabled={p.loggedOnDate}
-                  pressed={people.includes(p.crewMemberId)}
-                  onPressedChange={(on) => setPeople((prev) => (on ? [...prev, p.crewMemberId] : prev.filter((x) => x !== p.crewMemberId)))}
-                />
-              ))}
-            </CrewGroup>
-          </section>
-
           <section className="flex flex-col gap-3">
             <h2 className="text-heading text-ink">Why</h2>
             <ChoiceChip
@@ -157,10 +134,26 @@ export function NoWorkEntry({ defaults, today, start, demo }: NoWorkEntryProps) 
               options={REASONS.map((r) => ({ value: r, label: reasonLabel(r) }))}
               onChange={(v) => setReason(REASONS.find((r) => r === v) ?? "")}
             />
-            <Field label="Note" hint="Optional" inputMode="text" value={note} autoComplete="off" onChange={(e) => setNote(e.target.value)} />
+            <Field label="Note (optional)" inputMode="text" value={note} autoComplete="off" onChange={(e) => setNote(e.target.value)} />
           </section>
 
-          <div ref={barRef} data-slot="primary-action" className="pin-action flex flex-col gap-3">
+          <section className="flex flex-col gap-2">
+            <h2 className="text-heading text-ink">Who didn&apos;t work</h2>
+            <CrewGroup>
+              {defaults.crew.map((p) => (
+                <CrewChip
+                  key={p.crewMemberId}
+                  name={p.name}
+                  note={chipNote(p, day)}
+                  disabled={p.loggedOnDate}
+                  pressed={people.includes(p.crewMemberId)}
+                  onPressedChange={(on) => setPeople((prev) => (on ? [...prev, p.crewMemberId] : prev.filter((x) => x !== p.crewMemberId)))}
+                />
+              ))}
+            </CrewGroup>
+          </section>
+
+          <div {...barProps} data-slot="primary-action" className="pin-action flex flex-col gap-3">
             {error ? <ErrorMessage>{error}</ErrorMessage> : null}
             <Button
               disabled={!ready}
@@ -179,25 +172,19 @@ export function NoWorkEntry({ defaults, today, start, demo }: NoWorkEntryProps) 
   );
 }
 
-/** No-work while it loads (`?demo=loading`). */
+/** No-work while it loads (`?demo=loading`): the switch is live, the rest are blocks shaped like the content. */
 export function NoWorkSkeleton() {
   return (
-    <div data-screen="log-no-work" aria-busy="true" className={cx("flex flex-col gap-6", ENTRY_WIDTH)}>
-      <h1 className="text-title text-ink">Log</h1>
-      <Skeleton height={60} />
+    <EntrySkeleton screen="log-no-work" active="no-work">
+      <div className="flex flex-col gap-3">
+        <Skeleton width={72} height={24} />
+        <Skeleton height={52} />
+        <FieldSkeleton />
+      </div>
       <div className="flex flex-col gap-2">
-        <Skeleton width={60} height={20} />
-        <Skeleton width={200} height={24} />
+        <Skeleton width={160} height={24} />
+        <CrewRowsSkeleton count={4} />
       </div>
-      <Skeleton height={52} />
-      <div className="divide-y divide-line overflow-hidden rounded-group border-group bg-surface">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="px-4 py-4">
-            <Skeleton height={32} />
-          </div>
-        ))}
-      </div>
-      <Skeleton height={52} />
-    </div>
+    </EntrySkeleton>
   );
 }

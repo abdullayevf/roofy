@@ -20,15 +20,17 @@ export type CrewBasisLabel = "Day" | "Hourly" | "m²" | "lm" | "Each" | "Hours o
 /**
  * A grouped `surface` block of crew rows with `line` dividers. From 600 px up
  * to the desktop breakpoint (DESIGN.md §8) the rows run in two columns; the
- * cells are separated by 1 px `line` gaps and an odd last row spans both.
+ * cells are separated by `line` rules and an odd last row keeps to the left column.
  */
 export function CrewGroup({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div
       className={cx(
         "divide-y divide-line overflow-hidden rounded-group border-group bg-surface",
-        "tablet:max-lg:grid tablet:max-lg:grid-cols-2 tablet:max-lg:gap-px tablet:max-lg:divide-y-0 tablet:max-lg:bg-line",
-        "tablet:max-lg:[&>*:last-child:nth-child(odd)]:col-span-2",
+        "tablet:max-lg:grid tablet:max-lg:grid-cols-2 tablet:max-lg:divide-y-0",
+        // Two columns: a `line` rule under every row but the last row, and down the middle. An odd last row stays in the left column.
+        "tablet:max-lg:[&>*:not(:last-child)]:border-b tablet:max-lg:[&>*:nth-last-child(2):nth-child(odd)]:border-b-0",
+        "tablet:max-lg:[&>*:nth-child(odd)]:border-r tablet:max-lg:[&>*]:border-line",
         className,
       )}
     >
@@ -39,8 +41,8 @@ export function CrewGroup({ children, className }: { children: ReactNode; classN
 
 export type CrewChipProps = {
   name: string;
-  /** Usual basis label shown on the chip ("Day", "Hourly", "m²"). Never a rate or amount. */
-  basis: CrewBasisLabel;
+  /** Usual basis label shown on the chip ("Day", "Hourly", "m²"). Never a rate or amount. Left out where pay type is noise (progress, no work). */
+  basis?: CrewBasisLabel;
   /** A plain line under the basis, e.g. "No rate for this basis" (watch) or "Paid from progress, not this grid" (info). */
   note?: { text: string; tone: "watch" | "info" };
   /** When ticked, show the inline exception control: a full/half day toggle, or an hours stepper. */
@@ -101,14 +103,14 @@ export function CrewChip({
           onPressedChange?.(next);
         }}
         className={cx(
-          "group flex min-h-[64px] w-full items-center justify-between gap-4 px-4 py-2 text-left outline-none active:bg-galv lg:min-h-12 lg:py-1",
+          "group flex min-h-[64px] w-full items-start justify-between gap-4 px-4 py-2 text-left outline-none active:bg-galv",
           // The whole row is the target, so the whole ticked row is tinted, not just the box.
           pressed && "bg-tape/25",
         )}
       >
-        <span className="flex min-w-0 flex-col items-start">
+        <span className="flex min-h-12 min-w-0 flex-col items-start justify-center">
           <span className={cx("text-body-strong", disabled ? "text-ink-2" : "text-ink")}>{name}</span>
-          <span className="text-meta text-ink-2">{basis}</span>
+          {basis ? <span className="text-meta text-ink-2">{basis}</span> : null}
           {note ? (
             <span
               className={cx(

@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   editHref,
   parseEntryPicks,
+  progressLine,
   parseLocalDate,
   equalShares,
   groupOutbox,
+  keyboardInset,
   hundredthsText,
   outboxLine,
   parseHundredths,
@@ -61,7 +63,7 @@ describe("splitting progress", () => {
 });
 
 const item = (over: Partial<OutboxItem> & Pick<OutboxItem, "entry" | "state">): OutboxItem => ({
-  date: "2026-09-28", projectName: "Smith job", stageName: "Sheet install", crewNames: ["Sam", "Dima"], rejection: null, ...over,
+  date: "2026-09-28", projectName: "Smith job", stageName: "Sheet install", unit: null, crewNames: ["Sam", "Dima"], rejection: null, ...over,
 });
 const crewDay = { id: "1", type: "crew_day" as const, createdAt: "", input: { date: "2026-09-28", projectId: "p", stageId: "s", entries: [{ crewMemberId: "c1", basis: "daily" as const, days: 100, hours: 800, multiplier: null }] } };
 const progress = { id: "2", type: "progress" as const, createdAt: "", input: { stageId: "s", date: "2026-09-28", quantity: 4000, crewMemberIds: ["c1", "c2"], shares: { mode: "equal" as const }, photoFileId: null, note: null } };
@@ -82,6 +84,7 @@ describe("outbox", () => {
 
   it("describes each entry in one plain line", () => {
     expect(outboxLine(item({ entry: crewDay, state: "waiting" }))).toEqual({ kind: "Crew day", detail: "Smith job, Sheet install: Sam, Dima" });
+    expect(outboxLine(item({ entry: progress, state: "waiting", unit: "m2" }))).toEqual({ kind: "Progress", detail: "Smith job, Sheet install, 40 m²: Sam, Dima" });
     expect(outboxLine(item({ entry: progress, state: "waiting" }))).toEqual({ kind: "Progress", detail: "Smith job, Sheet install: Sam, Dima" });
     expect(outboxLine(item({ entry: noWork, state: "waiting", projectName: null, stageName: null, crewNames: ["Jake"] }))).toEqual({ kind: "No work", detail: "Rain: Jake" });
   });
@@ -131,5 +134,29 @@ describe("reading an edit address", () => {
 
   it("ignores anything that is not a whole number or a known overtime rate", () => {
     expect(parseEntryPicks("c1:abc,c2:-5,c3:800:175,:100,c4:2.5,c5:0")).toEqual({ values: { c3: 800 }, multipliers: {} });
+  });
+});
+
+describe("the on-screen keyboard", () => {
+  it("is the strip of the window the visual viewport no longer covers", () => {
+    expect(keyboardInset(844, { height: 544, offsetTop: 0 })).toBe(300);
+    expect(keyboardInset(844, { height: 500, offsetTop: 40 })).toBe(304);
+  });
+
+  it("is nothing when the window is whole, or the difference is only browser chrome", () => {
+    expect(keyboardInset(844, { height: 844, offsetTop: 0 })).toBe(0);
+    expect(keyboardInset(844, { height: 800, offsetTop: 0 })).toBe(0);
+    expect(keyboardInset(844, { height: 900, offsetTop: 0 })).toBe(0);
+  });
+});
+
+describe("the stage's progress line", () => {
+  it("reads 'done of total unit' for a budgeted quantity", () => {
+    expect(progressLine(12000, 40000, "m2")).toBe("120 of 400 m²");
+    expect(progressLine(3050, 8000, "lm")).toBe("30.5 of 80 lm");
+  });
+
+  it("says so far when there is no budgeted quantity", () => {
+    expect(progressLine(12000, null, "m2")).toBe("120 m² so far");
   });
 });

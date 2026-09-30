@@ -82,17 +82,19 @@ export type StatusChipProps = {
   status: Status;
   /** Extra context shown after the word, e.g. a pause reason ("Weather"). */
   reason?: string;
+  /** Icon and word in the status colour, with no pill, border or fill (a list row where a bordered chip would read as a button). */
+  plain?: boolean;
   className?: string;
 };
 
 /** DESIGN.md §4 status chip: pill, icon + word, colour never alone. */
-export function StatusChip({ status, reason, className }: StatusChipProps) {
+export function StatusChip({ status, reason, plain = false, className }: StatusChipProps) {
   const { word, icon, className: toneClass } = CONFIG[status];
   return (
     <span
       className={cx(
-        "inline-flex max-w-full items-center gap-1.5 min-h-10 px-3 py-1 rounded-3xl text-meta",
-        toneClass,
+        "inline-flex max-w-full items-center gap-1.5 text-meta",
+        plain ? toneClass.match(/text-[a-z-]+\d?/)![0] : cx("min-h-10 px-3 py-1 rounded-3xl", toneClass),
         className,
       )}
     >

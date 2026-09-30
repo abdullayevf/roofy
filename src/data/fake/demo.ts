@@ -75,7 +75,11 @@ export function demoOutbox(state: DemoState | null, tables: Seed, now: Date): Ou
       date,
       projectId: smith,
       stageId: sheet,
-      entries: pair.map((crewMemberId) => ({ crewMemberId, basis: "time_only", days: null, hours: 800, multiplier: null })),
+      // As the grid builds them on the Smith sheet install: Sam by the day, Dima paid from progress.
+      entries: [
+        { crewMemberId: meta.crew.sam, basis: "daily", days: 100, hours: 800, multiplier: null },
+        { crewMemberId: meta.crew.dima, basis: "time_only", days: null, hours: 800, multiplier: null },
+      ],
     },
   });
   const progress = (id: string, minutes: number): OutboxEntry => ({
@@ -105,6 +109,7 @@ export function demoOutbox(state: DemoState | null, tables: Seed, now: Date): Ou
     date,
     projectName: entry.type === "no_work" ? null : projectName(smith),
     stageName: entry.type === "no_work" ? null : stageName(sheet),
+    unit: entry.type === "progress" ? (tables.stages.find((st) => st.id === sheet)?.unit ?? null) : null,
     crewNames: crewIds.map(crewName),
     rejection: null,
   });

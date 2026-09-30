@@ -1,19 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type CSSProperties, type KeyboardEvent } from "react";
+import { useRef, useState, useTransition, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { CrewDayDefaults, GridCrewForeman, GridCrewManager } from "@/data/contracts";
 import type { Hundredths } from "@/domain/types";
 import { submit } from "@/offline/submit";
 import { cx } from "@/lib/cx";
 import { CrewChip, CrewGroup, type CrewChipProps } from "@/components/crew-chip";
+import { KeepTogether } from "@/components/keep-together";
 import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { Select } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
 import { StatusChip } from "@/components/ui/status-chip";
-import { ENTRY_WIDTH as WIDTH, EntryDate, EntryEmpty, EntryTabs, withDemo } from "./field-entry";
-import { basisLabel, buildEntries, canLog, exceptionFor, initialException, pickableIds } from "./log-input";
+import { CrewRowsSkeleton, ENTRY_WIDTH as WIDTH, EntryDate, EntryEmpty, EntrySkeleton, EntryTabs, FieldSkeleton, usePinnedBar, withDemo } from "./field-entry";
+import { Skeleton } from "@/components/ui/skeleton";
+import { basisLabel, buildEntries, canLog, exceptionFor, initialException, pickableIds, usablePicks } from "./log-input";
 
 type Saved = { state: "logged" | "waiting"; names: string[]; stageLabel: string };
 
@@ -29,6 +30,12 @@ export type LogCrewDayProps = {
   defaults: CrewDayDefaults;
   /** Crew ticked when the screen opens (from "Same as yesterday"). */
   initialTicked?: string[];
+  /** What the entry being edited (from the outbox) had for each person: days or hours, and overtime. */
+  initialPicks?: { values: Record<string, Hundredths>; multipliers: Record<string, Hundredths> };
+  /** The workspace's today; the date can be another day when an entry is reopened from the outbox. */
+  today?: string;
+  /** The date came from the address (an entry being edited): picks keep it. */
+  dateFromAddress?: boolean;
   /** The `?demo=` value, if any, to keep across picks. */
   demo?: string;
   /** The address this screen lives at (the temporary A/B page has its own). */
@@ -41,7 +48,7 @@ export type LogCrewDayProps = {
  * "Same as yesterday" fills all three and ticks the same crew. The page remounts this with a new `key`
  * whenever those change, so its state always starts from what the address says.
  */
-export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/log" }: LogCrewDayProps) {
+export function LogCrewDay({ defaults, initialTicked = [], initialPicks, today = defaults.date, dateFromAddress = false, demo, basePath = "/log" }: LogCrewDayProps) {
   const router = useRouter();
   const [navigating, startNav] = useTransition();
   const [ticked, setTicked] = useState<Set<string>>(
@@ -49,8 +56,9 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
   );
   /** People saved in this visit: shown as logged, so a second save can't log them twice. */
   const [justLogged, setJustLogged] = useState<Set<string>>(new Set());
-  const [exceptions, setExceptions] = useState<Record<string, Hundredths>>({});
-  const [multipliers, setMultipliers] = useState<Record<string, Hundredths>>({});
+  const [picks] = useState(() => usablePicks(defaults.crew, initialPicks?.values ?? {}, initialPicks?.multipliers ?? {}));
+  const [exceptions, setExceptions] = useState<Record<string, Hundredths>>(picks.values);
+  const [multipliers, setMultipliers] = useState<Record<string, Hundredths>>(picks.multipliers);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<Saved | null>(null);
@@ -64,23 +72,23 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
   const crew = defaults.crew.map((c) => (justLogged.has(c.crewMemberId) ? { ...c, loggedOnDate: true } : c));
   const ready = project !== null && stage !== null && crew.some((c) => ticked.has(c.crewMemberId) && canLog(c));
 
-  // The pinned bar's height changes with its reason line and error message; the page pads by what it measures.
-  const barRef = useRef<HTMLDivElement>(null);
-  const [barHeight, setBarHeight] = useState("9rem");
-  useEffect(() => {
-    const el = barRef.current;
-    if (!el) return;
-    const measure = () => setBarHeight(`${Math.ceil(el.getBoundingClientRect().height) + 8}px`);
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [saved]);
+  const { style, barProps } = usePinnedBar(saved);
 
   const go = (url: string) => startNav(() => router.replace(url));
-  /** The address for a new pick: the job and stage, and whoever is ticked stays ticked. */
-  const url = (projectId?: string, stageId?: string, crewIds: string[] = [...ticked]) =>
-    withDemo(basePath, { project: projectId, stage: stageId, crew: crewIds.join(",") }, demo);
+  /** The address for a new pick: the job and stage; whoever is ticked stays ticked, with their day or hours. */
+  const url = (projectId?: string, stageId?: string, crewIds: string[] = [...ticked], keepPicks = true) => {
+    const ex = keepPicks
+      ? crewIds
+          .filter((id) => exceptions[id] !== undefined)
+          .map((id) => `${id}:${exceptions[id]}${multipliers[id] && multipliers[id] !== 100 ? `:${multipliers[id]}` : ""}`)
+          .join(",")
+      : "";
+    return withDemo(
+      basePath,
+      { date: dateFromAddress ? defaults.date : undefined, project: projectId, stage: stageId, crew: crewIds.join(","), ex },
+      demo,
+    );
+  };
 
   async function save() {
     if (!project || !stage) return;
@@ -152,11 +160,11 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
   return (
     <div
       data-screen="log"
-      style={saved ? undefined : ({ "--pin-action-height": barHeight } as CSSProperties)}
-      className={cx("flex flex-col gap-6", WIDTH, saved ? null : "max-lg:pb-[var(--pin-action-height)]")}
+      style={saved ? undefined : style}
+      className={cx("flex flex-col gap-6", WIDTH, saved ? null : "pin-pad")}
     >
       <EntryTabs active="crew-day" demo={demo} />
-      <EntryDate date={defaults.date} today={defaults.date} saved={saved !== null} />
+      <EntryDate date={defaults.date} today={today} saved={saved !== null} />
 
       <div data-slot="fields" className="flex flex-col gap-4">
         <Button
@@ -165,7 +173,7 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
           loading={navigating}
           loadingLabel="Copying"
           onClick={() =>
-            same && go(url(same.projectId, sameStageOpen ? same.stageId : undefined, same.crewMemberIds))
+            same && go(url(same.projectId, sameStageOpen ? same.stageId : undefined, same.crewMemberIds, false))
           }
           className="w-full"
         >
@@ -203,8 +211,7 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
             {saved.state === "logged" ? "Logged" : "Saved on this device"}: {saved.names.join(", ")}
           </p>
           <p className="text-meta text-ink-2">
-            {saved.stageLabel}.
-            {saved.state === "waiting" ? " It will send when you have signal." : ""}
+            <KeepTogether text={`${saved.stageLabel}.${saved.state === "waiting" ? " It will send when you have signal." : ""}`} />
           </p>
           <Button variant="secondary" onClick={logAnother}>
             Log another stage
@@ -253,7 +260,7 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
             )}
           </section>
 
-          <div ref={barRef} data-slot="primary-action" className="pin-action flex flex-col gap-3">
+          <div {...barProps} data-slot="primary-action" className="pin-action flex flex-col gap-3">
             {error ? <ErrorMessage>{error}</ErrorMessage> : null}
             <Button
               disabled={!ready}
@@ -272,29 +279,19 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
   );
 }
 
-/** The grid while it loads (`?demo=loading`): `line` blocks sized like the content. */
+/** The grid while it loads (`?demo=loading`): the switch is live, the rest are blocks shaped like the content. */
 export function LogSkeleton() {
   return (
-    <div data-screen="log" aria-busy="true" className={cx("flex flex-col gap-6", WIDTH)}>
-      <h1 className="text-title text-ink">Log</h1>
-      <Skeleton height={60} />
-      <div className="flex flex-col gap-2">
-        <Skeleton width={60} height={20} />
-        <Skeleton width={200} height={24} />
-      </div>
+    <EntrySkeleton screen="log" active="crew-day">
       <div className="flex flex-col gap-4">
         <Skeleton height={52} />
-        <Skeleton height={52} />
-        <Skeleton height={52} />
+        <FieldSkeleton />
+        <FieldSkeleton />
       </div>
-      <div className="divide-y divide-line overflow-hidden rounded-group border-group bg-surface">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="px-4 py-4">
-            <Skeleton height={32} />
-          </div>
-        ))}
+      <div className="flex flex-col gap-2">
+        <Skeleton width={120} height={24} />
+        <CrewRowsSkeleton count={4} />
       </div>
-      <Skeleton height={52} />
-    </div>
+    </EntrySkeleton>
   );
 }

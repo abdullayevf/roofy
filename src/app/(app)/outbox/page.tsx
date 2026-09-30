@@ -3,7 +3,7 @@ import { getData } from "@/data";
 import type { SearchParams } from "@/data/session";
 import { NoPermission } from "@/components/page-states";
 import { backLink, canOpen } from "@/components/shell/access";
-import { OutboxScreen, OutboxSkeleton } from "@/components/screens/outbox-screen";
+import { OutboxError, OutboxScreen, OutboxSkeleton } from "@/components/screens/outbox-screen";
 
 export const metadata: Metadata = { title: "Outbox" };
 
@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Outbox" };
 export default async function Page({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const { actor, demo, today } = await getData({ searchParams });
   if (demo.loading) return <OutboxSkeleton />;
-  if (demo.state === "error") throw new Error("Demo: this screen could not load.");
+  if (demo.state === "error") return <OutboxError />;
   if (!canOpen(actor.role, "outbox") || demo.state === "noperm") {
     const back = backLink(actor.role);
     return <NoPermission backHref={back.href} backLabel={back.label} />;

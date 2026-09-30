@@ -3,6 +3,7 @@ import { getData } from "@/data";
 import type { SearchParams } from "@/data/session";
 import { NoPermission } from "@/components/page-states";
 import { backLink, canOpen } from "@/components/shell/access";
+import { EntryError } from "@/components/screens/field-entry";
 import { ProgressEntry, ProgressSkeleton } from "@/components/screens/log-progress";
 import { loadProgressScreen } from "../load-progress";
 
@@ -16,12 +17,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
   if (!canOpen(ctx.actor.role, "log")) return <NoPermission backHref={back.href} backLabel={back.label} />;
   const screen = await loadProgressScreen(ctx, await searchParams);
   if (screen.kind === "forbidden") return <NoPermission backHref={back.href} backLabel={back.label} />;
-  const { defaults, start, demo } = screen;
+  if (screen.kind === "unavailable") return <EntryError screen="log-progress" active="progress" demo={ctx.demo.state ?? undefined} />;
+  const { defaults, start, today, demo } = screen;
   return (
     <ProgressEntry
-      key={`${start.stageId}|${start.quantity}|${start.crewMemberIds.join(",")}|${start.shares?.join(",")}`}
+      key={`${defaults.date}|${start.stageId}|${start.quantity}|${start.crewMemberIds.join(",")}|${start.shares?.join(",")}`}
       defaults={defaults}
       start={start}
+      today={today}
       demo={demo}
     />
   );

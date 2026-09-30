@@ -62,3 +62,28 @@ export function buildEntries(
       return { crewMemberId: p.crewMemberId, basis: "time_only", days: null, hours: value, multiplier: null };
     });
 }
+
+/** The longest day a person can be logged for by hours. */
+const MAX_HOURS: Hundredths = 2400;
+
+/**
+ * The days, hours and overtime from an address that still make sense for these people: a half or full day for a
+ * daily person, up to 24 hours for anyone else, overtime for hourly people only. (Changing the stage can change a
+ * person's basis, and an old value must not follow them.)
+ */
+export function usablePicks(
+  crew: Pick<GridPerson, "crewMemberId" | "basis">[],
+  values: Readonly<Record<string, Hundredths>>,
+  multipliers: Readonly<Record<string, Hundredths>>,
+): { values: Record<string, Hundredths>; multipliers: Record<string, Hundredths> } {
+  const out = { values: {} as Record<string, Hundredths>, multipliers: {} as Record<string, Hundredths> };
+  for (const p of crew) {
+    const value = values[p.crewMemberId];
+    if (value === undefined) continue;
+    if (p.basis === "daily" ? value !== 50 && value !== 100 : value > MAX_HOURS) continue;
+    out.values[p.crewMemberId] = value;
+    const multiplier = multipliers[p.crewMemberId];
+    if (p.basis === "hourly" && multiplier !== undefined) out.multipliers[p.crewMemberId] = multiplier;
+  }
+  return out;
+}

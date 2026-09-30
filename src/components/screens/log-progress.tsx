@@ -7,7 +7,8 @@ import { splitByShares } from "@/domain/split";
 import { submit } from "@/offline/submit";
 import { formatQuantity } from "@/lib/format";
 import { cx } from "@/lib/cx";
-import { CrewChip, CrewGroup, type CrewBasisLabel } from "@/components/crew-chip";
+import { CrewChip, CrewGroup } from "@/components/crew-chip";
+import { KeepTogether } from "@/components/keep-together";
 import { TapeBar } from "@/components/tape-bar";
 import { Button } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/choice-chip";
@@ -17,8 +18,8 @@ import { Segmented } from "@/components/ui/segmented";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusChip } from "@/components/ui/status-chip";
-import { ENTRY_WIDTH, EntryDate, EntryEmpty, EntryTabs, usePinnedBar } from "./field-entry";
-import { equalShares, hundredthsText, parseHundredths, progressAfter, shareTotalError, sharesFromText } from "./field-input";
+import { CrewRowsSkeleton, ENTRY_WIDTH, EntryDate, EntryEmpty, EntrySkeleton, EntryTabs, FieldSkeleton, usePinnedBar } from "./field-entry";
+import { equalShares, hundredthsText, parseHundredths, progressAfter, progressLine, shareTotalError, sharesFromText } from "./field-input";
 
 export type ProgressStart = {
   stageId: string | null;
@@ -31,22 +32,16 @@ export type ProgressStart = {
 
 const UNIT_WORD: Record<Unit, string> = { m2: "m²", lm: "lm", each: "each" };
 
-function crewBasis(c: CrewRowForeman): CrewBasisLabel {
-  if (c.defaultBasis === "daily") return "Day";
-  if (c.defaultBasis === "hourly") return "Hourly";
-  return c.defaultUnit === "m2" ? "m²" : c.defaultUnit === "lm" ? "lm" : c.defaultUnit === "each" ? "Each" : "Hours only";
-}
-
 type Saved = { state: "logged" | "waiting"; text: string; missingRate: boolean; stage: string; after: { done: Hundredths; percent: number | null } | null; unit: Unit };
 
-export type ProgressEntryProps = { defaults: ProgressDefaults; start: ProgressStart; demo?: string };
+export type ProgressEntryProps = { defaults: ProgressDefaults; start: ProgressStart; /** The workspace's today; the entry can be for another day when reopened from the outbox. */ today?: string; demo?: string };
 
 /**
  * Progress entry (flows.md screen 7): the stage (recent ones are one-tap chips), the quantity done with a decimal
  * keypad, who did it, and an equal or custom split that has to add up to 100%. Quantities and percentages only:
  * the same screen for a foreman, who never sees a rate or an amount.
  */
-export function ProgressEntry({ defaults, start, demo }: ProgressEntryProps) {
+export function ProgressEntry({ defaults, start, today = defaults.date, demo }: ProgressEntryProps) {
   const stages = defaults.projects.flatMap((p) =>
     p.stages.filter((s) => s.unit !== null && s.status !== "done").map((s) => ({ ...s, projectId: p.id, projectName: p.name, unit: s.unit as Unit })),
   );
@@ -66,7 +61,7 @@ export function ProgressEntry({ defaults, start, demo }: ProgressEntryProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<Saved | null>(null);
-  const { barRef, style } = usePinnedBar(saved);
+  const { style, barProps } = usePinnedBar(saved);
 
   if (stages.length === 0) {
     return (
@@ -150,10 +145,10 @@ export function ProgressEntry({ defaults, start, demo }: ProgressEntryProps) {
     <div
       data-screen="log-progress"
       style={saved ? undefined : style}
-      className={cx("flex flex-col gap-6", ENTRY_WIDTH, saved ? null : "max-lg:pb-[var(--pin-action-height)]")}
+      className={cx("flex flex-col gap-6", ENTRY_WIDTH, saved ? null : "pin-pad")}
     >
       <EntryTabs active="progress" demo={demo} />
-      <EntryDate date={defaults.date} today={defaults.date} saved={saved !== null} />
+      <EntryDate date={defaults.date} today={today} saved={saved !== null} />
 
       <div role="status" className="empty:hidden">
         {saved ? (
@@ -167,8 +162,7 @@ export function ProgressEntry({ defaults, start, demo }: ProgressEntryProps) {
               <div className="flex w-full flex-col gap-1">
                 <TapeBar label={`${saved.stage} progress`} percent={saved.after.percent ?? 0} />
                 <p className="text-meta text-ink-2">
-                  {saved.stage} is now at {formatQuantity(saved.after.done, saved.unit)}
-                  {saved.after.percent !== null ? ` (${saved.after.percent}%)` : ""}.
+                  <KeepTogether text={`${saved.stage} is now at ${formatQuantity(saved.after.done, saved.unit)}${saved.after.percent !== null ? ` (${saved.after.percent}%)` : ""}.`} />
                 </p>
               </div>
             ) : null}
@@ -223,11 +217,12 @@ export function ProgressEntry({ defaults, start, demo }: ProgressEntryProps) {
               </Button>
             )}
             {latest && done !== null ? (
-              <div className="flex flex-col gap-1">
-                <TapeBar label={`${latest.label} progress`} percent={latest.plannedQuantity ? progressAfter({ done, planned: latest.plannedQuantity }, 0).percent ?? 0 : 0} />
-                <p className="text-meta text-ink-2">
-                  {latest.plannedQuantity ? `Budgeted ${formatQuantity(latest.plannedQuantity, latest.unit)}, measured` : "Measured"} so far {formatQuantity(done, latest.unit)}.
-                </p>
+              <div className="flex flex-col gap-1.5">
+                <p className="text-body-strong text-ink">{progressLine(done, latest.plannedQuantity, latest.unit)}</p>
+                <TapeBar
+                  label={`${latest.label} progress`}
+                  percent={latest.plannedQuantity ? progressAfter({ done, planned: latest.plannedQuantity }, 0).percent ?? 0 : 0}
+                />
               </div>
             ) : null}
           </section>
@@ -249,7 +244,7 @@ export function ProgressEntry({ defaults, start, demo }: ProgressEntryProps) {
             ) : (
               <CrewGroup>
                 {defaults.crew.map((c) => (
-                  <CrewChip key={c.id} name={c.name} basis={crewBasis(c)} pressed={people.includes(c.id)} onPressedChange={(on) => toggle(c.id, on)} />
+                  <CrewChip key={c.id} name={c.name} pressed={people.includes(c.id)} onPressedChange={(on) => toggle(c.id, on)} />
                 ))}
               </CrewGroup>
             )}
@@ -292,11 +287,11 @@ export function ProgressEntry({ defaults, start, demo }: ProgressEntryProps) {
             </section>
           ) : null}
 
-          <div ref={barRef} data-slot="primary-action" className="pin-action flex flex-col gap-3">
+          <div {...barProps} data-slot="primary-action" className="pin-action flex flex-col gap-3">
             {error ? <ErrorMessage>{error}</ErrorMessage> : null}
             <Button
               disabled={!ready}
-              reason={ready || totalError ? undefined : "Choose a stage, type a quantity and choose who did it."}
+              reason={ready || totalError ? undefined : "Choose a stage, a quantity and who did it."}
               loading={saving}
               loadingLabel="Saving progress"
               onClick={save}
@@ -311,26 +306,19 @@ export function ProgressEntry({ defaults, start, demo }: ProgressEntryProps) {
   );
 }
 
-/** Progress while it loads (`?demo=loading`): `line` blocks sized like the content. */
+/** Progress while it loads (`?demo=loading`): the switch is live, the rest are blocks shaped like the content. */
 export function ProgressSkeleton() {
   return (
-    <div data-screen="log-progress" aria-busy="true" className={cx("flex flex-col gap-6", ENTRY_WIDTH)}>
-      <h1 className="text-title text-ink">Log</h1>
-      <Skeleton height={60} />
+    <EntrySkeleton screen="log-progress" active="progress">
+      <div className="flex flex-col gap-3">
+        <Skeleton width={120} height={24} />
+        <Skeleton height={52} />
+      </div>
+      <FieldSkeleton />
       <div className="flex flex-col gap-2">
-        <Skeleton width={60} height={20} />
-        <Skeleton width={200} height={24} />
+        <Skeleton width={120} height={24} />
+        <CrewRowsSkeleton count={3} />
       </div>
-      <Skeleton height={96} />
-      <Skeleton height={52} />
-      <div className="divide-y divide-line overflow-hidden rounded-group border-group bg-surface">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="px-4 py-4">
-            <Skeleton height={32} />
-          </div>
-        ))}
-      </div>
-      <Skeleton height={52} />
-    </div>
+    </EntrySkeleton>
   );
 }

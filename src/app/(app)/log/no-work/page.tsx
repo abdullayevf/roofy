@@ -3,6 +3,7 @@ import { getData } from "@/data";
 import type { SearchParams } from "@/data/session";
 import { NoPermission } from "@/components/page-states";
 import { backLink, canOpen } from "@/components/shell/access";
+import { EntryError } from "@/components/screens/field-entry";
 import { NoWorkEntry, NoWorkSkeleton } from "@/components/screens/log-no-work";
 import { loadNoWorkScreen } from "../load-no-work";
 
@@ -16,10 +17,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
   if (!canOpen(ctx.actor.role, "log")) return <NoPermission backHref={back.href} backLabel={back.label} />;
   const screen = await loadNoWorkScreen(ctx, await searchParams);
   if (screen.kind === "forbidden") return <NoPermission backHref={back.href} backLabel={back.label} />;
+  if (screen.kind === "unavailable") return <EntryError screen="log-no-work" active="no-work" demo={ctx.demo.state ?? undefined} />;
   const { defaults, today, start, demo } = screen;
   return (
     <NoWorkEntry
-      key={`${defaults.date}|${start.crewMemberIds.join(",")}|${start.reason}`}
+      key={`${defaults.date}|${start.crewMemberIds.join(",")}|${start.reason}|${start.note}`}
       defaults={defaults}
       today={today}
       start={start}

@@ -6,6 +6,8 @@ import type { OutboxItem, OutboxState } from "@/data/contracts";
 import { formatDate } from "@/lib/format";
 import { cx } from "@/lib/cx";
 import { EmptyState } from "@/components/empty-state";
+import { KeepTogether } from "@/components/keep-together";
+import { RetryButton } from "@/components/retry-button";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,12 +24,12 @@ const CHIP: Record<OutboxState, Status> = {
 
 /**
  * Outbox (flows.md screen 24): every field entry by state: Needs attention, Sending, Waiting, Sent. A Needs
- * attention row opens to the server's own reason with Edit and resend / Discard. Reads the phone's own queue, so
- * it works with no signal. (Phase 2 shows the demo outbox; Phase 5 swaps in the device queue.)
+ * attention card carries the server's own reason, Edit and resend (reopens the original screen filled in) and
+ * Discard, all in view. Reads the phone's own queue, so it works with no signal. (Phase 2 shows the demo outbox;
+ * Phase 5 swaps in the device queue.)
  */
 export function OutboxScreen({ items, today }: { items: OutboxItem[]; today: string }) {
   const [gone, setGone] = useState<string[]>([]);
-  const [open, setOpen] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const groups = groupOutbox(items.filter((i) => !gone.includes(i.entry.id)));
@@ -52,44 +54,32 @@ export function OutboxScreen({ items, today }: { items: OutboxItem[]; today: str
                 const { kind, detail } = outboxLine(item);
                 const id = item.entry.id;
                 const attention = item.state === "needs_attention";
-                const expanded = open === id;
-                const summary = (
-                  <>
-                    <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
-                      <span className="text-body-strong text-ink">{kind}</span>
-                      <span className="text-meta text-ink-2 [overflow-wrap:anywhere]">{detail}</span>
-                      <span className="text-meta text-ink-2">{formatDate(item.date, today)}</span>
-                    </span>
-                    <StatusChip status={CHIP[item.state]} className="shrink-0" />
-                  </>
-                );
                 return (
-                  <li key={id}>
+                  <li key={id} className="flex flex-col gap-3 px-4 py-3">
+                    <div className="flex min-h-10 flex-col items-start gap-1 tablet:flex-row tablet:items-start tablet:justify-between tablet:gap-3">
+                      <span className="flex min-w-0 flex-col items-start gap-0.5">
+                        <span className="text-body-strong text-ink">{kind}</span>
+                        <span className="text-meta text-ink-2 [overflow-wrap:anywhere]">
+                          <KeepTogether text={detail} />
+                        </span>
+                        <span className="text-meta text-ink-2">{formatDate(item.date, today)}</span>
+                      </span>
+                      <StatusChip status={CHIP[item.state]} plain={!attention} className="shrink-0" />
+                    </div>
                     {attention ? (
-                      <button
-                        type="button"
-                        aria-expanded={expanded}
-                        aria-controls={`outbox-reason-${id}`}
-                        onClick={() => setOpen(expanded ? null : id)}
-                        className="flex min-h-16 w-full items-center justify-between gap-3 px-4 py-2 text-left active:bg-galv focus-visible:outline focus-visible:outline-[3px] focus-visible:-outline-offset-3 focus-visible:outline-chalk-link"
-                      >
-                        {summary}
-                      </button>
-                    ) : (
-                      <div className="flex min-h-16 items-center justify-between gap-3 px-4 py-2">{summary}</div>
-                    )}
-                    {attention && expanded ? (
-                      <div id={`outbox-reason-${id}`} className="flex flex-col gap-3 px-4 pb-4">
+                      <div className="flex flex-col gap-3">
                         <p className="flex items-start gap-2 text-body text-over">
                           <WarningCircle size={24} aria-hidden="true" className="shrink-0" />
-                          {item.rejection?.message ?? "This entry couldn't be sent."}
+                          <span className="min-w-0">{item.rejection?.message ?? "This entry couldn't be sent."}</span>
                         </p>
-                        <Button href={editHref(item.entry)} className="w-full">
-                          Edit and resend
-                        </Button>
-                        <Button variant="secondary" tone="danger" onClick={() => setConfirm(id)} className="w-full">
-                          Discard
-                        </Button>
+                        <div className="flex flex-col gap-3 tablet:flex-row">
+                          <Button href={editHref(item.entry)} className="w-full tablet:w-auto">
+                            Edit and resend
+                          </Button>
+                          <Button variant="secondary" tone="danger" onClick={() => setConfirm(id)} className="w-full tablet:w-auto">
+                            Discard
+                          </Button>
+                        </div>
                       </div>
                     ) : null}
                   </li>
@@ -111,7 +101,6 @@ export function OutboxScreen({ items, today }: { items: OutboxItem[]; today: str
         tone="danger"
         onConfirm={() => {
           if (confirm) setGone((prev) => [...prev, confirm]);
-          setOpen(null);
           setNotice("Entry discarded. Nothing was sent.");
         }}
       />
@@ -119,18 +108,38 @@ export function OutboxScreen({ items, today }: { items: OutboxItem[]; today: str
   );
 }
 
-/** The outbox while it loads (`?demo=loading`). */
+/** The outbox failed to load: the title stays, and the list area says so and offers a retry. */
+export function OutboxError() {
+  return (
+    <div data-screen="outbox" className={cx("flex flex-col gap-6", ENTRY_WIDTH)}>
+      <h1 className="text-title text-ink">Outbox</h1>
+      <div role="alert" className="flex flex-col items-start gap-4 rounded-group border-group bg-surface p-4">
+        <p className="text-body text-ink">Couldn&apos;t load this. Try again.</p>
+        <RetryButton variant="secondary" />
+      </div>
+    </div>
+  );
+}
+
+/** The outbox while it loads (`?demo=loading`): a heading and rows shaped like an entry with its status. */
 export function OutboxSkeleton() {
   return (
     <div data-screen="outbox" aria-busy="true" className={cx("flex flex-col gap-6", ENTRY_WIDTH)}>
       <h1 className="text-title text-ink">Outbox</h1>
-      <Skeleton width={160} height={24} />
-      <div className="divide-y divide-line overflow-hidden rounded-group border-group bg-surface">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="px-4 py-4">
-            <Skeleton height={40} />
-          </div>
-        ))}
+      <div className="flex flex-col gap-2">
+        <Skeleton width={160} height={24} />
+        <div className="divide-y divide-line overflow-hidden rounded-group border-group bg-surface">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-start justify-between gap-3 px-4 py-3">
+              <div className="flex flex-col gap-1.5">
+                <Skeleton width={96} height={20} />
+                <Skeleton width={200} height={16} />
+                <Skeleton width={72} height={16} />
+              </div>
+              <Skeleton width={72} height={24} />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

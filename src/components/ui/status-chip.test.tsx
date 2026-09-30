@@ -27,6 +27,14 @@ describe("StatusChip", () => {
     expect(chip?.textContent).not.toBe("");
   });
 
+  it("plain: icon and word with no border or fill, still with the status colour", () => {
+    render(<StatusChip status="waiting" plain />);
+    const chip = screen.getByText("Waiting").parentElement!;
+    expect(chip.querySelector("svg")).toBeInTheDocument();
+    expect(chip.className).not.toMatch(/border|bg-surface|rounded/);
+    expect(chip.className).toMatch(/text-ink-2/);
+  });
+
   it("shows a pause reason alongside the Paused word", () => {
     render(<StatusChip status="paused" reason="Weather" />);
     expect(screen.getByText("Paused: Weather")).toBeInTheDocument();

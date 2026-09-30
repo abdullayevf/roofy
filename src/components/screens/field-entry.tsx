@@ -7,6 +7,10 @@ import { formatDate } from "@/lib/format";
 import { cx } from "@/lib/cx";
 import { EmptyState } from "@/components/empty-state";
 import { Segmented } from "@/components/ui/segmented";
+import { Select } from "@/components/ui/select";
+import { RetryButton } from "@/components/retry-button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { keyboardInset } from "./field-input";
 
 /** The widest a field-entry screen grows (grouped rows read badly wider, so landscape phones stop here too). */
 export const ENTRY_WIDTH = "max-w-150";
@@ -40,16 +44,44 @@ export function EntryTabs({ active, demo }: { active: EntryKind; demo?: string }
   );
 }
 
-/** "Today, Mon 28 Sep" above the 2 px ink rule the chalk line draws along when the entry is saved. */
-export function EntryDate({ date, today, saved = false }: { date: string; today: string; saved?: boolean }) {
-  const word = date === today ? "Today" : date === addDays(today, -1) ? "Yesterday" : null;
+/**
+ * "Today, Mon 28 Sep" above the 2 px ink rule the chalk line draws along when the entry is saved. With `onPick`
+ * the date is the one control for the day (today or yesterday) instead of a plain line.
+ */
+export function EntryDate({
+  date,
+  today,
+  saved = false,
+  onPick,
+}: {
+  date: string;
+  today: string;
+  saved?: boolean;
+  onPick?: (day: "today" | "yesterday") => void;
+}) {
+  const yesterday = addDays(today, -1);
+  const word = date === today ? "Today" : date === yesterday ? "Yesterday" : null;
+  const text = `${word ? `${word}, ` : ""}${formatDate(date, today)}`;
+  const value = date === today ? "today" : date === yesterday ? "yesterday" : "date";
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-meta text-ink-2">Date</p>
-      <p className="text-heading text-ink">
-        {word ? `${word}, ` : ""}
-        {formatDate(date, today)}
-      </p>
+      {onPick && !saved ? (
+        <Select
+          label="Date"
+          value={value}
+          onChange={(e) => onPick(e.target.value === "yesterday" ? "yesterday" : "today")}
+          options={[
+            { value: "today", label: `Today, ${formatDate(today, today)}` },
+            { value: "yesterday", label: `Yesterday, ${formatDate(yesterday, today)}` },
+            ...(value === "date" ? [{ value: "date", label: text }] : []),
+          ]}
+        />
+      ) : (
+        <>
+          <p className="text-meta text-ink-2">Date</p>
+          <p className="text-heading text-ink">{text}</p>
+        </>
+      )}
       <span aria-hidden="true" data-slot="date-rule" className="relative block h-0.5 bg-ink">
         <span
           data-testid="chalk-line"
@@ -94,13 +126,21 @@ export function withDemo(path: string, params: Record<string, string | undefined
   return s ? `${path}?${s}` : path;
 }
 
+/** A field a keyboard opens for (not a check box, button or list). */
+const isTextEntry = (el: Element | null): boolean =>
+  el instanceof HTMLTextAreaElement ||
+  (el instanceof HTMLInputElement && !["checkbox", "radio", "button", "submit", "range", "file"].includes(el.type));
+
 /**
- * The pinned action bar's height changes with its reason line and error message; the page pads by what it
- * measures (`--pin-action-height`). Spread `style` on the screen and `barRef` on the bar.
+ * The pinned action bar. The page pads by the bar's measured height (`--pin-action-height`; the bar's height
+ * changes with its reason line and error message). While a text field has focus on a phone the bar sits on the
+ * visual viewport, above the on-screen keyboard, instead of above the tab bar (`--keyboard-inset`).
+ * Spread `style` on the screen and `barProps` on the bar.
  */
 export function usePinnedBar(remeasureOn: unknown) {
   const barRef = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState("9rem");
+  const [inset, setInset] = useState<number | null>(null);
   useEffect(() => {
     const el = barRef.current;
     if (!el) return;
@@ -110,5 +150,101 @@ export function usePinnedBar(remeasureOn: unknown) {
     observer.observe(el);
     return () => observer.disconnect();
   }, [remeasureOn]);
-  return { barRef, style: { "--pin-action-height": height } as CSSProperties };
+  useEffect(() => {
+    const vv = window.visualViewport;
+    let timer: number | undefined;
+    const update = () => {
+      const typing = isTextEntry(document.activeElement) && window.innerWidth < 1024;
+      setInset(typing ? (vv ? keyboardInset(window.innerHeight, vv) : 0) : null);
+    };
+    // Leaving a field waits a beat: a press on the bar itself blurs the field first, and the bar must not move
+    // out from under the finger before the press lands.
+    const left = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(update, 250);
+    };
+    const entered = (e: FocusEvent) => {
+      if (!isTextEntry(e.target as Element | null)) return left();
+      window.clearTimeout(timer);
+      update();
+    };
+    document.addEventListener("focusin", entered);
+    document.addEventListener("focusout", left);
+    vv?.addEventListener("resize", update);
+    vv?.addEventListener("scroll", update);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("focusin", entered);
+      document.removeEventListener("focusout", left);
+      vv?.removeEventListener("resize", update);
+      vv?.removeEventListener("scroll", update);
+    };
+  }, []);
+  return {
+    style: { "--pin-action-height": height } as CSSProperties,
+    barProps: {
+      ref: barRef,
+      "data-keyboard": inset === null ? undefined : "true",
+      style: inset === null ? undefined : ({ "--keyboard-inset": `${inset}px` } as CSSProperties),
+    },
+  };
+}
+
+/** A label and a field: what a Job, Stage or Quantity box looks like while it loads. */
+export function FieldSkeleton() {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Skeleton width={72} height={24} />
+      <Skeleton height={52} />
+    </div>
+  );
+}
+
+/** Crew rows: name, then the smaller line under it, and the 48 px box on the right. */
+export function CrewRowsSkeleton({ count }: { count: number }) {
+  return (
+    <div className="divide-y divide-line overflow-hidden rounded-group border-group bg-surface">
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="flex min-h-16 items-center justify-between gap-4 px-4 py-2">
+          <div className="flex flex-col gap-1.5">
+            <Skeleton width={120} height={20} />
+            <Skeleton width={72} height={16} />
+          </div>
+          <Skeleton width={48} height={48} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * A field-entry screen while it loads (`?demo=loading`): the title and the switch stay live, the date is a
+ * label and a line, and `children` are blocks shaped like the form. The action is a button-sized block.
+ */
+export function EntrySkeleton({ screen, active, children }: { screen: string; active: EntryKind; children: React.ReactNode }) {
+  return (
+    <div data-screen={screen} aria-busy="true" className={cx("flex flex-col gap-6", ENTRY_WIDTH)}>
+      <EntryTabs active={active} demo="loading" />
+      <div className="flex flex-col gap-2">
+        <Skeleton width={48} height={20} />
+        <Skeleton width={200} height={24} />
+        <span aria-hidden="true" className="block h-0.5 bg-line" />
+      </div>
+      {children}
+      <Skeleton height={52} />
+    </div>
+  );
+}
+
+/** A server failure on a field-entry screen: the title and the switch stay, and the form area says so and offers a retry. */
+export function EntryError({ screen, active, demo }: { screen: string; active: EntryKind; demo?: string }) {
+  return (
+    <div data-screen={screen} className={cx("flex flex-col gap-6", ENTRY_WIDTH)}>
+      <EntryTabs active={active} demo={demo} />
+      <div role="alert" className="flex flex-col items-start gap-4 rounded-group border-group bg-surface p-4">
+        <p className="text-body text-ink">Couldn&apos;t load this. Try again.</p>
+        <RetryButton variant="secondary" />
+      </div>
+    </div>
+  );
 }
