@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AttentionItem } from "@/data/contracts";
-import { attentionSentence, daysSinceText, jobAlertText, stageLine } from "./home-text";
+import { attentionSentence, daysSinceText, jobAlertText, outboxStatus, stageLine } from "./home-text";
 
 const base = { id: "a", severity: "watch" as const, href: "/x" };
 const TODAY = "2026-09-28";
@@ -81,5 +81,28 @@ describe("home text helpers", () => {
         { stageId: "2", name: "Flashings", status: "paused", pauseReason: "weather" },
       ]),
     ).toBe("Sheet install, Flashings (paused: weather)");
+  });
+});
+
+describe("outboxStatus", () => {
+  it("says everything is sent when nothing is waiting", () => {
+    expect(outboxStatus([])).toEqual({ tone: "clear", text: "Everything on this phone has been sent." });
+    expect(outboxStatus([{ state: "sent" }])).toEqual({ tone: "clear", text: "Everything on this phone has been sent." });
+  });
+
+  it("counts entries waiting or sending", () => {
+    expect(outboxStatus([{ state: "waiting" }])).toEqual({ tone: "waiting", text: "1 entry is waiting to send." });
+    expect(outboxStatus([{ state: "waiting" }, { state: "sending" }, { state: "sent" }])).toEqual({
+      tone: "waiting",
+      text: "2 entries are waiting to send.",
+    });
+  });
+
+  it("puts entries that need attention first", () => {
+    expect(outboxStatus([{ state: "needs_attention" }, { state: "waiting" }])).toEqual({
+      tone: "attention",
+      text: "1 entry needs attention.",
+    });
+    expect(outboxStatus([{ state: "needs_attention" }, { state: "needs_attention" }]).text).toBe("2 entries need attention.");
   });
 });

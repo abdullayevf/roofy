@@ -20,7 +20,7 @@ const MANAGE_PAGES = new Set(["expenses", "pay", "reports", "settings"]);
  */
 export function activeNavKey(pathname: string, role: NavRole, layout: NavLayout): string {
   const first = pathname.split("/")[1] ?? "";
-  if (first === "") return role === "foreman" ? "" : "home";
+  if (first === "") return "home";
   const own = FIRST_SEGMENT_KEY[first];
   if (own) return role === "foreman" || own !== "outbox" ? own : "";
   if (role === "foreman") return "";

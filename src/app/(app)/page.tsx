@@ -1,19 +1,18 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { getData } from "@/data";
 import { isDataError } from "@/data/contracts";
 import type { SearchParams } from "@/data/session";
 import { NoPermission } from "@/components/page-states";
 import { backLink } from "@/components/shell/access";
+import { HomeForemanBody, HomeForemanSkeleton } from "@/components/screens/home-foreman";
 import { HomeManagerBody, HomeSkeleton } from "@/components/screens/home-manager";
 
 export const metadata: Metadata = { title: { absolute: "Roofy" } };
 
-/** Home for an owner, manager or accountant. A foreman has no Home tab: they start on Log. */
+/** Home: the Monday screen for an owner, manager or accountant; assigned jobs, Log today and the outbox for a foreman. */
 export default async function Home({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const { data, actor, demo } = await getData({ searchParams });
-  if (actor.role === "foreman") redirect("/log");
-  if (demo.loading) return <HomeSkeleton />;
+  if (demo.loading) return actor.role === "foreman" ? <HomeForemanSkeleton /> : <HomeSkeleton />;
   let home;
   try {
     home = await data.home.get(actor);
@@ -24,6 +23,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<Sea
     }
     throw e;
   }
-  if (home.view !== "manager") redirect("/log");
+  if (home.view === "foreman") return <HomeForemanBody home={home} outbox={demo.outbox} />;
   return <HomeManagerBody home={home} />;
 }

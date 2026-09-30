@@ -26,6 +26,7 @@ const ITEMS: Record<SidebarRole, Item[]> = {
     { key: "more", label: "More", href: "/more", icon: SquaresFour },
   ],
   foreman: [
+    { key: "home", label: "Home", href: "/", icon: House },
     { key: "log", label: "Log", href: "/log", icon: NotePencil },
     { key: "jobs", label: "Jobs", href: "/jobs", icon: Briefcase },
     { key: "outbox", label: "Outbox", href: "/outbox", icon: Tray },

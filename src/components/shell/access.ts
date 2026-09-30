@@ -23,7 +23,7 @@ export type Section =
   | "export"
   | "install";
 
-const FOREMAN: readonly Section[] = ["jobs", "log", "outbox", "expenses", "install"];
+const FOREMAN: readonly Section[] = ["home", "jobs", "log", "outbox", "expenses", "install"];
 const ACCOUNTANT: readonly Section[] = ["home", "jobs", "pay", "reports", "expenses", "more", "install"];
 
 /**

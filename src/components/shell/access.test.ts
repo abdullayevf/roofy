@@ -22,7 +22,7 @@ describe("canOpen", () => {
   it("keeps money and admin pages from the foreman", () => {
     for (const s of ["crew", "pay", "reports", "settings", "history", "export", "more"] as const)
       expect(canOpen("foreman", s)).toBe(false);
-    for (const s of ["log", "jobs", "outbox", "expenses", "install"] as const) expect(canOpen("foreman", s)).toBe(true);
+    for (const s of ["home", "log", "jobs", "outbox", "expenses", "install"] as const) expect(canOpen("foreman", s)).toBe(true);
   });
   it("gives the accountant the read-only money pages only", () => {
     for (const s of ["home", "pay", "reports", "expenses", "more", "install"] as const)

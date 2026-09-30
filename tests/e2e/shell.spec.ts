@@ -17,8 +17,8 @@ async function navLabels(page: Page): Promise<string[]> {
 
 const PHONE_ITEMS: Record<"manager" | "foreman" | "accountant", string[]> = {
   manager: ["Home", "Jobs", "Log", "Crew", "More"],
-  // Log sits in the middle (raised) on the phone bar; the desktop sidebar lists it first.
-  foreman: ["Jobs", "Log", "Outbox"],
+  // Log is raised on the phone bar; the desktop sidebar lists it right after Home.
+  foreman: ["Home", "Jobs", "Log", "Outbox"],
   accountant: ["Home", "Pay", "Reports", "More"],
 };
 
@@ -70,7 +70,7 @@ test.describe("navigation by role", () => {
     test(`${role} sees the ${navRole} items with the right one active`, async ({ page }, testInfo) => {
       await signInAs(page, role, role === "foreman" ? "/log" : "/");
       const phone = isPhone(testInfo.project.name);
-      const expected = navRole === "foreman" && !phone ? ["Log", "Jobs", "Outbox"] : PHONE_ITEMS[navRole];
+      const expected = navRole === "foreman" && !phone ? ["Home", "Log", "Jobs", "Outbox"] : PHONE_ITEMS[navRole];
       const desktopExtras =
         navRole === "manager" && !isPhone(testInfo.project.name) ? ["Expenses", "Pay runs", "Reports", "Settings"] : [];
       expect(await navLabels(page)).toEqual([...expected, ...desktopExtras]);
@@ -90,9 +90,10 @@ test.describe("navigation by role", () => {
     });
   }
 
-  test("a foreman starting at Home lands on Log", async ({ page }) => {
+  test("a foreman starting at Home stays on Home", async ({ page }) => {
     await signInAs(page, "foreman", "/");
-    await expect(page).toHaveURL(/\/log$/);
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Home");
   });
 
   test("on desktop the manager's sidebar also lists Expenses, Pay runs, Reports and Settings", async ({ page }, testInfo) => {
@@ -224,7 +225,7 @@ test.describe("every link resolves", () => {
         if (res.status() >= 400 && new URL(res.url()).origin === new URL(page.url()).origin)
           failed.push(`${res.status()} ${res.url()}`);
       });
-      await signInAs(page, role, role === "foreman" ? "/log" : "/");
+      await signInAs(page, role, "/");
       const hrefs = new Set<string>();
       const collect = async () => {
         for (const href of await page.locator("a[href^='/']").evaluateAll((els) => els.map((e) => e.getAttribute("href")!)))
@@ -262,6 +263,7 @@ test.describe("shell pages are healthy", () => {
     ["manager", "/"],
     ["manager", "/jobs"],
     ["manager", "/more"],
+    ["foreman", "/"],
     ["foreman", "/log"],
     ["accountant", "/pay"],
   ] as const) {

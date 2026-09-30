@@ -1,4 +1,4 @@
-import type { ActiveJobRow, AttentionItem, StageChip } from "@/data/contracts";
+import type { ActiveJobRow, AttentionItem, OutboxState, StageChip } from "@/data/contracts";
 import type { PauseReason } from "@/domain/segments";
 import { formatDate, formatMoney } from "@/lib/format";
 
@@ -63,4 +63,19 @@ export function stageLine(stages: StageChip[]): string {
   return stages
     .map((s) => (s.status === "paused" && s.pauseReason ? `${s.name} (paused: ${pauseReasonText(s.pauseReason)})` : s.name))
     .join(", ");
+}
+
+export type OutboxStatus = { tone: "clear" | "waiting" | "attention"; text: string };
+
+/** The foreman Home's one-line outbox status. Entries that need attention come first; sent ones don't count. */
+export function outboxStatus(items: { state: OutboxState }[]): OutboxStatus {
+  const attention = items.filter((i) => i.state === "needs_attention").length;
+  if (attention > 0) {
+    return { tone: "attention", text: attention === 1 ? "1 entry needs attention." : `${attention} entries need attention.` };
+  }
+  const waiting = items.filter((i) => i.state === "waiting" || i.state === "sending").length;
+  if (waiting > 0) {
+    return { tone: "waiting", text: waiting === 1 ? "1 entry is waiting to send." : `${waiting} entries are waiting to send.` };
+  }
+  return { tone: "clear", text: "Everything on this phone has been sent." };
 }

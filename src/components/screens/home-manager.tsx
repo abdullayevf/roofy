@@ -42,7 +42,7 @@ function JobRow({ job }: { job: ActiveJobRow }) {
       <span className="flex items-start justify-between gap-3">
         <span className="min-w-0">
           <span className="block text-body-strong text-ink [overflow-wrap:anywhere]">{job.name}</span>
-          <span className="block text-meta text-ink-2 [overflow-wrap:anywhere]">{stageLine(job.currentStages)}</span>
+          <span className="block text-meta text-ink [overflow-wrap:anywhere]">{stageLine(job.currentStages)}</span>
         </span>
         <CaretRight size={24} aria-hidden="true" className="mt-3 shrink-0 text-ink-2" />
       </span>
@@ -54,13 +54,13 @@ function JobRow({ job }: { job: ActiveJobRow }) {
         note={alert?.text}
       />
       <dl className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 text-meta">
-        <dt className="text-ink-2">Labour so far</dt>
+        <dt className="text-ink">Labour so far</dt>
         <dd className="text-right text-ink num">
           {formatMoney(job.labourActualCents)} of {formatMoney(job.labourBudgetCents)}
         </dd>
-        <dt className="text-ink-2">Forecast margin</dt>
+        <dt className="text-ink">Forecast margin</dt>
         <dd className="text-right text-ink num">{formatMoney(job.forecastMarginCents)}</dd>
-        <dt className="text-ink-2">Days since last log</dt>
+        <dt className="text-ink">Days since last log</dt>
         <dd className="text-right text-ink">{daysSinceText(job.daysSinceLastLog)}</dd>
       </dl>
     </Link>
@@ -118,7 +118,7 @@ export function HomeManagerBody({ home }: { home: HomeManager }) {
     <div data-screen="home" className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-title text-ink">Home</h1>
-        <p className="text-meta text-ink-2">
+        <p className="text-meta text-ink">
           Labour last week, {formatDate(week.period.start, home.today)} to {formatDate(week.period.end, home.today)}
         </p>
         {/* Same size as figure-xl, but never wider than the screen: at 200% text zoom the size gives way to the width. */}
