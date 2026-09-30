@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { CaretRight, CheckCircle, Tray, WarningDiamond } from "@phosphor-icons/react/dist/ssr";
 import type { ForemanJobRow, HomeForeman, OutboxState } from "@/data/contracts";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { cx } from "@/lib/cx";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { daysSinceText, logStatusText, outboxStatus, stageLine } from "./home-text";
-import { COLUMN, FOCUS, GROUP, HomeTitle, JobCard, KeyFigure, ROW, Section, whole } from "./home-parts";
+import { COLUMN, FOCUS, GROUP, HomeTitle, JobCard, JobCardSkeleton, KeyFigure, ROW, Section, whole } from "./home-parts";
 
 const STATUS_ICON = {
   clear: { icon: CheckCircle, className: "text-ink-2" },
@@ -42,31 +42,19 @@ function JobRow({ job }: { job: ForemanJobRow }) {
   );
 }
 
-/** Log today, pinned above the tab bar like Log's Save day (in the form column from 1024 px). */
-function LogTodayBar({ href }: { href: string }) {
-  return (
-    <div data-slot="primary-action" className="pin-action">
-      <Button variant="primary" href={href} className="w-full">
-        Log today
-      </Button>
-    </div>
-  );
-}
-
-// The page pads its bottom so the pinned Log today bar never hides the last job.
-const WITH_BAR = "pb-28 lg:pb-0";
-
 export type HomeForemanProps = {
   home: HomeForeman;
   /** This device's own queue (device-local), passed in by the page. */
   outbox: { state: OutboxState }[];
+  /** No signal: the jobs are the last ones the phone loaded. */
+  offline: boolean;
 };
 
 /**
  * Home for a foreman (flows.md screen 5): today's log status as the lead figure, the outbox status, the assigned
- * jobs and a pinned Log today. No dollars: the data has none.
+ * jobs and a Log today button under it. No dollars: the data has none.
  */
-export function HomeForemanBody({ home, outbox }: HomeForemanProps) {
+export function HomeForemanBody({ home, outbox, offline }: HomeForemanProps) {
   const waiting = outbox.filter((i) => i.state === "waiting" || i.state === "sending").length;
   const attention = outbox.filter((i) => i.state === "needs_attention").length;
   if (home.jobs.length === 0) {
@@ -78,11 +66,17 @@ export function HomeForemanBody({ home, outbox }: HomeForemanProps) {
     );
   }
   return (
-    <div data-screen="home" className={cx(COLUMN, WITH_BAR)}>
+    <div data-screen="home" className={COLUMN}>
       <header className="flex flex-col gap-1">
         <HomeTitle waiting={waiting} attention={attention} />
         <p className="text-meta text-ink">{formatDate(home.today, home.today)}</p>
+        {offline ? (
+          <p className="text-meta text-ink">Progress from {formatDateTime(home.asOf, home.timeZone, home.today)}.</p>
+        ) : null}
         <KeyFigure>{logStatusText(home.loggedToday)}</KeyFigure>
+        <Button variant="primary" href={home.logToday.href} className="mt-3 w-full sm:w-auto sm:min-w-72 sm:self-start">
+          Log today
+        </Button>
       </header>
 
       <Section title="On this device">
@@ -99,19 +93,21 @@ export function HomeForemanBody({ home, outbox }: HomeForemanProps) {
         </div>
       </Section>
 
-      <LogTodayBar href={home.logToday.href} />
     </div>
   );
 }
 
-/** Foreman Home while it loads (`?demo=loading`): the title, date, headings and Log today are real; only the jobs are blocks. */
+/** Foreman Home while it loads (`?demo=loading`): the title, date, headings and Log today are real; only the fetched parts are blocks. */
 export function HomeForemanSkeleton({ today }: { today: string }) {
   return (
-    <div data-screen="home" aria-busy="true" className={cx(COLUMN, WITH_BAR)}>
-      <header className="flex flex-col gap-2">
-        <h1 className="text-title text-ink">Home</h1>
+    <div data-screen="home" aria-busy="true" className={COLUMN}>
+      <header className="flex flex-col gap-1">
+        <HomeTitle waiting={0} attention={0} />
         <p className="text-meta text-ink">{formatDate(today, today)}</p>
         <Skeleton width={240} height={44} />
+        <Button variant="primary" href="/log" className="mt-3 w-full sm:w-auto sm:min-w-72 sm:self-start">
+          Log today
+        </Button>
       </header>
       <Section title="On this device">
         <div className={cx(GROUP, "overflow-hidden")}>
@@ -123,13 +119,10 @@ export function HomeForemanSkeleton({ today }: { today: string }) {
       <Section title="Your jobs">
         <div className={cx(GROUP, "overflow-hidden")}>
           {[0, 1].map((i) => (
-            <div key={i} className="flex items-center px-4" style={{ minHeight: 152 }}>
-              <Skeleton height={104} />
-            </div>
+            <JobCardSkeleton key={i} lines={2} figures={1} />
           ))}
         </div>
       </Section>
-      <LogTodayBar href="/log" />
     </div>
   );
 }

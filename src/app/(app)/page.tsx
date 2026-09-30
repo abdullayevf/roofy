@@ -27,7 +27,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Sea
     if (isDataError(e) && e.code === "unavailable") return <HomeError foreman={foreman} today={today} />;
     throw e;
   }
-  if (home.view === "foreman") return <HomeForemanBody home={home} outbox={demo.outbox} />;
+  if (home.view === "foreman") return <HomeForemanBody home={home} outbox={demo.outbox} offline={demo.offline} />;
   const attention = demo.outbox.filter((i) => i.state === "needs_attention").length;
   return (
     <HomeManagerBody

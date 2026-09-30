@@ -1052,8 +1052,8 @@ export interface HomeManager {
   today: LocalDate;
   /** Max 7, most severe first. Outbox items are added on the device. */
   needsAttention: AttentionItem[];
-  /** How many more items there were beyond the 7 shown. */
-  needsAttentionMore: number;
+  /** The items beyond the 7 shown, in the same order (Home expands them in place). */
+  moreAttention: AttentionItem[];
   /** When these figures were read, and the workspace timezone to show it in (offline: the last time they loaded). */
   asOf: Instant;
   timeZone: string;
@@ -1078,6 +1078,9 @@ export interface HomeForeman {
   view: "foreman";
   access: FieldAccess;
   today: LocalDate;
+  /** When the jobs were read, and the workspace timezone to show it in (offline: the last time they loaded). */
+  asOf: Instant;
+  timeZone: string;
   jobs: ForemanJobRow[];
   /** Today's logging on the jobs this person can see: which jobs and how many people, or nothing yet. */
   loggedToday: { jobs: string[]; crewCount: number };

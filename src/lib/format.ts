@@ -23,6 +23,18 @@ export function formatQuantity(value: number, unit: keyof typeof UNIT_LABEL): st
   return `${hundredths(value)}${UNIT_LABEL[unit]}`;
 }
 
+/**
+ * A quantity for a summary line: at most one decimal ("335.7 m²", "80 lm", "368 h"). Display only; the data keeps
+ * hundredths. Rounds half up.
+ */
+export function formatRoundedQuantity(value: number, unit: keyof typeof UNIT_LABEL | "h"): string {
+  const tenths = Math.round(value / 10);
+  const whole = Math.trunc(tenths / 10);
+  const dp = Math.abs(tenths % 10);
+  const text = `${GROUPED.format(whole)}${dp === 0 ? "" : `.${dp}`}`;
+  return unit === "h" ? `${text} h` : `${text}${UNIT_LABEL[unit]}`;
+}
+
 export function formatHours(value: number): string {
   return `${hundredths(value)} h`;
 }

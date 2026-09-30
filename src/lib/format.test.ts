@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatDateTime, formatDays, formatDecimal, formatHours, formatMoney, formatQuantity } from "./format";
+import { formatDate, formatDateTime, formatDays, formatRoundedQuantity, formatDecimal, formatHours, formatMoney, formatQuantity } from "./format";
 
 describe("format", () => {
   it("formats AUD with a true minus sign", () => {
@@ -45,5 +45,18 @@ describe("formatDateTime", () => {
   it("adds the year when it isn't today's year, and uses the timezone's date", () => {
     expect(formatDateTime("2025-12-31T14:30:00.000Z", "Australia/Sydney", "2026-09-28")).toBe("Thu 1 Jan, 1:30 am");
     expect(formatDateTime("2025-12-30T14:30:00.000Z", "Australia/Sydney", "2026-09-28")).toBe("Wed 31 Dec 2025, 1:30 am");
+  });
+});
+
+describe("formatRoundedQuantity", () => {
+  it("shows one decimal at most, drops a .0, and puts the unit on the value", () => {
+    expect(formatRoundedQuantity(33566, "m2")).toBe("335.7 m²");
+    expect(formatRoundedQuantity(8000, "lm")).toBe("80 lm");
+    expect(formatRoundedQuantity(1250, "each")).toBe("12.5");
+    expect(formatRoundedQuantity(99996, "m2")).toBe("1,000 m²");
+  });
+  it("adds hours the same way", () => {
+    expect(formatRoundedQuantity(36800, "h")).toBe("368 h");
+    expect(formatRoundedQuantity(36849, "h")).toBe("368.5 h");
   });
 });

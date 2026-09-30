@@ -24,6 +24,8 @@ export type TapeBarProps = {
    * label or note at all rather than a money-free version of them.
    */
   note?: string;
+  /** What the bar measures, printed above the % ("Whole job"), when it isn't obvious. */
+  scope?: string;
   className?: string;
 };
 
@@ -77,6 +79,7 @@ export function TapeBar({
   forecastLabel,
   tone = "watch",
   note,
+  scope,
   className,
 }: TapeBarProps) {
   const clamped = Math.max(0, Math.min(100, percent));
@@ -131,7 +134,10 @@ export function TapeBar({
           ) : null}
         </div>
       </div>
-      <span className="whitespace-nowrap text-figure num text-ink">{clamped}% done</span>
+      <span className="flex flex-col whitespace-nowrap">
+        {scope ? <span className="text-meta text-ink">{scope}</span> : null}
+        <span className="text-figure num text-ink">{clamped}% done</span>
+      </span>
       {marker && forecastLabel ? (
         <div className="relative h-5">
           <span

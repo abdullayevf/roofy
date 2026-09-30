@@ -50,7 +50,7 @@
  */
 
 import { chromium, webkit, type Browser, type Page } from "@playwright/test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   checkNoMoney,
@@ -486,6 +486,12 @@ async function main(): Promise<void> {
 
   const outDir = join(process.cwd(), "docs/design/loop/shots", group);
   mkdirSync(outDir, { recursive: true });
+  // A full-group run starts clean, so no slice or screenshot from an older run is left for a critic to read.
+  // (A --screens run keeps the other screens' shots.)
+  if (!screensFilter) {
+    rmSync(join(outDir, "slices"), { recursive: true, force: true });
+    for (const f of readdirSync(outDir)) if (f.endsWith(".png")) rmSync(join(outDir, f));
+  }
 
   const noWebkit = process.env.ROOFY_NO_WEBKIT === "1";
   const chromiumExecutable = process.env.ROOFY_CHROMIUM_EXECUTABLE;

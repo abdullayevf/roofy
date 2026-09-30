@@ -3,9 +3,13 @@ import { CaretRight } from "@phosphor-icons/react/dist/ssr";
 import { cx } from "@/lib/cx";
 import { OutboxBadge } from "@/components/outbox-badge";
 import { TapeBar, type TapeBarProps } from "@/components/tape-bar";
+import { Skeleton } from "@/components/ui/skeleton";
 
-/** Both Homes sit in one centred column (~720 px) on a tablet, a phone on its side and desktop, so a label stays near its value (i6-F2). */
-export const COLUMN = "mx-auto flex w-full max-w-180 flex-col gap-8 lg:gap-10";
+/**
+ * Both Homes sit in one column (~720 px), centred on a tablet or a phone on its side and starting at the same left
+ * edge on desktop in every state and role, so a label stays near its value (i6-F2).
+ */
+export const COLUMN = "mx-auto flex w-full max-w-180 flex-col gap-8 lg:mx-0 lg:gap-10";
 export const GROUP = "divide-y divide-line rounded-group border-group bg-surface";
 export const FOCUS =
   "focus-visible:outline focus-visible:outline-[3px] focus-visible:-outline-offset-3 focus-visible:outline-chalk-link";
@@ -15,10 +19,10 @@ export const ROW =
 
 export const whole = (bp: number) => Math.round(bp / 100);
 
-/** Title with the outbox badge inline beside it (waiting = "N to send", failed = "N needs attention"). */
+/** Title with the outbox badge right after it, on a row that keeps its height whether or not the badge shows. */
 export function HomeTitle({ waiting, attention }: { waiting: number; attention: number }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+    <div className="flex min-h-12 flex-wrap items-center gap-x-3 gap-y-1">
       <h1 className="text-title text-ink">Home</h1>
       <OutboxBadge count={waiting} attention={attention} className="shrink-0" />
     </div>
@@ -80,5 +84,24 @@ export function JobCard({
       <TapeBar className="mt-2" {...tape} />
       {children}
     </Link>
+  );
+}
+
+/** A job card's shape while it loads: name, `lines` meta lines, the tape bar and `figures` label/value lines. */
+export function JobCardSkeleton({ lines, figures }: { lines: number; figures: number }) {
+  return (
+    <div className="flex flex-col gap-2 px-4 py-3">
+      <Skeleton width={220} height={24} />
+      {Array.from({ length: lines }, (_, i) => (
+        <Skeleton key={i} width={160} height={16} />
+      ))}
+      <Skeleton height={12} />
+      {Array.from({ length: figures }, (_, i) => (
+        <div key={i} className="flex justify-between gap-4">
+          <Skeleton width={110} height={16} />
+          <Skeleton width={120} height={20} />
+        </div>
+      ))}
+    </div>
   );
 }

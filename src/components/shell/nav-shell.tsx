@@ -10,13 +10,14 @@ import { TabBar } from "@/components/nav/tab-bar";
 import { Sidebar } from "@/components/nav/sidebar";
 import { activeManageKey, activeNavKey, manageNavItems, type NavRole } from "./active";
 
-export function ShellSidebar({ role, workspaceName }: { role: NavRole; workspaceName: string }) {
+export function ShellSidebar({ role, workspaceName, outboxCount }: { role: NavRole; workspaceName: string; outboxCount: number }) {
   const pathname = usePathname();
   return (
     <Sidebar
       role={role}
       active={activeNavKey(pathname, role, "desktop")}
       workspaceName={workspaceName}
+      outboxCount={outboxCount}
       extra={manageNavItems(role)}
       activeExtra={activeManageKey(pathname)}
       className="min-h-dvh"
@@ -24,12 +25,13 @@ export function ShellSidebar({ role, workspaceName }: { role: NavRole; workspace
   );
 }
 
-export function ShellTabBar({ role }: { role: NavRole }) {
+export function ShellTabBar({ role, outboxCount }: { role: NavRole; outboxCount: number }) {
   const pathname = usePathname();
   // Left and right padding keeps the outer tabs clear of the notch and rounded corners in landscape.
   return (
     <TabBar
       role={role}
+      outboxCount={outboxCount}
       active={activeNavKey(pathname, role, "phone")}
       className="pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
     />

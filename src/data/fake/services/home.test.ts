@@ -101,11 +101,12 @@ describe("home (manager)", () => {
     expect(Math.abs(row.pctBp / 10_000 - spent)).toBeLessThan(0.15);
   });
 
-  it("says how many needs-attention items were left off after the 7 shown", async () => {
+  it("keeps the needs-attention items past the 7 shown, in order", async () => {
     const home = await managerHome("attention");
     expect(home.needsAttention).toHaveLength(7);
-    expect(home.needsAttentionMore).toBeGreaterThan(0);
-    expect((await managerHome()).needsAttentionMore).toBe(0);
+    expect(home.moreAttention.length).toBeGreaterThan(0);
+    expect(home.moreAttention.map((i) => i.kind)).toContain("below_floor");
+    expect((await managerHome()).moreAttention).toEqual([]);
   });
 
   it("figures are as of now, or 40 minutes earlier when offline, in the workspace timezone", async () => {
@@ -180,7 +181,7 @@ describe("home (manager)", () => {
       "outbox_attention",
       "unpaid_too_long",
     ]);
-    expect(home.needsAttention[5]).toMatchObject({ severity: "watch", count: 1, href: "/outbox" });
+    expect(home.needsAttention[5]).toMatchObject({ severity: "over", count: 1, href: "/outbox" });
   });
 
   it("last week: figures from src/domain over 21–27 Sep", async () => {
@@ -266,6 +267,13 @@ describe("home (foreman)", () => {
     expect(home.jobs.every((j) => !j.loggedToday)).toBe(true);
     expect(home.logToday).toEqual({ href: "/log", projectId: null });
     expect(home.access).toEqual({ role: "foreman", canLog: true, canPause: true, canMarkDone: false });
+  });
+
+  it("jobs are as of now, or 40 minutes earlier when offline", async () => {
+    const online = (await fake("foreman").data.home.get(fake("foreman").actor)) as HomeForeman;
+    expect(online).toMatchObject({ asOf: "2026-09-27T21:00:00.000Z", timeZone: "Australia/Sydney" });
+    const off = fake("foreman", { demo: "offline" });
+    expect(((await off.data.home.get(off.actor)) as HomeForeman).asOf).toBe("2026-09-27T20:20:00.000Z");
   });
 
   it("nothing logged yet today, then the job and the number of people once a day is saved", async () => {

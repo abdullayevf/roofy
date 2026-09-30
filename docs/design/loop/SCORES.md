@@ -20,3 +20,4 @@ Score history for every screen group's design loop (`docs/specs/04-design-proces
 | system | 5         | 87           | 87          | 87      | 0           | yes                                                                             |
 | system | 6         | 87           | 87          | 87      | 0           | yes                                                                             |
 | field-1 | 1 | 74 | 71 | 72.5 | 5 | no (24 `?demo=error` captures: console 500 and React #441 from the forced error, ruled expected) |
+| field-1 | 2 | 77 | 79 | 78 | 4 | yes |

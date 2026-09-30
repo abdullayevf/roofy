@@ -49,6 +49,8 @@ export type TabBarProps = {
    * document flow instead of covering the rest of the page.
    */
   fixed?: boolean;
+  /** Entries on this device waiting or failed: a count chip on the Outbox tab (the foreman's bar). */
+  outboxCount?: number;
   /** Demo-only: forces the focus ring on one item (by key) so it shows up in a static screenshot. */
   focusKey?: string;
   /** Pads the bottom for the home-bar inset. Defaults to `fixed`: only the bar actually pinned at the bottom needs it. */
@@ -65,7 +67,7 @@ export type TabBarProps = {
  * Labels are Barlow Semi Condensed and wrap rather than overflow at large
  * text sizes.
  */
-export function TabBar({ role, active, fixed = true, focusKey, inset = fixed, className }: TabBarProps) {
+export function TabBar({ role, active, fixed = true, outboxCount = 0, focusKey, inset = fixed, className }: TabBarProps) {
   const items = ITEMS[role];
   return (
     <nav
@@ -123,12 +125,25 @@ export function TabBar({ role, active, fixed = true, focusKey, inset = fixed, cl
               ring,
             )}
           >
-            <Glyph
-              size={24}
-              weight={isActive ? "fill" : "regular"}
-              aria-hidden="true"
-              className={isActive ? "text-chalk-link" : "text-ink-2"}
-            />
+            <span className="relative">
+              <Glyph
+                size={24}
+                weight={isActive ? "fill" : "regular"}
+                aria-hidden="true"
+                className={isActive ? "text-chalk-link" : "text-ink-2"}
+              />
+              {item.key === "outbox" && outboxCount > 0 ? (
+                <>
+                  <span
+                    aria-hidden="true"
+                    className="absolute -right-3 -top-2 flex min-w-5 items-center justify-center rounded-full bg-tape px-1 text-tab text-on-tape"
+                  >
+                    {outboxCount}
+                  </span>
+                  <span className="sr-only">{outboxCount} to send</span>
+                </>
+              ) : null}
+            </span>
             <span
               className={cx(
                 "max-w-full text-center text-tab [overflow-wrap:anywhere]",

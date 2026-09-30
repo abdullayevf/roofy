@@ -9,7 +9,7 @@ async function signInAs(page: Page, role: string, next = "/") {
 
 /** The outbox badge beside the title: same row as the h1. */
 async function expectBadgeBesideTitle(page: Page, name: string | RegExp) {
-  const badge = page.getByRole("link", { name });
+  const badge = page.getByRole("main").getByRole("link", { name, exact: true });
   await expect(badge).toBeVisible();
   const [t, b] = await Promise.all([
     page.getByRole("heading", { level: 1, name: "Home" }).boundingBox(),
@@ -25,7 +25,7 @@ test.describe("Home (manager)", () => {
     await signInAs(page, "manager");
     await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
     // Key figure under the title.
-    await expect(page.getByText(/^Labour last week/)).toBeVisible();
+    await expect(page.getByText(/^Labour, Mon 21 Sep to Sun 27 Sep/)).toBeVisible();
     await expect(page.locator('[data-screen="home"] p.text-figure-xl')).toHaveText(/^\$[\d,]+\.\d{2}$/);
     // Needs attention: the Smith job is trending over on sheet install.
     await expect(page.getByRole("heading", { level: 2, name: "Needs attention" })).toBeVisible();
@@ -42,10 +42,31 @@ test.describe("Home (manager)", () => {
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
+  test("the sections follow the spec: Needs attention, Active jobs, Last week, This pay period", async ({ page }, testInfo) => {
+    test.skip(!isPhone(testInfo.project.name), "one column on a phone");
+    await signInAs(page, "manager");
+    const ys: number[] = [];
+    for (const h of ["Needs attention", "Active jobs", "Last week", "This pay period"]) {
+      ys.push((await page.getByRole("heading", { level: 2, name: h }).boundingBox())!.y);
+    }
+    expect([...ys].sort((a, b) => a - b)).toEqual(ys);
+    // The labour figure heads Last week, not the page.
+    const key = (await page.locator('[data-screen="home"] p.text-figure-xl').boundingBox())!;
+    expect(key.y).toBeGreaterThan(ys[2]!);
+  });
+
+  test("a job card's amounts end at the card's right edge on every width", async ({ page }) => {
+    await signInAs(page, "manager");
+    const smith = page.getByRole("link", { name: /Smith job/ }).last();
+    const card = (await smith.boundingBox())!;
+    const value = (await smith.locator("dd").first().boundingBox())!;
+    expect(card.x + card.width - (value.x + value.width)).toBeLessThan(20);
+  });
+
   test("a job card names the stage its flag is about and marks the forecast on the bar", async ({ page }) => {
     await signInAs(page, "manager");
     const smith = page.getByRole("link", { name: /Smith job/ }).last();
-    await expect(smith).toContainText("Whole job");
+    await expect(smith.getByText("Whole job")).toBeVisible();
     await expect(smith).toContainText("Sheet install is trending $775.00 over its labour budget.");
     await expect(smith.getByTestId("tape-marker")).toBeVisible();
     // Amounts are figures, right-aligned; labels are meta.
@@ -69,8 +90,12 @@ test.describe("Home (manager)", () => {
 
   test("Installed is one row per unit", async ({ page }) => {
     await signInAs(page, "manager");
-    await expect(page.getByText("Installed (m²)")).toBeVisible();
-    await expect(page.getByText("Installed (lm)")).toBeVisible();
+    await expect(page.getByText("Area installed")).toBeVisible();
+    await expect(page.getByText("Length installed")).toBeVisible();
+    // The unit is on the value, to one decimal at most.
+    await expect(page.getByText(/^\d[\d,]*(\.\d)? m²$/)).toBeVisible();
+    await expect(page.getByText(/^\d[\d,]*(\.\d)? lm$/)).toBeVisible();
+    await expect(page.getByText(/^\d[\d,]*(\.\d)? h$/)).toBeVisible();
   });
 
   // Fixme until the job detail page exists (Task 14): today /jobs/<id> is a 404.
@@ -90,19 +115,20 @@ test.describe("Home (manager)", () => {
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog, skip: { axe: true } });
   });
 
-  test("?demo=error keeps Home on screen with its message and Try again, and no link back to Home", async ({ page }, testInfo) => {
+  test("?demo=error keeps Home on screen with its message under the title, and no link back to Home", async ({ page }, testInfo) => {
     await signInAs(page, "manager", "/?demo=error");
     await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
-    await expect(page.getByRole("heading", { level: 2, name: "Couldn't load Home figures" })).toBeVisible();
+    const message = page.getByRole("heading", { level: 2, name: "Couldn't load Home figures" });
+    await expect(message).toBeVisible();
     await expect(page.getByRole("link", { name: "Go to Home" })).toHaveCount(0);
     const retry = page.getByRole("button", { name: "Try again" });
     await expect(retry).toBeVisible();
-    if (isPhone(testInfo.project.name)) {
-      // In the lower half of the screen, in thumb reach.
-      const box = (await retry.boundingBox())!;
-      expect(box.y).toBeGreaterThan(page.viewportSize()!.height / 2);
-    } else {
-      // The sidebar still names the workspace.
+    // Right under the title, not stranded low on the screen.
+    const [title, msg] = await Promise.all([page.getByRole("heading", { level: 1 }).boundingBox(), message.boundingBox()]);
+    expect(msg!.y - (title!.y + title!.height)).toBeLessThan(120);
+    // The button is capped on wide screens.
+    if (!isPhone(testInfo.project.name)) {
+      expect((await retry.boundingBox())!.width).toBeLessThanOrEqual(300);
       await expect(page.getByText("Harbour Roofing").first()).toBeVisible();
     }
   });
@@ -117,7 +143,7 @@ test.describe("Home (manager)", () => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "manager", "/?demo=empty");
     await expect(page.getByText("No jobs yet. Add your first job.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Add a job" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Add your first job" })).toBeVisible();
     await expect(page.locator('[data-screen="home"] p.text-figure-xl')).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 2, name: "Last week" })).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 2, name: "This pay period" })).toHaveCount(0);
@@ -129,7 +155,7 @@ test.describe("Home (manager)", () => {
     await signInAs(page, "manager", "/?demo=offline");
     await expect(page.getByRole("status")).toContainText("No signal");
     await expect(page.getByRole("status")).toContainText("saved on this device");
-    await expect(page.getByText(/^Figures from Mon 28 Sep, 6:20 am\./)).toBeVisible();
+    await expect(page.getByText(/^Figures from Mon 28 Sep, 6:20 am\.$/)).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "Needs attention" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "Active jobs" })).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
@@ -138,14 +164,31 @@ test.describe("Home (manager)", () => {
   test("?demo=attention: a failed entry shows as a danger badge beside the title and as a Needs attention row", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "manager", "/?demo=attention");
-    await expectBadgeBesideTitle(page, "1 needs attention");
+    await expectBadgeBesideTitle(page, "1 entry needs attention");
     const item = page.getByRole("link", { name: "1 entry on this device needs attention." });
     await expect(item).toBeVisible();
-    // Only seven are listed; the rest are counted, not linked.
-    await expect(page.getByText(/^\d+ more things? to check$/)).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
     await item.click();
     await expect(page).toHaveURL(/\/outbox/);
+  });
+
+  test("Show N more opens the rest of Needs attention in place", async ({ page }) => {
+    await signInAs(page, "manager", "/?demo=attention");
+    const section = page.locator('[data-screen="home"] section', { has: page.getByRole("heading", { level: 2, name: "Needs attention" }) });
+    await expect(section.getByRole("link")).toHaveCount(7);
+    const more = section.getByRole("button", { name: /^Show \d+ more$/ });
+    expect((await more.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+    await more.click();
+    await expect(section.getByRole("button", { name: "Show fewer" })).toHaveAttribute("aria-expanded", "true");
+    expect(await section.getByRole("link").count()).toBeGreaterThan(7);
+    await expect(section.getByRole("link", { name: /under the award/ })).toBeVisible();
+    await expect(page).toHaveURL(/demo=attention/);
+  });
+
+  test("the failed-entry row uses the red icon, like the badge", async ({ page }) => {
+    await signInAs(page, "manager", "/?demo=attention");
+    const row = page.getByRole("link", { name: "1 entry on this device needs attention." });
+    await expect(row.locator("svg").first()).toHaveClass(/text-over/);
   });
 
   test("?demo=waiting: the badge reads N to send beside the title", async ({ page }) => {
@@ -160,6 +203,23 @@ test.describe("Home (manager)", () => {
       .getByRole("link");
     expect(await items.count()).toBeLessThanOrEqual(7);
     expect(await items.count()).toBeGreaterThan(0);
+  });
+
+  test("desktop: Home starts at the same left edge in every state and role", async ({ page }, testInfo) => {
+    test.skip(isPhone(testInfo.project.name), "desktop only");
+    const xs: number[] = [];
+    for (const [role, next] of [
+      ["manager", "/"],
+      ["manager", "/?demo=empty"],
+      ["manager", "/?demo=error"],
+      ["foreman", "/"],
+      ["foreman", "/?demo=error"],
+      ["foreman", "/?demo=loading"],
+    ] as const) {
+      await signInAs(page, role, next);
+      xs.push((await page.getByRole("heading", { level: 1, name: "Home" }).boundingBox())!.x);
+    }
+    expect(new Set(xs.map(Math.round)).size).toBe(1);
   });
 
   test("the column is centred and no wider than 720 px on a tablet-sized window", async ({ page }, testInfo) => {
@@ -202,6 +262,15 @@ test.describe("Home (foreman)", () => {
     await expect(page.getByText("Mon 28 Sep")).toBeVisible();
     await expect(page.locator('[data-screen="home"] p.text-figure-xl')).toHaveText("Not logged yet today");
     await expect(page.getByRole("link", { name: "Log today" })).toBeVisible();
+    // Log today is a plain button right under the status, in the page flow (not a pinned bar).
+    const [key, btn, next] = await Promise.all([
+      page.locator('[data-screen="home"] p.text-figure-xl').boundingBox(),
+      page.getByRole("link", { name: "Log today" }).boundingBox(),
+      page.getByRole("heading", { level: 2, name: "On this device" }).boundingBox(),
+    ]);
+    expect(btn!.y).toBeGreaterThan(key!.y);
+    expect(btn!.y).toBeLessThan(next!.y);
+    await expect(page.locator('[data-slot="primary-action"]')).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 2, name: "On this device" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Everything on this device has been sent." })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "Your jobs" })).toBeVisible();
@@ -211,19 +280,6 @@ test.describe("Home (foreman)", () => {
     await expect(smith).toContainText(/Last logged|Logged today/);
     expect(await page.locator("body").innerText()).not.toMatch(MONEY_TEXT);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
-  });
-
-  test("Log today is pinned above the tab bar on a phone and never hides the last job", async ({ page }, testInfo) => {
-    test.skip(!isPhone(testInfo.project.name), "the bar is fixed on a phone only");
-    await signInAs(page, "foreman");
-    const bar = page.locator('[data-slot="primary-action"]');
-    const tabs = page.getByRole("navigation", { name: "Primary" });
-    await expect(bar.getByRole("link", { name: "Log today" })).toBeInViewport();
-    const [b, t] = await Promise.all([bar.boundingBox(), tabs.boundingBox()]);
-    expect(b!.y + b!.height).toBeLessThanOrEqual(t!.y + 2);
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    const last = (await page.getByRole("link", { name: /progress|Sheet|Flashings|Tile/ }).last().boundingBox())!;
-    expect(last.y + last.height).toBeLessThanOrEqual(b!.y + 2);
   });
 
   test("Log today opens Log", async ({ page }) => {
@@ -256,12 +312,16 @@ test.describe("Home (foreman)", () => {
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog, skip: { axe: true } });
   });
 
-  test("?demo=error keeps Home and Log today on screen, with Try again and no Go to Home", async ({ page }) => {
+  test("?demo=error keeps Home on screen: Try again is the primary, Log today the secondary", async ({ page }) => {
     await signInAs(page, "foreman", "/?demo=error");
     await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "Couldn't load your jobs" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Log today" })).toBeVisible();
+    const retry = page.getByRole("button", { name: "Try again" });
+    await expect(retry).toBeVisible();
+    await expect(retry).toHaveClass(/bg-chalk/);
+    const log = page.getByRole("link", { name: "Log today" });
+    await expect(log).toBeVisible();
+    await expect(log).not.toHaveClass(/bg-chalk/);
     await expect(page.getByRole("link", { name: "Go to Home" })).toHaveCount(0);
   });
 
@@ -271,10 +331,11 @@ test.describe("Home (foreman)", () => {
     await expect(page.getByRole("link", { name: "Back to Log" })).toBeVisible();
   });
 
-  test("?demo=offline shows the banner and Log today still works", async ({ page }, testInfo) => {
+  test("?demo=offline shows the banner, when the progress is from, and Log today still works", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "foreman", "/?demo=offline");
     await expect(page.getByRole("status")).toContainText("No signal");
+    await expect(page.getByText(/^Progress from Mon 28 Sep, 6:20 am\.$/)).toBeVisible();
     await expect(page.getByRole("link", { name: "Log today" })).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
@@ -283,6 +344,8 @@ test.describe("Home (foreman)", () => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "foreman", "/?demo=waiting");
     await expectBadgeBesideTitle(page, "3 to send");
+    // The Outbox tab (or sidebar item) carries the count too.
+    await expect(page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: /Outbox/ })).toContainText("3");
     const status = page.getByRole("link", { name: "3 entries are waiting to send." });
     await expect(status).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
@@ -293,7 +356,7 @@ test.describe("Home (foreman)", () => {
   test("?demo=attention: N needs attention beside the title and in the status row", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "foreman", "/?demo=attention");
-    await expectBadgeBesideTitle(page, "1 needs attention");
+    await expectBadgeBesideTitle(page, "1 entry needs attention");
     await expect(page.getByRole("link", { name: "1 entry needs attention." })).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });

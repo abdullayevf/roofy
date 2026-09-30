@@ -86,8 +86,8 @@ export function outboxStatus(items: { state: OutboxState }[]): OutboxStatus {
   return { tone: "clear", text: "Everything on this device has been sent." };
 }
 
-/** "3 more things to check": what the 7-item cap left off Needs attention. */
-export const moreAttentionText = (n: number): string => (n === 1 ? "1 more thing to check" : `${n} more things to check`);
+/** The row that expands Needs attention past its 7: "Show 3 more". */
+export const showMoreText = (n: number): string => `Show ${n} more`;
 
 /** The foreman Home's lead line: whether today's crew is logged. */
 export function logStatusText(logged: { jobs: string[]; crewCount: number }): string {

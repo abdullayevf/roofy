@@ -183,7 +183,7 @@ test.describe("demo states in the shell", () => {
     await page.goto("/?demo=waiting");
     await expect(page.getByRole("link", { name: "3 to send" })).toBeVisible();
     await page.goto("/?demo=attention");
-    await expect(page.getByRole("link", { name: "1 needs attention" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "1 entry needs attention" })).toBeVisible();
     await page.goto("/");
     await expect(page.getByRole("link", { name: /to send/ })).toHaveCount(0);
   });

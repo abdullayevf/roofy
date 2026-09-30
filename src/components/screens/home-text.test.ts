@@ -5,7 +5,7 @@ import {
   daysSinceText,
   jobAlertText,
   logStatusText,
-  moreAttentionText,
+  showMoreText,
   outboxStatus,
   payFlagsText,
   stageLine,
@@ -123,10 +123,10 @@ describe("outboxStatus", () => {
   });
 });
 
-describe("moreAttentionText", () => {
+describe("showMoreText", () => {
   it("counts the items left off", () => {
-    expect(moreAttentionText(1)).toBe("1 more thing to check");
-    expect(moreAttentionText(3)).toBe("3 more things to check");
+    expect(showMoreText(1)).toBe("Show 1 more");
+    expect(showMoreText(3)).toBe("Show 3 more");
   });
 });
 

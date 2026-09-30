@@ -122,7 +122,8 @@ export function createHomeService(c: FakeContext): HomeService {
       items.push({
         id: "outbox_attention",
         kind: "outbox_attention",
-        severity: "watch",
+        // A failed entry is something a person must act on: red, like the badge that counts it.
+        severity: "over",
         href: "/outbox",
         count: outbox.length,
       });
@@ -223,6 +224,12 @@ export function createHomeService(c: FakeContext): HomeService {
     return { jobs, crewCount: new Set(logs.map((l) => l.crewMemberId)).size };
   }
 
+  /** When the figures were read: now, or 40 minutes ago offline (the last time the phone loaded them). */
+  function asOf(): string {
+    const now = c.now();
+    return (c.options.demo === "offline" ? new Date(now.getTime() - 40 * 60_000) : now).toISOString();
+  }
+
   function payPeriod(): PayPeriodFigures | null {
     const review = c.fig.reviewRun();
     if (!review) return null;
@@ -263,6 +270,8 @@ export function createHomeService(c: FakeContext): HomeService {
           view: "foreman",
           access: FIELD_ACCESS,
           today,
+          asOf: asOf(),
+          timeZone: c.t.workspace.timezone,
           jobs,
           loggedToday: loggedToday(visible),
           logToday: { href: "/log", projectId: jobs.length === 1 ? jobs[0]!.projectId : null },
@@ -272,15 +281,13 @@ export function createHomeService(c: FakeContext): HomeService {
       const current = c.fig.periodContaining(today);
       const lastWeek = c.fig.periodContaining(addDays(current.start, -1));
       const attention = allAttention(lastWeek);
-      const now = c.now();
       return {
         view: "manager",
         access,
         today,
         needsAttention: attention.slice(0, ATTENTION_LIMIT),
-        needsAttentionMore: Math.max(0, attention.length - ATTENTION_LIMIT),
-        // Offline, the figures are the last ones the phone loaded: 40 minutes ago in the demo.
-        asOf: c.options.demo === "offline" ? new Date(now.getTime() - 40 * 60_000).toISOString() : now.toISOString(),
+        moreAttention: attention.slice(ATTENTION_LIMIT),
+        asOf: asOf(),
         timeZone: c.t.workspace.timezone,
         activeJobs: activeJobs(),
         lastWeek: lastWeekFigures(lastWeek),

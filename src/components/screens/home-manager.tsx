@@ -1,22 +1,23 @@
 import type { ActiveJobRow, HomeManager } from "@/data/contracts";
 import type { Unit } from "@/domain/types";
-import { formatDate, formatDateTime, formatHours, formatMoney, formatQuantity } from "@/lib/format";
+import { WarningCircle, WarningDiamond } from "@phosphor-icons/react/dist/ssr";
+import { formatDate, formatDateTime, formatMoney, formatRoundedQuantity } from "@/lib/format";
 import { cx } from "@/lib/cx";
 import { EmptyState } from "@/components/empty-state";
-import { NeedsAttentionItem } from "@/components/needs-attention-item";
 import { Button } from "@/components/ui/button";
 import { List, type ListRow } from "@/components/ui/list";
 import { MoneyCell } from "@/components/ui/money-cell";
 import { Skeleton } from "@/components/ui/skeleton";
-import { attentionSentence, jobAlertText, moreAttentionText, payFlagsText, stageLine } from "./home-text";
-import { COLUMN, GROUP, HomeTitle, JobCard, KeyFigure, Section, whole } from "./home-parts";
+import { attentionSentence, jobAlertText, payFlagsText, showMoreText, stageLine } from "./home-text";
+import { AttentionList } from "./attention-list";
+import { COLUMN, GROUP, HomeTitle, JobCard, JobCardSkeleton, KeyFigure, Section, whole } from "./home-parts";
 
 const figure = (text: string) => <span className="whitespace-nowrap text-figure num text-ink">{text}</span>;
 
 const UNIT_ORDER: { unit: Unit; label: string }[] = [
-  { unit: "m2", label: "m²" },
-  { unit: "lm", label: "lm" },
-  { unit: "each", label: "each" },
+  { unit: "m2", label: "Area installed" },
+  { unit: "lm", label: "Length installed" },
+  { unit: "each", label: "Items installed" },
 ];
 
 /** "4 days ago" for the card's Last log line. */
@@ -31,9 +32,10 @@ function JobRow({ job }: { job: ActiveJobRow }) {
     <JobCard
       href={job.href}
       name={job.name}
-      lines={[stageLine(job.currentStages), "Whole job"]}
+      lines={[stageLine(job.currentStages)]}
       tape={{
         label: `${job.name} progress`,
+        scope: "Whole job",
         percent: whole(job.pctBp),
         tone: alert?.tone,
         note: alert?.text,
@@ -41,7 +43,7 @@ function JobRow({ job }: { job: ActiveJobRow }) {
         forecastLabel: forecast === undefined ? undefined : "Forecast",
       }}
     >
-      <dl className="mt-2 grid max-w-md grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-1">
+      <dl className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-1">
         <dt className="text-meta text-ink">Labour so far</dt>
         <dd className="text-right text-figure num text-ink">
           {formatMoney(job.labourActualCents)} of {formatMoney(job.labourBudgetCents)}
@@ -61,15 +63,15 @@ function lastWeekRows(home: HomeManager): ListRow[] {
     (u) => u.quantity !== 0,
   );
   return [
-    { key: "hours", primary: "Hours", figure: figure(formatHours(w.hours)) },
+    { key: "hours", primary: "Hours", figure: figure(formatRoundedQuantity(w.hours, "h")) },
     { key: "days", primary: "Crew-days", figure: figure(String(w.crewDays)) },
     // One row per unit, so each figure stays on one line.
     ...(installed.length === 0
       ? [{ key: "installed", primary: "Installed", figure: figure("None") }]
       : installed.map((u) => ({
           key: `installed-${u.unit}`,
-          primary: `Installed (${u.label})`,
-          figure: figure(formatQuantity(u.quantity, "each")),
+          primary: u.label,
+          figure: figure(formatRoundedQuantity(u.quantity, u.unit)),
         }))),
     { key: "expenses", primary: "Expenses", figure: <MoneyCell cents={w.expensesCents} />, href: "/expenses" },
     {
@@ -116,25 +118,25 @@ export function HomeManagerBody({ home, role, outbox, offline }: HomeManagerProp
     return (
       <div data-screen="home" className={COLUMN}>
         <HomeTitle {...outbox} />
-        <EmptyState message="No jobs yet. Add your first job." actionLabel="Add a job" href="/jobs/new" />
+        <EmptyState message="No jobs yet. Add your first job." actionLabel="Add your first job" href="/jobs/new" />
       </div>
     );
   }
   const week = home.lastWeek;
   const pay = home.payPeriod;
+  const rowOf = (item: HomeManager["needsAttention"][number]) => ({
+    id: item.id,
+    severity: item.severity,
+    sentence: attentionSentence(item, home.today),
+    href: item.href,
+  });
   return (
     <div data-screen="home" className={cx(COLUMN, "lg:max-w-5xl")}>
       <header className="flex flex-col gap-1">
         <HomeTitle {...outbox} />
         {offline ? (
-          <p className="text-body-strong text-ink">
-            Figures from {formatDateTime(home.asOf, home.timeZone, home.today)}. They update when you&rsquo;re back online.
-          </p>
+          <p className="text-meta text-ink">Figures from {formatDateTime(home.asOf, home.timeZone, home.today)}.</p>
         ) : null}
-        <p className="text-meta text-ink">
-          Labour last week, {formatDate(week.period.start, home.today)} to {formatDate(week.period.end, home.today)}
-        </p>
-        <KeyFigure>{formatMoney(week.labourCostCents)}</KeyFigure>
       </header>
 
       <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-10">
@@ -144,24 +146,18 @@ export function HomeManagerBody({ home, role, outbox, offline }: HomeManagerProp
               <p className="text-body text-ink">Nothing needs your attention today.</p>
             ) : (
               <div className={GROUP}>
-                {home.needsAttention.map((item) => (
-                  <NeedsAttentionItem
-                    key={item.id}
-                    severity={item.severity}
-                    sentence={attentionSentence(item, home.today)}
-                    href={item.href}
-                  />
-                ))}
-                {home.needsAttentionMore > 0 ? (
-                  <p className="px-4 py-3 text-meta text-ink">{moreAttentionText(home.needsAttentionMore)}</p>
-                ) : null}
+                <AttentionList
+                  rows={home.needsAttention.map(rowOf)}
+                  more={home.moreAttention.map(rowOf)}
+                  showMoreLabel={showMoreText(home.moreAttention.length)}
+                />
               </div>
             )}
           </Section>
 
           <Section title="Active jobs">
             {home.activeJobs.length === 0 ? (
-              <EmptyState message="No jobs yet. Add your first job." actionLabel="Add a job" href="/jobs/new" />
+              <EmptyState message="No jobs yet. Add your first job." actionLabel="Add your first job" href="/jobs/new" />
             ) : (
               <div className={GROUP}>
                 {home.activeJobs.map((job) => (
@@ -174,17 +170,26 @@ export function HomeManagerBody({ home, role, outbox, offline }: HomeManagerProp
 
         <div className="flex flex-col gap-8 lg:gap-10">
           <Section title="Last week">
+            <p className="text-meta text-ink">
+              Labour, {formatDate(week.period.start, home.today)} to {formatDate(week.period.end, home.today)}
+            </p>
+            <KeyFigure>{formatMoney(week.labourCostCents)}</KeyFigure>
             <List rows={lastWeekRows(home)} />
           </Section>
           {pay ? (
             <Section title="This pay period">
               <List rows={payRows(home)} />
               {pay.flagCount > 0 ? (
-                <p className={cx("text-body-strong", pay.blocking ? "text-over" : "text-watch")}>
-                  {payFlagsText(pay.flagCount, pay.blocking, role)}
+                <p className={cx("flex items-start gap-2 text-body-strong", pay.blocking ? "text-over" : "text-watch")}>
+                  {pay.blocking ? (
+                    <WarningCircle size={24} aria-hidden="true" className="shrink-0" />
+                  ) : (
+                    <WarningDiamond size={24} aria-hidden="true" className="shrink-0" />
+                  )}
+                  <span>{payFlagsText(pay.flagCount, pay.blocking, role)}</span>
                 </p>
               ) : null}
-              <Button variant="secondary" href={pay.href}>
+              <Button variant="secondary" href={pay.href} className="sm:self-start">
                 {role === "accountant" ? "Open pay run" : "Review pay run"}
               </Button>
             </Section>
@@ -209,15 +214,13 @@ function SkeletonGroup({ rows, height }: { rows: number; height: number }) {
 
 /**
  * Home while it loads (`?demo=loading`): the title and headings are real, only the fetched figures are blocks,
- * sized like what replaces them (56 px attention rows, 208 px job cards, 64 px list rows) so nothing jumps.
+ * shaped like what replaces them (56 px attention rows, job cards, 64 px list rows) so nothing jumps.
  */
 export function HomeSkeleton() {
   return (
     <div data-screen="home" aria-busy="true" className={cx(COLUMN, "lg:max-w-5xl")}>
-      <header className="flex flex-col gap-2">
-        <h1 className="text-title text-ink">Home</h1>
-        <Skeleton width={220} height={20} />
-        <Skeleton width={180} height={44} />
+      <header className="flex flex-col gap-1">
+        <HomeTitle waiting={0} attention={0} />
       </header>
       <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-10">
         <div className="flex flex-col gap-8 lg:gap-10">
@@ -225,11 +228,17 @@ export function HomeSkeleton() {
             <SkeletonGroup rows={3} height={56} />
           </Section>
           <Section title="Active jobs">
-            <SkeletonGroup rows={2} height={208} />
+            <div className={cx(GROUP, "overflow-hidden")}>
+              {[0, 1].map((i) => (
+                <JobCardSkeleton key={i} lines={1} figures={3} />
+              ))}
+            </div>
           </Section>
         </div>
         <div className="flex flex-col gap-8 lg:gap-10">
           <Section title="Last week">
+            <Skeleton width={220} height={16} />
+            <Skeleton width={180} height={44} />
             <SkeletonGroup rows={5} height={64} />
           </Section>
           <Section title="This pay period">

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import {
   Briefcase,
+  GearSix,
+  Receipt,
   ChartBar,
   CurrencyCircleDollar,
   House,
@@ -39,12 +41,21 @@ const ITEMS: Record<SidebarRole, Item[]> = {
   ],
 };
 
+const MANAGE_ICON: Record<string, PhosphorIcon> = {
+  expenses: Receipt,
+  pay: CurrencyCircleDollar,
+  reports: ChartBar,
+  settings: GearSix,
+};
+
 export type SidebarProps = {
   role: SidebarRole;
   active: string;
   workspaceName: string;
   /** Extra text-only items beneath the icon items (the desktop shell's manager pages), under a "Manage" label. */
   extra?: { key: string; label: string; href: string }[];
+  /** Entries on this device waiting or failed: a count chip on the Outbox item. */
+  outboxCount?: number;
   /** Key of the active extra item. */
   activeExtra?: string;
   /** Demo-only: forces the focus ring on one item (by key) so it shows up in a static screenshot. */
@@ -64,6 +75,7 @@ export function Sidebar({
   workspaceName,
   extra,
   activeExtra,
+  outboxCount = 0,
   focusKey,
   className,
 }: SidebarProps) {
@@ -92,6 +104,12 @@ export function Sidebar({
             {isActive ? <ActiveBar /> : null}
             <Glyph size={24} weight={isActive ? "fill" : "regular"} aria-hidden="true" />
             {item.label}
+            {item.key === "outbox" && outboxCount > 0 ? (
+              <span className="ml-auto flex min-w-6 items-center justify-center rounded-full bg-tape px-2 text-meta text-on-tape">
+                <span aria-hidden="true">{outboxCount}</span>
+                <span className="sr-only">{outboxCount} to send</span>
+              </span>
+            ) : null}
           </Link>
         );
       })}
@@ -100,6 +118,7 @@ export function Sidebar({
           <p className="mb-1 mt-4 px-3 text-meta text-ink-2">Manage</p>
           {extra.map((item) => {
             const isActive = item.key === activeExtra;
+            const Glyph = MANAGE_ICON[item.key] ?? Receipt;
             return (
               <Link
                 key={item.key}
@@ -107,12 +126,13 @@ export function Sidebar({
                 prefetch={false}
                 aria-current={isActive ? "page" : undefined}
                 className={cx(
-                  "relative flex min-h-12 items-center rounded-control pl-12 pr-3 text-body-strong text-ink",
+                  "relative flex min-h-12 items-center gap-3 rounded-control px-3 text-body-strong text-ink",
                   isActive && "bg-galv",
                   focusRing(false),
                 )}
               >
                 {isActive ? <ActiveBar /> : null}
+                <Glyph size={24} weight={isActive ? "fill" : "regular"} aria-hidden="true" />
                 {item.label}
               </Link>
             );
