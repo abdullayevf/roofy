@@ -208,9 +208,10 @@ body {
 /*
  * DESIGN.md §5: a long form pins its primary action above the tab bar. On a phone it is a bar fixed above the
  * tab bar's box (safe-area aware); from 1024 px it sticks to the bottom of the form column. The page pads its
- * own bottom so the last row is never hidden. The Docket A/B challenger keeps its own top-aligned action.
+ * own bottom so the last row is never hidden.
+ * The page reads the bar's measured height from `--pin-action-height` (set by the screen, 9 rem until measured).
  */
-.pin-action:not([data-direction="challenger"] *) {
+.pin-action {
   position: fixed;
   inset-inline: 0;
   bottom: var(--tab-bar-height);
@@ -220,7 +221,7 @@ body {
   border-top: 1.5px solid var(--ink);
 }
 @media (min-width: 1024px) {
-  .pin-action:not([data-direction="challenger"] *) {
+  .pin-action {
     position: sticky;
     inset-inline: auto;
     bottom: 0;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import type { CrewDayDefaults, GridCrewForeman, GridCrewManager } from "@/data/contracts";
 import type { Hundredths } from "@/domain/types";
@@ -79,6 +79,19 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
   const crew = defaults.crew.map((c) => (justLogged.has(c.crewMemberId) ? { ...c, loggedOnDate: true } : c));
   const ready = project !== null && stage !== null && crew.some((c) => ticked.has(c.crewMemberId) && canLog(c));
 
+  // The pinned bar's height changes with its reason line and error message; the page pads by what it measures.
+  const barRef = useRef<HTMLDivElement>(null);
+  const [barHeight, setBarHeight] = useState("9rem");
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+    const measure = () => setBarHeight(`${Math.ceil(el.getBoundingClientRect().height) + 8}px`);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [saved]);
+
   const go = (url: string) => startNav(() => router.replace(url));
 
   async function save() {
@@ -120,7 +133,8 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
   return (
     <div
       data-screen="log"
-      className={cx("flex flex-col gap-6", WIDTH, saved ? null : error ? "max-lg:pb-44" : "max-lg:pb-24")}
+      style={saved ? undefined : ({ "--pin-action-height": barHeight } as CSSProperties)}
+      className={cx("flex flex-col gap-6", WIDTH, saved ? null : "max-lg:pb-[var(--pin-action-height)]")}
     >
       <h1 className="text-title text-ink">Log</h1>
 
@@ -226,7 +240,7 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
             )}
           </section>
 
-          <div data-slot="primary-action" className="pin-action flex flex-col gap-3">
+          <div ref={barRef} data-slot="primary-action" className="pin-action flex flex-col gap-3">
             {error ? <ErrorMessage>{error}</ErrorMessage> : null}
             <Button
               disabled={!ready}

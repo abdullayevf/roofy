@@ -19,6 +19,28 @@ test.describe("Log crew-day grid", () => {
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
+  for (const width of [360, 390]) {
+    test(`the last crew row clears the pinned Save day bar at ${width} px wide`, async ({ page }, testInfo) => {
+      test.skip(!isPhone(testInfo.project.name), "the bar is only fixed on a phone");
+      await page.setViewportSize({ width, height: 780 });
+      await signInAs(page, "manager");
+      const bar = page.locator('[data-slot="primary-action"]');
+      const lastRow = page.locator('[data-screen="log"] section > div > div').last();
+      const clears = async () => {
+        await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+        const barBox = (await bar.boundingBox())!;
+        const rowBox = (await lastRow.boundingBox())!;
+        expect(rowBox.y + rowBox.height).toBeLessThanOrEqual(barBox.y);
+      };
+      // Disabled with its reason line (the tallest normal state), then enabled.
+      await expect(page.getByText("Choose a job, a stage and at least one person.")).toBeVisible();
+      await clears();
+      await page.getByRole("button", { name: "Same as yesterday" }).click();
+      await expect(page.getByRole("button", { name: "Save day" })).toBeEnabled();
+      await clears();
+    });
+  }
+
   test("Same as yesterday, one half day, Save day: 4 taps after opening Log", async ({ page }) => {
     await signInAs(page, "manager");
     await page.getByRole("button", { name: "Same as yesterday" }).click();
