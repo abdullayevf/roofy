@@ -27,6 +27,7 @@ export const ATTENTION_LIMIT = 7;
  */
 export const ATTENTION_ORDER: readonly AttentionKind[] = [
   "over_budget",
+  "pay_blocked",
   "trending_over",
   "paused_too_long",
   "logging_gaps",
@@ -138,6 +139,22 @@ export function createHomeService(c: FakeContext): HomeService {
         count: outbox.length,
         entries: outbox.map((i) => ({ type: i.entry.type, crewNames: i.crewNames, jobName: i.projectName })),
       });
+    }
+    const blockedRun = fig.reviewRun();
+    if (blockedRun) {
+      // Extends spec §5.9: a pay run that can't be approved (a missing pay rate) is a red row linking to the run.
+      for (const f of fig.run(blockedRun.id).flags) {
+        if (!f.blocking || f.kind !== "missing_rate") continue;
+        items.push({
+          id: `pay_blocked:${blockedRun.id}:${f.crewMemberId ?? "unknown"}`,
+          kind: "pay_blocked",
+          severity: "over",
+          href: `/pay/${blockedRun.id}`,
+          crewMemberId: f.crewMemberId ?? "",
+          name: f.crewName ?? "Someone",
+          payRunId: blockedRun.id,
+        });
+      }
     }
     for (const crew of c.t.crewMembers) {
       const ledger = fig.ledger(crew.id);

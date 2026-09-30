@@ -159,6 +159,14 @@
     var(--tab-bar-body) + var(--tab-bar-raise) + max(var(--sab-sim, 0px), env(safe-area-inset-bottom))
   );
 }
+/* A phone on its side is short: pad an extra 1 rem so the last row and the raised Log circle never share space. */
+@media (orientation: landscape) and (max-height: 500px) {
+  :root {
+    --tab-bar-height: calc(
+      var(--tab-bar-body) + var(--tab-bar-raise) + 1rem + max(var(--sab-sim, 0px), env(safe-area-inset-bottom))
+    );
+  }
+}
 @utility pb-tab-bar {
   padding-bottom: var(--tab-bar-height);
 }

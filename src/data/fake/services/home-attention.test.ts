@@ -48,4 +48,11 @@ describe("sortAttention", () => {
     const sorted = sortAttention([paused, amber(1), outbox, trending, over]);
     expect(sorted.map((i) => i.id)).toEqual(["b", "o", "t", "p", "gap:1"]);
   });
+
+  it("puts a blocked pay run with the red rows, after over budget and before the rest", () => {
+    const blocked = { id: "pb", kind: "pay_blocked", severity: "over", href: "/pay/r", name: "Jake", crewMemberId: "c", payRunId: "r" } as AttentionItem;
+    const over = { ...stage, id: "b", kind: "over_budget", severity: "over", byCents: 50 } as AttentionItem;
+    const trending = { ...stage, id: "t", kind: "trending_over", severity: "watch", byCents: 100 } as AttentionItem;
+    expect(sortAttention([trending, amber(1), blocked, over]).map((i) => i.id)).toEqual(["b", "pb", "t", "gap:1"]);
+  });
 });

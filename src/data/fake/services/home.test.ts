@@ -107,8 +107,8 @@ describe("home (manager)", () => {
   it("more than 7 items: 6 rows plus the rest behind Show N more, so never more than 7 rows", async () => {
     const home = await managerHome("attention");
     expect(home.needsAttention).toHaveLength(6);
-    expect(home.moreAttention.map((i) => i.kind)).toEqual(["unpaid_too_long", "below_floor"]);
-    expect((await managerHome()).moreAttention).toEqual([]);
+    expect(home.moreAttention.map((i) => i.kind)).toEqual(["logging_gaps", "unpaid_too_long", "below_floor"]);
+    expect((await managerHome()).moreAttention.map((i) => i.kind)).toEqual(["unpaid_too_long", "below_floor"]);
   });
 
   it("figures are as of now, or 40 minutes earlier when offline, in the workspace timezone", async () => {
@@ -155,20 +155,26 @@ describe("home (manager)", () => {
             return [i.kind, i.severity, name(i.crewMemberId), i.since];
           case "below_floor":
             return [i.kind, i.severity, name(i.crewMemberId), i.shortfallCents];
+          case "pay_blocked":
+            return [i.kind, i.severity, i.name, i.href];
           default:
             return [i.kind];
         }
       }),
     ).toEqual([
       ["over_budget", "over", "Clean-up", 10000],
+      ["pay_blocked", "over", expect.any(String), expect.stringMatching(/^\/pay\//)],
       ["trending_over", "watch", "Sheet install", 77500],
       ["trending_over", "watch", "Repairs & replacements", 30000],
       ["paused_too_long", "watch", "Coat / paint", "materials"],
       ["logging_gaps", "watch", ["Jake 2026-09-25", "Ravi 2026-09-25", "Nick 2026-09-24,2026-09-25"]],
-      ["unpaid_too_long", "watch", "Kev", "2026-09-07"],
-      ["below_floor", "watch", "Tom", 3203],
     ]);
-    const smith = home.needsAttention[1]!;
+    // 8 items: six rows, then Show 2 more (Kev's balance and Tom's award floor).
+    expect(home.moreAttention.map((i) => [i.kind, "name" in i ? i.name : ""])).toEqual([
+      ["unpaid_too_long", "Kev"],
+      ["below_floor", "Tom"],
+    ]);
+    const smith = home.needsAttention[2]!;
     expect(smith.href).toBe(`/jobs/${seed.meta.projects.smith}/stages/${seed.meta.stages.smithSheetInstall}`);
   });
 
@@ -176,13 +182,13 @@ describe("home (manager)", () => {
     const home = await managerHome("attention");
     expect(home.needsAttention.map((i) => i.kind)).toEqual([
       "over_budget",
+      "pay_blocked",
       "outbox_attention",
       "trending_over",
       "trending_over",
       "paused_too_long",
-      "logging_gaps",
     ]);
-    expect(home.needsAttention[1]).toMatchObject({ severity: "over", count: 1, href: "/outbox" });
+    expect(home.needsAttention[2]).toMatchObject({ severity: "over", count: 1, href: "/outbox" });
   });
 
   it("the outbox row names the entry: what it is, whose, and which job (from the device's own outbox item)", async () => {
@@ -192,6 +198,14 @@ describe("home (manager)", () => {
       count: 1,
       entries: [{ type: "crew_day", crewNames: ["Mick", "Josh"], jobName: expect.stringContaining("Harris") }],
     });
+  });
+
+  it("a pay run that can't be approved is a red row linking to the pay run, named for the person with no rate", async () => {
+    const home = await managerHome();
+    const pay = home.payPeriod!;
+    const row = home.needsAttention.find((i) => i.kind === "pay_blocked");
+    expect(row).toMatchObject({ severity: "over", name: pay.blockers[0]!.crewName, href: pay.href, payRunId: pay.payRunId });
+    expect(home.needsAttention.findIndex((i) => i === row)).toBe(1);
   });
 
   it("the pay period names what blocks approval", async () => {

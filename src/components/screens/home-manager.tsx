@@ -3,12 +3,11 @@ import type { Unit } from "@/domain/types";
 import { WarningCircle, WarningDiamond } from "@phosphor-icons/react/dist/ssr";
 import { formatDate, formatMoney, formatRoundedQuantity } from "@/lib/format";
 import { cx } from "@/lib/cx";
-import { KeepTogether } from "@/components/keep-together";
 import { Button } from "@/components/ui/button";
 import { List, type ListRow } from "@/components/ui/list";
 import { MoneyCell } from "@/components/ui/money-cell";
 import { Skeleton } from "@/components/ui/skeleton";
-import { attentionSentence, figuresFromText, jobAlertText, payFlagsText, showMoreText, stageForecastLine, stageLine } from "./home-text";
+import { attentionSentence, figuresFromText, jobAlertText, overBudgetFigure, payFlagsText, showMoreText, stageLine } from "./home-text";
 import { AttentionList } from "./attention-list";
 import {
   AttentionRowSkeleton,
@@ -42,15 +41,11 @@ function lastLog(days: number | null): string {
 }
 
 function JobRow({ job }: { job: ActiveJobRow }) {
-  const alert = jobAlertText(job.alert, job.alertStageName);
+  const alert = jobAlertText(job.alert, job.alertStageName, job.alertStageForecastCents, job.alertStageBudgetCents);
   // The bar is the whole job, so its marker is the whole job's forecast: shown only when that forecast lands over budget
   // (past the end cap). A stage that is over on its own is the sentence and the stage line, never the marker.
   const wholeJobOver = job.forecastBp !== null && job.forecastBp > 10_000;
   const forecast = wholeJobOver ? whole(job.forecastBp!) : undefined;
-  const stageForecast =
-    alert && job.alertStageName !== null && job.alertStageForecastCents !== null && job.alertStageBudgetCents !== null
-      ? stageForecastLine(job.alertStageName, job.alertStageForecastCents, job.alertStageBudgetCents)
-      : null;
   return (
     <JobCard
       href={job.href}
@@ -66,20 +61,15 @@ function JobRow({ job }: { job: ActiveJobRow }) {
         forecastLabel: forecast === undefined ? undefined : "Forecast",
       }}
     >
-      {stageForecast ? (
-        <p className="mt-1 text-meta text-ink">
-          <KeepTogether text={stageForecast} />
-        </p>
-      ) : null}
-      <dl className={`mt-2 grid ${CARD_BLOCK} grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-1`}>
-        <dt className="text-meta text-ink">Labour so far</dt>
-        <dd className="text-right text-figure num text-ink">
+      <dl className={`mt-2 grid ${CARD_BLOCK} grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-4 gap-y-1`}>
+        <dt className="whitespace-nowrap text-meta text-ink">Labour so far</dt>
+        <dd className="text-right text-figure num text-ink [overflow-wrap:anywhere]">
           {formatMoney(job.labourActualCents)} of {formatMoney(job.labourBudgetCents)}
         </dd>
-        <dt className="text-meta text-ink">Margin</dt>
-        <dd className="text-right text-figure num text-ink">{formatMoney(job.forecastMarginCents)}</dd>
-        <dt className="text-meta text-ink">Last log</dt>
-        <dd className="text-right text-figure num text-ink">{lastLog(job.daysSinceLastLog)}</dd>
+        <dt className="whitespace-nowrap text-meta text-ink">Forecast margin</dt>
+        <dd className="text-right text-figure num text-ink [overflow-wrap:anywhere]">{formatMoney(job.forecastMarginCents)}</dd>
+        <dt className="whitespace-nowrap text-meta text-ink">Last log</dt>
+        <dd className="text-right text-figure num text-ink [overflow-wrap:anywhere]">{lastLog(job.daysSinceLastLog)}</dd>
       </dl>
     </JobCard>
   );
@@ -91,6 +81,7 @@ function lastWeekRows(home: HomeManager): ListRow[] {
     (u) => u.quantity !== 0,
   );
   return [
+    { key: "labour", primary: "Labour", figure: <MoneyCell cents={w.labourCostCents} /> },
     { key: "hours", primary: "Hours", figure: figure(formatRoundedQuantity(w.hours, "h")) },
     { key: "days", primary: "Crew-days", figure: figure(String(w.crewDays)) },
     // One row per unit, so each figure stays on one line.
@@ -151,6 +142,7 @@ export function HomeManagerBody({ home, role, outbox, offline }: HomeManagerProp
     );
   }
   const flagged = home.activeJobs.filter((j) => j.alert !== null).length;
+  const trending = home.activeJobs.filter((j) => j.alert?.level === "trending").length;
   const week = home.lastWeek;
   const pay = home.payPeriod;
   const rowOf = (item: HomeManager["needsAttention"][number]) => ({
@@ -168,10 +160,8 @@ export function HomeManagerBody({ home, role, outbox, offline }: HomeManagerProp
         ) : null}
         {flagged > 0 ? (
           <a href="#needs-attention" className={cx("mt-2 block max-w-fit rounded-control", FOCUS)}>
-            <KeyFigure>{flagged === 1 ? "1 job" : `${flagged} jobs`}</KeyFigure>
-            <span className="block text-meta text-ink">
-              {flagged === 1 ? "is over or trending over its labour budget" : "over or trending over their labour budget"}
-            </span>
+            <KeyFigure>{overBudgetFigure(flagged)}</KeyFigure>
+            {trending > 0 ? <span className="block text-body text-ink">Includes jobs trending over their labour budget.</span> : null}
           </a>
         ) : null}
       </header>
@@ -208,9 +198,8 @@ export function HomeManagerBody({ home, role, outbox, offline }: HomeManagerProp
         <div className="flex flex-col gap-8 lg:gap-10">
           <Section title="Last week">
             <p className="text-meta text-ink">
-              Labour, {formatDate(week.period.start, home.today)} to {formatDate(week.period.end, home.today)}
+              {formatDate(week.period.start, home.today)} to {formatDate(week.period.end, home.today)}
             </p>
-            <p className="text-figure num text-ink">{formatMoney(week.labourCostCents)}</p>
             <List rows={lastWeekRows(home)} reserveChevron />
           </Section>
           {pay ? (
@@ -281,12 +270,9 @@ export function HomeSkeleton() {
         <div className="flex flex-col gap-8 lg:gap-10">
           <Section title="Last week">
             <div className="flex h-5 items-center">
-              <Skeleton width={220} height={14} />
+              <Skeleton width={160} height={14} />
             </div>
-            <div className="flex h-6 items-center">
-              <Skeleton width={140} height={20} />
-            </div>
-            <SkeletonGroup rows={7} row={ListRowSkeleton} />
+            <SkeletonGroup rows={8} row={ListRowSkeleton} />
           </Section>
           <Section title="This pay period">
             <SkeletonGroup rows={4} row={ListRowSkeleton} />

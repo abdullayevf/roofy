@@ -5,7 +5,7 @@ import { formatDate } from "@/lib/format";
 import { cx } from "@/lib/cx";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { daysSinceText, figuresFromText, foremanHeadline, loggedOnDevice, outboxStatus, stageLine, unsentJobIds } from "./home-text";
+import { daysSinceText, jobsFromText, foremanHeadline, loggedOnDevice, outboxStatus, stageLine, unsentJobIds } from "./home-text";
 import {
   COLUMN,
   FOCUS,
@@ -69,7 +69,7 @@ function JobRow({ job, unsent }: { job: ForemanJobRow; unsent: boolean }) {
 export type HomeForemanProps = {
   home: HomeForeman;
   /** This device's own queue (device-local), passed in by the page. */
-  outbox: { state: OutboxState; date: string; entry: { type: string; input: object } }[];
+  outbox: { state: OutboxState; date: string; entry: { type: string; input: object }; projectName?: string | null }[];
   /** No signal: the jobs are the last ones the phone loaded. */
   offline: boolean;
 };
@@ -85,12 +85,17 @@ export function HomeForemanBody({ home, outbox, offline }: HomeForemanProps) {
     return (
       <div data-screen="home" className={COLUMN}>
         <HomeTitle waiting={waiting} attention={attention} />
-        <HomeEmpty message="No jobs yet. Ask your manager to add you to a job. The Log tab needs a job first." />
+        <HomeEmpty message="You can log once your manager adds you to a job." />
         <OnThisDevice outbox={outbox} />
       </div>
     );
   }
-  const headline = foremanHeadline(home.loggedToday, outbox, home.today);
+  const headline = foremanHeadline(
+    home.loggedToday,
+    outbox,
+    home.today,
+    Object.fromEntries(home.jobs.map((j) => [j.projectId, j.name])),
+  );
   // Today is logged on this device already (or a failed entry needs fixing): Log today steps back.
   const stepBack = headline.fix || loggedOnDevice(outbox, home.today);
   const unsent = unsentJobIds(outbox, home.today);
@@ -98,8 +103,9 @@ export function HomeForemanBody({ home, outbox, offline }: HomeForemanProps) {
     <div data-screen="home" className={COLUMN}>
       <header className="flex flex-col gap-1">
         <HomeTitle waiting={waiting} attention={attention} />
-        <p className="text-meta text-ink">{formatDate(home.today, home.today)}</p>
-        {offline ? <p className="text-meta text-ink">{figuresFromText(home.asOf, home.timeZone, home.today)}</p> : null}
+        <p className="text-meta text-ink">
+          {offline ? jobsFromText(home.asOf, home.timeZone, home.today) : formatDate(home.today, home.today)}
+        </p>
         <KeyFigure>{headline.text}</KeyFigure>
         <div className="mt-3 flex flex-col gap-3">
           {headline.fix ? (

@@ -123,7 +123,7 @@ export function TabBar({ role, active, fixed = true, outboxCount = 0, outboxAtte
             href={item.href}
             aria-current={isActive ? "page" : undefined}
             className={cx(
-              "flex min-h-16 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-control px-1 py-2",
+              "flex min-h-16 min-w-0 flex-1 flex-col items-center justify-end gap-1 rounded-control px-1 pb-2 pt-1",
               ring,
             )}
           >

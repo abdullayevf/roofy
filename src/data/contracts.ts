@@ -1000,6 +1000,13 @@ export type AttentionItem =
       shortfallCents: Cents;
     })
   | (AttentionBase & {
+      /** The review pay run can't be approved because this person has no pay rate (red; managers, owners, accountants only). */
+      kind: "pay_blocked";
+      crewMemberId: Id;
+      name: string;
+      payRunId: Id;
+    })
+  | (AttentionBase & {
       kind: "outbox_attention";
       count: number;
       /** What each failed entry is (foreman-safe words only: no rates or amounts). */

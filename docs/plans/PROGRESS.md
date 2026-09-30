@@ -129,3 +129,4 @@ Quality gates stay the same (TDD, per-task review, design loop ≥ 90 with no P0
 - Phase 3: vitest `include` widened to `tests/integration/**`.
 - Phase 9: CI gating of `reuseExistingServer`; dev compose password comment.
 - No target phase: stop-check treats git-quoted paths as code (fails safe, acceptable); stop-check throws outside a git repo.
+- 2026-09-30 — Task 11 iteration 6: spec §5.9's Needs attention list gains one red kind, `pay_blocked`: a review pay run that can't be approved because someone has no pay rate reads "<Name> has no pay rate — this pay run can't be approved." and links to `/pay/<id>`. It sorts with the red rows (after over budget), shows for owner, manager and accountant only, never a foreman. Job cards show one bold sentence per flagged stage with forecast against budget, Home's key figure is "N jobs over budget", and Last week starts with a Labour row.

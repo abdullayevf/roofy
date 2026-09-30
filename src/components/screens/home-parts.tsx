@@ -22,7 +22,7 @@ export const ROW =
 export const HOME_BUTTON = "w-full sm:w-auto sm:min-w-60 sm:self-start";
 
 /** The desktop cap on a job card's tape and figures, so labels stay near values and every right edge is the tape's % slot. */
-export const CARD_BLOCK = "lg:max-w-120";
+export const CARD_BLOCK = "lg:pr-8";
 
 export const whole = (bp: number) => Math.round(bp / 100);
 

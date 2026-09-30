@@ -24,17 +24,18 @@ test.describe("Home (manager)", () => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "manager");
     await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
-    // Key figure under the title.
-    await expect(page.getByText(/^Labour, Mon 21 Sep to Sun 27 Sep/)).toBeVisible();
-    await expect(page.locator('[data-screen="home"] section', { has: page.getByRole("heading", { level: 2, name: "Last week" }) }).locator("p.text-figure")).toHaveText(/^\$[\d,]+\.\d{2}$/);
+    // Last week: its period, then Labour as the first row of the group.
+    await expect(page.getByText(/^Mon 21 Sep to Sun 27 Sep/)).toBeVisible();
+    const lastWeek = page.locator('[data-screen="home"] section', { has: page.getByRole("heading", { level: 2, name: "Last week" }) });
+    await expect(lastWeek.locator("div.divide-y > *").first()).toHaveText(/^Labour\$[\d,]+\.\d{2}$/);
     // Needs attention: the Smith job is trending over on sheet install.
     await expect(page.getByRole("heading", { level: 2, name: "Needs attention" })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Smith job.*trending \$775\.00 over on sheet install/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Smith job.*Sheet install: trending \$775\.00 over budget\./ })).toBeVisible();
     // Active jobs: a card with a tape bar, labour, forecast margin and the last log.
     await expect(page.getByRole("heading", { level: 2, name: "Active jobs" })).toBeVisible();
     const smith = page.getByRole("link", { name: /Smith job/ }).last();
     await expect(smith.getByRole("progressbar")).toBeVisible();
-    await expect(smith.getByText("Margin", { exact: true })).toBeVisible();
+    await expect(smith.getByText("Forecast margin", { exact: true })).toBeVisible();
     await expect(smith.getByText("3 days ago")).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "Last week" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "This pay period" })).toBeVisible();
@@ -50,9 +51,6 @@ test.describe("Home (manager)", () => {
       ys.push((await page.getByRole("heading", { level: 2, name: h }).boundingBox())!.y);
     }
     expect([...ys].sort((a, b) => a - b)).toEqual(ys);
-    // The labour figure heads Last week, not the page.
-    const key = (await page.locator('[data-screen="home"] section', { has: page.getByRole("heading", { level: 2, name: "Last week" }) }).locator("p.text-figure").boundingBox())!;
-    expect(key.y).toBeGreaterThan(ys[2]!);
   });
 
   test("a job card's amounts end at the tape's % slot edge, at every width", async ({ page }) => {
@@ -70,22 +68,37 @@ test.describe("Home (manager)", () => {
     await signInAs(page, "manager");
     const smith = page.getByRole("link", { name: /Smith job/ }).last();
     await expect(smith.getByText("done", { exact: true })).toBeVisible();
-    await expect(smith).toContainText("Sheet install is trending $775.00 over its labour budget.");
-    await expect(smith).toContainText("Sheet install: $4,775.00 forecast of $4,000.00 budget");
+    // One bold sentence with the stage's forecast against its budget; no separate meta line repeats it.
+    await expect(smith).toContainText("Sheet install: $4,775.00 forecast, $775.00 over its $4,000.00 budget");
+    await expect(smith).not.toContainText("forecast of");
     // The stage being over does not put a marker on the whole-job bar (the whole job is under budget).
     await expect(smith.getByTestId("tape-marker")).toHaveCount(0);
     // Amounts are figures, right-aligned; labels are meta.
     const labour = smith.locator("dd").first();
     await expect(labour).toHaveClass(/text-figure/);
     await expect(labour).toHaveCSS("text-align", "right");
-    // "Margin (forecast)" does not fit one line at 390 px, so the label is plain "Margin" (F6, D13).
-    expect((await smith.getByText("Margin", { exact: true }).boundingBox())!.height).toBeLessThan(28);
-    // Desktop: the tape and the label/value block are capped near 480 px.
-    if (!isPhone(testInfo.project.name)) expect((await smith.locator("dl").boundingBox())!.width).toBeLessThanOrEqual(481);
+    // "Forecast margin" fits one line at every width.
+    expect((await smith.getByText("Forecast margin", { exact: true }).boundingBox())!.height).toBeLessThan(28);
     // A job with no flag has no marker and no stage line.
     const harris = page.getByRole("link", { name: /Harris job/ }).last();
     await expect(harris.getByTestId("tape-marker")).toHaveCount(0);
-    await expect(harris).not.toContainText("forecast of");
+    await expect(harris).not.toContainText("forecast,");
+  });
+
+  test("desktop: Active jobs figures end at the same edge as Last week and This pay period, just left of the chevron", async ({ page }, testInfo) => {
+    test.skip(isPhone(testInfo.project.name), "desktop only");
+    await signInAs(page, "manager");
+    const smith = page.getByRole("link", { name: /Smith job/ }).last();
+    const jobs = await smith.locator("dd").first().boundingBox();
+    const chevron = await smith.locator("svg").first().boundingBox();
+    // The gap between a figure and its row's chevron is the same in every group (within 8 px).
+    const jobsGap = chevron!.x - (jobs!.x + jobs!.width);
+    const row = page.getByRole("main").getByRole("link", { name: /^Draft total/ });
+    const figure = (await row.locator(".num").last().boundingBox())!;
+    const rowChevron = (await row.locator("svg").last().boundingBox())!;
+    const payGap = rowChevron.x - (figure.x + figure.width);
+    expect(Math.abs(jobsGap - payGap)).toBeLessThanOrEqual(8);
+    expect(jobsGap).toBeLessThanOrEqual(16);
   });
 
   test("the % slot has the same left edge on every job card, caption beside the figure", async ({ page }) => {
@@ -99,8 +112,9 @@ test.describe("Home (manager)", () => {
 
   test("the key figure counts jobs over or trending over and jumps to Needs attention", async ({ page }) => {
     await signInAs(page, "manager");
-    const link = page.getByRole("link", { name: /^\d+ jobs? .*labour budget/ });
-    await expect(link).toContainText("over or trending over their labour budget");
+    const link = page.getByRole("link", { name: /^\d+ jobs? over budget/ });
+    await expect(link.locator("p")).toHaveText(/^\d+ jobs? over budget$/);
+    await expect(link).toContainText("Includes jobs trending over their labour budget.");
     await expect(link).toHaveAttribute("href", "#needs-attention");
     // Directly under the title, above Needs attention.
     const [title, fig, section] = await Promise.all([
@@ -113,10 +127,10 @@ test.describe("Home (manager)", () => {
     await expect(link.locator("p")).toHaveClass(/text-figure-xl/);
   });
 
-  test("Last week's total is a figure, not a second hero; the paused row reads as one sentence", async ({ page }) => {
+  test("Last week's total is a row, not a second hero; the paused row reads as one sentence", async ({ page }) => {
     await signInAs(page, "manager");
     await expect(page.locator('[data-screen="home"] p.text-figure-xl')).toHaveCount(1);
-    await expect(page.getByRole("link", { name: "Coat / paint on Ryde heritage: paused 11 working days, waiting on materials." })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Ryde heritage — Coat / paint: paused 11 working days, waiting on materials." })).toBeVisible();
   });
 
   test("the pay note names what stops approval; offline it says Review pay run needs signal", async ({ page }) => {
@@ -125,6 +139,14 @@ test.describe("Home (manager)", () => {
     await expect(page.getByText("Needs signal to approve.")).toHaveCount(0);
     await signInAs(page, "manager", "/?demo=offline");
     await expect(page.getByText("Needs signal to approve.")).toBeVisible();
+  });
+
+  test("a pay run that can't be approved is a red row second in Needs attention, linking to the pay run", async ({ page }) => {
+    await signInAs(page, "manager");
+    const links = page.locator('[data-screen="home"] section', { has: page.getByRole("heading", { level: 2, name: "Needs attention" }) }).getByRole("link");
+    await expect(links.nth(1)).toHaveText(/^\w+ has no pay rate — this pay run can't be approved\.$/);
+    await expect(links.nth(1)).toHaveAttribute("href", /^\/pay\//);
+    await expect(links.nth(1).locator("svg").first()).toHaveClass(/text-over/);
   });
 
   test("Last week and This pay period rows tap through", async ({ page }) => {
@@ -228,7 +250,7 @@ test.describe("Home (manager)", () => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "manager", "/?demo=attention");
     await expectBadgeBesideTitle(page, "1 entry needs attention");
-    const item = page.getByRole("link", { name: /^Mick and Josh's hours for .*Harris.* didn't send\. Tap to fix\.$/ });
+    const item = page.getByRole("link", { name: /^.*Harris.*: Mick and Josh's hours didn't send\. Tap to fix\.$/ });
     await expect(item).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
     await item.click();
@@ -239,22 +261,23 @@ test.describe("Home (manager)", () => {
     await signInAs(page, "manager", "/?demo=attention");
     const section = page.locator('[data-screen="home"] section', { has: page.getByRole("heading", { level: 2, name: "Needs attention" }) });
     await expect(section.getByRole("link")).toHaveCount(6);
-    const more = section.getByRole("button", { name: "Show 2 more" });
+    const more = section.getByRole("button", { name: "Show 3 more" });
     expect((await more.boundingBox())!.height).toBeGreaterThanOrEqual(48);
-    // Red first: the over-budget row, then the failed entry, then the amber rows.
+    // Red first: the over-budget row, the pay run that can't be approved, the failed entry, then the amber rows.
     const links = section.getByRole("link");
-    await expect(links.nth(0)).toContainText("over on clean-up");
-    await expect(links.nth(1)).toContainText("Mick and Josh's hours for");
+    await expect(links.nth(0)).toContainText("Clean-up: $100.00 over budget");
+    await expect(links.nth(1)).toContainText("has no pay rate");
+    await expect(links.nth(2)).toContainText("Mick and Josh's hours didn't send");
     await more.click();
     await expect(section.getByRole("button", { name: "Show fewer" })).toHaveAttribute("aria-expanded", "true");
-    await expect(section.getByRole("link")).toHaveCount(8);
+    await expect(section.getByRole("link")).toHaveCount(9);
     await expect(section.getByRole("link", { name: /under the award/ })).toBeVisible();
     await expect(page).toHaveURL(/demo=attention/);
   });
 
   test("the failed-entry row uses the red icon, like the badge", async ({ page }) => {
     await signInAs(page, "manager", "/?demo=attention");
-    const row = page.getByRole("link", { name: /^Mick and Josh's hours for .*Harris.* didn't send\. Tap to fix\.$/ });
+    const row = page.getByRole("link", { name: /^.*Harris.*: Mick and Josh's hours didn't send\. Tap to fix\.$/ });
     await expect(row.locator("svg").first()).toHaveClass(/text-over/);
   });
 
@@ -357,6 +380,24 @@ test.describe("Home (foreman)", () => {
     expect(Math.abs(loading - loaded)).toBeLessThan(2);
   });
 
+  test("desktop: the single column is at most 720 px and starts where the manager's does", async ({ page }, testInfo) => {
+    test.skip(isPhone(testInfo.project.name), "desktop only");
+    await signInAs(page, "foreman");
+    const foreman = (await page.locator('[data-screen="home"]').boundingBox())!;
+    expect(foreman.width).toBeLessThanOrEqual(721);
+    await signInAs(page, "manager");
+    expect(Math.abs((await page.locator('[data-screen="home"]').boundingBox())!.x - foreman.x)).toBeLessThan(2);
+  });
+
+  test("phone: every tab label shares one baseline, Log's included", async ({ page }, testInfo) => {
+    test.skip(!isPhone(testInfo.project.name), "phone only");
+    await signInAs(page, "foreman");
+    const nav = page.getByRole("navigation", { name: "Primary" });
+    const bottoms = await nav.locator("a > span:last-child").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().bottom)));
+    expect(bottoms.length).toBe(4);
+    expect(new Set(bottoms).size).toBe(1);
+  });
+
   test("Log today opens Log", async ({ page }) => {
     await signInAs(page, "foreman");
     await page.getByRole("link", { name: "Log today" }).click();
@@ -369,10 +410,10 @@ test.describe("Home (foreman)", () => {
     await expect(page.getByRole("navigation", { name: "Primary" }).locator('[aria-current="page"]')).toHaveText("Home");
   });
 
-  test("?demo=empty: says the Log tab needs a job, keeps On this device, no Log today", async ({ page }, testInfo) => {
+  test("?demo=empty: says when logging opens up, keeps On this device, no Log today", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "foreman", "/?demo=empty");
-    await expect(page.getByText("No jobs yet. Ask your manager to add you to a job. The Log tab needs a job first.")).toBeVisible();
+    await expect(page.getByText("You can log once your manager adds you to a job.")).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "On this device" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Log today" })).toHaveCount(0);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
@@ -412,14 +453,13 @@ test.describe("Home (foreman)", () => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "foreman", "/?demo=offline");
     await expect(page.getByRole("status")).toContainText("No signal");
-    // One line: the date and when the phone last loaded (no second date).
-    await expect(page.getByText(/^Mon 28 Sep$/)).toBeVisible();
-    await expect(page.getByText(/^Figures from 6:20 am\.$/)).toBeVisible();
+    // One line: the date and when the phone last loaded the jobs.
+    await expect(page.getByText(/^Mon 28 Sep\. Jobs from 6:20 am\.$/)).toBeVisible();
     await expect(page.getByRole("link", { name: "Log today" })).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
-  test("?demo=waiting: N to send beside the title, the same words in the status row", async ({ page }, testInfo) => {
+  test("?demo=waiting: N to send beside the title, the bare count in the status row", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "foreman", "/?demo=waiting");
     await expectBadgeBesideTitle(page, "3 to send");
@@ -433,7 +473,7 @@ test.describe("Home (foreman)", () => {
     await expect(page.getByRole("link", { name: /Smith job/ }).last()).toContainText("Logged today, not sent yet");
     // The Outbox tab (or sidebar item) carries the count too.
     await expect(page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: /Outbox/ })).toContainText("3");
-    const status = page.getByRole("link", { name: "3 entries are waiting to send." });
+    const status = page.getByRole("link", { name: "3 entries", exact: true });
     await expect(status).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
     await status.click();
@@ -444,9 +484,9 @@ test.describe("Home (foreman)", () => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "foreman", "/?demo=attention");
     await expectBadgeBesideTitle(page, "1 entry needs attention");
-    await expect(page.getByRole("link", { name: "1 entry needs attention." })).toBeVisible();
+    await expect(page.getByRole("link", { name: "1 needs attention", exact: true })).toBeVisible();
     // A failed entry outranks everything: the headline says so and the main button fixes it.
-    await expect(page.locator('[data-screen="home"] p.text-figure-xl')).toHaveText("1 entry needs fixing");
+    await expect(page.locator('[data-screen="home"] p.text-figure-xl')).toHaveText(/^Today's crew-day for .+ didn't send$/);
     const fix = page.getByRole("link", { name: "Fix entry" });
     await expect(fix).toHaveClass(/bg-chalk/);
     await expect(fix).toHaveAttribute("href", "/outbox");
