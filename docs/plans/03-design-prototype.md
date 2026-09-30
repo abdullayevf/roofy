@@ -160,9 +160,9 @@ opus: Tasks 5, 6, 7 (data contracts, foreman DTO hiding, domain-derived figures,
 
 **Files:** `src/app/design/challenger/{home,log}/page.tsx` (temporary), challenger tokens under `[data-direction="challenger"]` in `tokens.css`, `docs/design/loop/DECISIONS.md`.
 
-- [ ] Build Home (manager) and Log crew-day first in Galvanised (they are Task 12/13's screens — build them here to production quality), then a deliberately different challenger ("Docket": paper white, black ink, one signal-red accent, dense table-like rows, top-aligned actions) using the same components with challenger tokens.
-- [ ] Capture both (phone + desktop, light), label A/B randomly, give both critics the pair blind; each picks a winner per rubric criterion with reasons.
-- [ ] Galvanised must win; otherwise revise DESIGN.md and repeat. Record the outcome in DECISIONS.md, then delete the challenger code and tokens.
+- [x] Build Home (manager) and Log crew-day first in Galvanised (they are Task 12/13's screens — build them here to production quality), then a deliberately different challenger ("Docket": paper white, black ink, one signal-red accent, dense table-like rows, top-aligned actions) using the same components with challenger tokens.
+- [x] Capture both (phone + desktop, light), label A/B randomly, give both critics the pair blind; each picks a winner per rubric criterion with reasons.
+- [x] Galvanised must win; otherwise revise DESIGN.md and repeat. Record the outcome in DECISIONS.md, then delete the challenger code and tokens.
 
 ### Tasks 11–19: Screen groups (D5), each through the design loop
 

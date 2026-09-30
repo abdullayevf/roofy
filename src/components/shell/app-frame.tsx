@@ -15,8 +15,7 @@ export type AppFrameProps = {
 /**
  * The app shell (DESIGN.md §4): tab bar on a phone, 240 px sidebar from 1024 px, an offline banner and the
  * "N to send" badge above the page. It pads with the device's safe-area insets; `--sat-sim` is the simulated
- * inset the design guards set on iPhone captures. Props only, so the (app) layout and the temporary A/B pages
- * under /design/challenger render the same frame.
+ * inset the design guards set on iPhone captures. Props only; the (app) layout passes the role and demo state.
  */
 export function AppFrame({ role, workspaceName, offline, waiting, children }: AppFrameProps) {
   return (

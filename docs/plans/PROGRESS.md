@@ -3,13 +3,14 @@
 ## Current
 
 - Phase: 2 — Design system and full prototype. Branch `phase/2-design-prototype` (local on the VPS, not pushed, not merged). Plan: `docs/plans/03-design-prototype.md`.
-- Paused 2026-09-30 (usage limit). Head `20d77fe` plus this docs commit. Tree clean. Task ledger (git-ignored, local only): `.superpowers/sdd/03-design-prototype/progress.md` — every ruling, deferred minor and fix round is there; the files `implementer-rules.md` and `reviewer-rules.md` beside it are reused by every dispatch.
-- Done and reviewed: Tasks 1–9.
+- Session ended 2026-09-30 after Task 10. Head = this docs commit. Tree clean. Task ledger (git-ignored, local only): `.superpowers/sdd/03-design-prototype/progress.md` — every ruling, deferred minor and fix round is there; the files `implementer-rules.md` and `reviewer-rules.md` beside it are reused by every dispatch.
+- Done and reviewed: Tasks 1–10.
   - Task 7: spec review (opus) settled the open question — re-pricing $0.00 missing-rate logs when a rate is added is spec-compliant (it is the only "fix" before approval). Fixed: re-pricing skipped adjustments (crash + half-saved rate), `FakeStore.write` is all-or-nothing, seed perf guard measures thread CPU time. Re-review clean.
   - Task 9: shell, nav, PWA manifest, placeholders for every nav target, error/not-found/no-permission. Review fixes: Workspace export Owner-only, tab bar side insets, theme colours generated at build time. Re-review clean.
-- Done and reviewed: Task 8 (2026-09-30). Loop stopped at the 6-iteration cap at 87/87 (0 P0/P1); owner accepted 87. Code review fixes in `797f9e8` (toast props/ref, inert disabled link buttons, phone sheet autofocus bug, dialog focus, demo money via formatMoney); re-review clean.
-- **Next: Task 10** (D2 A/B). Dispatch notes: `.superpowers/sdd/03-design-prototype/task-10-dispatch.md`.
-- Then: Tasks 10–23 in order (D2 A/B, nine screen groups, tap-budget suite, foreman sweep, baselines + PWA, phase gate).
+- Done and reviewed: Task 8 (2026-09-30). Loop stopped at the 6-iteration cap at 87/87 (0 P0/P1); owner accepted 87. Review fixes `797f9e8`.
+- Done and reviewed: Task 10 (2026-09-30). Home (manager) and Log crew-day built in Galvanised (`src/components/screens/`). D2 A/B round 1 was a split, so Galvanised was revised (pinned Save day in thumb reach, ink edges, radii 6/8/12); round 2 with a fresh blind mapping: Galvanised 83–72 (design) and 79–67 (field). Challenger deleted. See DECISIONS.md.
+- **Next: Task 11** (Field 1/2: Home manager + Home foreman), which extends the Home screen Task 10 built. Carry into its loop the A/B lessons: darker small text and borders for glare, denser Needs attention on phone. Task 12 (Log) gets: heavier check box and date stroke, stronger ticked-row tint. Task 11 also creates `tests/e2e/taps.ts` (ledger ruling).
+- Then: Tasks 11–23 in order (nine screen groups, tap-budget suite, foreman sweep, baselines + PWA, phase gate).
 - Environment: real WebKit works on the VPS (`pnpm test:e2e` all three projects green). `ROOFY_NO_WEBKIT` / `ROOFY_CHROMIUM_EXECUTABLE` are not needed here. Never stop the server with `pkill -f "next start"` (it matches the calling shell); kill the PID from `ss -ltnp | grep 3100`.
 
 ### Token budget rules (owner request 2026-09-30 — follow every session)
@@ -33,7 +34,7 @@ Quality gates stay the same (TDD, per-task review, design loop ≥ 90 with no P0
 - 2026-09-28 — Phase 1 shipped: pure domain core in `src/domain/` (money, split, rates, lines, piece, gst, costing, dates, segments, progress, floor, adjustments, flags, attendance, periods, payrun, ledger) plus `src/lib/format.ts`. Every pay-rules example (E1.1–E15.1) is a named test and matches to the cent; `scripts/check-examples.ts` proves none is missing; `verify` now runs coverage (100% on `src/domain`) and `check:examples`.
 
 - 2026-09-28/29 — Phase 2 in progress (cloud session): plan written; Tasks 1–6 shipped and reviewed; Task 7 implemented (review pending); Task 8 through design-loop iteration 3 (+ iteration 4 fixes); Task 9 partial.
-- 2026-09-30 — Task 8 iteration 6 scored 87/87; loop stopped at the cap and escalated to the owner.
+- 2026-09-30 — Task 8 iteration 6 scored 87/87; loop stopped at the cap, owner accepted 87; Task 8 code review fixed. Task 10 done: Home + Log built, Galvanised won the blind A/B on its second round.
 - 2026-09-29/30 — Phase 2 on the VPS: Task 7 reviewed and fixed; Task 9 finished and reviewed; Task 8 loop iterations 4–5 scored (82, 87) and iteration 6 fixed + captured (critics cut off by the usage limit). Token budget rules added. See Current.
 
 ## Decisions and deviations
@@ -87,6 +88,10 @@ Quality gates stay the same (TDD, per-task review, design loop ≥ 90 with no P0
 - Phase 2 Task 9 (recorded for review): the desktop sidebar adds a "Manage" section for managers (Expenses, Pay runs, Reports, Settings) beyond the tab-bar items. `prefetch={false}` on Button, List and nav links (WebKit aborted-prefetch console errors); revisit in Phase 5. A foreman at `/` redirects to `/log`. Accountant More = Expenses + Install guide.
 - Phase 2 Task 8 (loop): input values use Atkinson with tabular figures (DESIGN.md §3); Atkinson's slashed zero is accepted (i4-D6 won't fix). Pause sheet puts the optional note above the reason chips; a reason tap pauses (4 taps). New tokens `over-fill`, `bar`; `tablet: 600px` breakpoint for the 2-column crew grid (DESIGN.md §8); active desktop sidebar item is filled icon + galv background + ink edge bar (no chalk fill). Foreman tab bar is Jobs · Log · Outbox with Log centred.
 
+- Phase 2 Task 10: DESIGN.md radius hierarchy is now controls 6, groups 8, sheets 12, chips full; list groups have a 1 px `edge` outline; unticked check boxes and the date field use `ink`; long forms pin their primary action above the tab bar (Log's Save day), and the page pads its bottom by the bar's measured height.
+- Phase 2 Task 10: Log never pre-ticks or saves someone with a no-work marker or already logged that day; "Same as yesterday" pointing at a Done stage leaves the stage unchosen. Home links to `/jobs/<id>`, `/crew/<id>`, `/pay/<id>` before those routes exist: `shell.spec` skips exactly those, and home.spec's "opens its detail page" is `test.fixme` until Task 14.
+- Phase 2 (session rule): agents stop the app only with `kill <pid>` from `ss -ltnp | grep 3100`; a pattern kill (`pkill -f next-server`) on 2026-09-30 stopped another project's Next 14 server on this machine.
+
 ## Gate evidence
 
 - Phase 1: `pnpm verify` exits 0 — 21 test files, 122 tests; coverage 100% statements 283/283, branches 203/203, functions 120/120, lines 210/210; "Every pay-rules example has a named test." `pnpm test:e2e` 3/3. Whole-branch review + phase spec review (opus): every example hand-checked to the cent; every rule in §0–§16 has code or a later-phase owner; its fixes applied and re-reviewed.
@@ -96,6 +101,8 @@ Quality gates stay the same (TDD, per-task review, design loop ≥ 90 with no P0
 
 ## Open issues (carried forward)
 
+- Phase 2 Tasks 14/15/17: remove the `shell.spec` detail-link skips and un-fixme home.spec's detail test as each route lands.
+- Phase 2 (no task): Log bar error-message state has no geometry test; `ScreenSpec` `viewports`/`lightOnly`/`noExtras` are unused since the challenger was removed.
 - Phase 2 Task 11: `/design` uses a local `whole()` that trims `.00` from `formatMoney`; when a screen needs whole-dollar sentences ("$775 over"), add a whole-dollar option to `formatMoney` (drop `.00` only when cents % 100 = 0) with a test and use it in both places.
 - Phase 2 (no task): Field/Select overwrite a caller's own `aria-describedby`; MoneyField's minus mark can go stale on "-0" or a cleared field; a disabled selected ChoiceChip looks enabled; Checkbox has no name/value.
 - Phase 2 Task 14: pausing a stage is one tap on a reason; show a toast "<stage> paused: <reason>" with Undo (48 px) (design issue i6-F1).
