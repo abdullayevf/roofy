@@ -265,6 +265,7 @@ async function captureInstalled(opts: {
     colorScheme: "light",
     reducedMotion: "reduce",
   });
+  if (role) await context.addCookies([{ name: "roofy_role", value: role, url: base }]);
   const page = await context.newPage();
 
   // page.emulateMedia has no display-mode feature; CDP is the only way to
