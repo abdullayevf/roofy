@@ -15,7 +15,7 @@ export type EmptyStateProps = {
 export function EmptyState({ message, actionLabel, href, onClick, className }: EmptyStateProps) {
   return (
     <div className={cx("flex flex-col items-center gap-4 px-4 py-12 text-center", className)}>
-      <p className="text-body text-ink-2">{message}</p>
+      <p className="text-balance text-body text-ink-2">{message}</p>
       {actionLabel ? (
         <Button variant="primary" href={href} onClick={onClick}>
           {actionLabel}

@@ -23,6 +23,7 @@ import {
   type PushResponse,
   type PushResult,
 } from "@/data/contracts";
+import { noteWaiting } from "./waiting";
 
 /** Sent with every mutation (architecture §7: the server accepts the previous schema for a release). */
 export const APP_VERSION = "0.1.0";
@@ -96,5 +97,6 @@ export async function submit<T extends MutationType>(
   options: SubmitOptions = {},
 ): Promise<PushResult> {
   const [result] = await submitMany([buildEnvelope(type, payload, options)], options);
+  if (result!.status === "retry") noteWaiting();
   return result!;
 }

@@ -157,7 +157,7 @@ export function Button(props: ButtonProps) {
   return (
     <span className="inline-flex flex-col gap-2">
       {control}
-      <span className="text-meta text-ink-2">{props.reason}</span>
+      <span className="text-balance text-meta text-ink-2">{props.reason}</span>
     </span>
   );
 }

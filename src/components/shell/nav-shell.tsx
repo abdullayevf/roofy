@@ -8,18 +8,20 @@
 import { usePathname, useSearchParams } from "next/navigation";
 import { TabBar } from "@/components/nav/tab-bar";
 import { Sidebar } from "@/components/nav/sidebar";
+import { useWaitingCount } from "@/offline/waiting";
 import { outboxHref } from "./demo-href";
 import { activeManageKey, activeNavKey, manageNavItems, type NavRole } from "./active";
 
 export function ShellSidebar({ role, workspaceName, outboxCount, outboxAttention }: { role: NavRole; workspaceName: string; outboxCount: number; outboxAttention: boolean }) {
   const pathname = usePathname();
   const outbox = outboxHref(useSearchParams()?.get("demo"));
+  const count = outboxCount + useWaitingCount();
   return (
     <Sidebar
       role={role}
       active={activeNavKey(pathname, role, "desktop")}
       workspaceName={workspaceName}
-      outboxCount={outboxCount}
+      outboxCount={count}
       outboxAttention={outboxAttention}
       outboxHref={outbox}
       extra={manageNavItems(role)}
@@ -32,11 +34,12 @@ export function ShellSidebar({ role, workspaceName, outboxCount, outboxAttention
 export function ShellTabBar({ role, outboxCount, outboxAttention }: { role: NavRole; outboxCount: number; outboxAttention: boolean }) {
   const pathname = usePathname();
   const outbox = outboxHref(useSearchParams()?.get("demo"));
+  const count = outboxCount + useWaitingCount();
   // Left and right padding keeps the outer tabs clear of the notch and rounded corners in landscape.
   return (
     <TabBar
       role={role}
-      outboxCount={outboxCount}
+      outboxCount={count}
       outboxAttention={outboxAttention}
       outboxHref={outbox}
       active={activeNavKey(pathname, role, "phone")}

@@ -153,7 +153,7 @@
  * circle lifts above the bar. Pages pad their bottom with `pb-tab-bar` so the
  * last row is never hidden behind the bar. */
 :root {
-  --tab-bar-body: 4rem;
+  --tab-bar-body: 4.3125rem; /* 69px: the phone tab bar as it measures, not its 64px row alone */
   --tab-bar-raise: 1.5rem;
   --tab-bar-height: calc(
     var(--tab-bar-body) + var(--tab-bar-raise) + max(var(--sab-sim, 0px), env(safe-area-inset-bottom))
@@ -214,19 +214,35 @@ body {
 }
 
 /*
- * DESIGN.md §5: a long form pins its primary action above the tab bar. On a phone it is a bar fixed above the
- * tab bar's box (safe-area aware); from 1024 px it sticks to the bottom of the form column. The page pads its
- * own bottom so the last row is never hidden.
+ * DESIGN.md §5: a long form pins its primary action just above the tab bar.
+ * - Phone: fixed and flush on the tab bar (the bar's own box starts below the raised Log circle, so the pinned bar
+ *   reaches down to the tab bar itself and pads its bottom by the circle's lift). With the keyboard up the screen sets
+ *   `data-keyboard`, and the bar sits on the visual viewport (`--keyboard-inset`) instead.
+ * - 600 px and up: sticky in the form column, so it is as wide as the content and no wider.
+ * - A short viewport (a phone on its side, under 500 px tall): in the page, not pinned.
+ * - Desktop: sticky at the bottom of the column, 16 px padding and a `line` rule, no slab.
  * The page reads the bar's measured height from `--pin-action-height` (set by the screen, 9 rem until measured).
  */
 .pin-action {
   position: fixed;
   inset-inline: 0;
-  bottom: var(--tab-bar-height);
+  bottom: calc(var(--tab-bar-height) - var(--tab-bar-raise));
   z-index: 20;
-  padding: 0.75rem max(1rem, env(safe-area-inset-right)) 0.75rem max(1rem, env(safe-area-inset-left));
+  padding: 0.75rem max(1rem, env(safe-area-inset-right)) calc(0.75rem + var(--tab-bar-raise))
+    max(1rem, env(safe-area-inset-left));
   background: var(--surface);
   border-top: 1.5px solid var(--ink);
+}
+.pin-action[data-keyboard="true"] {
+  bottom: var(--keyboard-inset, 0px);
+  z-index: 40;
+  padding-bottom: 0.75rem;
+}
+/* The page pads its bottom by the bar's height while the bar is fixed (phone only, not on its side). */
+@media (max-width: 1023px) and (min-height: 500px) {
+  .pin-pad {
+    padding-bottom: var(--pin-action-height);
+  }
 }
 /* On a phone, a field brought into view on a screen with a pinned bar scrolls clear of that bar and the tab bar. */
 @media (max-width: 1023px) {
@@ -234,13 +250,32 @@ body {
     scroll-padding-bottom: 16rem;
   }
 }
-@media (min-width: 1024px) {
+@media (min-width: 600px) {
   .pin-action {
     position: sticky;
     inset-inline: auto;
-    bottom: 0;
+    bottom: calc(var(--tab-bar-height) - var(--tab-bar-raise));
+    z-index: 20;
     padding-inline: 0;
-    padding-bottom: calc(0.75rem + max(var(--sab-sim, 0px), env(safe-area-inset-bottom)));
+  }
+}
+@media (max-height: 499px) {
+  .pin-action,
+  .pin-action[data-keyboard="true"] {
+    position: static;
+    padding-inline: 0;
+    padding-bottom: 0.75rem;
+    background: transparent;
+    border-top: 0;
+  }
+}
+@media (min-width: 1024px) {
+  .pin-action {
+    position: sticky;
+    bottom: 0;
+    padding: 1rem 0 calc(1rem + max(var(--sab-sim, 0px), env(safe-area-inset-bottom)));
+    background: var(--galv);
+    border-top: 1.5px solid var(--line);
   }
 }
 
