@@ -132,34 +132,54 @@ export const SCREENS: ScreenSpec[] = [
     roles: ["foreman"],
   },
 
-  // --- field-2 (Task 12): Log crew-day (6), Progress (7), No-work (8), Outbox (24)
+  // --- field-2 (Task 12): Log crew-day (6), Progress (7), No-work (8), Outbox (24).
+  // Trimmed to states and roles that look different: an owner sees what a manager sees, error is one shared
+  // screen (captured once, on the crew-day grid), and "waiting" differs from "attention" only by a badge that
+  // Home already shows.
   {
     id: "log-crew-day",
     group: "field-2",
     route: "/log",
-    states: FIELD_STATES,
-    roles: ["owner", "manager", "foreman"],
+    states: ["normal", "empty", "loading", "error", "offline", "attention", "foreman"],
+    roles: ["manager"],
+  },
+  {
+    // A foreman with no jobs: "You can log once a manager adds you to a job." and no button.
+    id: "log-crew-day-foreman",
+    group: "field-2",
+    route: "/log",
+    states: ["empty"],
+    roles: ["foreman"],
   },
   {
     id: "log-progress",
     group: "field-2",
     route: "/log/progress",
-    states: FIELD_STATES,
-    roles: ["owner", "manager", "foreman"],
+    states: ["normal", "empty", "loading", "foreman"],
+    roles: ["manager"],
+    // The quantity field with the decimal keypad up; the pinned Save progress must stay in view.
+    keyboard: { field: "Quantity done", action: "Save progress" },
   },
   {
     id: "log-no-work",
     group: "field-2",
     route: "/log/no-work",
-    states: ["normal", "empty", "loading", "error", "offline", "waiting", "foreman"],
-    roles: ["owner", "manager", "foreman"],
+    states: ["normal", "empty", "loading", "foreman"],
+    roles: ["manager"],
   },
   {
     id: "outbox",
     group: "field-2",
     route: "/outbox",
-    states: ["normal", "empty", "loading", "error", "offline", "waiting", "attention", "foreman"],
-    roles: ["owner", "manager", "foreman"],
+    states: ["normal", "loading", "waiting", "attention"],
+    roles: ["manager"],
+  },
+  {
+    id: "outbox-foreman",
+    group: "field-2",
+    route: "/outbox",
+    states: ["attention"],
+    roles: ["foreman"],
   },
 
   // --- jobs-1 (Task 13): Jobs list (9), New/edit job (10) --------------

@@ -26,6 +26,13 @@ export class Taps {
     this.log.push(String(target));
   }
 
+  /** Chooses an option in a list field (`<select>`): one tap, like the native picker it opens. */
+  async choose(target: Locator, value: string): Promise<void> {
+    await target.selectOption(value);
+    this.taken += 1;
+    this.log.push(`${String(target)} -> ${value}`);
+  }
+
   /** Fails, naming every tap, when the flow used more than `budget` taps. */
   assertWithin(budget: number): void {
     if (this.taken <= budget) return;

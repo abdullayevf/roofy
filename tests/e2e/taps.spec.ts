@@ -21,6 +21,14 @@ test.describe("tap counter", () => {
     taps.assertWithin(1);
   });
 
+  test("choosing from a list field counts as one tap", async ({ page }) => {
+    await page.setContent('<select aria-label="Stage"><option value="a">A</option><option value="b">B</option></select>');
+    const taps = new Taps("Pick a stage");
+    await taps.choose(page.getByLabel("Stage"), "b");
+    await expect(page.getByLabel("Stage")).toHaveValue("b");
+    expect(taps.count).toBe(1);
+  });
+
   test("assertWithin fails when the budget is exceeded and names the taps", async ({ page }) => {
     await page.setContent("<button>One</button><button>Two</button>");
     const taps = new Taps("Two buttons");
