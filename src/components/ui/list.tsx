@@ -24,6 +24,8 @@ export type ListRow = {
 
 export type ListProps = {
   rows: ListRow[];
+  /** Keep the chevron's slot on rows that don't open anything, so every figure ends at one right edge. */
+  reserveChevron?: boolean;
   className?: string;
 };
 
@@ -42,7 +44,7 @@ const FOCUS_FORCED = "outline outline-[3px] -outline-offset-3 outline-chalk-link
  * is fixed and never moves — a long label can't push a chip or a figure onto
  * a second line.
  */
-function RowBody({ row }: { row: ListRow }) {
+function RowBody({ row, reserveChevron }: { row: ListRow; reserveChevron?: boolean }) {
   const interactive = Boolean(row.href || row.onClick);
   return (
     <>
@@ -53,7 +55,11 @@ function RowBody({ row }: { row: ListRow }) {
       {row.figure || interactive ? (
         <span className="flex max-w-[60%] shrink-0 items-center gap-2 py-2 lg:py-1">
           {row.figure}
-          {interactive ? <CaretRight size={24} aria-hidden="true" className="shrink-0 text-ink-2" /> : null}
+          {interactive ? (
+            <CaretRight size={24} aria-hidden="true" className="shrink-0 text-ink-2" />
+          ) : reserveChevron && row.figure ? (
+            <span aria-hidden="true" className="size-6 shrink-0" />
+          ) : null}
         </span>
       ) : null}
       {row.status ? (
@@ -67,7 +73,7 @@ function RowBody({ row }: { row: ListRow }) {
  * DESIGN.md §4 list row: grouped surface block, line dividers, 64/48 px
  * rows. The whole row is the tap target when it has an `href` or `onClick`.
  */
-export function List({ rows, className }: ListProps) {
+export function List({ rows, reserveChevron, className }: ListProps) {
   return (
     <div className={cx("divide-y divide-line rounded-group bg-surface border-group", className)}>
       {rows.map((row) => {
@@ -79,7 +85,7 @@ export function List({ rows, className }: ListProps) {
               prefetch={false}
               className={cx(ROW_LAYOUT, row.focusVisible ? FOCUS_FORCED : FOCUS, PRESSED)}
             >
-              <RowBody row={row} />
+              <RowBody row={row} reserveChevron={reserveChevron} />
             </Link>
           );
         }
@@ -91,13 +97,13 @@ export function List({ rows, className }: ListProps) {
               onClick={row.onClick}
               className={cx(ROW_LAYOUT, row.focusVisible ? FOCUS_FORCED : FOCUS, PRESSED)}
             >
-              <RowBody row={row} />
+              <RowBody row={row} reserveChevron={reserveChevron} />
             </button>
           );
         }
         return (
           <div key={row.key} className={ROW_LAYOUT}>
-            <RowBody row={row} />
+            <RowBody row={row} reserveChevron={reserveChevron} />
           </div>
         );
       })}

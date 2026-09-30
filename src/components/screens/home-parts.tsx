@@ -3,6 +3,7 @@ import { CaretRight } from "@phosphor-icons/react/dist/ssr";
 import { cx } from "@/lib/cx";
 import { OutboxBadge } from "@/components/outbox-badge";
 import { TapeBar, type TapeBarProps } from "@/components/tape-bar";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
@@ -29,9 +30,19 @@ export function HomeTitle({ waiting, attention }: { waiting: number; attention: 
   );
 }
 
-export function Section({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
+export function Section({
+  title,
+  children,
+  className,
+  id,
+}: {
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+  id?: string;
+}) {
   return (
-    <section className={cx("flex flex-col gap-2", className)}>
+    <section id={id} className={cx("flex scroll-mt-4 flex-col gap-2", className)}>
       <h2 className="text-heading text-ink">{title}</h2>
       {children}
     </section>
@@ -44,6 +55,23 @@ export function KeyFigure({ children }: { children: React.ReactNode }) {
     <p className="text-figure-xl num text-ink [overflow-wrap:anywhere]" style={{ fontSize: "min(2.5rem, 10.5vw)" }}>
       {children}
     </p>
+  );
+}
+
+/**
+ * Home with nothing to show: a sentence under the title, left-aligned with it, and (when there is something to do)
+ * one primary button: full width and 52 px on a phone, its natural width beside the title's left edge on desktop.
+ */
+export function HomeEmpty({ message, actionLabel, href }: { message: string; actionLabel?: string; href?: string }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-body text-ink">{message}</p>
+      {actionLabel ? (
+        <Button variant="primary" href={href} className="w-full lg:w-auto lg:self-start lg:px-8">
+          {actionLabel}
+        </Button>
+      ) : null}
+    </div>
   );
 }
 
@@ -87,7 +115,7 @@ export function JobCard({
   );
 }
 
-/** A job card's shape while it loads: name, `lines` meta lines, the tape bar and `figures` label/value lines. */
+/** A job card's shape while it loads: name, `lines` meta lines, the tape bar (track and % slot) and `figures` label/value lines. */
 export function JobCardSkeleton({ lines, figures }: { lines: number; figures: number }) {
   return (
     <div className="flex flex-col gap-2 px-4 py-3">
@@ -95,7 +123,10 @@ export function JobCardSkeleton({ lines, figures }: { lines: number; figures: nu
       {Array.from({ length: lines }, (_, i) => (
         <Skeleton key={i} width={160} height={16} />
       ))}
-      <Skeleton height={12} />
+      <div className="grid grid-cols-[minmax(0,1fr)_min(8.5rem,45%)] items-center gap-x-[min(1.75rem,8vw)]">
+        <Skeleton height={12} />
+        <Skeleton width={110} height={24} />
+      </div>
       {Array.from({ length: figures }, (_, i) => (
         <div key={i} className="flex justify-between gap-4">
           <Skeleton width={110} height={16} />

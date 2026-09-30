@@ -26,7 +26,7 @@ test.describe("Home (manager)", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
     // Key figure under the title.
     await expect(page.getByText(/^Labour, Mon 21 Sep to Sun 27 Sep/)).toBeVisible();
-    await expect(page.locator('[data-screen="home"] p.text-figure-xl')).toHaveText(/^\$[\d,]+\.\d{2}$/);
+    await expect(page.locator('[data-screen="home"] section', { has: page.getByRole("heading", { level: 2, name: "Last week" }) }).locator("p.text-figure-xl")).toHaveText(/^\$[\d,]+\.\d{2}$/);
     // Needs attention: the Smith job is trending over on sheet install.
     await expect(page.getByRole("heading", { level: 2, name: "Needs attention" })).toBeVisible();
     await expect(page.getByRole("link", { name: /Smith job.*trending \$775\.00 over on sheet install/ })).toBeVisible();
@@ -34,7 +34,7 @@ test.describe("Home (manager)", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Active jobs" })).toBeVisible();
     const smith = page.getByRole("link", { name: /Smith job/ }).last();
     await expect(smith.getByRole("progressbar")).toBeVisible();
-    await expect(smith.getByText("Forecast margin")).toBeVisible();
+    await expect(smith.getByText("Margin", { exact: true })).toBeVisible();
     await expect(smith.getByText("3 days ago")).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "Last week" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "This pay period" })).toBeVisible();
@@ -51,31 +51,65 @@ test.describe("Home (manager)", () => {
     }
     expect([...ys].sort((a, b) => a - b)).toEqual(ys);
     // The labour figure heads Last week, not the page.
-    const key = (await page.locator('[data-screen="home"] p.text-figure-xl').boundingBox())!;
+    const key = (await page.locator('[data-screen="home"] section', { has: page.getByRole("heading", { level: 2, name: "Last week" }) }).locator("p.text-figure-xl").boundingBox())!;
     expect(key.y).toBeGreaterThan(ys[2]!);
   });
 
-  test("a job card's amounts end at the card's right edge on every width", async ({ page }) => {
+  test("a job card's amounts end at the right edge of the label/value block", async ({ page }, testInfo) => {
     await signInAs(page, "manager");
     const smith = page.getByRole("link", { name: /Smith job/ }).last();
     const card = (await smith.boundingBox())!;
     const value = (await smith.locator("dd").first().boundingBox())!;
-    expect(card.x + card.width - (value.x + value.width)).toBeLessThan(20);
+    // On desktop the label/value block is capped near 400 px, so the amounts end at that block's edge instead.
+    const edge = isPhone(testInfo.project.name) ? card.x + card.width : (await smith.locator("dl").boundingBox())!.x + (await smith.locator("dl").boundingBox())!.width;
+    expect(edge - (value.x + value.width)).toBeLessThan(20);
   });
 
-  test("a job card names the stage its flag is about and marks the forecast on the bar", async ({ page }) => {
+  test("a job card: the bar is the whole job; a flagged stage is a sentence plus its own stage line", async ({ page }, testInfo) => {
     await signInAs(page, "manager");
     const smith = page.getByRole("link", { name: /Smith job/ }).last();
     await expect(smith.getByText("Whole job")).toBeVisible();
     await expect(smith).toContainText("Sheet install is trending $775.00 over its labour budget.");
-    await expect(smith.getByTestId("tape-marker")).toBeVisible();
+    await expect(smith).toContainText("Sheet install: $4,775.00 forecast of $4,000.00 budget");
+    // The stage being over does not put a marker on the whole-job bar (the whole job is under budget).
+    await expect(smith.getByTestId("tape-marker")).toHaveCount(0);
     // Amounts are figures, right-aligned; labels are meta.
     const labour = smith.locator("dd").first();
     await expect(labour).toHaveClass(/text-figure/);
     await expect(labour).toHaveCSS("text-align", "right");
-    // A job with no flag has no marker.
+    // "Margin (forecast)" does not fit one line at 390 px, so the label is plain "Margin" (F6, D13).
+    expect((await smith.getByText("Margin", { exact: true }).boundingBox())!.height).toBeLessThan(28);
+    // Desktop: the label/value block is capped near 400 px.
+    if (!isPhone(testInfo.project.name)) expect((await smith.locator("dl").boundingBox())!.width).toBeLessThanOrEqual(401);
+    // A job with no flag has no marker and no stage line.
     const harris = page.getByRole("link", { name: /Harris job/ }).last();
     await expect(harris.getByTestId("tape-marker")).toHaveCount(0);
+    await expect(harris).not.toContainText("forecast of");
+  });
+
+  test("the % slot has the same left edge on every job card, caption beside the figure", async ({ page }) => {
+    await signInAs(page, "manager");
+    const xs = await page
+      .locator('[data-screen="home"] [role="progressbar"]')
+      .evaluateAll((bars) => bars.map((b) => Math.round(b.parentElement!.parentElement!.children[1]!.getBoundingClientRect().x)));
+    expect(xs.length).toBeGreaterThan(1);
+    expect(new Set(xs).size).toBe(1);
+  });
+
+  test("the key figure counts jobs over or trending over and jumps to Needs attention", async ({ page }) => {
+    await signInAs(page, "manager");
+    const link = page.getByRole("link", { name: /^\d+ jobs? .*labour budget/ });
+    await expect(link).toContainText("over or trending over their labour budget");
+    await expect(link).toHaveAttribute("href", "#needs-attention");
+    // Directly under the title, above Needs attention.
+    const [title, fig, section] = await Promise.all([
+      page.getByRole("heading", { level: 1, name: "Home" }).boundingBox(),
+      link.boundingBox(),
+      page.getByRole("heading", { level: 2, name: "Needs attention" }).boundingBox(),
+    ]);
+    expect(fig!.y).toBeGreaterThan(title!.y);
+    expect(fig!.y).toBeLessThan(section!.y);
+    await expect(link.locator("p")).toHaveClass(/text-figure-xl/);
   });
 
   test("Last week and This pay period rows tap through", async ({ page }) => {
@@ -139,11 +173,25 @@ test.describe("Home (manager)", () => {
     await expect(page.getByText(/\$\d/)).toHaveCount(0);
   });
 
-  test("?demo=empty: one centred message and an Add a job button, no zero figures", async ({ page }, testInfo) => {
+  test("?demo=empty: the message and Add your first job start at the title's left edge, no zero figures", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "manager", "/?demo=empty");
     await expect(page.getByText("No jobs yet. Add your first job.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Add your first job" })).toBeVisible();
+    const add = page.getByRole("link", { name: "Add your first job" });
+    await expect(add).toBeVisible();
+    const [title, msg, btn] = await Promise.all([
+      page.getByRole("heading", { level: 1, name: "Home" }).boundingBox(),
+      page.getByText("No jobs yet. Add your first job.").boundingBox(),
+      add.boundingBox(),
+    ]);
+    if (isPhone(testInfo.project.name)) {
+      // Full width, 52 px.
+      expect(btn!.height).toBeGreaterThanOrEqual(52);
+      expect(btn!.width).toBeGreaterThan((page.viewportSize()?.width ?? 390) - 48);
+    } else {
+      expect(Math.abs(msg!.x - title!.x)).toBeLessThan(2);
+      expect(Math.abs(btn!.x - title!.x)).toBeLessThan(2);
+    }
     await expect(page.locator('[data-screen="home"] p.text-figure-xl')).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 2, name: "Last week" })).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 2, name: "This pay period" })).toHaveCount(0);
@@ -172,15 +220,19 @@ test.describe("Home (manager)", () => {
     await expect(page).toHaveURL(/\/outbox/);
   });
 
-  test("Show N more opens the rest of Needs attention in place", async ({ page }) => {
+  test("Show N more is the 7th row: 6 items, then the rest open in place", async ({ page }) => {
     await signInAs(page, "manager", "/?demo=attention");
     const section = page.locator('[data-screen="home"] section', { has: page.getByRole("heading", { level: 2, name: "Needs attention" }) });
-    await expect(section.getByRole("link")).toHaveCount(7);
-    const more = section.getByRole("button", { name: /^Show \d+ more$/ });
+    await expect(section.getByRole("link")).toHaveCount(6);
+    const more = section.getByRole("button", { name: "Show 2 more" });
     expect((await more.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+    // Red first: the over-budget row, then the failed entry, then the amber rows.
+    const links = section.getByRole("link");
+    await expect(links.nth(0)).toContainText("over on clean-up");
+    await expect(links.nth(1)).toContainText("1 entry on this device needs attention.");
     await more.click();
     await expect(section.getByRole("button", { name: "Show fewer" })).toHaveAttribute("aria-expanded", "true");
-    expect(await section.getByRole("link").count()).toBeGreaterThan(7);
+    await expect(section.getByRole("link")).toHaveCount(8);
     await expect(section.getByRole("link", { name: /under the award/ })).toBeVisible();
     await expect(page).toHaveURL(/demo=attention/);
   });
@@ -294,10 +346,11 @@ test.describe("Home (foreman)", () => {
     await expect(page.getByRole("navigation", { name: "Primary" }).locator('[aria-current="page"]')).toHaveText("Home");
   });
 
-  test("?demo=empty: one centred message, no Log today, no zero figures", async ({ page }, testInfo) => {
+  test("?demo=empty: says the Log tab needs a job, keeps On this device, no Log today", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "foreman", "/?demo=empty");
-    await expect(page.getByText("No jobs yet. Ask your manager to add you to a job.")).toBeVisible();
+    await expect(page.getByText("No jobs yet. Ask your manager to add you to a job. The Log tab needs a job first.")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "On this device" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Log today" })).toHaveCount(0);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
@@ -335,7 +388,9 @@ test.describe("Home (foreman)", () => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "foreman", "/?demo=offline");
     await expect(page.getByRole("status")).toContainText("No signal");
-    await expect(page.getByText(/^Progress from Mon 28 Sep, 6:20 am\.$/)).toBeVisible();
+    // One line: the date and when the phone last loaded (no second date).
+    await expect(page.getByText(/^Mon 28 Sep · last updated 6:20 am$/)).toBeVisible();
+    await expect(page.getByText(/^Mon 28 Sep$/)).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Log today" })).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
@@ -344,6 +399,9 @@ test.describe("Home (foreman)", () => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "foreman", "/?demo=waiting");
     await expectBadgeBesideTitle(page, "3 to send");
+    // A crew-day for today is waiting on this device: today counts as logged and Log today steps back.
+    await expect(page.locator('[data-screen="home"] p.text-figure-xl')).toHaveText("Logged, waiting to send");
+    await expect(page.getByRole("link", { name: "Log today" })).toHaveAttribute("data-variant", "secondary");
     // The Outbox tab (or sidebar item) carries the count too.
     await expect(page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: /Outbox/ })).toContainText("3");
     const status = page.getByRole("link", { name: "3 entries are waiting to send." });
@@ -358,6 +416,11 @@ test.describe("Home (foreman)", () => {
     await signInAs(page, "foreman", "/?demo=attention");
     await expectBadgeBesideTitle(page, "1 entry needs attention");
     await expect(page.getByRole("link", { name: "1 entry needs attention." })).toBeVisible();
+    await expect(page.locator('[data-screen="home"] p.text-figure-xl')).toHaveText("Logged, waiting to send");
+    // The badge is a 48 px target, and the Outbox tab's count turns red.
+    expect((await page.getByRole("main").getByRole("link", { name: "1 entry needs attention", exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(48);
+    const chip = page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: /Outbox/ }).locator("span.rounded-full:visible", { hasText: "1" });
+    await expect(chip).toHaveClass(/bg-over-fill/);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 

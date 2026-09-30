@@ -1015,7 +1015,10 @@ export interface ActiveJobRow {
   /** The worst stage alert on the job (pay rules §12 is per stage), with the stage it belongs to. */
   alert: BudgetAlertDto | null;
   alertStageName: string | null;
-  /** The whole job's expected labour ÷ its labour budget (the tape bar's forecast marker); set only when `alert` is. */
+  /** That stage's forecast labour and its labour budget (the stage line under the tape), null without an alert. */
+  alertStageForecastCents: Cents | null;
+  alertStageBudgetCents: Cents | null;
+  /** The whole job's expected labour ÷ its labour budget (the tape bar's forecast marker); null when the job has no budget. */
   forecastBp: BasisPoints | null;
   href: string;
 }
@@ -1050,9 +1053,9 @@ export interface HomeManager {
   view: "manager";
   access: Access;
   today: LocalDate;
-  /** Max 7, most severe first. Outbox items are added on the device. */
+  /** Red rows first, then the spec's kind order. At most 7 rows are ever visible: with more than 7 items this holds 6 and the 7th row is "Show N more". */
   needsAttention: AttentionItem[];
-  /** The items beyond the 7 shown, in the same order (Home expands them in place). */
+  /** The items behind "Show N more", in the same order (Home expands them in place). */
   moreAttention: AttentionItem[];
   /** When these figures were read, and the workspace timezone to show it in (offline: the last time they loaded). */
   asOf: Instant;

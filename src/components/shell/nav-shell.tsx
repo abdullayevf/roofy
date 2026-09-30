@@ -10,7 +10,7 @@ import { TabBar } from "@/components/nav/tab-bar";
 import { Sidebar } from "@/components/nav/sidebar";
 import { activeManageKey, activeNavKey, manageNavItems, type NavRole } from "./active";
 
-export function ShellSidebar({ role, workspaceName, outboxCount }: { role: NavRole; workspaceName: string; outboxCount: number }) {
+export function ShellSidebar({ role, workspaceName, outboxCount, outboxAttention }: { role: NavRole; workspaceName: string; outboxCount: number; outboxAttention: boolean }) {
   const pathname = usePathname();
   return (
     <Sidebar
@@ -18,6 +18,7 @@ export function ShellSidebar({ role, workspaceName, outboxCount }: { role: NavRo
       active={activeNavKey(pathname, role, "desktop")}
       workspaceName={workspaceName}
       outboxCount={outboxCount}
+      outboxAttention={outboxAttention}
       extra={manageNavItems(role)}
       activeExtra={activeManageKey(pathname)}
       className="min-h-dvh"
@@ -25,13 +26,14 @@ export function ShellSidebar({ role, workspaceName, outboxCount }: { role: NavRo
   );
 }
 
-export function ShellTabBar({ role, outboxCount }: { role: NavRole; outboxCount: number }) {
+export function ShellTabBar({ role, outboxCount, outboxAttention }: { role: NavRole; outboxCount: number; outboxAttention: boolean }) {
   const pathname = usePathname();
   // Left and right padding keeps the outer tabs clear of the notch and rounded corners in landscape.
   return (
     <TabBar
       role={role}
       outboxCount={outboxCount}
+      outboxAttention={outboxAttention}
       active={activeNavKey(pathname, role, "phone")}
       className="pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
     />

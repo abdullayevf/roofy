@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatDateTime, formatDays, formatRoundedQuantity, formatDecimal, formatHours, formatMoney, formatQuantity } from "./format";
+import { formatDate, formatDateTime, formatTime, formatDays, formatRoundedQuantity, formatDecimal, formatHours, formatMoney, formatQuantity } from "./format";
 
 describe("format", () => {
   it("formats AUD with a true minus sign", () => {
@@ -45,6 +45,13 @@ describe("formatDateTime", () => {
   it("adds the year when it isn't today's year, and uses the timezone's date", () => {
     expect(formatDateTime("2025-12-31T14:30:00.000Z", "Australia/Sydney", "2026-09-28")).toBe("Thu 1 Jan, 1:30 am");
     expect(formatDateTime("2025-12-30T14:30:00.000Z", "Australia/Sydney", "2026-09-28")).toBe("Wed 31 Dec 2025, 1:30 am");
+  });
+});
+
+describe("formatTime", () => {
+  it("shows a 12-hour time in the given timezone", () => {
+    expect(formatTime("2026-09-27T20:20:00.000Z", "Australia/Sydney")).toBe("6:20 am");
+    expect(formatTime("2026-09-28T04:05:00.000Z", "Australia/Sydney")).toBe("2:05 pm");
   });
 });
 

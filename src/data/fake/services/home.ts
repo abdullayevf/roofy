@@ -21,7 +21,7 @@ import { FIELD_ACCESS, type FakeContext } from "./context";
 export const ATTENTION_LIMIT = 7;
 
 /**
- * Product spec §5.9's list order, most severe first: jobs over labour budget (red) → trending over
+ * Product spec §5.9's kind order, most severe first (red rows are lifted above it, see `sortAttention`): jobs over labour budget (red) → trending over
  * (amber) → stages paused > 5 working days → last week's logging gaps → outbox entries needing
  * attention → balances unpaid too long → pay lines below the award floor. Only over budget is red.
  */
@@ -47,16 +47,26 @@ function compareWithin(a: AttentionItem, b: AttentionItem): number {
   return 0;
 }
 
+const isRed = (item: AttentionItem) => item.severity === "over";
+
+/** Red rows first (over budget, entries on this device that need attention), then the spec's kind order. */
 export function sortAttention(items: AttentionItem[]): AttentionItem[] {
   return items
     .map((item, i) => ({ item, i }))
     .sort(
       (a, b) =>
+        Number(isRed(b.item)) - Number(isRed(a.item)) ||
         ATTENTION_ORDER.indexOf(a.item.kind) - ATTENTION_ORDER.indexOf(b.item.kind) ||
         compareWithin(a.item, b.item) ||
         a.i - b.i,
     )
     .map(({ item }) => item);
+}
+
+/** At most 7 rows visible: 7 items show as they are; more show 6, and the rest open under the 7th row. */
+export function splitAttention(items: AttentionItem[]): { needsAttention: AttentionItem[]; moreAttention: AttentionItem[] } {
+  if (items.length <= ATTENTION_LIMIT) return { needsAttention: items, moreAttention: [] };
+  return { needsAttention: items.slice(0, ATTENTION_LIMIT - 1), moreAttention: items.slice(ATTENTION_LIMIT - 1) };
 }
 
 const UNIT_ORDER: readonly Unit[] = ["m2", "lm", "each"];
@@ -179,7 +189,9 @@ export function createHomeService(c: FakeContext): HomeService {
           daysSinceLastLog: f.daysSinceLastLog,
           alert: f.alert,
           alertStageName: worst?.stage.name ?? null,
-          forecastBp: f.alert ? ratioBp(f.labourExpectedCents, f.labourBudgetCents) : null,
+          alertStageForecastCents: worst ? (worst.forecastCents ?? worst.expectedCents) : null,
+          alertStageBudgetCents: worst?.stage.labourBudgetCents ?? null,
+          forecastBp: ratioBp(f.labourExpectedCents, f.labourBudgetCents),
           href: `/jobs/${p.id}`,
         };
       })
@@ -285,8 +297,8 @@ export function createHomeService(c: FakeContext): HomeService {
         view: "manager",
         access,
         today,
-        needsAttention: attention.slice(0, ATTENTION_LIMIT),
-        moreAttention: attention.slice(ATTENTION_LIMIT),
+        // Never more than 7 rows visible: past 7 items, 6 show and the 7th row is "Show N more".
+        ...splitAttention(attention),
         asOf: asOf(),
         timeZone: c.t.workspace.timezone,
         activeJobs: activeJobs(),

@@ -23,7 +23,7 @@ export function AppFrame({ role, workspaceName, offline, waiting, attention, chi
   return (
     <div className="min-h-dvh lg:flex">
       <div className="hidden lg:sticky lg:top-0 lg:block lg:h-dvh lg:shrink-0 lg:overflow-y-auto">
-        <ShellSidebar role={role} workspaceName={workspaceName} outboxCount={waiting + attention} />
+        <ShellSidebar role={role} workspaceName={workspaceName} outboxCount={waiting + attention} outboxAttention={attention > 0} />
       </div>
       <div
         className="flex min-w-0 flex-1 flex-col"
@@ -38,7 +38,7 @@ export function AppFrame({ role, workspaceName, offline, waiting, attention, chi
         <main className="flex-1 p-4 pb-tab-bar lg:pb-page">{children}</main>
       </div>
       <div className="lg:hidden">
-        <ShellTabBar role={role} outboxCount={waiting + attention} />
+        <ShellTabBar role={role} outboxCount={waiting + attention} outboxAttention={attention > 0} />
       </div>
     </div>
   );

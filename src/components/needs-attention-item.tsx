@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CaretRight, WarningCircle, WarningDiamond } from "@phosphor-icons/react/dist/ssr";
 import { cx } from "@/lib/cx";
-import { keepAmountsTogether } from "@/lib/text";
+import { KeepTogether } from "@/components/keep-together";
 
 export type NeedsAttentionSeverity = "over" | "watch";
 
@@ -48,7 +48,7 @@ export function NeedsAttentionItem({
     >
       <SeverityIcon size={24} aria-hidden="true" className={cx("shrink-0", toneClass)} />
       <span className="min-w-0 flex-1 text-body text-ink [overflow-wrap:anywhere]">
-        {keepAmountsTogether(sentence)}
+        <KeepTogether text={sentence} />
       </span>
       <CaretRight size={24} aria-hidden="true" className="shrink-0 text-ink-2" />
     </Link>

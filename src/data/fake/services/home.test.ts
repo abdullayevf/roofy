@@ -87,12 +87,15 @@ describe("home (manager)", () => {
     expect(smith.currentStages.map((s) => [s.name, s.status])).toEqual([["Sheet install", "active"]]);
   });
 
-  it("the forecast marker is the job's expected labour ÷ its labour budget, only on a job with an alert", async () => {
+  it("the forecast marker is the job's expected labour ÷ its labour budget, for every job; the stage line has the stage's own figures", async () => {
     const home = await managerHome();
     const smith = home.activeJobs.find((j) => j.projectId === seed.meta.projects.smith)!;
     // 22,795.00 expected (done stages at cost, sheet install at its forecast, the rest at budget) of 24,600.00.
     expect(smith.forecastBp).toBe(Math.round((2279500 * 10_000) / 2460000));
-    for (const row of home.activeJobs) expect(row.forecastBp === null).toBe(row.alert === null);
+    for (const row of home.activeJobs) expect(row.forecastBp).not.toBeNull();
+    // Sheet install: $4,775.00 forecast of a $4,000.00 stage budget (trending $775.00 over).
+    expect([smith.alertStageForecastCents, smith.alertStageBudgetCents]).toEqual([477500, 400000]);
+    for (const row of home.activeJobs) expect(row.alertStageForecastCents === null).toBe(row.alert === null);
   });
 
   it("Ryde heritage's re-bed stage carries its progress, so the job's % done and spend add up", async () => {
@@ -101,11 +104,10 @@ describe("home (manager)", () => {
     expect(Math.abs(row.pctBp / 10_000 - spent)).toBeLessThan(0.15);
   });
 
-  it("keeps the needs-attention items past the 7 shown, in order", async () => {
+  it("more than 7 items: 6 rows plus the rest behind Show N more, so never more than 7 rows", async () => {
     const home = await managerHome("attention");
-    expect(home.needsAttention).toHaveLength(7);
-    expect(home.moreAttention.length).toBeGreaterThan(0);
-    expect(home.moreAttention.map((i) => i.kind)).toContain("below_floor");
+    expect(home.needsAttention).toHaveLength(6);
+    expect(home.moreAttention.map((i) => i.kind)).toEqual(["unpaid_too_long", "below_floor"]);
     expect((await managerHome()).moreAttention).toEqual([]);
   });
 
@@ -170,18 +172,17 @@ describe("home (manager)", () => {
     expect(smith.href).toBe(`/jobs/${seed.meta.projects.smith}/stages/${seed.meta.stages.smithSheetInstall}`);
   });
 
-  it("an outbox entry needing attention keeps its §5.9 place (after gaps, amber) and the list stays capped at 7", async () => {
+  it("red rows first: an outbox entry needing attention follows the over-budget row, ahead of the amber kinds", async () => {
     const home = await managerHome("attention");
     expect(home.needsAttention.map((i) => i.kind)).toEqual([
       "over_budget",
+      "outbox_attention",
       "trending_over",
       "trending_over",
       "paused_too_long",
       "logging_gaps",
-      "outbox_attention",
-      "unpaid_too_long",
     ]);
-    expect(home.needsAttention[5]).toMatchObject({ severity: "over", count: 1, href: "/outbox" });
+    expect(home.needsAttention[1]).toMatchObject({ severity: "over", count: 1, href: "/outbox" });
   });
 
   it("last week: figures from src/domain over 21–27 Sep", async () => {

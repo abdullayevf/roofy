@@ -70,6 +70,15 @@ export function formatDateTime(instant: string, timeZone: string, today: string)
   return `${formatDate(date, today)}, ${get("hour")}:${get("minute")} ${get("dayPeriod").toLowerCase()}`;
 }
 
+/** "6:20 am": the time of an instant in `timeZone` (never the server's zone). */
+export function formatTime(instant: string, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-AU", { timeZone, hour: "numeric", minute: "2-digit", hourCycle: "h12" }).formatToParts(
+    new Date(instant),
+  );
+  const get = (type: string) => parts.find((p) => p.type === type)!.value;
+  return `${get("hour")}:${get("minute")} ${get("dayPeriod").toLowerCase()}`;
+}
+
 /** Hundredths (cents, quantities, hours) as a plain decimal for CSV: 143250 → "1432.50", ASCII minus. */
 export function formatDecimal(value: number): string {
   const digits = String(Math.abs(value)).padStart(3, "0");

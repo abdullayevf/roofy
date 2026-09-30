@@ -1,6 +1,6 @@
 import type { ActiveJobRow, AttentionItem, OutboxState, StageChip } from "@/data/contracts";
 import type { PauseReason } from "@/domain/segments";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatMoney, formatTime } from "@/lib/format";
 
 const REASON: Record<PauseReason, string> = {
   weather: "weather",
@@ -63,6 +63,10 @@ export function jobAlertText(
     : { tone: "watch", text: `${who}trending ${over}` };
 }
 
+/** The stage line under a flagged job's tape: "Clean-up: $4,100.00 forecast of $4,000.00 budget". */
+export const stageForecastLine = (stageName: string, forecastCents: number, budgetCents: number): string =>
+  `${stageName}: ${formatMoney(forecastCents)} forecast of ${formatMoney(budgetCents)} budget`;
+
 /** "Sheet install, Flashings (paused: weather)" for a job's current stages. */
 export function stageLine(stages: StageChip[]): string {
   if (stages.length === 0) return "No stage started";
@@ -95,6 +99,23 @@ export function logStatusText(logged: { jobs: string[]; crewCount: number }): st
   const where = logged.jobs.length === 1 ? logged.jobs[0] : `${logged.jobs.length} jobs`;
   return `Logged: ${where}, ${logged.crewCount} crew`;
 }
+
+/** True when this device holds a crew-day for today that hasn't been sent yet (waiting, sending or needing attention). */
+export function loggedOnDevice(items: { state: OutboxState; date: string; entry: { type: string } }[], today: string): boolean {
+  return items.some(
+    (i) => i.entry.type === "crew_day" && i.date === today && (i.state === "waiting" || i.state === "sending" || i.state === "needs_attention"),
+  );
+}
+
+/** The foreman Home's key figure: what the server has for today, else a crew-day still on this device, else nothing yet. */
+export function foremanLogStatus(logged: { jobs: string[]; crewCount: number }, onDevice: boolean): string {
+  if (logged.jobs.length === 0 && onDevice) return "Logged, waiting to send";
+  return logStatusText(logged);
+}
+
+/** The foreman Home's offline date line: "Mon 28 Sep · last updated 6:20 am". */
+export const offlineDateLine = (today: string, asOf: string, timeZone: string): string =>
+  `${formatDate(today, today)} · last updated ${formatTime(asOf, timeZone)}`;
 
 /** The line under This pay period's figures: what to check, worded for who is reading. */
 export function payFlagsText(count: number, blocking: boolean, role: "owner" | "manager" | "accountant"): string {

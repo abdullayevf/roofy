@@ -1,18 +1,17 @@
 import Link from "next/link";
-import { CaretRight, CheckCircle, Tray, WarningDiamond } from "@phosphor-icons/react/dist/ssr";
+import { CaretRight, CheckCircle, Tray, WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import type { ForemanJobRow, HomeForeman, OutboxState } from "@/data/contracts";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { cx } from "@/lib/cx";
-import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { daysSinceText, logStatusText, outboxStatus, stageLine } from "./home-text";
-import { COLUMN, FOCUS, GROUP, HomeTitle, JobCard, JobCardSkeleton, KeyFigure, ROW, Section, whole } from "./home-parts";
+import { daysSinceText, foremanLogStatus, loggedOnDevice, offlineDateLine, outboxStatus, stageLine } from "./home-text";
+import { COLUMN, FOCUS, GROUP, HomeEmpty, HomeTitle, JobCard, JobCardSkeleton, KeyFigure, ROW, Section, whole } from "./home-parts";
 
 const STATUS_ICON = {
   clear: { icon: CheckCircle, className: "text-ink-2" },
   waiting: { icon: Tray, className: "text-ink" },
-  attention: { icon: WarningDiamond, className: "text-over" },
+  attention: { icon: WarningCircle, className: "text-over" },
 } as const;
 
 function OutboxStatusRow({ items }: { items: { state: OutboxState }[] }) {
@@ -24,6 +23,16 @@ function OutboxStatusRow({ items }: { items: { state: OutboxState }[] }) {
       <span className="min-w-0 flex-1 text-body text-ink [overflow-wrap:anywhere]">{status.text}</span>
       <CaretRight size={24} aria-hidden="true" className="shrink-0 text-ink-2" />
     </Link>
+  );
+}
+
+function OnThisDevice({ outbox }: { outbox: { state: OutboxState }[] }) {
+  return (
+    <Section title="On this device">
+      <div className={GROUP}>
+        <OutboxStatusRow items={outbox} />
+      </div>
+    </Section>
   );
 }
 
@@ -45,7 +54,7 @@ function JobRow({ job }: { job: ForemanJobRow }) {
 export type HomeForemanProps = {
   home: HomeForeman;
   /** This device's own queue (device-local), passed in by the page. */
-  outbox: { state: OutboxState }[];
+  outbox: { state: OutboxState; date: string; entry: { type: string } }[];
   /** No signal: the jobs are the last ones the phone loaded. */
   offline: boolean;
 };
@@ -57,11 +66,13 @@ export type HomeForemanProps = {
 export function HomeForemanBody({ home, outbox, offline }: HomeForemanProps) {
   const waiting = outbox.filter((i) => i.state === "waiting" || i.state === "sending").length;
   const attention = outbox.filter((i) => i.state === "needs_attention").length;
+  const onDevice = loggedOnDevice(outbox, home.today);
   if (home.jobs.length === 0) {
     return (
       <div data-screen="home" className={COLUMN}>
         <HomeTitle waiting={waiting} attention={attention} />
-        <EmptyState message="No jobs yet. Ask your manager to add you to a job." />
+        <HomeEmpty message="No jobs yet. Ask your manager to add you to a job. The Log tab needs a job first." />
+        <OnThisDevice outbox={outbox} />
       </div>
     );
   }
@@ -69,21 +80,21 @@ export function HomeForemanBody({ home, outbox, offline }: HomeForemanProps) {
     <div data-screen="home" className={COLUMN}>
       <header className="flex flex-col gap-1">
         <HomeTitle waiting={waiting} attention={attention} />
-        <p className="text-meta text-ink">{formatDate(home.today, home.today)}</p>
-        {offline ? (
-          <p className="text-meta text-ink">Progress from {formatDateTime(home.asOf, home.timeZone, home.today)}.</p>
-        ) : null}
-        <KeyFigure>{logStatusText(home.loggedToday)}</KeyFigure>
-        <Button variant="primary" href={home.logToday.href} className="mt-3 w-full sm:w-auto sm:min-w-72 sm:self-start">
+        <p className="text-meta text-ink">
+          {offline ? offlineDateLine(home.today, home.asOf, home.timeZone) : formatDate(home.today, home.today)}
+        </p>
+        {/* A crew-day waiting on this device counts as logged, so Log today is no longer the main action. */}
+        <KeyFigure>{foremanLogStatus(home.loggedToday, onDevice)}</KeyFigure>
+        <Button
+          variant={onDevice ? "secondary" : "primary"}
+          href={home.logToday.href}
+          className="mt-3 w-full sm:w-auto sm:min-w-72 sm:self-start"
+        >
           Log today
         </Button>
       </header>
 
-      <Section title="On this device">
-        <div className={GROUP}>
-          <OutboxStatusRow items={outbox} />
-        </div>
-      </Section>
+      <OnThisDevice outbox={outbox} />
 
       <Section title="Your jobs">
         <div className={GROUP}>

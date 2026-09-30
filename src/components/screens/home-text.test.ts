@@ -9,6 +9,10 @@ import {
   outboxStatus,
   payFlagsText,
   stageLine,
+  stageForecastLine,
+  loggedOnDevice,
+  foremanLogStatus,
+  offlineDateLine,
 } from "./home-text";
 
 const base = { id: "a", severity: "watch" as const, href: "/x" };
@@ -144,5 +148,44 @@ describe("payFlagsText", () => {
     expect(payFlagsText(6, true, "owner")).toBe("6 things to check before you approve. One of them stops approval.");
     expect(payFlagsText(6, true, "accountant")).toBe("6 things to check in this pay run.");
     expect(payFlagsText(1, false, "accountant")).toBe("1 thing to check in this pay run.");
+  });
+});
+
+describe("stageForecastLine", () => {
+  it("names the stage with its own forecast and budget", () => {
+    expect(stageForecastLine("Clean-up", 410_000, 400_000)).toBe("Clean-up: $4,100.00 forecast of $4,000.00 budget");
+  });
+});
+
+describe("loggedOnDevice", () => {
+  const item = (state: "waiting" | "sending" | "needs_attention" | "sent", type: string, date: string) => ({
+    state,
+    date,
+    entry: { type },
+  });
+  it("is true for a crew-day for today that is waiting, sending or needs attention", () => {
+    for (const state of ["waiting", "sending", "needs_attention"] as const)
+      expect(loggedOnDevice([item(state, "crew_day", TODAY)], TODAY)).toBe(true);
+  });
+  it("ignores sent entries, other days and other kinds of entry", () => {
+    expect(loggedOnDevice([item("sent", "crew_day", TODAY)], TODAY)).toBe(false);
+    expect(loggedOnDevice([item("waiting", "crew_day", "2026-09-25")], TODAY)).toBe(false);
+    expect(loggedOnDevice([item("waiting", "progress", TODAY)], TODAY)).toBe(false);
+  });
+});
+
+describe("foremanLogStatus", () => {
+  it("says an entry waiting on this device counts as logged", () => {
+    expect(foremanLogStatus({ jobs: [], crewCount: 0 }, true)).toBe("Logged, waiting to send");
+  });
+  it("prefers what the server already has", () => {
+    expect(foremanLogStatus({ jobs: ["Smith job"], crewCount: 3 }, true)).toBe("Logged: Smith job, 3 crew");
+    expect(foremanLogStatus({ jobs: [], crewCount: 0 }, false)).toBe("Not logged yet today");
+  });
+});
+
+describe("offlineDateLine", () => {
+  it("is one line: the date, then when the phone last loaded", () => {
+    expect(offlineDateLine("2026-09-28", "2026-09-27T20:20:00.000Z", "Australia/Sydney")).toBe("Mon 28 Sep · last updated 6:20 am");
   });
 });

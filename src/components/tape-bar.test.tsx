@@ -13,9 +13,10 @@ describe("TapeBar", () => {
     expect(bar).toHaveAttribute("aria-valuetext", "30% done");
   });
 
-  it('prints the percent as "N% done" beside the bar', () => {
+  it('prints the percent with its caption beside the bar', () => {
     render(<TapeBar label="Sheet install progress" percent={30} />);
-    expect(screen.getByText("30% done")).toBeInTheDocument();
+    expect(screen.getByText("30%")).toBeInTheDocument();
+    expect(screen.getByText("done")).toBeInTheDocument();
   });
 
   it("clamps out-of-range percentages for the aria value", () => {

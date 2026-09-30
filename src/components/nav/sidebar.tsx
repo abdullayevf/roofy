@@ -56,6 +56,8 @@ export type SidebarProps = {
   extra?: { key: string; label: string; href: string }[];
   /** Entries on this device waiting or failed: a count chip on the Outbox item. */
   outboxCount?: number;
+  /** One of those entries needs attention: the chip turns `over` red. */
+  outboxAttention?: boolean;
   /** Key of the active extra item. */
   activeExtra?: string;
   /** Demo-only: forces the focus ring on one item (by key) so it shows up in a static screenshot. */
@@ -76,6 +78,7 @@ export function Sidebar({
   extra,
   activeExtra,
   outboxCount = 0,
+  outboxAttention = false,
   focusKey,
   className,
 }: SidebarProps) {
@@ -105,9 +108,14 @@ export function Sidebar({
             <Glyph size={24} weight={isActive ? "fill" : "regular"} aria-hidden="true" />
             {item.label}
             {item.key === "outbox" && outboxCount > 0 ? (
-              <span className="ml-auto flex min-w-6 items-center justify-center rounded-full bg-tape px-2 text-meta text-on-tape">
+              <span
+                className={cx(
+                  "ml-auto flex min-w-6 items-center justify-center rounded-full px-2 text-meta",
+                  outboxAttention ? "bg-over-fill text-on-over-fill" : "bg-tape text-on-tape",
+                )}
+              >
                 <span aria-hidden="true">{outboxCount}</span>
-                <span className="sr-only">{outboxCount} to send</span>
+                <span className="sr-only">{outboxAttention ? `${outboxCount} to send, one needs attention` : `${outboxCount} to send`}</span>
               </span>
             ) : null}
           </Link>
