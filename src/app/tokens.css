@@ -175,6 +175,22 @@
 [data-direction="challenger"] .rounded-3xl {
   border-radius: 2px;
 }
+/* Round 1 values, kept as they were when the shared radii tightened (controls 6, groups 8, sheets 12). */
+[data-direction="challenger"] .rounded-t-sheet {
+  border-radius: 16px 16px 0 0;
+}
+[data-direction="challenger"] .rounded-sheet {
+  border-radius: 16px;
+}
+[data-direction="challenger"] [data-slot="date-rule"] {
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--line);
+}
+[data-direction="challenger"] [data-slot="date-rule"] > span {
+  top: 0;
+  transform: none;
+}
 [data-direction="challenger"] .border-group {
   border: 1px solid #000000;
 }

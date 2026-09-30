@@ -75,16 +75,16 @@ Rules: all money, quantities, hours and dates in tables use `font-variant-numeri
 
 ## 4. Components
 
-- **Button** — 52 px tall on phone (48 desktop), radius 10, Atkinson 600 17 px. Primary = `chalk` fill, white text. Secondary = `surface` + 1.5 px `edge` border, `ink` text. Destructive = `over` text on surface; filled (`over-fill`, white text) only in confirmation dialogs. Labels are verbs: "Save day", "Pause stage", "Approve pay run". No trailing arrows.
-- **Input** — 52 px, radius 10, 1.5 px `edge` border, label above (never placeholder-only), correct `inputmode`. Focus: 3 px `chalk` ring outside the border. Error: `over` border + message below saying how to fix.
+- **Button** — 52 px tall on phone (48 desktop), radius 6, Atkinson 600 17 px. Primary = `chalk` fill, white text. Secondary = `surface` + 1.5 px `edge` border, `ink` text. Destructive = `over` text on surface; filled (`over-fill`, white text) only in confirmation dialogs. Labels are verbs: "Save day", "Pause stage", "Approve pay run". No trailing arrows.
+- **Input** — 52 px, radius 6, 1.5 px `edge` border, label above (never placeholder-only), correct `inputmode`. Focus: 3 px `chalk` ring outside the border. Error: `over` border + message below saying how to fix.
 - **Stepper** (hours, days) — − / value / + with 52 px buttons; hours step 0.25, days toggle 1 / ½.
 - **Selection** — one treatment everywhere: a selected segment, day toggle option, choice chip or crew check is `tape` fill with `ink` text and a check. `chalk` is only for actions and focus, never for "selected". Segmented controls are full width on phone.
-- **Crew chip** (crew-day grid) — full-width row on phone (two columns from 600 px to 1023 px, §8): name, usual basis ("Day", "Hourly", "m²") and a large check area. Tapped = the check box in `tape` fill with an `ink` check and the whole row tinted `tape`; the whole row is the target. It's the mark a foreman makes on a list.
+- **Crew chip** (crew-day grid) — full-width row on phone (two columns from 600 px to 1023 px, §8): name, usual basis ("Day", "Hourly", "m²") and a large check area. Untapped = an empty check box with a 1.5 px `ink` border (readable in glare). Tapped = the check box in `tape` fill with an `ink` check and the whole row tinted `tape`; the whole row is the target. It's the mark a foreman makes on a list.
 - **Tape bar** (progress) — 12 px tall steel-tape track (`surface` with 1 px `ink` outline), `tape` fill, `ink` tick marks every 10% (taller at 50%). The % is always also printed as text beside it, in a fixed-width slot (sized to "100% done") so every track is the same length and ticks line up between rows. Over-budget stages show a marker at the forecast point (`watch` when trending over, `over` when actually over), not a red bar. A forecast past 100% cannot sit on the track, so the marker sits just beyond the end cap, joined to it by a short bar in its colour, further out the bigger the overrun (to a fixed maximum); the exact figure is in the sentence below. The marker's caption is its own row under the track, never inside the marker.
 - **Status chip** — pill, icon + word: Active (chalk), Paused (watch, pause icon + reason), Done (good), Not started (ink-2).
 - **Money cell** — right-aligned `figure`; drill-in affordance on tap (whole row is the target).
 - **List row** — 64 px min on phone, primary text left, figure right, meta below primary. The right column (figure or chip, and the chevron) is fixed: it never wraps or moves, only the label wraps; chip and chevron are vertically centred on the row, and a figure with a status line beneath it lines up with the label's first line. Groups of rows sit on one `surface` block with `line` dividers (iOS-style grouped list), not separate cards.
-- **Bottom sheet** (phone) / **dialog** (desktop) — same content component; sheet has 16 px top radius, grabber, primary action pinned above the home bar. A sheet with more content than fits shows a "More below" strip above its pinned action. Every sheet and dialog with a form or choices has a 48 px borderless ink close (X) at top right, on phone and desktop. A confirmation ("Discard this entry?") is a bottom sheet on phone and a dialog on desktop, closes with its Cancel button instead of an X, and uses the same 448 px width as other dialogs.
+- **Bottom sheet** (phone) / **dialog** (desktop) — same content component; sheet has 12 px top radius, grabber, primary action pinned above the home bar. A sheet with more content than fits shows a "More below" strip above its pinned action. Every sheet and dialog with a form or choices has a 48 px borderless ink close (X) at top right, on phone and desktop. A confirmation ("Discard this entry?") is a bottom sheet on phone and a dialog on desktop, closes with its Cancel button instead of an X, and uses the same 448 px width as other dialogs.
 - **Navigation** — Phone: bottom tab bar (Home · Jobs · **Log** · Crew · More) with Log as the raised `chalk` circle in the middle; Foreman: Jobs · **Log** · Outbox, Log raised in the middle; Accountant: Home · Pay · Reports · More (no Log, no raised circle). Desktop ≥ 1024: left sidebar 240 px, same items. The active item is a filled icon on a `galv` background with a 4 px `ink` edge bar — never a chalk fill (chalk is for actions and focus). The active phone tab is a filled icon with `chalk-link` text (the raised Log too). Only the bar actually fixed at the bottom pads for the home-bar inset.
 - **Outbox badge** — small `tape` pill with count ("3 to send") at top of screen when non-empty; tap opens Outbox.
 - **Offline banner** — slim `bar` strip (`ink` in light, a raised grey in dark), left-aligned: "No signal — entries are saved on this phone and will send automatically."
@@ -96,7 +96,7 @@ Rules: all money, quantities, hours and dates in tables use `font-variant-numeri
 ## 5. Layout principles
 
 - Spacing scale (px): 4, 8, 12, 16, 20, 24, 32, 40, 56. Phone gutters 16; desktop 24–32.
-- Phone: single column, title top-left, key figure directly under the title, lists below. Primary action bottom, in thumb reach.
+- Phone: single column, title top-left, key figure directly under the title, lists below. Primary action bottom, in thumb reach. Long forms (Log crew-day) pin their primary action above the tab bar: a bar fixed above the tab bar's box, safe-area aware, always visible, with the content padded so the last row is never hidden. From 1024 px the action sticks to the bottom of the form column.
 - Desktop ≥ 1024: sidebar + content (max 1200 px); list/detail split where it helps (Jobs, Crew, Pay runs). Tables allowed on desktop only; phone uses rows.
 - Alignment: left-aligned text; numbers right-aligned; nothing centred except empty states.
 - Density: phone generous (64 px rows); desktop tighter (48 px rows), same components.
@@ -106,11 +106,11 @@ Rules: all money, quantities, hours and dates in tables use `font-variant-numeri
 | Level | Use | Treatment |
 |---|---|---|
 | 0 | Page | `galv` |
-| 1 | Lists, panels | `surface`, radius 12, no shadow (separation by colour) |
-| 2 | Sheets, menus, popovers | `surface`, radius 16 (sheets top only), shadow `0 8px 24px rgb(31 34 36 / 0.18)` |
+| 1 | Lists, panels | `surface`, radius 8, 1 px `edge` outline, no shadow |
+| 2 | Sheets, menus, popovers | `surface`, radius 12 (sheets top only), shadow `0 8px 24px rgb(31 34 36 / 0.18)` |
 | 3 | Toasts | `bar` background, `surface` text (`ink` in dark), shadow `0 12px 32px rgb(31 34 36 / 0.28)` |
 
-Radius hierarchy is deliberate: controls 10, groups 12, sheets 16, chips full. Not one radius for everything.
+Radius hierarchy is deliberate: controls 6, groups 8, sheets 12 (top only), chips full. Not one radius for everything.
 
 ## 7. Do's and don'ts
 

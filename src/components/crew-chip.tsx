@@ -113,7 +113,7 @@ export function CrewChip({
           aria-hidden="true"
           className={cx(
             "flex h-12 w-12 shrink-0 items-center justify-center rounded-control border-[1.5px]",
-            pressed ? "border-transparent bg-tape" : cx("border-edge", disabled ? "bg-galv" : "bg-surface"),
+            pressed ? "border-transparent bg-tape" : cx("border-ink", disabled ? "bg-galv" : "bg-surface"),
             focusVisible
               ? "outline outline-[3px] outline-offset-2 outline-chalk-link"
               : "group-focus-visible:outline group-focus-visible:outline-[3px] group-focus-visible:outline-offset-2 group-focus-visible:outline-chalk-link",

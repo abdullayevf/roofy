@@ -38,9 +38,9 @@
   /* DESIGN.md §8: 600-1023 is the large-phone / tablet band. */
   --breakpoint-tablet: 600px;
 
-  --radius-control: 10px;
-  --radius-group: 12px;
-  --radius-sheet: 16px;
+  --radius-control: 6px;
+  --radius-group: 8px;
+  --radius-sheet: 12px;
 }
 
 /*
@@ -198,23 +198,35 @@ body {
 }
 
 /*
- * DESIGN.md §6: light mode's level-1 groups (lists, panels) stay borderless
- * (separation by colour, no shadow). Dark mode is elevation-by-lightness —
- * a `surface` block barely lifts off `galv` by colour alone there — so a
- * group also gets a 1 px `line` border in dark mode to still read as a
- * block. Mirrors tokens.css's own three dark-mode triggers (automatic OS
- * scheme, explicit :root override, [data-theme] wrapper).
+ * DESIGN.md §6: a level-1 group (list, panel) is a `surface` block with a 1 px `edge` outline (3:1 or better
+ * against `galv` and `surface`, light and dark), so its outline still reads in glare. No shadow.
  */
 .border-group {
-  border: 1px solid transparent;
+  border: 1px solid var(--edge);
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .border-group {
-    border-color: var(--line);
+
+/*
+ * DESIGN.md §5: a long form pins its primary action above the tab bar. On a phone it is a bar fixed above the
+ * tab bar's box (safe-area aware); from 1024 px it sticks to the bottom of the form column. The page pads its
+ * own bottom so the last row is never hidden. The Docket A/B challenger keeps its own top-aligned action.
+ */
+.pin-action:not([data-direction="challenger"] *) {
+  position: fixed;
+  inset-inline: 0;
+  bottom: var(--tab-bar-height);
+  z-index: 20;
+  padding: 0.75rem max(1rem, env(safe-area-inset-right)) 0.75rem max(1rem, env(safe-area-inset-left));
+  background: var(--surface);
+  border-top: 1.5px solid var(--ink);
+}
+@media (min-width: 1024px) {
+  .pin-action:not([data-direction="challenger"] *) {
+    position: sticky;
+    inset-inline: auto;
+    bottom: 0;
+    padding-inline: 0;
+    padding-bottom: calc(0.75rem + max(var(--sab-sim, 0px), env(safe-area-inset-bottom)));
   }
-}
-[data-theme="dark"] .border-group {
-  border-color: var(--line);
 }
 
 @media (min-width: 1024px) {

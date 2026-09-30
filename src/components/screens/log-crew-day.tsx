@@ -118,17 +118,20 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
   }
 
   return (
-    <div data-screen="log" className={cx("flex flex-col gap-6", WIDTH)}>
+    <div
+      data-screen="log"
+      className={cx("flex flex-col gap-6", WIDTH, saved ? null : error ? "max-lg:pb-44" : "max-lg:pb-24")}
+    >
       <h1 className="text-title text-ink">Log</h1>
 
       <div className="flex flex-col gap-2">
         <p className="text-meta text-ink-2">Date</p>
         <p className="text-heading text-ink">Today, {formatDate(defaults.date, defaults.date)}</p>
-        <span aria-hidden="true" className="block h-1 rounded-full bg-line">
+        <span aria-hidden="true" data-slot="date-rule" className="relative block h-[1.5px] bg-ink">
           <span
             data-testid="chalk-line"
             className={cx(
-              "block h-full rounded-full bg-chalk transition-[width] duration-300 ease-out motion-reduce:transition-none",
+              "absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-chalk transition-[width] duration-300 ease-out motion-reduce:transition-none",
               saved ? "w-full" : "w-0",
             )}
           />
@@ -223,7 +226,7 @@ export function LogCrewDay({ defaults, initialTicked = [], demo, basePath = "/lo
             )}
           </section>
 
-          <div data-slot="primary-action" className="flex flex-col gap-3">
+          <div data-slot="primary-action" className="pin-action flex flex-col gap-3">
             {error ? <ErrorMessage>{error}</ErrorMessage> : null}
             <Button
               disabled={!ready}

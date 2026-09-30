@@ -23,3 +23,15 @@ Input values (numbers, ABN, amounts) are Atkinson with tabular figures; Barlow i
 ## 2026-09-30 — System loop stopped at the 6-iteration cap (average 87)
 
 Iterations 5 and 6 both scored 87/87 with zero open P0/P1 and clean automated checks, so the loop did not reach 90 (04-design-process §3 cap). Why it didn't converge: each round fixed every raised issue (all 23 iteration-5 rows closed but one), and the critics then raised a fresh set of P2/P3 polish on the gallery itself — caption styles, specimen corners, copy nits — rather than on anything a screen depends on. The two P2s that matter to real screens are an undo toast after a one-tap pause (i6-F1) and a width limit on grouped rows in phone landscape (i6-F2). Screenshots and the 19 open rows went to the owner for a decision.
+
+Owner decision (2026-09-30): accept the system group at 87 and move on. i6-F1 (undo after a one-tap pause) is carried to Task 14 and i6-F2 (row width in phone landscape) to every screen group; the other i6 rows stay open as gallery polish.
+
+## 2026-09-30 — D2 round 1 split; Galvanised revised
+
+The A/B (Galvanised vs the Docket challenger, Home and Log crew-day) split: the design critic preferred the challenger 74 to 73, the field critic preferred Galvanised 75 to 72. Galvanised stays, with its colour meanings (both critics praised them), and takes what both critics said the challenger did better:
+
+- B1. Save day is pinned in thumb reach and always visible: a bar fixed above the tab bar on phone (safe-area aware, content padded so the last crew row is never hidden), sticky at the bottom of the form column on desktop. Why: the challenger's top Save day was the one thing both critics called faster to reach; a pinned bar gets that without moving the action off the thumb.
+- B2. Glare edges: unticked crew check boxes and the date rule use `ink` instead of faint grey, and list groups get a 1 px `edge` outline as well as the surface colour. Why: in glare a `surface` block on `galv` and a grey box vanish; both critics marked the field readability down. Contrast unchanged or better (edge is at least 3:1 on both grounds, light and dark).
+- B3. Tighter radius hierarchy: controls 6, groups 8, sheets 12 (top only), chips full (was 10, 12, 16). Why: the critics read the larger radii as a generic app look; smaller radii keep the hierarchy and look more like tools.
+
+The Docket challenger is unchanged (its own radius, edge and top-action overrides). Round 2 captures re-run before any new score.
