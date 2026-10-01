@@ -22,12 +22,12 @@ const { meta } = seed;
 
 /** A new job opened filled in: Smith's next job, Metal re-roof, its stages (from the last metal re-roof job) accepted. */
 const smithClientId = seed.projects.find((p) => p.id === meta.projects.smith)!.clientId;
-const JOB_PREFILL = `/jobs/new?${new URLSearchParams({
+export const JOB_PREFILL = `/jobs/new?${new URLSearchParams({
   client: smithClientId,
   type: "metal_reroof",
   name: "Smith job — Ryde carport roof",
   address: "14 Quarry Rd, Ryde",
-  contract: "1850000",
+  contract: "3850000",
   accepted: "1",
 }).toString()}`;
 

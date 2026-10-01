@@ -259,7 +259,7 @@ body {
   }
 }
 @media (max-height: 499px) {
-  .pin-hint {
+  .pin-hint:not(.pin-hint-side) {
     display: none;
   }
   html:has(.pin-action) {
@@ -291,6 +291,8 @@ body {
     padding-bottom: 0.5rem;
   }
   .pin-action > :not(button):not(a) {
+    /* The message or sentence comes first in the row, on the left of the Log circle, whatever its place in the markup. */
+    order: -1;
     flex: 1 1 0;
     min-width: 0;
     max-width: calc(50% - 2.25rem);

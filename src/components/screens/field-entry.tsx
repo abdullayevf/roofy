@@ -203,18 +203,21 @@ export function PinnedAction({
   barProps,
   error,
   hint,
+  hintOnSide = false,
   children,
 }: {
   barProps: ReturnType<typeof usePinnedBar>["barProps"];
   error?: string | null;
   hint?: string;
+  /** Keep the sentence on a phone on its side too (left of the Log circle), unless an error already holds that place. */
+  hintOnSide?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div {...barProps} data-slot="primary-action" className="pin-action flex flex-col gap-3">
       {error ? <ErrorMessage>{error}</ErrorMessage> : null}
       {children}
-      {hint ? <p className="pin-hint text-body text-ink">{hint}</p> : null}
+      {hint ? <p className={cx("pin-hint text-body text-ink", hintOnSide && !error && "pin-hint-side")}>{hint}</p> : null}
     </div>
   );
 }

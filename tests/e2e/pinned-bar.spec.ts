@@ -59,6 +59,29 @@ for (const screen of SCREENS) {
   });
 
 
+  if (screen.path.startsWith("/log")) {
+    // The foreman's Log circle is at five eighths across, not the middle; a small phone on its side is 568 px wide (RR1).
+    for (const c of [
+      { as: "foreman", width: 844, height: 390 },
+      { as: "manager", width: 568, height: 320 },
+      { as: "foreman", width: 568, height: 320 },
+    ]) {
+      test(`${screen.name} on its side as ${c.as} at ${c.width} px: one row, the button clear of the raised Log circle`, async ({ page }, testInfo) => {
+        test.skip(testInfo.project.name === "desktop", "below 1024 px only");
+        await page.setViewportSize({ width: c.width, height: c.height });
+        await page.goto(`/prototype/role?as=${c.as}&next=${encodeURIComponent(screen.path)}`);
+        await page.waitForLoadState("networkidle");
+        const { bar, circle } = await boxes(page);
+        expect(bar.height).toBeLessThanOrEqual(70);
+        const button = (await page.locator('[data-slot="primary-action"] button').first().boundingBox())!;
+        expect(button.height).toBeGreaterThanOrEqual(48);
+        expect(button.x >= circle.x + circle.width || button.x + button.width <= circle.x).toBe(true);
+        expect(button.x).toBeGreaterThanOrEqual(0);
+        expect(button.x + button.width).toBeLessThanOrEqual(c.width);
+      });
+    }
+  }
+
   for (const size of SIZES) {
     test(`${screen.name} at ${size.name}: the bar is flush on the tab bar at the top and the end of the page, and nothing sits under it`, async ({ page }, testInfo) => {
       test.skip(testInfo.project.name === "desktop", "below 1024 px only");

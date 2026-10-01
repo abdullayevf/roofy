@@ -68,9 +68,9 @@ export function finishProblem(start: string, finish: string): string | null {
 export const jobNameFor = (v: Pick<JobFormValues, "nickname" | "siteAddress">): string => v.nickname.trim() || v.siteAddress.trim();
 
 /** What the person still has to do before Create job (or Save changes) works, in form order. */
-export function jobMissing(v: JobFormValues, stages: { needStages: boolean; stagesAccepted: boolean }): string[] {
+export function jobMissing(v: JobFormValues, stages: { needStages: boolean; stagesAccepted: boolean; noClients?: boolean }): string[] {
   const missing: string[] = [];
-  if (!v.clientId) missing.push("choose a client");
+  if (!v.clientId) missing.push(stages.noClients ? "add a client first" : "choose a client");
   if (!v.jobType) missing.push("choose a job type");
   if (!v.siteAddress.trim()) missing.push("add the site address");
   if (finishProblem(v.startDate, v.targetFinish)) missing.push("move the target finish to after the start");
@@ -83,6 +83,38 @@ export function missingSentence(items: string[]): string | undefined {
   if (items.length === 0) return undefined;
   const text = items.length === 1 ? items[0]! : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
   return `${text.charAt(0).toUpperCase()}${text.slice(1)}.`;
+}
+
+/** The fields that show a server message beside them; any other refusal goes in the bar above Create job. */
+const FIELDS_WITH_SLOT = ["clientId", "siteAddress", "nickname", "startDate", "targetFinish"];
+
+/**
+ * What the bar above Create job says about a refused save, or null when every refusal already shows beside its field.
+ * A refusal with no slot (the contract value, a stage) is never hidden by a slotted one. A job name refusal, with the
+ * name left blank, is about the address that stood in for it, so it goes in the bar rather than under the empty field.
+ */
+export function refusalBarMessage(issues: { field: string; message: string }[], message: string, nameBlank: boolean): string | null {
+  if (issues.length === 0) return message;
+  const loose = issues.find((i) => !FIELDS_WITH_SLOT.includes(i.field) || (i.field === "nickname" && nameBlank));
+  if (!loose) return null;
+  return loose.field === "nickname" ? "The site address is too long to name the job. Add a shorter job name." : loose.message;
+}
+
+/**
+ * Whether the form is complete and changed enough to save, and the one sentence under the button when it is not (the
+ * screen adds the signal). A new job is always changed; an edit needs a change from the job as it opened.
+ */
+export function jobSaveState(
+  v: JobFormValues,
+  initial: JobFormValues,
+  o: { isNew: boolean; stagesAccepted: boolean; noClients?: boolean },
+): { ready: boolean; hint: string | undefined } {
+  const missing = jobMissing(v, { needStages: o.isNew, stagesAccepted: o.stagesAccepted, noClients: o.noClients });
+  const dirty = o.isNew || (Object.keys(v) as (keyof JobFormValues)[]).some((k) => v[k] !== initial[k]);
+  return {
+    ready: missing.length === 0 && dirty,
+    hint: missingSentence(missing.slice(0, 1)) ?? (dirty ? undefined : "Change something to save."),
+  };
 }
 
 /** Where a proposed stage list came from, in a sentence. */

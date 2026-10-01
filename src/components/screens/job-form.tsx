@@ -17,16 +17,16 @@ import { Select } from "@/components/ui/select";
 import { Sheet } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { KeepTogether } from "@/components/keep-together";
-import { CrewRowsSkeleton, FORM_WIDTH, FieldSkeleton, PinnedAction, usePinnedBar } from "./field-entry";
+import { FORM_WIDTH, FieldSkeleton, PinnedAction, usePinnedBar } from "./field-entry";
 import { FOCUS } from "./home-parts";
 import {
   JOB_TYPES,
   STATUSES,
   finishProblem,
-  jobMissing,
   jobNameFor,
-  missingSentence,
+  jobSaveState,
   proposalSource,
+  refusalBarMessage,
   renumber,
   type JobFormValues,
 } from "./job-input";
@@ -51,12 +51,6 @@ export type JobFormProps = {
 
 let nextUid = 1;
 const items = (stages: StageDraft[]): StageItem[] => stages.map((draft) => ({ uid: nextUid++, draft }));
-
-const sameValues = (a: JobFormValues, b: JobFormValues) =>
-  (Object.keys(a) as (keyof JobFormValues)[]).every((k) => a[k] === b[k]);
-
-/** The fields that show a server message beside them; any other refusal goes in the bar above Create job. */
-const FIELDS_WITH_SLOT = ["clientId", "siteAddress", "nickname", "startDate", "targetFinish"];
 
 /** Server messages that belong under one field, by the field's name in the input. */
 function issueFor(result: ActionResult<object> | null, field: string): string | undefined {
@@ -142,7 +136,7 @@ function StageRows({ stages }: { stages: StageDraft[] }) {
         </li>
       ))}
       {total > 0 ? (
-        <li aria-label="Labour budget total" className="flex min-h-16 items-center justify-between gap-4 px-4 py-2">
+        <li aria-label="Labour budget total" className="flex min-h-16 border-t-2 border-ink items-center justify-between gap-4 px-4 py-2">
           <span className="text-body-strong text-ink">Labour budget total</span>
           <span className="shrink-0 whitespace-nowrap text-figure num text-ink">{formatMoney(total)}</span>
         </li>
@@ -291,11 +285,10 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
     setAccepted(true);
     setStages((rows) => items(renumber(rows.map((r) => r.draft))));
   };
-  const missing = jobMissing(v, { needStages: isNew, stagesAccepted });
-  const dirty = isNew || !sameValues(v, initial);
-  const ready = online && missing.length === 0 && dirty;
+  const state = jobSaveState(v, initial, { isNew, stagesAccepted, noClients: clients.length === 0 });
+  const ready = online && state.ready;
   // One line naming only the next thing to do.
-  const hint = !online ? NEEDS_CONNECTION : (missingSentence(missing.slice(0, 1)) ?? (dirty ? undefined : "Change something to save."));
+  const hint = online ? state.hint : NEEDS_CONNECTION;
   const finishError = finishProblem(v.startDate, v.targetFinish) ?? issueFor(result, "targetFinish");
 
   const { style, barProps } = usePinnedBar(saved);
@@ -328,7 +321,7 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
         : await updateProject(projectId!, fields);
       setResult(r);
       if (r.ok) setSaved({ id: r.id, name: fields.nickname, stageCount: stages.length });
-      else if (!r.issues.some((i) => FIELDS_WITH_SLOT.includes(i.field))) setFailed(r.message);
+      else setFailed(refusalBarMessage(r.issues, r.message, v.nickname.trim() === ""));
     } catch {
       setFailed(`Couldn't save this. ${NEEDS_CONNECTION}`);
     } finally {
@@ -353,7 +346,7 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
       <Link
         href="/jobs"
         prefetch={false}
-        className={cx("-ml-2 inline-flex min-h-12 items-center gap-1 self-start rounded-control px-2 text-body-strong text-chalk-link", FOCUS)}
+        className={cx("flex min-h-12 items-center gap-1 border-b border-line text-body-strong text-chalk-link", FOCUS)}
       >
         <CaretLeft size={24} aria-hidden="true" />
         Back to jobs
@@ -407,7 +400,7 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
             error={issueFor(result, "clientId")}
           />
         )}
-        <Button variant="secondary" disabled={!online} onClick={() => setAdding(true)}>
+        <Button variant={clients.length === 0 ? "primary" : "secondary"} disabled={!online} onClick={() => setAdding(true)}>
           Quick-add client
         </Button>
 
@@ -437,7 +430,7 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
           hint="Left blank, the job is named by its site address."
           value={v.nickname}
           onChange={(e) => set("nickname", e.target.value)}
-          error={issueFor(result, "nickname")}
+          error={v.nickname.trim() === "" ? undefined : issueFor(result, "nickname")}
         />
         <MoneyField
           label="Contract value (optional)"
@@ -502,7 +495,7 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
         </section>
       ) : null}
 
-      <PinnedAction barProps={barProps} error={failed} hint={editingStages ? (stagesOk ? undefined : stageHint) : ready ? undefined : hint}>
+      <PinnedAction barProps={barProps} error={failed} hintOnSide hint={editingStages ? (stagesOk ? undefined : stageHint) : ready ? undefined : hint}>
         {editingStages ? (
           <Button disabled={!stagesOk} onClick={acceptStages} className="w-full">
             Accept stages
@@ -563,7 +556,7 @@ export function JobFormSkeleton({ mode }: { mode: "new" | "edit" }) {
       {mode === "new" ? (
         <div className="flex flex-col gap-3">
           <Skeleton width={96} height={24} />
-          <CrewRowsSkeleton count={4} withLine={false} />
+          <Skeleton width={260} height={24} />
         </div>
       ) : null}
       <PinnedAction barProps={barProps}>

@@ -6,12 +6,14 @@ import {
   jobLine,
   jobMissing,
   jobNameFor,
+  jobSaveState,
   lastLogOn,
   overBudgetJobs,
   missingSentence,
   parseJobPrefill,
   parseStatusFilter,
   proposalSource,
+  refusalBarMessage,
   renumber,
   statusEmptyMessage,
 } from "./job-input";
@@ -245,5 +247,50 @@ describe("overBudgetJobs", () => {
     const labour = { kind: "labour" as const, byCents: 1 };
     const stage = { kind: "stage" as const, stageName: "Clean-up", byCents: 1 };
     expect(overBudgetJobs([{ over: labour }, { over: null }, { over: stage }, { over: null }])).toBe(2);
+  });
+});
+
+describe("jobSaveState (RR3)", () => {
+  const open = { isNew: true, stagesAccepted: true };
+  it("a complete new job is ready with no sentence", () => {
+    expect(jobSaveState(base, base, open)).toEqual({ ready: true, hint: undefined });
+  });
+  it("names only the next thing to do, in form order", () => {
+    expect(jobSaveState({ ...base, clientId: "", siteAddress: "" }, base, open)).toEqual({ ready: false, hint: "Choose a client." });
+    expect(jobSaveState({ ...base, siteAddress: "" }, base, open)).toEqual({ ready: false, hint: "Add the site address." });
+    expect(jobSaveState(base, base, { ...open, stagesAccepted: false })).toEqual({ ready: false, hint: "Accept the stages." });
+  });
+  it("with no clients to choose from the sentence says to add one first", () => {
+    expect(jobSaveState({ ...base, clientId: "" }, base, { ...open, noClients: true }).hint).toBe("Add a client first.");
+  });
+  it("an edit is not ready until something changes, and says so", () => {
+    const edit = { isNew: false, stagesAccepted: false };
+    expect(jobSaveState(base, base, edit)).toEqual({ ready: false, hint: "Change something to save." });
+    expect(jobSaveState({ ...base, status: "on_hold" }, base, edit)).toEqual({ ready: true, hint: undefined });
+  });
+  it("a finish before the start is not ready even when something changed", () => {
+    const v = { ...base, startDate: "2026-10-10", targetFinish: "2026-10-01" };
+    expect(jobSaveState(v, base, open)).toEqual({ ready: false, hint: "Move the target finish to after the start." });
+  });
+});
+
+describe("refusalBarMessage (RR7)", () => {
+  it("shows nothing when every refusal has a field to sit under", () => {
+    expect(refusalBarMessage([{ field: "siteAddress", message: "Add the site address." }], "Check the form.", false)).toBeNull();
+  });
+  it("an unslotted refusal is not hidden by a slotted one", () => {
+    const issues = [
+      { field: "siteAddress", message: "Add the site address." },
+      { field: "contractCents", message: "Check the contract value." },
+    ];
+    expect(refusalBarMessage(issues, "Check the form.", false)).toBe("Check the contract value.");
+  });
+  it("a refusal with no issues says the server's message", () => {
+    expect(refusalBarMessage([], "Couldn't save this job.", false)).toBe("Couldn't save this job.");
+  });
+  it("a job name refusal with the name left blank is about the address, so it goes in the bar", () => {
+    const issues = [{ field: "nickname", message: "Keep it under 120 characters." }];
+    expect(refusalBarMessage(issues, "x", true)).toBe("The site address is too long to name the job. Add a shorter job name.");
+    expect(refusalBarMessage(issues, "x", false)).toBeNull();
   });
 });

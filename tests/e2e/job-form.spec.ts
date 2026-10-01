@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { collectConsole, expectScreenHealthy } from "./guards";
 import { getSeed } from "../../src/data/fake/store";
+import { JOB_PREFILL } from "./screens";
 
 const seed = getSeed();
 const { meta } = seed;
@@ -172,6 +173,12 @@ test.describe("New job", () => {
     await signInAs(page, "manager", "/jobs/new?demo=loading");
     await expect(page.locator('[data-screen="job-form"]')).toHaveAttribute("aria-busy", "true");
     await expect(page.getByRole("heading", { level: 1, name: "New job" })).toBeVisible();
+    // The stages area is a heading and a line, as the loaded form's is, not four stage rows (i2-F15).
+    const blocks = await page.locator('[data-screen="job-form"] span.bg-line').evaluateAll((els) =>
+      els.map((el) => ({ w: Math.round(el.getBoundingClientRect().width), h: Math.round(el.getBoundingClientRect().height) })),
+    );
+    expect(blocks.filter((b) => b.w === 48 && b.h === 48)).toEqual([]);
+    expect(blocks.at(-2)!.h).toBeLessThanOrEqual(24);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
@@ -224,8 +231,13 @@ test.describe("New job: measured guards", () => {
 
   test("the Back to jobs link has a 48 px tap area and dates use Atkinson (i1-F13, R2)", async ({ page }) => {
     await signInAs(page, "manager", "/jobs/new");
-    const link = (await page.getByRole("link", { name: "Back to jobs" }).boundingBox())!;
+    const backLink = page.getByRole("link", { name: "Back to jobs" });
+    const link = (await backLink.boundingBox())!;
     expect(link.height).toBeGreaterThanOrEqual(48);
+    // The row is visibly 48 px: as wide as the form's column, with a rule under it (i2-F8).
+    const column = (await page.getByLabel("Site address").boundingBox())!;
+    expect(Math.abs(link.width - column.width)).toBeLessThanOrEqual(1);
+    expect(await backLink.evaluate((el) => getComputedStyle(el).borderBottomWidth)).not.toBe("0px");
     // The date value is Atkinson and starts where a text field's value starts (R8).
     const look = (label: string) =>
       page.getByLabel(label).evaluate((el) => {
@@ -254,6 +266,122 @@ test.describe("New job: measured guards", () => {
     await signInAs(page, "manager", "/jobs/new");
     const env = await page.evaluate(() => ({ lang: navigator.language, zone: Intl.DateTimeFormat().resolvedOptions().timeZone, day: new Date(2026, 8, 10).toLocaleDateString() }));
     expect(env).toEqual({ lang: "en-AU", zone: "Australia/Sydney", day: "10/09/2026" });
+  });
+
+  test("a phone on its side still says why Create job is off, left of the Log circle (i2-F9)", async ({ page }, testInfo) => {
+    test.skip(!isPhone(testInfo.project.name), "phones only");
+    const cases = [
+      { size: { width: 844, height: 390 }, path: "/jobs/new", hint: "Choose a client." },
+      { size: { width: 844, height: 390 }, path: `/jobs/${meta.projects.smith}/edit`, hint: "Change something to save." },
+      { size: { width: 844, height: 390 }, path: "/jobs/new?demo=offline", hint: "Needs connection. Try again once you're back online." },
+      { size: { width: 568, height: 320 }, path: "/jobs/new", hint: "Choose a client." },
+    ];
+    for (const c of cases) {
+      await page.setViewportSize(c.size);
+      await signInAs(page, "manager", c.path);
+      const bar = page.locator('[data-slot="primary-action"]');
+      const hint = bar.locator(".pin-hint");
+      await expect(hint).toHaveText(c.hint);
+      const h = (await hint.boundingBox())!;
+      const circle = (await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Log" }).locator("span.rounded-full").boundingBox())!;
+      expect(h.x + h.width, `${c.path} at ${c.size.width}`).toBeLessThanOrEqual(circle.x);
+      expect((await bar.boundingBox())!.height).toBeLessThanOrEqual(70);
+    }
+  });
+
+  test("on desktop the strip is a galv bar under a line rule at rest and at the end, and no field sits under it at the end (i2-D7)", async ({ page }, testInfo) => {
+    test.skip(isPhone(testInfo.project.name), "desktop only");
+    await signInAs(page, "manager", prefill());
+    const bar = page.locator('[data-slot="primary-action"]');
+    const look = () =>
+      bar.evaluate((el) => {
+        const cs = getComputedStyle(el);
+        const probe = document.createElement("i");
+        probe.style.color = "var(--line)";
+        document.body.append(probe);
+        const line = getComputedStyle(probe).color;
+        probe.remove();
+        return { bg: cs.backgroundColor, page: getComputedStyle(document.body).backgroundColor, rule: cs.borderTopColor, line, width: cs.borderTopWidth };
+      });
+    const rest = await look();
+    expect(rest.rule).toBe(rest.line);
+    expect(rest.bg).toBe(rest.page);
+    expect(parseFloat(rest.width)).toBeGreaterThanOrEqual(1);
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    expect(await look()).toEqual(rest);
+    const top = (await bar.boundingBox())!.y;
+    const lastField = await page.evaluate(() =>
+      Math.max(
+        ...[...document.querySelectorAll<HTMLElement>("main button, main input, main select")]
+          .filter((el) => !el.closest('[data-slot="primary-action"]'))
+          .map((el) => el.getBoundingClientRect().bottom),
+      ),
+    );
+    expect(lastField).toBeLessThanOrEqual(top);
+  });
+
+  test("the filled capture's contract value is above its labour budget total (i2-D9)", async ({ page }) => {
+    await signInAs(page, "manager", JOB_PREFILL);
+    const dollars = (text: string) => Number(text.replace(/[^0-9.]/g, ""));
+    const contract = dollars(await page.getByLabel("Contract value (optional)").inputValue());
+    const total = page.getByRole("listitem", { name: "Labour budget total" });
+    const labour = dollars((await total.innerText()).replace("Labour budget total", ""));
+    expect(labour).toBeGreaterThan(0);
+    expect(contract).toBeGreaterThan(labour);
+    // The total row is set apart from the stage rows by a heavier rule (i2-D13).
+    expect(await total.evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe("2px");
+  });
+
+  test("with no clients the sentence says to add one first and Quick-add client is the primary (i2-F11)", async ({ page }) => {
+    await signInAs(page, "manager", "/jobs/new?demo=empty");
+    await expect(page.locator('[data-slot="primary-action"] .pin-hint')).toHaveText("Add a client first.");
+    await expect(page.getByRole("button", { name: "Quick-add client" })).toHaveAttribute("data-variant", "primary");
+  });
+
+  test("a refusal's red words go when the field is fixed: in the bar and under a field (RR4)", async ({ page }) => {
+    const bar = page.locator('[data-slot="primary-action"]');
+    await signInAs(page, "manager", prefill({ contract: "2000000000" }));
+    await createJob(page).click();
+    await expect(bar).toContainText("Check the contract value.");
+    await page.getByLabel("Site address").fill("15 Quarry Rd, Ryde");
+    await expect(bar).not.toContainText("Check the contract value.");
+    // An address over 200 characters is refused under the address field.
+    await page.getByLabel("Site address").fill("1 Quarry Rd, Ryde ".repeat(12));
+    await createJob(page).click();
+    await expect(page.getByText("Keep it under 200 characters.")).toBeVisible();
+    await page.getByLabel("Site address").fill("15 Quarry Rd, Ryde");
+    await expect(page.getByText("Keep it under 200 characters.")).toHaveCount(0);
+  });
+
+  test("a refusal with no field to blame is not hidden by one that has a field, and a job name refusal on a blank name goes in the bar (RR7)", async ({ page }) => {
+    const bar = page.locator('[data-slot="primary-action"]');
+    // 130 characters of address name the job, which is over the 120 the job name allows.
+    await signInAs(page, "manager", prefill({ name: "", address: "1 Quarry Rd, Ryde ".repeat(7).trim() }));
+    await createJob(page).click();
+    await expect(bar).toContainText("The site address is too long to name the job. Add a shorter job name.");
+    await expect(page.getByText("Keep it under 120 characters.")).toHaveCount(0);
+    await page.getByLabel("Job name (optional)").fill("Ryde carport roof");
+    await expect(bar).not.toContainText("too long");
+  });
+
+  test("a save that can't reach the server says so in the bar and keeps the form; so does Quick-add client (RR2)", async ({ page }) => {
+    await signInAs(page, "manager", prefill());
+    await page.route("**/*", (route) => (route.request().headers()["next-action"] ? route.abort() : route.continue()));
+    await createJob(page).click();
+    await expect(page.locator('[data-slot="primary-action"]')).toContainText("Couldn't save this. Needs connection.");
+    await expect(page.getByRole("heading", { level: 1, name: "New job" })).toBeVisible();
+    await expect(createJob(page)).toBeEnabled();
+    await page.getByRole("button", { name: "Quick-add client" }).click();
+    const sheet = page.getByRole("dialog");
+    await sheet.getByLabel("Client name").fill("Dunn Roofing");
+    await sheet.getByRole("button", { name: "Save client" }).click();
+    await expect(sheet).toContainText("Couldn't save the client. Needs connection.");
+  });
+
+  test("a foreman who opens New job is told they have no access, not shown a form (F10)", async ({ page }) => {
+    await signInAs(page, "foreman", "/jobs/new");
+    await expect(page.getByText("You don't have access to this. Ask your manager.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create job" })).toHaveCount(0);
   });
 
   test("stage review rows are 64 px with a total row (D7)", async ({ page }) => {
