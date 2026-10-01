@@ -15,6 +15,14 @@ export function pickableIds(crew: Pick<Loggable, "crewMemberId" | "noWorkOnDate"
   return ids.filter((id) => crew.some((c) => c.crewMemberId === id && canLog(c)));
 }
 
+/** The sentence under a disabled Save day: only what is still missing, or undefined when nothing is. */
+export function crewDayHint(s: { job: boolean; stage: boolean; people: boolean }): string | undefined {
+  const choose = !s.job ? "Choose a job and a stage" : !s.stage ? "Choose a stage" : null;
+  if (choose === null) return s.people ? undefined : "Tick at least one person.";
+  if (s.people) return `${choose}.`;
+  return `${choose}${s.job ? "" : ","} and tick at least one person.`;
+}
+
 /** The usual basis as the chip shows it: never a rate. */
 export function basisLabel(p: Pick<GridPerson, "basis" | "unit">): CrewBasisLabel {
   if (p.basis === "daily") return "Day";

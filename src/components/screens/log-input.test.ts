@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { basisLabel, buildEntries, canLog, exceptionFor, initialException, pickableIds, usablePicks } from "./log-input";
+import { basisLabel, buildEntries, canLog, crewDayHint, exceptionFor, initialException, pickableIds, usablePicks } from "./log-input";
 
 const crew = (over: object) => ({
   crewMemberId: "c1", name: "Sam", type: "employee" as const, basis: "daily" as const, unit: null,
@@ -83,5 +83,16 @@ describe("picks carried from an address", () => {
 
   it("drops people who are not on the crew", () => {
     expect(usablePicks(crew, { ghost: 50 }, { ghost: 150 })).toEqual({ values: {}, multipliers: {} });
+  });
+});
+
+describe("the line under Save day", () => {
+  it("names only what is missing", () => {
+    expect(crewDayHint({ job: false, stage: false, people: false })).toBe("Choose a job and a stage, and tick at least one person.");
+    expect(crewDayHint({ job: true, stage: false, people: false })).toBe("Choose a stage and tick at least one person.");
+    expect(crewDayHint({ job: true, stage: true, people: false })).toBe("Tick at least one person.");
+    expect(crewDayHint({ job: true, stage: false, people: true })).toBe("Choose a stage.");
+    expect(crewDayHint({ job: false, stage: false, people: true })).toBe("Choose a job and a stage.");
+    expect(crewDayHint({ job: true, stage: true, people: true })).toBeUndefined();
   });
 });

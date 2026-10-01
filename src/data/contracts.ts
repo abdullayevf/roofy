@@ -1266,7 +1266,7 @@ export interface OutboxItem {
   unit: Unit | null;
   crewNames: string[];
   /** Needs attention: the server's own rejection, shown verbatim (flows "Outbox needs attention"). */
-  rejection: { code: DataErrorCode; message: string } | null;
+  rejection: { code: DataErrorCode; message: string; /** What a manager is told, with a next step; the foreman screen shows `message`. */ managerMessage?: string } | null;
 }
 
 /**

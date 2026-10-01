@@ -68,6 +68,7 @@ describe("demo flags", () => {
     expect(items[0]!.rejection).toEqual({
       code: "forbidden",
       message: "You don't have access to this job any more. Ask your manager.",
+      managerMessage: "Smith job was archived. Pick another job.",
     });
     expectNoMoney(items, "outbox attention");
   });

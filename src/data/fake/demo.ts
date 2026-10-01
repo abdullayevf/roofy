@@ -115,7 +115,11 @@ export function demoOutbox(state: DemoState | null, tables: Seed, now: Date): Ou
   });
   const attention = (): OutboxItem => ({
     ...item(crewDay("01923b6a-7a00-7c3e-9d1f-4b2a6c8e0f01", 95), "needs_attention", pair),
-    rejection: { code: "forbidden", message: "You don't have access to this job any more. Ask your manager." },
+    rejection: {
+      code: "forbidden",
+      message: "You don't have access to this job any more. Ask your manager.",
+      managerMessage: `${projectName(smith)?.split(" — ")[0]} was archived. Pick another job.`,
+    },
   });
 
   if (state === "attention") return [attention()];

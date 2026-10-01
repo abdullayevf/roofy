@@ -3,6 +3,11 @@ import {
   editHref,
   parseEntryPicks,
   progressLine,
+  progressPreview,
+  progressHint,
+  noWorkHint,
+  outboxReason,
+  orderByJob,
   parseLocalDate,
   equalShares,
   groupOutbox,
@@ -158,5 +163,52 @@ describe("the stage's progress line", () => {
 
   it("says so far when there is no budgeted quantity", () => {
     expect(progressLine(12000, null, "m2")).toBe("120 m² so far");
+  });
+});
+
+describe("the preview under the tape", () => {
+  it("adds what is typed to what is done: '240 of 400 m² after this'", () => {
+    expect(progressPreview(12000, 12000, 40000, "m2")).toBe("240 of 400 m² after this");
+    expect(progressPreview(12000, 1250, null, "m2")).toBe("132.5 m² after this");
+  });
+});
+
+describe("the line under Save names only what is missing", () => {
+  it("progress", () => {
+    const none = { stage: false, quantity: false, people: false, totalError: null };
+    expect(progressHint(none)).toBe("Choose a stage, type how much was done and tick at least one person.");
+    expect(progressHint({ ...none, stage: true })).toBe("Type how much was done and tick at least one person.");
+    expect(progressHint({ stage: true, quantity: true, people: false, totalError: null })).toBe("Tick at least one person.");
+    expect(progressHint({ stage: true, quantity: false, people: true, totalError: null })).toBe("Type how much was done.");
+    expect(progressHint({ stage: false, quantity: true, people: true, totalError: null })).toBe("Choose a stage.");
+    expect(progressHint({ stage: true, quantity: true, people: true, totalError: "Shares must add up to 100%. Currently 92%." })).toBe(
+      "Shares must add up to 100%. Currently 92%.",
+    );
+    expect(progressHint({ stage: true, quantity: true, people: true, totalError: null })).toBeUndefined();
+  });
+
+  it("no work", () => {
+    expect(noWorkHint({ people: false, reason: false })).toBe("Tick at least one person and choose why.");
+    expect(noWorkHint({ people: false, reason: true })).toBe("Tick at least one person.");
+    expect(noWorkHint({ people: true, reason: false })).toBe("Choose why.");
+    expect(noWorkHint({ people: true, reason: true })).toBeUndefined();
+  });
+});
+
+describe("the reason on a Needs attention entry, by role", () => {
+  const rejection = { code: "forbidden" as const, message: "You don't have access to this job any more. Ask your manager.", managerMessage: "Smith job was archived. Pick another job." };
+  it("a manager gets the server's message with a next step; a foreman keeps the Ask your manager wording", () => {
+    expect(outboxReason(rejection, false)).toBe("Smith job was archived. Pick another job.");
+    expect(outboxReason(rejection, true)).toBe(rejection.message);
+    expect(outboxReason({ code: "forbidden", message: "No." }, false)).toBe("No.");
+    expect(outboxReason(null, false)).toBe("This entry couldn't be sent.");
+  });
+});
+
+describe("a crew order fixed per job", () => {
+  const people = [{ id: "a" }, { id: "b" }, { id: "c" }];
+  it("follows the order for the job, with anyone not listed last in their own order", () => {
+    expect(orderByJob(people, ["c", "a"]).map((p) => p.id)).toEqual(["c", "a", "b"]);
+    expect(orderByJob(people, undefined).map((p) => p.id)).toEqual(["a", "b", "c"]);
   });
 });

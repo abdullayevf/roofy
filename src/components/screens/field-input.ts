@@ -50,6 +50,40 @@ export function progressLine(done: Hundredths, planned: Hundredths | null, unit:
   return `${formatQuantity(done, unit).slice(0, -suffix.length)} of ${formatQuantity(planned, unit)}`;
 }
 
+/** "240 of 400 m² after this": the stage once what is typed is added (quantities only, fine for a foreman). */
+export function progressPreview(done: Hundredths, entered: Hundredths, planned: Hundredths | null, unit: Unit): string {
+  const line = progressLine(done + entered, planned, unit);
+  return `${planned === null || planned <= 0 ? line.replace(/ so far$/, "") : line} after this`;
+}
+
+/** The sentence under a disabled Save: only what is still missing, or undefined when nothing is. */
+export function progressHint(s: { stage: boolean; quantity: boolean; people: boolean; totalError: string | null }): string | undefined {
+  if (s.totalError) return s.totalError;
+  const missing = [!s.stage && "choose a stage", !s.quantity && "type how much was done", !s.people && "tick at least one person"].filter(
+    (m): m is string => m !== false,
+  );
+  return sentence(missing);
+}
+
+/** The sentence under a disabled Save no work. */
+export function noWorkHint(s: { people: boolean; reason: boolean }): string | undefined {
+  return sentence([!s.people && "tick at least one person", !s.reason && "choose why"].filter((m): m is string => m !== false));
+}
+
+/** "Choose a stage, type it and tick someone." from lower-case parts; undefined for none. */
+function sentence(parts: string[]): string | undefined {
+  if (parts.length === 0) return undefined;
+  const text = parts.length === 1 ? parts[0]! : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+  return `${text[0]!.toUpperCase()}${text.slice(1)}.`;
+}
+
+/** People in the order set for their job (ids first, as listed); anyone not listed follows in their own order. */
+export function orderByJob<T extends { id: string }>(people: T[], order: string[] | undefined): T[] {
+  if (!order) return people;
+  const rank = new Map(order.map((id, i) => [id, i]));
+  return [...people].sort((a, b) => (rank.get(a.id) ?? order.length) - (rank.get(b.id) ?? order.length));
+}
+
 // ─── Outbox ─────────────────────────────────────────────────────────────────
 
 const GROUPS: { state: OutboxState; title: string }[] = [
@@ -62,6 +96,15 @@ const GROUPS: { state: OutboxState; title: string }[] = [
 /** Non-empty groups in the order a person acts on them. */
 export function groupOutbox(items: OutboxItem[]): { state: OutboxState; title: string; items: OutboxItem[] }[] {
   return GROUPS.map((g) => ({ ...g, items: items.filter((i) => i.state === g.state) })).filter((g) => g.items.length > 0);
+}
+
+/**
+ * Why an entry needs attention, worded for the reader: a manager gets the server's message with its next step,
+ * a foreman the "Ask your manager" wording.
+ */
+export function outboxReason(rejection: OutboxItem["rejection"], foreman: boolean): string {
+  if (!rejection) return "This entry couldn't be sent.";
+  return foreman ? rejection.message : (rejection.managerMessage ?? rejection.message);
 }
 
 const REASON: Record<NoWorkReason, string> = { rain: "Rain", leave: "Leave", sick: "Sick", other: "Other" };
