@@ -3,15 +3,16 @@
 ## Current
 
 - Phase: 2 — Design system and full prototype. Branch `phase/2-design-prototype` (local on the VPS, not pushed, not merged). Plan: `docs/plans/03-design-prototype.md`.
-- Session 2026-10-01 ended after Task 11. Head = this docs commit. Tree clean. Task ledger (git-ignored, local only): `.superpowers/sdd/03-design-prototype/progress.md` — every ruling, deferred minor and fix round is there; the files `implementer-rules.md` and `reviewer-rules.md` beside it are reused by every dispatch.
-- Done and reviewed: Tasks 1–11.
+- Session 2026-10-01 ended after Task 12. Head = this docs commit. Tree clean. Task ledger (git-ignored, local only): `.superpowers/sdd/03-design-prototype/progress.md` — every ruling, deferred minor and fix round is there; the files `implementer-rules.md` and `reviewer-rules.md` beside it are reused by every dispatch.
+- Done and reviewed: Tasks 1–12.
   - Task 7: spec review (opus) settled the open question — re-pricing $0.00 missing-rate logs when a rate is added is spec-compliant (it is the only "fix" before approval). Fixed: re-pricing skipped adjustments (crash + half-saved rate), `FakeStore.write` is all-or-nothing, seed perf guard measures thread CPU time. Re-review clean.
   - Task 9: shell, nav, PWA manifest, placeholders for every nav target, error/not-found/no-permission. Review fixes: Workspace export Owner-only, tab bar side insets, theme colours generated at build time. Re-review clean.
 - Done and reviewed: Task 8 (2026-09-30). Loop stopped at the 6-iteration cap at 87/87 (0 P0/P1); owner accepted 87. Review fixes `797f9e8`.
 - Done and reviewed: Task 10 (2026-09-30). Home (manager) and Log crew-day built in Galvanised (`src/components/screens/`). D2 A/B round 1 was a split, so Galvanised was revised (pinned Save day in thumb reach, ink edges, radii 6/8/12); round 2 with a fresh blind mapping: Galvanised 83–72 (design) and 79–67 (field). Challenger deleted. See DECISIONS.md.
 - Done and reviewed: Task 11 (2026-10-01). Home manager + Home foreman in every state; foreman now has a Home at `/` (nav Home · Jobs · Log · Outbox); `tests/e2e/taps.ts` created. Design loop hit the 6-iteration cap at 82 (72.5 → 78 → 82 → 83 → 82 → 82); owner accepted 82 after one final unscored fix round (see DECISIONS.md). Open field-1 rows stay in ISSUES.md.
-- **Next: Task 12** (Field 2/2: Log crew-day, Progress, No-work, Outbox). Carry in: heavier check box and date stroke, stronger ticked-row tint (A/B lessons); the Log screen's empty state explains a foreman with no assigned jobs (field-1 F3/D11 ruling); the outbox wording is "needs attention" everywhere; write flow tap specs with `tests/e2e/taps.ts`.
-- Then: Tasks 13–23 in order (nine screen groups, tap-budget suite, foreman sweep, baselines + PWA, phase gate).
+- Done and reviewed: Task 12 (2026-10-01). Log crew-day states, Progress, No-work, Outbox; tap flows (crew-day 4/6, same as yesterday 3/3, progress 7/8, no-work 5/5, outbox 5/5). Design loop 70 → 77 → 80, accepted at 80 under the 3-iteration cap (token rule 10).
+- **Next: Task 13** (Jobs list + New/edit job). Brief in the ledger folder (`task-13-brief.md`); it also fixes the shared landscape pinned bar (field-2 f2i3-F1).
+- Then: Tasks 14–23 in order (nine screen groups, tap-budget suite, foreman sweep, baselines + PWA, phase gate).
 - Environment: real WebKit works on the VPS (`pnpm test:e2e` all three projects green). `ROOFY_NO_WEBKIT` / `ROOFY_CHROMIUM_EXECUTABLE` are not needed here. Never stop the server with `pkill -f "next start"` (it matches the calling shell); kill the PID from `ss -ltnp | grep 3100`.
 
 ### Token budget rules (owner request 2026-09-30 — follow every session)
@@ -37,6 +38,7 @@ Quality gates stay the same (TDD, per-task review, design loop ≥ 90 with no P0
 
 - 2026-09-28/29 — Phase 2 in progress (cloud session): plan written; Tasks 1–6 shipped and reviewed; Task 7 implemented (review pending); Task 8 through design-loop iteration 3 (+ iteration 4 fixes); Task 9 partial.
 - 2026-09-30 — Task 8 iteration 6 scored 87/87; loop stopped at the cap, owner accepted 87; Task 8 code review fixed. Task 10 done: Home + Log built, Galvanised won the blind A/B on its second round.
+- 2026-10-01 — Task 12 done: Log/Progress/No-work/Outbox, accepted at 80 (new 3-iteration cap).
 - 2026-10-01 — Task 11 done: Home manager + foreman, 6 design iterations (cap) + final fix, owner accepted 82.
 - 2026-09-29/30 — Phase 2 on the VPS: Task 7 reviewed and fixed; Task 9 finished and reviewed; Task 8 loop iterations 4–5 scored (82, 87) and iteration 6 fixed + captured (critics cut off by the usage limit). Token budget rules added. See Current.
 
@@ -108,7 +110,8 @@ Quality gates stay the same (TDD, per-task review, design loop ≥ 90 with no P0
 
 - Phase 2 Tasks 14/15/17: remove the `shell.spec` detail-link skips and un-fixme home.spec's detail test as each route lands.
 - Phase 2 (no task): Log bar error-message state has no geometry test; `ScreenSpec` `viewports`/`lightOnly`/`noExtras` are unused since the challenger was removed.
-- Phase 2 Tasks 12–19: Task 11 deferred minors (ledger): double " — " in names, foreman device row repeats the failure beside the headline, skeleton heights untested, landscape bottom padding untested.
+- Phase 2 Task 21: `managerMessage` is on every OutboxItem and stripped only in the outbox page — strip it in the data layer with a foreman test.
+- Phase 2 Tasks 13–19: Task 11 deferred minors (ledger): double " — " in names, foreman device row repeats the failure beside the headline, skeleton heights untested, landscape bottom padding untested.
 - Phase 2 Tasks 12–19 (Home kept cents): `/design` uses a local `whole()` that trims `.00` from `formatMoney`; when a screen needs whole-dollar sentences ("$775 over"), add a whole-dollar option to `formatMoney` (drop `.00` only when cents % 100 = 0) with a test and use it in both places.
 - Phase 2 (no task): Field/Select overwrite a caller's own `aria-describedby`; MoneyField's minus mark can go stale on "-0" or a cleared field; a disabled selected ChoiceChip looks enabled; Checkbox has no name/value.
 - Phase 2 Task 14: pausing a stage is one tap on a reason; show a toast "<stage> paused: <reason>" with Undo (48 px) (design issue i6-F1).
