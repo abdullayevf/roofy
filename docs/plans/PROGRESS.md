@@ -3,11 +3,11 @@
 ## Current
 
 - Phase: 2 — Design system and full prototype. Branch `phase/2-design-prototype` (local on the VPS, not pushed, not merged). Plan: `docs/plans/03-design-prototype.md`.
-- Session 2026-10-02 STOPPED mid Task 13 on the RUNBOOK §5 budget (10 runs, ≈429/450 tool uses; two runs cut by limits counted at 45). Ledger: `.superpowers/sdd/03-design-prototype/progress.md` (STOP note at the tail).
-- Task 13 so far: 565032a (landscape bar), 5c51ea9 (Jobs list + New/edit job), 2320074 (fix round 1 from iteration 1, avg 66: field 64, design 68). Code review done (task-13-review.md, P1s in round 1). Not yet: re-review of round 1, iteration 2 capture + critics, spec review, plan tick.
-- **Failing:** 3 desktop e2e tests after 2320074 — job-form.spec.ts:69, jobs-list.spec.ts:36 and :74. The new desktop table lacks the phone-row text the specs look for (e.g. "No stage started"). iPhone and Android green (250 passed).
-- **Next (owner):** raise Task 13's budget or accept it. If raised: one implementer for the 3 desktop failures → `scripts/capture-group.sh jobs-1` → critics on changed slices (iteration 2) → round-1 re-review → spec-reviewer → tick.
-- Then: Tasks 14–23 in order.
+- Session 2026-10-02 STOPPED mid Task 13 on the RUNBOOK §5 budget: 11 runs, ≈444/450 tool uses (two limit-cut runs counted at 45). Ledger STOP note: `.superpowers/sdd/03-design-prototype/progress.md`.
+- Task 13 commits: 565032a (landscape bar), 5c51ea9 (screens), 2320074 (fix round 1 from iteration 1, avg 66: field 64, design 68), fcbb5b0 (desktop table e2e), 06761e2 (keyboard capture on Site address). e2e green on 3 projects (253 passed, 26 skipped); verify green.
+- Iteration 2 is CAPTURED (84 captures, 0 fail, all 170 critic images changed; iteration 1 was never `--accept`ed, so critics read all slices) but not yet scored.
+- **Next (owner first raises or accepts Task 13's budget):** iteration 2 critics (all slices) + round-1 re-review (2320074..06761e2 vs task-13-round1.md) → fix round 2 → iteration 3 (last) → spec-reviewer (opus, 03875e1..HEAD) → tick Task 13.
+- Then: Tasks 14–23 in order. Briefs for screen groups must be smaller: three round-1 implementer runs hit the 45-step cap.
 - Environment: real WebKit works on the VPS. Never stop the server with `pkill -f "next start"`; kill the PID from `ss -ltnp | grep 3100`.
 
 ### Run rules
@@ -91,6 +91,7 @@
 - Phase 2 Task 11 (round 2, critics 77/79): Home follows product spec §5.9 top to bottom (Needs attention, Active jobs, Last week with the labour figure, This pay period). Needs attention shows 7 with a "Show N more" row that opens the rest in place (`moreAttention` in the DTO). A failed outbox entry is severity `over` (red) in Needs attention, matching its badge (this refines "only over budget is red"). Foreman Home has no pinned bar: Log today is a plain button under the log-status figure. The Outbox tab/sidebar item carries a count chip. `formatRoundedQuantity` gives display-only "335.7 m²". `design-capture` clears a group's old shots and slices on a full run.
 - Phase 2 (session rule): agents stop the app only with `kill <pid>` from `ss -ltnp | grep 3100`; a pattern kill (`pkill -f next-server`) on 2026-09-30 stopped another project's Next 14 server on this machine.
 - Phase 2 Task 13: New job requires only Site address; Job name is optional and a blank name uses the site address (flows.md:276 has one "nickname/site address" tap; onboarding stays at 25). Playwright projects run in `en-AU` so date fields show what an Australian phone shows. Phone job rows follow the §4 list row (one figure); desktop ≥ 1024 shows a 48 px table.
+- Phase 2 Task 13 (deviation): the conductor changed one string in `tests/e2e/screens.ts` (keyboard capture field → "Site address") itself, because a dispatch would have overrun the §5 budget.
 
 ## Gate evidence
 
