@@ -259,18 +259,45 @@ body {
   }
 }
 @media (max-height: 499px) {
-  .pin-action {
-    padding-top: 0.5rem;
-    padding-bottom: calc(0.5rem + var(--tab-bar-raise));
-  }
-  .pin-action[data-keyboard="true"] {
-    padding-bottom: 0.5rem;
-  }
   .pin-hint {
     display: none;
   }
   html:has(.pin-action) {
     scroll-padding-bottom: 8rem;
+  }
+}
+/*
+ * A phone on its side (under 500 px tall, under 1024 px wide): the bar is one row on the page background, the full
+ * width of the screen, 8 px padding all round and no helper line. An error from a failed save sits on the left of
+ * the raised Log circle, the button on the right of it, so neither is under the circle's overhang (the manager's
+ * circle is in the middle, the foreman's at five eighths).
+ */
+@media (max-height: 499px) and (max-width: 1023px) {
+  .pin-action {
+    left: 0;
+    width: 100%;
+    translate: none;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 0.5rem max(1rem, env(safe-area-inset-right)) 0.5rem max(1rem, env(safe-area-inset-left));
+    background: var(--galv);
+    border-top: 1px solid var(--line);
+  }
+  .pin-action[data-keyboard="true"] {
+    padding-bottom: 0.5rem;
+  }
+  .pin-action > :not(button):not(a) {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: calc(50% - 2.25rem);
+    margin-right: auto;
+  }
+  .pin-action > button,
+  .pin-action > a {
+    flex: 0 0 max(30%, 12rem);
+    width: max(30%, 12rem);
   }
 }
 @media (min-width: 1024px) {
