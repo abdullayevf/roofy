@@ -47,3 +47,9 @@ Lessons carried to Tasks 11 and 12: darker small text and borders for glare, a h
 Iteration 6 scored 82/82 (average 82) with zero open P0 and one P1 (f1i6-F1: a manager's own failed send sat as the third row under an unrelated headline), and clean automated checks, so the loop did not reach 90 (04-design-process §3 cap). Why it didn't converge: each round fixed every raised issue and the critics then raised a fresh set of wording and layout polish on Home, and the scores moved by a few points either way (85/79, then 82/82) rather than climbing.
 
 Owner decision (2026-10-01): accept field-1 at 82, after one final unscored fix round: F1, F2/D2, F3/D1, F4/D5, F5, F6/D10, D3, D6, D9. The other iteration-6 rows stay open.
+
+## 2026-10-01 — field-2 accepted by owner at 80 after the 3-iteration cap
+
+Iteration 3 scored 82/78 (average 80) with zero open P0/P1 and clean automated checks (152 captures, 2 expected offline-console fails), so the loop capped at iteration 3 per the owner's standing rule (design loop capped at 3 iterations, accept and move on). Scores: 70 → 77 → 80.
+
+Owner decision (2026-10-01): accept field-2 at 80 under the 3-iteration cap. Open rows stay in ISSUES.md.

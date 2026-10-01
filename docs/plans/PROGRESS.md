@@ -27,6 +27,7 @@ Quality gates stay the same (TDD, per-task review, design loop ≥ 90 with no P0
 7. **Resume the same implementer for fix rounds while its context is small;** if its last report said it was large (≈ 200k+), start a fresh sonnet implementer pointed at the report file instead.
 8. **Controller hands over files, not pasted text:** briefs, critic tables and review packages live in `.superpowers/sdd/03-design-prototype/`; dispatch prompts stay under ~25 lines and point at `implementer-rules.md` / `reviewer-rules.md`.
 9. **Screen groups: the capture manifest already lists only states that differ;** don't add a state capture unless it looks different from one already captured (e.g. no separate capture per `?demo=` state that renders the same shell).
+10. **Design-loop cap is 3 iterations (owner, 2026-10-01).** After iteration 3's critic scores, accept the score and move on without asking; open rows stay in ISSUES.md. (Supersedes the plan's ≤ 6.)
 
 ## Log
 
