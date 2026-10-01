@@ -120,6 +120,7 @@ test.describe("Log crew-day grid", () => {
     await signInAs(page, "manager");
     await page.getByRole("button", { name: "Same as yesterday" }).click();
     const names = () => page.locator('[data-screen="log"] section button[aria-pressed]').evaluateAll((els) => els.map((e) => (e.textContent ?? "").split(/Day|Hourly|Hours only|m²|lm|Each|Paid/)[0]!.trim()));
+    await expect(page.getByRole("button", { name: /^Sam\s/ })).toHaveAttribute("aria-pressed", "true");
     const before = await names();
     expect(before.slice(0, 2).sort()).toEqual(["Dima", "Sam"]);
     await page.getByRole("button", { name: /^Ben\s/ }).click();
