@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { CheckCircle } from "@phosphor-icons/react";
+import { useState, type Dispatch, type SetStateAction } from "react";
+import Link from "next/link";
+import { CaretDown, CaretLeft, CaretUp, CheckCircle } from "@phosphor-icons/react";
 import type { ActionResult, Client, Id, JobType, ProjectStatus, StageDraft, StageProposal } from "@/data/contracts";
 import { createClient, createProject, updateProject } from "@/app/actions/projects";
 import { sum } from "@/domain/money";
@@ -17,6 +18,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { KeepTogether } from "@/components/keep-together";
 import { CrewRowsSkeleton, FORM_WIDTH, FieldSkeleton, PinnedAction, usePinnedBar } from "./field-entry";
+import { FOCUS } from "./home-parts";
 import {
   JOB_TYPES,
   STATUSES,
@@ -149,49 +151,93 @@ function StageRows({ stages }: { stages: StageDraft[] }) {
   );
 }
 
-function StageEditor({ rows, onChange }: { rows: StageItem[]; onChange: (rows: StageItem[]) => void }) {
+/**
+ * Editing the stages: one surface, one compact row per stage (name and labour budget). Tap a row to open its fields;
+ * one is open at a time. The visible labels are short ("Name"); each field's spoken name still says which stage.
+ */
+function StageEditor({ rows, onChange }: { rows: StageItem[]; onChange: Dispatch<SetStateAction<StageItem[]>> }) {
+  const [open, setOpen] = useState<number | null>(null);
+  // Updates build on the latest rows, so a budget committed by a blur is not lost to the tap that caused the blur.
   const set = (uid: number, patch: Partial<StageDraft>) =>
-    onChange(rows.map((r) => (r.uid === uid ? { ...r, draft: { ...r.draft, ...patch } } : r)));
+    onChange((cur) => cur.map((r) => (r.uid === uid ? { ...r, draft: { ...r.draft, ...patch } } : r)));
+  // A field commits on blur; a tap on a button may not blur it (iOS), so commit before the open row changes.
+  const commit = () => (document.activeElement as HTMLElement | null)?.blur();
+  const toggle = (uid: number) => {
+    commit();
+    setOpen((cur) => (cur === uid ? null : uid));
+  };
   return (
     <div className="flex flex-col gap-4">
       <div role="group" aria-label="Stages" className="divide-y divide-line rounded-group border-group bg-surface">
-      {rows.map((r, i) => (
-        <div key={r.uid} className="flex flex-col gap-4 p-4">
-          <Field
-            label={`Stage ${i + 1} name`}
-            inputMode="text"
-            autoComplete="off"
-            value={r.draft.name}
-            onChange={(e) => set(r.uid, { name: e.target.value })}
-          />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <MoneyField
-              label={`Stage ${i + 1} labour budget`}
-              defaultCents={r.draft.labourBudgetCents}
-              onCentsChange={(c) => set(r.uid, { labourBudgetCents: c ?? 0 })}
-            />
-            <MoneyField
-              label={`Stage ${i + 1} materials budget`}
-              defaultCents={r.draft.materialsBudgetCents}
-              onCentsChange={(c) => set(r.uid, { materialsBudgetCents: c ?? 0 })}
-            />
-          </div>
-          <Button variant="ghost" tone="danger" onClick={() => onChange(rows.filter((x) => x.uid !== r.uid))} className="-ml-4 self-start">
-            Remove stage {i + 1}
-          </Button>
-        </div>
-      ))}
+        {rows.map((r, i) => {
+          const isOpen = open === r.uid;
+          return (
+            <div key={r.uid}>
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                onClick={() => toggle(r.uid)}
+                className={cx("flex min-h-16 w-full items-center justify-between gap-4 px-4 py-2 text-left active:bg-galv", FOCUS)}
+              >
+                <span className="min-w-0 text-body-strong text-ink [overflow-wrap:anywhere]">{r.draft.name.trim() || "New stage"}</span>
+                <span className="flex shrink-0 items-center gap-2">
+                  {r.draft.labourBudgetCents > 0 ? <span className="whitespace-nowrap text-figure num text-ink">{formatMoney(r.draft.labourBudgetCents)}</span> : null}
+                  {isOpen ? <CaretUp size={24} aria-hidden="true" className="text-ink-2" /> : <CaretDown size={24} aria-hidden="true" className="text-ink-2" />}
+                </span>
+              </button>
+              {isOpen ? (
+                <div role="group" aria-label={`Stage ${i + 1}`} className="flex flex-col gap-4 px-4 pb-4">
+                  <Field
+                    label="Name"
+                    aria-label={`Stage ${i + 1} name`}
+                    inputMode="text"
+                    autoComplete="off"
+                    value={r.draft.name}
+                    onChange={(e) => set(r.uid, { name: e.target.value })}
+                  />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <MoneyField
+                      label="Labour budget"
+                      ariaLabel={`Stage ${i + 1} labour budget`}
+                      defaultCents={r.draft.labourBudgetCents}
+                      onCentsChange={(c) => set(r.uid, { labourBudgetCents: c ?? 0 })}
+                    />
+                    <MoneyField
+                      label="Materials budget"
+                      ariaLabel={`Stage ${i + 1} materials budget`}
+                      defaultCents={r.draft.materialsBudgetCents}
+                      onCentsChange={(c) => set(r.uid, { materialsBudgetCents: c ?? 0 })}
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    tone="danger"
+                    onClick={() => {
+                      setOpen(null);
+                      onChange((cur) => cur.filter((x) => x.uid !== r.uid));
+                    }}
+                    className="-ml-4 self-start"
+                  >
+                    Remove<span className="sr-only"> stage {i + 1}</span>
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
       <Button
         variant="secondary"
-        onClick={() =>
-          onChange([
-            ...rows,
+        onClick={() => {
+          commit();
+          const uid = nextUid++;
+          onChange((cur) => [
+            ...cur,
             {
-              uid: nextUid++,
+              uid,
               draft: {
                 name: "",
-                position: rows.length + 1,
+                position: cur.length + 1,
                 unit: null,
                 plannedQuantity: null,
                 labourBudgetCents: 0,
@@ -199,8 +245,9 @@ function StageEditor({ rows, onChange }: { rows: StageItem[]; onChange: (rows: S
                 lumpSumCents: null,
               },
             },
-          ])
-        }
+          ]);
+          setOpen(uid);
+        }}
       >
         Add stage
       </Button>
@@ -226,7 +273,7 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<ActionResult<object> | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
-  const [saved, setSaved] = useState<{ name: string; stageCount: number } | null>(null);
+  const [saved, setSaved] = useState<{ id: Id; name: string; stageCount: number } | null>(null);
 
   const isNew = mode === "new";
   // Changing a field clears the refusal it may have caused, so the red words never outlive the fix.
@@ -280,7 +327,7 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
         ? await createProject({ ...fields, stages: renumber(stages.map((s) => ({ ...s.draft, name: s.draft.name.trim() }))) })
         : await updateProject(projectId!, fields);
       setResult(r);
-      if (r.ok) setSaved({ name: fields.nickname, stageCount: stages.length });
+      if (r.ok) setSaved({ id: r.id, name: fields.nickname, stageCount: stages.length });
       else if (!r.issues.some((i) => FIELDS_WITH_SLOT.includes(i.field))) setFailed(r.message);
     } catch {
       setFailed(`Couldn't save this. ${NEEDS_CONNECTION}`);
@@ -300,34 +347,41 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
     setFormKey((k) => k + 1);
   }
 
-  const title = isNew ? "New job" : "Edit job";
+  const title = saved ? (isNew ? "Job added" : "Changes saved") : isNew ? "New job" : "Edit job";
   const heading = (
     <div className="flex flex-col gap-1">
-      <Button variant="link" href="/jobs" className="self-start">
+      <Link
+        href="/jobs"
+        prefetch={false}
+        className={cx("-ml-2 inline-flex min-h-12 items-center gap-1 self-start rounded-control px-2 text-body-strong text-chalk-link", FOCUS)}
+      >
+        <CaretLeft size={24} aria-hidden="true" />
         Back to jobs
-      </Button>
+      </Link>
       <h1 className="text-title text-ink">{title}</h1>
     </div>
   );
 
   if (saved) {
-    // The job's own page arrives with the job screen; until then the way on is another job, and the one link back
-    // is the link above the title (so the title holds its place from state to state).
+    // The title holds its place from state to state; the one link back is above it. A new job goes straight on to its
+    // first log.
     return (
       <div data-screen="job-form" className={cx("flex flex-col gap-6", FORM_WIDTH)}>
         {heading}
-        <div role="status" className="flex flex-col items-start gap-3 rounded-group border-group bg-surface p-4">
-          <p className="flex items-center gap-2 text-body-strong text-good">
-            <CheckCircle size={24} aria-hidden="true" />
-            {isNew ? "Job added" : "Saved"}
-          </p>
-          <p className="text-body text-ink">
+        <div role="status" className="flex flex-col items-start gap-4 rounded-group border-group bg-surface p-4">
+          <p className="flex items-start gap-2 text-body text-ink">
+            <CheckCircle size={24} aria-hidden="true" className="shrink-0 text-good" />
             <KeepTogether text={isNew ? `${saved.name} is ready, with ${saved.stageCount} ${saved.stageCount === 1 ? "stage" : "stages"}.` : `Your changes to ${saved.name} are saved.`} />
           </p>
           {isNew ? (
-            <Button variant="primary" onClick={reset} className="w-full sm:w-auto sm:min-w-44">
-              Add another job
-            </Button>
+            <div className="flex w-full flex-col gap-3 sm:flex-row">
+              <Button variant="primary" href={`/log?project=${saved.id}`} className="w-full sm:w-auto sm:min-w-52">
+                Log today on this job
+              </Button>
+              <Button variant="secondary" onClick={reset} className="w-full sm:w-auto sm:min-w-44">
+                Add another job
+              </Button>
+            </div>
           ) : null}
         </div>
       </div>

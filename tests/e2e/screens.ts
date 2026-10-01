@@ -379,13 +379,13 @@ export const SCREENS: ScreenSpec[] = [
     noExtras: true,
   },
   {
-    // The stage editor: names and budgets, Remove stage, Add stage.
+    // The stage editor: one compact row per stage, Sheet install open (name, budgets, Remove), Add stage below.
     id: "job-new-editing-stages",
     group: "jobs-1",
     route: JOB_PREFILL,
     states: ["normal"],
     roles: ["manager"],
-    steps: ["Edit stages"],
+    steps: ["Edit stages", "Sheet install $4,000.00"],
     viewports: ["iphone"],
     lightOnly: true,
     noExtras: true,
@@ -414,7 +414,7 @@ export const SCREENS: ScreenSpec[] = [
     noExtras: true,
   },
   {
-    // Saved: "Job added" with Back to jobs and Add another job.
+    // Saved: title "Job added", Log today on this job (primary), Add another job, Back to jobs above the title.
     id: "job-new-saved",
     group: "jobs-1",
     route: JOB_PREFILL,

@@ -14,6 +14,8 @@ export type MoneyFieldProps = {
   /** Called on blur with the parsed amount in integer cents, or null when it can't be read. */
   onCentsChange?: (cents: Cents | null) => void;
   className?: string;
+  /** Spoken name when the visible label is short because the group around it says which ("Labour budget" inside "Stage 2"). */
+  ariaLabel?: string;
 };
 
 // The currency mark is drawn as a leading mark inside the field, so the text
@@ -26,7 +28,7 @@ const show = (cents: Cents) => formatMoney(Math.abs(cents)).replace("$", "");
  * blur the text is tidied to `format.ts`'s grouping and cents. Parsing is
  * exact integer cents via `src/domain` — never a float.
  */
-export function MoneyField({ label, hint, defaultCents, onCentsChange, className }: MoneyFieldProps) {
+export function MoneyField({ label, hint, defaultCents, onCentsChange, className, ariaLabel }: MoneyFieldProps) {
   const [text, setText] = useState(defaultCents === undefined ? "" : show(defaultCents));
   const [negative, setNegative] = useState((defaultCents ?? 0) < 0);
   const [error, setError] = useState<string | undefined>();
@@ -61,6 +63,7 @@ export function MoneyField({ label, hint, defaultCents, onCentsChange, className
       onChange={(e) => setText(e.target.value)}
       onBlur={commit}
       className={className}
+      aria-label={ariaLabel}
     />
   );
 }

@@ -69,8 +69,8 @@ test.describe("New job", () => {
   test("creates the job with the accepted stages and it shows on the list", async ({ page }) => {
     await signInAs(page, "manager", prefill());
     await createJob(page).click();
-    const done = page.getByRole("status").filter({ hasText: "Job added" });
-    await expect(done).toContainText(/Smith job — Ryde carport roof is ready, with \d+ stages\./);
+    await expect(page.getByRole("heading", { level: 1, name: "Job added" })).toBeVisible();
+    await expect(page.getByRole("status")).toContainText(/Smith job — Ryde carport roof is ready, with \d+ stages\./);
     await page.getByRole("link", { name: "Back to jobs" }).last().click();
     await expect(page).toHaveURL(/\/jobs$/);
     // A phone row is one link; a desktop table row has the link on the name only, so find the row, not the link.
@@ -85,9 +85,16 @@ test.describe("New job", () => {
     // While stages are being edited the pinned action is Accept stages; Create job comes back after it (R5).
     await expect(createJob(page)).toHaveCount(0);
     await expect(page.locator('[data-slot="primary-action"]').getByRole("button", { name: "Accept stages" })).toBeVisible();
+    // Every stage is one compact row; its fields appear when the row is tapped (R11).
+    await expect(page.getByLabel("Stage 1 name")).toHaveCount(0);
+    await page.getByRole("button", { name: /^Battens/ }).click();
     await expect(page.getByLabel("Stage 1 name")).toHaveValue("Battens");
     await page.getByLabel("Stage 1 name").fill("Roof battens");
+    await page.getByRole("button", { name: /^Roof battens/ }).click();
+    await expect(page.getByLabel("Stage 1 name")).toHaveCount(0);
+    await page.getByRole("button", { name: /^Sarking/ }).click();
     await page.getByRole("button", { name: "Remove stage 2" }).click();
+    await expect(page.getByRole("button", { name: "Remove stage 2" })).toHaveCount(0);
     await page.getByRole("button", { name: "Add stage" }).click();
     await page.getByLabel("Stage 5 name").fill("Final clean");
     await page.getByLabel("Stage 5 labour budget").fill("1250");
@@ -99,7 +106,8 @@ test.describe("New job", () => {
     await expect(page.getByText("Final clean")).toBeVisible();
     await expect(page.getByRole("listitem").filter({ hasText: "Final clean" })).toContainText("$1,250.00");
     await createJob(page).click();
-    await expect(page.getByRole("status").filter({ hasText: "Job added" })).toContainText("with 5 stages.");
+    await expect(page.getByRole("heading", { level: 1, name: "Job added" })).toBeVisible();
+    await expect(page.getByRole("status")).toContainText("with 5 stages.");
   });
 
   test("a stage with no name can't be accepted", async ({ page }) => {
@@ -202,7 +210,8 @@ test.describe("New job: measured guards", () => {
     await signInAs(page, "manager", prefill({ name: "" }));
     await expect(createJob(page)).toBeEnabled();
     await createJob(page).click();
-    await expect(page.getByRole("status").filter({ hasText: "Job added" })).toContainText("14 Quarry Rd, Ryde is ready");
+    await expect(page.getByRole("heading", { level: 1, name: "Job added" })).toBeVisible();
+    await expect(page.getByRole("status")).toContainText("14 Quarry Rd, Ryde is ready");
   });
 
   test("the pinned hint names only the next missing thing, on one line", async ({ page }) => {
@@ -247,23 +256,70 @@ test.describe("New job: measured guards", () => {
     expect(env).toEqual({ lang: "en-AU", zone: "Australia/Sydney", day: "10/09/2026" });
   });
 
-  test("stage review rows are 64 px with a total row; the editor is one group with Remove aligned to the labels (D7, D8)", async ({ page }) => {
+  test("stage review rows are 64 px with a total row (D7)", async ({ page }) => {
     await signInAs(page, "manager", prefill({ type: "new_build" }));
     const rows = page.getByRole("list").filter({ hasText: "Battens" }).getByRole("listitem");
     const heights = await rows.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
     expect(heights.length).toBeGreaterThan(2);
     for (const h of heights) expect(h).toBeGreaterThanOrEqual(64);
     await expect(rows.last()).toContainText("Labour budget total");
+  });
+
+  test("stage editor: one compact row per stage, one open at a time, no visible Stage N, unique names, Remove is 48 px and aligned to the labels (R11, i2-F7, i2-D5)", async ({ page }) => {
+    await signInAs(page, "manager", prefill({ type: "new_build" }));
     await page.getByRole("button", { name: "Edit stages" }).click();
-    await expect(page.getByRole("group", { name: "Stages" })).toBeVisible();
-    const gap = await page.evaluate(() => {
-      const label = [...document.querySelectorAll("label")].find((l) => l.textContent?.includes("Stage 1 name"))!;
-      const remove = [...document.querySelectorAll("button")].find((b) => b.textContent?.includes("Remove stage 1"))!;
+    const group = page.getByRole("group", { name: "Stages", exact: true });
+    await expect(group).toBeVisible();
+    // Closed, each stage is one row: its name and labour budget, at least 48 px to tap and no taller than 80.
+    const headers = group.locator("button[aria-expanded]");
+    const count = await headers.count();
+    expect(count).toBe(5);
+    const heights = await headers.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
+    for (const h of heights) {
+      expect(h).toBeGreaterThanOrEqual(48);
+      expect(h).toBeLessThanOrEqual(80);
+    }
+    await expect(group.getByRole("textbox")).toHaveCount(0);
+    await expect(headers.first()).toHaveAccessibleName(/^Battens \$[\d,]+\.\d{2}$/);
+    // Opening a row opens only that row; opening another closes the first.
+    const spoken: string[] = [];
+    for (let i = 0; i < count; i++) {
+      await headers.nth(i).click();
+      await expect(headers.nth(i)).toHaveAttribute("aria-expanded", "true");
+      await expect(group.locator('button[aria-expanded="true"]')).toHaveCount(1);
+      // Name, labour budget and materials budget: one stage's fields, not several.
+      await expect(group.getByRole("textbox")).toHaveCount(3);
+      spoken.push(...(await group.locator("input").evaluateAll((els) => els.map((el) => el.getAttribute("aria-label") ?? ""))));
+      // Visible words never carry the stage number; the spoken names do.
+      const visible = await group.evaluate((el) => {
+        const copy = el.cloneNode(true) as HTMLElement;
+        copy.querySelectorAll(".sr-only").forEach((n) => n.remove());
+        return copy.innerText ?? copy.textContent ?? "";
+      });
+      expect(visible.length).toBeGreaterThan(0);
+      expect(visible).not.toMatch(/Stage \d/i);
+    }
+    expect(spoken).toHaveLength(count * 3);
+    expect(new Set(spoken).size).toBe(spoken.length);
+    for (const name of spoken) expect(name).toMatch(/^Stage \d (name|labour budget|materials budget)$/);
+    // Remove sits inside the open row, is a 48 px target, and its word starts where the labels start.
+    const open = page.getByRole("group", { name: `Stage ${count}`, exact: true });
+    const remove = open.getByRole("button", { name: `Remove stage ${count}` });
+    const box = (await remove.boundingBox())!;
+    expect(box.height).toBeGreaterThanOrEqual(48);
+    expect(box.width).toBeGreaterThanOrEqual(48);
+    const gap = await open.evaluate((el) => {
+      const label = el.querySelector("label")!;
+      const button = el.querySelector("button")!;
       const range = document.createRange();
-      range.selectNodeContents(remove.querySelector("span") ?? remove);
+      range.selectNodeContents(button.querySelector("span") ?? button);
       return Math.abs(range.getBoundingClientRect().left - label.getBoundingClientRect().left);
     });
     expect(gap).toBeLessThanOrEqual(2);
+    // Removing the stage takes its row away and leaves none open.
+    await remove.click();
+    await expect(headers).toHaveCount(count - 1);
+    await expect(group.getByRole("textbox")).toHaveCount(0);
   });
 
   test("a refused save with no field to blame says why in the bar (R-F1)", async ({ page }) => {
@@ -271,18 +327,33 @@ test.describe("New job: measured guards", () => {
     await signInAs(page, "manager", prefill({ contract: "2000000000" }));
     await createJob(page).click();
     await expect(page.locator('[data-slot="primary-action"]')).toContainText("Check the contract value.");
-    await expect(page.getByRole("status").filter({ hasText: "Job added" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 1, name: "Job added" })).toHaveCount(0);
   });
 
-  test("after saving: one way back above the title, Add another job, and the title doesn't move (R4, D11)", async ({ page }) => {
+  test("after saving: title Job added, Log today on this job is the primary, Add another job the secondary, one way back, title holds its place (R10, R4, i2-F5, i2-D15)", async ({ page }) => {
     await signInAs(page, "manager", prefill());
     const before = (await page.getByRole("heading", { level: 1, name: "New job" }).boundingBox())!.y;
     await createJob(page).click();
-    await expect(page.getByRole("status").filter({ hasText: "Job added" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Job added" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Back to jobs" })).toHaveCount(1);
-    await expect(page.getByRole("button", { name: "Add another job" })).toBeVisible();
-    const after = (await page.getByRole("heading", { level: 1, name: "New job" }).boundingBox())!.y;
+    const log = page.getByRole("link", { name: "Log today on this job" });
+    const another = page.getByRole("button", { name: "Add another job" });
+    await expect(log).toHaveAttribute("href", /^\/log\?project=.+/);
+    await expect(another).toBeVisible();
+    const logBox = (await log.boundingBox())!;
+    const anotherBox = (await another.boundingBox())!;
+    expect(logBox.height).toBeGreaterThanOrEqual(48);
+    expect(anotherBox.height).toBeGreaterThanOrEqual(48);
+    // The primary comes first, and only it is filled.
+    expect(logBox.y < anotherBox.y || logBox.x < anotherBox.x).toBe(true);
+    const fill = (loc: typeof log) => loc.evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(await fill(log)).not.toBe(await fill(another));
+    const after = (await page.getByRole("heading", { level: 1 }).boundingBox())!.y;
     expect(Math.abs(after - before)).toBeLessThanOrEqual(1);
+    // The new job opens in the log.
+    await log.click();
+    await expect(page).toHaveURL(/\/log\?project=/);
+    await expect(page.getByLabel("Job", { exact: true }).locator("option:checked")).toContainText("Ryde carport roof");
   });
 });
 
@@ -318,7 +389,7 @@ test.describe("Edit job", () => {
     await signInAs(page, "manager", path);
     await page.getByLabel("Status").selectOption("on_hold");
     await page.getByRole("button", { name: "Save changes", exact: true }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Changes saved" })).toBeVisible();
     await page.goto("/jobs?status=on_hold");
     await expect(page.locator('[data-screen="jobs"] a[href^="/jobs/"]:not([href="/jobs/new"]):visible').filter({ hasText: "Smith job" })).toBeVisible();
   });

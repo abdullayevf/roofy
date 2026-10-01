@@ -405,8 +405,8 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | jobs-1/i1-F4 | jobs-1 | P1 | jobs-list all/manager/iphone | Finished jobs say "No stage started" beside 100% done + Complete | "All stages done" | fixed in iteration 2, awaiting critics | 1 |
 | jobs-1/i1-F5 | jobs-1 | P1 | jobs-list normal/manager/phones+landscape | Row ~260 px: four money lines + warning + status; <1 row in landscape | Ruling R3 | fixed in iteration 2, awaiting critics | 1 |
 | jobs-1/i1-F6 | jobs-1 | P2 | jobs-list/manager/phones | Add job top-right, out of thumb reach | Bottom, in thumb reach | fixed in iteration 2, awaiting critics | 1 |
-| jobs-1/i1-F7 | jobs-1 | P2 | job-new editing-stages/iphone | 21 fields, Accept stages at the very end; no quantity field | Ruling R5 | fixed in iteration 2, awaiting critics (the editor has no quantity field: a stage's quantity comes from its proposal and shows on the review row) | 1 |
-| jobs-1/i1-F8 | jobs-1 | P2 | job-new saved/iphone | Dead end: Back to jobs twice + Add another, no way into the job | Ruling R4 | fixed in iteration 2, awaiting critics | 1 |
+| jobs-1/i1-F7 | jobs-1 | P2 | job-new editing-stages/iphone | 21 fields, Accept stages at the very end; no quantity field | Ruling R5 | fixed in iteration 2 and again in iteration 3 (R11: one compact row per stage, one open at a time), awaiting critics (the editor has no quantity field: a stage's quantity comes from its proposal and shows on the review row) | 1 |
+| jobs-1/i1-F8 | jobs-1 | P2 | job-new saved/iphone | Dead end: Back to jobs twice + Add another, no way into the job | Ruling R4 | fixed in iteration 2 and again in iteration 3 (R10: title "Job added", Log today on this job), awaiting critics | 1 |
 | jobs-1/i1-F9 | jobs-1 | P2 | job-new offline/phones | Banner says saved on device, form says Needs connection; Quick-add client tappable offline | Ruling R7 | fixed in iteration 2, awaiting critics | 1 |
 | jobs-1/i1-F10 | jobs-1 | P2 | job-new+job-edit/landscape | Pinned button 584–828 px, form column 122–722 px | Align with form column (guard) | fixed in iteration 2, awaiting critics | 1 |
 | jobs-1/i1-F11 | jobs-1 | P2 | job-edit/phones | No stages section; Back to jobs goes to list not the job | "Back to job" (only if /jobs/<id> resolves, else keep) + Edit stages link | won't fix: /jobs/<id> arrives with Task 14, so Back to jobs stays and there is no job to send Edit stages to; revisit when the job screen exists | 1 |
@@ -419,11 +419,11 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | jobs-1/i1-D4 | jobs-1 | P1 | jobs-list/normal/iphone+tablet | = F5, rows not the §4 list row | Ruling R3 | fixed in iteration 2, awaiting critics | 1 |
 | jobs-1/i1-D5 | jobs-1 | P2 | jobs-list/normal/all | No lead number; three equal-weight figures per row | figure-xl under title (e.g. "2 jobs over budget") | fixed in iteration 2, awaiting critics | 1 |
 | jobs-1/i1-D6 | jobs-1 | P2 | jobs-list/normal,all/iphone | Pause hidden in meta "(paused: materials)"; Complete plain word | §4 status chips (Paused + reason, Complete) | fixed in iteration 2, awaiting critics | 1 |
-| jobs-1/i1-D7 | jobs-1 | P2 | job-new/editing-stages/iphone | Stage card stack, "Stage N" prefixes, Remove indented 17 px | One surface group with dividers, compact rows; align Remove | fixed in iteration 2, awaiting critics | 1 |
+| jobs-1/i1-D7 | jobs-1 | P2 | job-new/editing-stages/iphone | Stage card stack, "Stage N" prefixes, Remove indented 17 px | One surface group with dividers, compact rows; align Remove | fixed in iteration 2 and again in iteration 3 (R11: one compact row per stage, one open at a time), awaiting critics | 1 |
 | jobs-1/i1-D8 | jobs-1 | P2 | job-new/filled/iphone | Stage review rows ~56 px (<64), no stage total | 64 px rows + total row in `figure` | fixed in iteration 2, awaiting critics | 1 |
 | jobs-1/i1-D9 | jobs-1 | P2 | job-new/normal,no-clients/iphone | Pinned hint lists all five missing things, bar ~160 px | Name only the next missing thing, one line | fixed in iteration 2, awaiting critics | 1 |
 | jobs-1/i1-D10 | jobs-1 | P2 | job-new/editing-stages/iphone | = F7 | Ruling R5 | fixed in iteration 2, awaiting critics (as F7) | 1 |
-| jobs-1/i1-D11 | jobs-1 | P2 | job-new/saved/iphone | = F8; title 20 px lower than other states | Ruling R4; hold title position | fixed in iteration 2, awaiting critics | 1 |
+| jobs-1/i1-D11 | jobs-1 | P2 | job-new/saved/iphone | = F8; title 20 px lower than other states | Ruling R4; hold title position | fixed in iteration 2 and again in iteration 3 (R10: title "Job added", Log today on this job), awaiting critics | 1 |
 | jobs-1/i1-D12 | jobs-1 | P2 | job-new/offline/all | = F9 | Ruling R7 | fixed in iteration 2, awaiting critics | 1 |
 | jobs-1/i1-D13 | jobs-1 | P2 | jobs-list vs job-new/desktop | List left-aligned, form centred | One content alignment | fixed in iteration 2, awaiting critics | 1 |
 | jobs-1/i1-D14 | jobs-1 | P2 | jobs-list/all/iphone | 150 jobs, "Show 143 more", no search; "46 days ago" | Search above filters on All; dates ("Mon 7 Sep") after 7 days | fixed in iteration 2, awaiting critics | 1 |
@@ -434,9 +434,9 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | jobs-1/i2-F2 | jobs-1 | P1 | job-new+job-edit/phones+landscape | Dates mm/dd/yyyy (10/09 reads as 10 Sep); value in mono font | Ruling R8 | fixed in iteration 3, awaiting critics | 2 |
 | jobs-1/i2-F3 | jobs-1 | P2 | jobs-list normal/phones | "$4,000.00 of $4,300.00" unlabelled next to "Clean-up is $100.00 over" | Label once: "spent of $4,300.00 budget" |
 | jobs-1/i2-F4 | jobs-1 | P2 | jobs-list normal/landscape | Add job bar + tab bar ~135/390 px; no rows on first screen | Landscape: Add job in header row, not pinned |
-| jobs-1/i2-F5 | jobs-1 | P2 | job-new saved/iphone | No way into the job; no pointer to the first log | Ruling R10 |
+| jobs-1/i2-F5 | jobs-1 | P2 | job-new saved/iphone | No way into the job; no pointer to the first log | Ruling R10 | fixed in iteration 3, awaiting critics | 2 |
 | jobs-1/i2-F6 | jobs-1 | P2 | jobs-list error/phones | Add job pinned primary; Try again only outlined | Hide Add job in error; Try again primary |
-| jobs-1/i2-F7 | jobs-1 | P2 | job-new editing-stages/iphone | 7×3 fields, ~24 px red Remove links | Ruling R11 |
+| jobs-1/i2-F7 | jobs-1 | P2 | job-new editing-stages/iphone | 7×3 fields, ~24 px red Remove links | Ruling R11 | fixed in iteration 3, awaiting critics | 2 |
 | jobs-1/i2-F8 | jobs-1 | P2 | job-new+job-edit/phones | Back to jobs looks like a 24 px link | Visible 48 px padded row (guard) |
 | jobs-1/i2-F9 | jobs-1 | P2 | job-new+job-edit/landscape | Disabled Create/Save shows no reason in landscape | Reason line in landscape too (guard) |
 | jobs-1/i2-F10 | jobs-1 | P2 | job-new/keyboard | Keyboard capture not in slices | Conductor: critic reads the png directly |
@@ -449,7 +449,7 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | jobs-1/i2-D2 | jobs-1 | P1 | jobs-list/all/iphone+desktop | = i2-F1 | Ruling R9 | fixed in iteration 3, awaiting critics | 2 |
 | jobs-1/i2-D3 | jobs-1 | P2 | jobs-list/normal/all | "1 job over budget" but Wong's figure is under (one stage over) | Ruling R9 | fixed in iteration 3, awaiting critics | 2 |
 | jobs-1/i2-D4 | jobs-1 | P2 | jobs-list/desktop | Done column bare "65%", no tape bar | Compact tape bar in Done column |
-| jobs-1/i2-D5 | jobs-1 | P2 | job-new/editing-stages/iphone | "Stage N …" labels, ~380 px per stage, ~2,600 px for 7 | Ruling R11 |
+| jobs-1/i2-D5 | jobs-1 | P2 | job-new/editing-stages/iphone | "Stage N …" labels, ~380 px per stage, ~2,600 px for 7 | Ruling R11 | fixed in iteration 3, awaiting critics | 2 |
 | jobs-1/i2-D6 | jobs-1 | P2 | jobs-list/normal/tablet | Add job bar 600 px vs list 720 px | Bar matches content column (guard) |
 | jobs-1/i2-D7 | jobs-1 | P2 | job-new filled+normal, job-edit/desktop | Pinned strip clips date fields; no `line` top rule at rest | `galv` strip, constant `line` rule, content padding (guard) |
 | jobs-1/i2-D8 | jobs-1 | P2 | jobs-list loading/desktop | Phone-shaped skeleton under table; no headline skeleton | Table-shaped skeleton + headline line |
@@ -459,4 +459,4 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | jobs-1/i2-D12 | jobs-1 | P3 | jobs-list/all/desktop | Row heights 49 vs 53 px; sort breaks (8 Jul between 22 and 17 Jun) | Same height; sort by last log newest first |
 | jobs-1/i2-D13 | jobs-1 | P3 | job-new filled | Total row looks like stage rows | Heavier divider or semibold label |
 | jobs-1/i2-D14 | jobs-1 | P3 | job-new offline/iphone | Hint wraps; no offline banner at all | One-line hint; slim offline banner back |
-| jobs-1/i2-D15 | jobs-1 | P3 | job-new saved/iphone | Title "New job" above "Job added" | Title "Job added" |
+| jobs-1/i2-D15 | jobs-1 | P3 | job-new saved/iphone | Title "New job" above "Job added" | Title "Job added" | fixed in iteration 3, awaiting critics | 2 |
