@@ -99,9 +99,16 @@ describe("crew-day grid defaults", () => {
     const d = await data.logs.crewDayDefaults(actor, { projectId: meta.projects.smith });
     const names = d.crew.map((c) => c.name);
     // Smith, 21 to 27 Sep: Jake, Josh, Ben, Sam, Dima.
-    expect(names.slice(0, 5)).toEqual(["Ben", "Dima", "Jake", "Josh", "Sam"]);
+    expect([...names.slice(0, 5)].sort()).toEqual(["Ben", "Dima", "Jake", "Josh", "Sam"]);
     const rest = names.slice(5);
     expect(rest).toEqual([...rest].sort((a, b) => a.localeCompare(b)));
+  });
+
+  it("yesterday's crew on the job are on top, so Same as yesterday leaves them first", async () => {
+    const { data, actor } = fake("manager");
+    const d = await data.logs.crewDayDefaults(actor, { projectId: meta.projects.smith });
+    const same = d.sameAsYesterday!;
+    expect(d.crew.slice(0, same.crewMemberIds.length).map((c) => c.crewMemberId).sort()).toEqual([...same.crewMemberIds].sort());
   });
 
   it("with no job chosen everyone is A to Z; Progress orders by the stage it is opened on", async () => {
@@ -112,7 +119,9 @@ describe("crew-day grid defaults", () => {
     const p = await data.progress.defaults(actor);
     expect(p.crew.map((c) => c.name)).toEqual(names);
     const onSmith = await data.progress.defaults(actor, { stageId: meta.stages.smithSheetInstall });
-    expect(onSmith.crew.map((c) => c.name).slice(0, 5)).toEqual(["Ben", "Dima", "Jake", "Josh", "Sam"]);
+    expect(onSmith.crew.map((c) => c.name).slice(0, 5).sort()).toEqual(["Ben", "Dima", "Jake", "Josh", "Sam"]);
+    // The same order is offered per job, so the screen can fix it once a job is chosen.
+    expect(onSmith.crewByJob[meta.projects.smith]).toEqual(onSmith.crew.map((c) => c.id));
   });
 
   it("a new workspace has nothing to copy yet", async () => {

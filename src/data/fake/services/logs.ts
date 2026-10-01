@@ -59,7 +59,7 @@ export const RECENT_CREW_DAYS = 7;
 /**
  * The crew an entry screen lists. A foreman sees the crew who have worked on their own jobs (flows.md: assigned
  * crew), or everyone when nobody has yet. On a chosen job, crew who logged there in the last 7 days come first,
- * then everyone else; each part A to Z.
+ * then everyone else A to Z (the most recent day first among the recent).
  */
 export function entryCrew(c: FakeContext, actor: Actor, date: LocalDate, projectId: Id | null): CrewMemberRow[] {
   const visible = c.visibleProjects(actor);
@@ -70,13 +70,21 @@ export function entryCrew(c: FakeContext, actor: Actor, date: LocalDate, project
     if (assigned.length > 0) crew = assigned;
   }
   const since = addDays(c.today, -RECENT_CREW_DAYS);
-  const recent = new Set(
-    projectId === null
-      ? []
-      : c.ix.liveLogs.filter((l) => l.projectId === projectId && l.date >= since && l.date <= c.today).map((l) => l.crewMemberId),
-  );
+  // Last day each person logged on the chosen job in the window: the latest days lead (yesterday's crew on top).
+  const lastOnJob = new Map<Id, LocalDate>();
+  if (projectId !== null) {
+    for (const l of c.ix.liveLogs) {
+      if (l.projectId !== projectId || l.date < since || l.date > c.today) continue;
+      if ((lastOnJob.get(l.crewMemberId) ?? "") < l.date) lastOnJob.set(l.crewMemberId, l.date);
+    }
+  }
   const byName = (a: CrewMemberRow, b: CrewMemberRow) => a.name.localeCompare(b.name);
-  return [...crew.filter((m) => recent.has(m.id)).sort(byName), ...crew.filter((m) => !recent.has(m.id)).sort(byName)];
+  const byLast = (a: CrewMemberRow, b: CrewMemberRow) =>
+    lastOnJob.get(b.id)!.localeCompare(lastOnJob.get(a.id)!) || byName(a, b);
+  return [
+    ...crew.filter((m) => lastOnJob.has(m.id)).sort(byLast),
+    ...crew.filter((m) => !lastOnJob.has(m.id)).sort(byName),
+  ];
 }
 
 function logList(c: FakeContext, actor: Actor, logs: WorkLogRow[]): LogList {
@@ -304,6 +312,9 @@ export function createProgressService(c: FakeContext): ProgressService {
         latestStages: latest,
         projects: pickableProjects(c, actor, undefined, true).filter((p) => p.stages.length > 0),
         crew: entryCrew(c, actor, date, stageProject).map((m) => crewRowForeman(m, c.today)),
+        crewByJob: Object.fromEntries(
+          pickableProjects(c, actor, undefined, true).map((p) => [p.id, entryCrew(c, actor, date, p.id).map((m) => m.id)]),
+        ),
       };
     },
 

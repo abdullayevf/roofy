@@ -752,6 +752,8 @@ export interface ProgressDefaults {
   }[];
   projects: ProjectPick[];
   crew: CrewRowForeman[];
+  /** The crew's order for each job (ids only): who logged there in the last 7 days first, the latest day first, then A to Z. */
+  crewByJob: Record<Id, Id[]>;
 }
 
 export interface NoWorkRow {
