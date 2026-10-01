@@ -9,20 +9,19 @@ export type JobFormData =
 
 /**
  * What a job form needs: the clients to pick from and, for a new job, the stages proposed for each job type (last job of
- * that type, else the template). A job type with neither has no proposal (null; the clients above were allowed, so the refusal is the missing template) and the form lets the person add stages.
+ * that type, else the template; null when there is neither, and the form lets the person add stages). A refusal from
+ * either call is a real permission refusal and says so.
  */
 export async function loadJobForm({ data, actor }: DataContext, withProposals: boolean): Promise<JobFormData> {
   try {
-    const clients = await data.projects.clients(actor);
+    const [clients, found] = await Promise.all([
+      data.projects.clients(actor),
+      withProposals ? Promise.all(JOB_TYPES.map(({ value }) => data.projects.proposeStages(actor, value))) : Promise.resolve([]),
+    ]);
     const proposals: Partial<Record<JobType, StageProposal | null>> = {};
-    if (withProposals) {
-      for (const { value } of JOB_TYPES) {
-        proposals[value] = await data.projects.proposeStages(actor, value).catch((e: unknown) => {
-          if (isDataError(e) && e.code === "forbidden") return null;
-          throw e;
-        });
-      }
-    }
+    JOB_TYPES.forEach(({ value }, i) => {
+      proposals[value] = found[i] ?? null;
+    });
     return { kind: "ok", clients, proposals };
   } catch (e) {
     if (isDataError(e) && e.code === "forbidden") return { kind: "forbidden" };

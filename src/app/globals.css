@@ -281,7 +281,9 @@ body {
     align-items: center;
     justify-content: flex-end;
     gap: 0.75rem;
-    padding: 0.5rem max(1rem, env(safe-area-inset-right)) 0.5rem max(1rem, env(safe-area-inset-left));
+    /* The button's right edge is the form column's right edge (a 600 px column, centred, 16 px page padding). */
+    padding: 0.5rem max(1rem, env(safe-area-inset-right), calc((100% - 37.5rem) / 2))
+      0.5rem max(1rem, env(safe-area-inset-left), calc((100% - 37.5rem) / 2));
     background: var(--galv);
     border-top: 1px solid var(--line);
   }
@@ -296,8 +298,8 @@ body {
   }
   .pin-action > button,
   .pin-action > a {
-    flex: 0 0 max(30%, 12rem);
-    width: max(30%, 12rem);
+    flex: 0 0 10rem;
+    width: 10rem;
   }
 }
 @media (min-width: 1024px) {
@@ -331,4 +333,14 @@ body {
     transition-duration: 0s !important;
     transition-delay: 0s !important;
   }
+}
+
+/* A date field is Atkinson like every other field (the browser's own date control would use its system font). */
+input[type="date"] {
+  font-family: inherit;
+  font-size: inherit;
+}
+input[type="date"]::-webkit-datetime-edit,
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  font-family: inherit;
 }

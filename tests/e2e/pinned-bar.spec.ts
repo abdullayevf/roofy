@@ -43,6 +43,12 @@ for (const screen of SCREENS) {
     expect(button.height).toBeGreaterThanOrEqual(48);
     const clear = button.x >= circle.x + circle.width || button.x + button.width <= circle.x;
     expect(clear).toBe(true);
+    // The button sits inside the form's column, its right edge on the column's right edge (i1-F10).
+    if (screen.name.endsWith("job")) {
+      const column = (await page.locator("main input, main select").first().boundingBox())!;
+      expect(button.x).toBeGreaterThanOrEqual(column.x - 1);
+      expect(Math.abs(button.x + button.width - (column.x + column.width))).toBeLessThanOrEqual(2);
+    }
     // The form scrolls above the bar to its last control.
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     const last = await page.evaluate(() => {

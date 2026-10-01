@@ -25,4 +25,4 @@ export function useOnline(demoOffline = false): boolean {
 }
 
 /** The sentence under a disabled save when there is no signal (flows.md "Needs connection"). */
-export const NEEDS_CONNECTION = "Needs connection — try again once you're back online.";
+export const NEEDS_CONNECTION = "Needs connection. Try again once you're back online.";

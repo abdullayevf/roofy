@@ -16,6 +16,8 @@ import { keyboardInset } from "./field-input";
 
 /** The widest a field-entry screen grows (grouped rows read badly wider, so landscape phones stop here too). */
 export const ENTRY_WIDTH = "mx-auto w-full max-w-150";
+/** The admin forms (jobs, crew): the same column, but left-aligned from 1024 px so they start where their list does. */
+export const FORM_WIDTH = "mx-auto w-full max-w-150 lg:mx-0";
 
 export type EntryKind = "crew-day" | "progress" | "no-work";
 

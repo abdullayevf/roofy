@@ -93,6 +93,7 @@ export function createProjectService(c: FakeContext): ProjectService {
       labourBudgetCents: f.labourBudgetCents,
       forecastMarginCents: f.margins.forecastMarginCents,
       alert: f.alert,
+      alertStageName: f.alert ? (f.stages.find((s) => s.alert === f.alert)?.stage.name ?? null) : null,
     };
   }
 

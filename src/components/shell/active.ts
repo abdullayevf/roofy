@@ -51,3 +51,6 @@ export function activeManageKey(pathname: string): string {
   const first = pathname.split("/")[1] ?? "";
   return MANAGE_PAGES.has(first) ? first : "";
 }
+
+/** Admin forms that need a connection to save: New job and Edit job. Everything else queues entries on the device. */
+export const queuesOffline = (pathname: string): boolean => !/^\/jobs\/(new|[^/]+\/edit)\/?$/.test(pathname);

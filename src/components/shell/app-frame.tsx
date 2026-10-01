@@ -1,4 +1,4 @@
-import { OfflineBanner } from "@/components/offline-banner";
+import { OfflineSlot } from "./offline-slot";
 import { OutboxBadgeSlot } from "./outbox-badge-slot";
 import { ShellSidebar, ShellTabBar } from "./nav-shell";
 import type { NavRole } from "./active";
@@ -33,7 +33,7 @@ export function AppFrame({ role, workspaceName, offline, waiting, attention, chi
           paddingRight: "env(safe-area-inset-right)",
         }}
       >
-        {offline ? <OfflineBanner /> : null}
+        {offline ? <OfflineSlot /> : null}
         <OutboxBadgeSlot waiting={waiting} attention={attention} />
         <main className="flex-1 p-4 pb-tab-bar lg:pb-page">{children}</main>
       </div>

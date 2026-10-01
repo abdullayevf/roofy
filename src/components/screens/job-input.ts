@@ -1,6 +1,10 @@
-import type { JobType, ProjectStatus, StageDraft, StageProposal } from "@/data/contracts";
+import type { BudgetAlertDto, JobType, ProjectStatus, StageChip, StageDraft, StageProposal } from "@/data/contracts";
+import { addDays } from "@/domain/dates";
 import type { Cents } from "@/domain/types";
+import { formatDate, formatMoney } from "@/lib/format";
+import type { Status } from "@/components/ui/status-chip";
 import { parseLocalDate } from "./field-input";
+import { lastLogText, pauseReasonText, stageLine } from "./home-text";
 
 export const JOB_TYPES: { value: JobType; label: string }[] = [
   { value: "metal_reroof", label: "Metal re-roof" },
@@ -60,19 +64,21 @@ export function finishProblem(start: string, finish: string): string | null {
   return start && finish && finish < start ? "The target finish can't be before the start." : null;
 }
 
+/** The job's name: the one typed, else its site address (the job name is optional). */
+export const jobNameFor = (v: Pick<JobFormValues, "nickname" | "siteAddress">): string => v.nickname.trim() || v.siteAddress.trim();
+
 /** What the person still has to do before Create job (or Save changes) works, in form order. */
 export function jobMissing(v: JobFormValues, stages: { needStages: boolean; stagesAccepted: boolean }): string[] {
   const missing: string[] = [];
   if (!v.clientId) missing.push("choose a client");
   if (!v.jobType) missing.push("choose a job type");
-  if (!v.nickname.trim()) missing.push("name the job");
   if (!v.siteAddress.trim()) missing.push("add the site address");
   if (finishProblem(v.startDate, v.targetFinish)) missing.push("move the target finish to after the start");
   if (stages.needStages && !stages.stagesAccepted) missing.push("accept the stages");
   return missing;
 }
 
-/** "Choose a client, name the job and add the site address." One plain sentence naming only what is missing. */
+/** "Choose a client and add the site address." One plain sentence naming only what is missing. */
 export function missingSentence(items: string[]): string | undefined {
   if (items.length === 0) return undefined;
   const text = items.length === 1 ? items[0]! : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
@@ -110,3 +116,56 @@ export function parseJobPrefill(params: Record<string, string | string[] | undef
     accepted: one(params.accepted) === "1",
   };
 }
+
+/**
+ * A job's labour alert as one sentence that names its stage, because the amount is that stage's, not the job's:
+ * "Sheet install is $100.00 over" (red) or "Sheet install is trending $775.00 over" (amber).
+ */
+export function jobAlertText(alert: Pick<BudgetAlertDto, "level" | "byCents">, stageName: string | null): string {
+  const by = formatMoney(alert.byCents);
+  const stage = stageName ?? "A stage";
+  return alert.level === "over" ? `${stage} is ${by} over` : `${stage} is trending ${by} over`;
+}
+
+export type JobLine = {
+  /** The one alert on the job, when it has one (it replaces everything else on the line). */
+  alert?: { tone: "over" | "watch"; text: string };
+  /** A status chip: Paused with its reason, or the job's own status when it isn't active. */
+  chip?: { status: Status; reason?: string };
+  text?: string;
+};
+
+const JOB_CHIP: Record<Exclude<ProjectStatus, "active">, Status> = {
+  quoted: "quoted",
+  on_hold: "on-hold",
+  complete: "complete",
+  closed: "closed",
+};
+
+/** What a job row's one status line says: the alert, else a chip, else its current stages. */
+export function jobLine(row: {
+  status: ProjectStatus;
+  pctBp: number;
+  currentStages: StageChip[];
+  alert?: BudgetAlertDto | null;
+  alertStageName?: string | null;
+}): JobLine {
+  if (row.alert && row.status === "active") {
+    return { alert: { tone: row.alert.level === "over" ? "over" : "watch", text: jobAlertText(row.alert, row.alertStageName ?? null) } };
+  }
+  if (row.status === "complete" || row.status === "closed") return { chip: { status: JOB_CHIP[row.status] }, text: "All stages done" };
+  const paused = row.currentStages.find((s) => s.status === "paused" && s.pauseReason);
+  if (row.status === "active" && paused?.pauseReason) {
+    return { chip: { status: "paused", reason: pauseReasonText(paused.pauseReason) }, text: paused.name };
+  }
+  const text = row.currentStages.length === 0 && row.pctBp >= 10000 ? "All stages done" : stageLine(row.currentStages);
+  return row.status === "active" ? { text } : { chip: { status: JOB_CHIP[row.status] }, text };
+}
+
+/** A job's last log: "3 days ago" within a week, then the date ("Mon 7 Sep"). */
+export function lastLogOn(days: number | null, today: string): string {
+  return days !== null && days > 7 ? formatDate(addDays(today, -days), today) : lastLogText(days);
+}
+
+/** How many of these jobs are already over a stage's labour budget (the lead line on the Jobs list). */
+export const overBudgetJobs = (rows: { alert: BudgetAlertDto | null }[]): number => rows.filter((r) => r.alert?.level === "over").length;

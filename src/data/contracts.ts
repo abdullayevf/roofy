@@ -399,6 +399,8 @@ export interface ProjectRowManager extends ProjectRowForeman {
   forecastMarginCents: Cents;
   /** Worst stage alert on the job. */
   alert: BudgetAlertDto | null;
+  /** The stage that alert belongs to: its `byCents` is that stage's, not the job's. */
+  alertStageName: string | null;
 }
 
 export type ProjectList =

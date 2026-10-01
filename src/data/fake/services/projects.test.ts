@@ -5,6 +5,7 @@ import { lumpSumLines } from "@/domain/piece";
 import { forecastLabour, projectMargins, projectPercentBp, stagePercentBp } from "@/domain/progress";
 import { lostWorkingDays, realWorkingDays } from "@/domain/segments";
 import { DataError, type ProjectDetailManager, type StageDetailManager } from "../../contracts";
+import { jobAlertText } from "@/components/screens/job-input";
 import { getSeed } from "../store";
 import { fake } from "./testing";
 
@@ -133,6 +134,20 @@ describe("job detail (manager)", () => {
       canAdminister: false,
     });
     expect((await smith("owner")).access.canAdminister).toBe(true);
+  });
+
+  it("every job row with an alert names its stage, so the sentence follows from the figures (i1-F1: Wong clean-up is $100.00 over)", async () => {
+    const { data, actor } = fake("manager");
+    const list = await data.projects.list(actor, { status: "all" });
+    if (list.view !== "manager") throw new Error("expected the manager view");
+    const withAlert = list.rows.filter((r) => r.alert);
+    expect(withAlert.length).toBeGreaterThan(2);
+    for (const r of withAlert) expect(r.alertStageName, r.name).toBeTruthy();
+    expect(list.rows.filter((r) => !r.alert).every((r) => r.alertStageName === null)).toBe(true);
+    const wong = list.rows.find((r) => r.name.startsWith("Wong job"))!;
+    expect(wong.alert).toMatchObject({ level: "over", byCents: 10000 });
+    expect(wong.alertStageName).toBe("Clean-up");
+    expect(jobAlertText(wong.alert!, wong.alertStageName)).toBe("Clean-up is $100.00 over");
   });
 
   it("the jobs list defaults to active jobs; 'all' adds on-hold, complete and closed", async () => {

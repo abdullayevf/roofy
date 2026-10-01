@@ -10,10 +10,12 @@ async function signInAs(page: Page, role: string, next = "/jobs") {
   await page.goto(`/prototype/role?as=${role}&next=${encodeURIComponent(next)}`);
 }
 
-const cards = (page: Page) => page.locator('[data-screen="jobs"] a[href^="/jobs/"]:not([href="/jobs/new"])');
+// A phone row and a desktop table row are both in the page; only the one for this width shows.
+const cards = (page: Page) => page.locator('[data-screen="jobs"] a[href^="/jobs/"]:not([href="/jobs/new"]):visible');
+const jobRows = (page: Page) => page.locator('[data-screen="jobs"] [data-job-row]:visible');
 
 test.describe("Jobs list (manager)", () => {
-  test("opens on Active jobs with a card each: name, address, current stage, tape bar and the three figures", async ({ page }, testInfo) => {
+  test("opens on Active jobs with a row each: name, one status line, tape bar and the labour figure", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "manager");
     await expect(page.getByRole("heading", { level: 1, name: "Jobs" })).toBeVisible();
@@ -21,14 +23,52 @@ test.describe("Jobs list (manager)", () => {
     await expect(cards(page)).toHaveCount(5);
     const smith = cards(page).filter({ hasText: "Smith job" });
     await expect(smith).toHaveAttribute("href", `/jobs/${meta.projects.smith}`);
-    await expect(smith.getByText("Sheet install")).toBeVisible();
-    await expect(smith.getByRole("progressbar")).toBeVisible();
-    await expect(smith.getByText("Forecast margin", { exact: true })).toBeVisible();
-    await expect(smith.getByText("Labour so far", { exact: true })).toBeVisible();
-    // Smith is trending over on its labour budget: said in words under the tape, with the amount.
-    await expect(smith.getByText("Trending $775.00 over its labour budget")).toBeVisible();
+    // Smith is trending over on one stage: the line names the stage that owns the amount (i1-F1).
+    await expect(jobRows(page).filter({ hasText: "Smith job" }).getByText("Sheet install is trending $775.00 over")).toBeVisible();
+    if (isPhone(testInfo.project.name)) await expect(smith.getByRole("progressbar")).toBeVisible();
+    await expect(jobRows(page).filter({ hasText: "Smith job" }).getByText(/^of \$[\d,]+\.\d{2}$/)).toBeVisible();
     await expect(page.getByRole("link", { name: "Add job" })).toHaveAttribute("href", "/jobs/new");
+    // The lead line counts the jobs already over budget (D5).
+    await expect(page.getByText(/^(\d+ jobs? over budget|No jobs over budget)$/)).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
+  });
+
+  test("a row stays short: at most 120 px on a phone when its name and status fit on a line, 160 when they wrap; 56 px in the desktop table (i1-F5)", async ({ page }, testInfo) => {
+    await signInAs(page, "manager", "/jobs?status=all");
+    const desktop = testInfo.project.name === "desktop";
+    const rows = await jobRows(page).evaluateAll((els) =>
+      els.map((el) => {
+        const h = (sel: string) => Math.round(el.querySelector(sel)?.getBoundingClientRect().height ?? 0);
+        return { row: Math.round(el.getBoundingClientRect().height), name: h("[data-job-name]"), status: h("[data-job-status]") };
+      }),
+    );
+    expect(rows.length).toBeGreaterThan(5);
+    if (desktop) {
+      for (const r of rows) expect(r.row).toBeLessThanOrEqual(56);
+      // The table uses the content width, not a phone column (D1).
+      const table = (await page.locator('[data-screen="jobs"] table').boundingBox())!;
+      expect(table.width).toBeGreaterThan(900);
+      return;
+    }
+    const oneLine = rows.filter((r) => r.name <= 28 && r.status <= 28);
+    expect(oneLine.length).toBeGreaterThan(5);
+    for (const r of oneLine) expect(r.row).toBeLessThanOrEqual(120);
+    for (const r of rows) expect(r.row).toBeLessThanOrEqual(160);
+  });
+
+  test("Add job is under the thumb on a phone: in the bottom third of the screen", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "a button beside the title from 1024 px");
+    await signInAs(page, "manager");
+    const box = (await page.getByRole("link", { name: "Add job" }).boundingBox())!;
+    const height = page.viewportSize()!.height;
+    expect(box.y).toBeGreaterThan(height * 0.66);
+    expect(box.height).toBeGreaterThanOrEqual(48);
+  });
+
+  test("a finished job says all its stages are done, not that none started (i1-F4)", async ({ page }) => {
+    await signInAs(page, "manager", "/jobs?status=complete");
+    await expect(jobRows(page).first()).toContainText("All stages done");
+    await expect(page.getByText("No stage started")).toHaveCount(0);
   });
 
   test("the filter changes the list and the address, and says so when there are none", async ({ page }) => {
@@ -92,6 +132,8 @@ test.describe("Jobs list (manager)", () => {
     await expect(page.locator('[data-screen="jobs"] [role="alert"]')).toContainText("Couldn't load this. Try again.");
     await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
     await expect(page.getByRole("radio", { name: "Active" })).toBeVisible();
+    // Add job stays within reach on the error state too (pinned on a phone, beside the title on desktop).
+    await expect(page.getByRole("link", { name: "Add job" })).toHaveAttribute("href", "/jobs/new");
   });
 
   test("no permission says so plainly with a way back", async ({ page }) => {
@@ -107,10 +149,38 @@ test.describe("Jobs list (manager)", () => {
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
-  test("job names keep their hyphenated words whole", async ({ page }) => {
+  test("job names keep their hyphenated words whole: no line break inside re-roof", async ({ page }) => {
     await signInAs(page, "manager");
-    const nowrap = await cards(page).filter({ hasText: "Smith job" }).locator("span.whitespace-nowrap", { hasText: "re-roof" }).count();
-    expect(nowrap).toBeGreaterThan(0);
+    const lines = await cards(page)
+      .filter({ hasText: "Smith job" })
+      .first()
+      .evaluate((el) => {
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          const at = n.textContent?.indexOf("re-roof") ?? -1;
+          if (at < 0) continue;
+          const range = document.createRange();
+          range.setStart(n, at);
+          range.setEnd(n, at + "re-roof".length);
+          return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size;
+        }
+        return -1;
+      });
+    expect(lines).toBe(1);
+  });
+
+  test("a long list has a search by name or address; a short one has none (i1-D14)", async ({ page }) => {
+    await signInAs(page, "manager");
+    await expect(page.getByRole("searchbox", { name: "Search jobs" })).toHaveCount(0);
+    await page.getByRole("radio", { name: "All" }).click();
+    const search = page.getByRole("searchbox", { name: "Search jobs" });
+    await expect(search).toBeVisible();
+    await search.fill("Smith job");
+    await expect(jobRows(page).filter({ hasText: "Smith job" })).toHaveCount(1);
+    expect(await jobRows(page).count()).toBeLessThan(20);
+    await search.fill("zzzz");
+    await expect(page.getByText("No job matches")).toBeVisible();
+    await expect(jobRows(page)).toHaveCount(0);
   });
 });
 
@@ -122,8 +192,11 @@ test.describe("Jobs list (foreman)", () => {
     const n = await cards(page).count();
     expect(n).toBeGreaterThan(0);
     expect(n).toBeLessThan(5);
-    await expect(cards(page).first().getByRole("progressbar")).toBeVisible();
+    if (isPhone(testInfo.project.name)) await expect(cards(page).first().getByRole("progressbar")).toBeVisible();
     await expect(page.getByText("Forecast margin")).toHaveCount(0);
+    await expect(page.getByRole("columnheader", { name: "Margin" })).toHaveCount(0);
+    // Two assigned jobs need no filter (i1-F12).
+    await expect(page.getByRole("radio")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Add job" })).toHaveCount(0);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
@@ -137,6 +210,8 @@ test.describe("Jobs list (foreman)", () => {
     await signInAs(page, "foreman", "/jobs?demo=empty");
     await expect(page.getByText("You can see jobs once a manager adds you to one.")).toBeVisible();
     await expect(page.getByRole("link", { name: /Add (your first )?job/ })).toHaveCount(0);
+    // One sentence and nothing to tap: the log it would lead to has no job in it.
+    await expect(page.locator('[data-screen="jobs"] a[href]')).toHaveCount(0);
   });
 
   test("cannot open New job or Edit job", async ({ page }) => {

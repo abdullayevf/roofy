@@ -106,20 +106,6 @@ export type ScreenSpec = {
   goOffline?: boolean;
 };
 
-// All states a field-entry screen a foreman can reach should design: real
-// content, the three loading/empty/error states, both outbox-adjacent states
-// (offline banner, "N to send"/"needs attention"), and the foreman variant.
-const FIELD_STATES: DemoState[] = [
-  "normal",
-  "empty",
-  "loading",
-  "error",
-  "offline",
-  "waiting",
-  "attention",
-  "foreman",
-];
-
 // Admin-only screens never queue offline — they show "Needs connection"
 // instead — and have a no-permission state for roles that can't reach them,
 // but no outbox states and no foreman variant (foreman can't reach them).

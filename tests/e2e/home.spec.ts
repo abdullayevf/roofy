@@ -64,7 +64,7 @@ test.describe("Home (manager)", () => {
     expect(Math.abs(value.x + value.width - slot.right)).toBeLessThan(2);
   });
 
-  test("a job card: the bar is the whole job; a flagged stage is a sentence plus its own stage line", async ({ page }, testInfo) => {
+  test("a job card: the bar is the whole job; a flagged stage is a sentence plus its own stage line", async ({ page }) => {
     await signInAs(page, "manager");
     const smith = page.getByRole("link", { name: /Smith job/ }).last();
     await expect(smith.getByText("done", { exact: true })).toBeVisible();

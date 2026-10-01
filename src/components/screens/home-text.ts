@@ -75,6 +75,11 @@ export function attentionSentence(item: AttentionItem, today: string): string {
   }
 }
 
+/** "4 days ago": a job's last log, the one phrase every list and card uses. */
+export function lastLogText(days: number | null): string {
+  return days === null ? "None yet" : days === 0 ? "Today" : days === 1 ? "Yesterday" : `${days} days ago`;
+}
+
 export function daysSinceText(days: number | null): string {
   if (days === null) return "Nothing logged yet";
   if (days === 0) return "Logged today";

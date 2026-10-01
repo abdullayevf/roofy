@@ -1,11 +1,11 @@
 import { cx } from "@/lib/cx";
 import { Button } from "@/components/ui/button";
-import { ENTRY_WIDTH, LoadError } from "./field-entry";
+import { FORM_WIDTH, LoadError } from "./field-entry";
 
 /** A server failure on the job form: the title stays and the form area says so and offers a retry. */
 export function JobError({ mode }: { mode: "new" | "edit" }) {
   return (
-    <div data-screen="job-form" className={cx("flex flex-col gap-6", ENTRY_WIDTH)}>
+    <div data-screen="job-form" className={cx("flex flex-col gap-6", FORM_WIDTH)}>
       <div className="flex flex-col gap-1">
         <Button variant="link" href="/jobs" className="self-start">
           Back to jobs

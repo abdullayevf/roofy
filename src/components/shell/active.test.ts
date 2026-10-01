@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activeNavKey, manageNavItems } from "./active";
+import { activeNavKey, manageNavItems, queuesOffline } from "./active";
 
 describe("activeNavKey", () => {
   it("maps the main tabs by first path segment", () => {
@@ -41,5 +41,16 @@ describe("manageNavItems", () => {
     expect(manageNavItems("manager").map((i) => i.label)).toEqual(["Expenses", "Pay runs", "Reports", "Settings"]);
     expect(manageNavItems("accountant")).toEqual([]);
     expect(manageNavItems("foreman")).toEqual([]);
+  });
+});
+
+describe("queuesOffline (R7)", () => {
+  it("is false on the forms that need a connection to save, true everywhere else", () => {
+    expect(queuesOffline("/jobs/new")).toBe(false);
+    expect(queuesOffline("/jobs/abc-123/edit")).toBe(false);
+    expect(queuesOffline("/jobs")).toBe(true);
+    expect(queuesOffline("/jobs/abc-123")).toBe(true);
+    expect(queuesOffline("/log")).toBe(true);
+    expect(queuesOffline("/")).toBe(true);
   });
 });

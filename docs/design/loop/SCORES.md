@@ -28,3 +28,4 @@ Score history for every screen group's design loop (`docs/specs/04-design-proces
 | field-2 | 1         | 72           | 68          | 70      | 5           | no (6 `log-crew-day` `?demo=error` captures: console 500 and React #441 from the forced error, ruled expected)   |
 | field-2 | 2         | 78           | 76          | 77      | 4           | no (2 `log-crew-day-offline-saved` console errors: ERR_INTERNET_DISCONNECTED from cutting the network, expected) |
 | field-2 | 3         | 82           | 78          | 80      | 0           | yes (152 captures, 2 fail: offline-saved console, expected)                                                      |
+| jobs-1  | 1         | 68           | 64          | 66      | 9           | yes (84 captures, 0 fail)                                                                                        |

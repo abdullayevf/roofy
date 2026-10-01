@@ -28,7 +28,13 @@ export default defineConfig({
   fullyParallel: true,
   retries: 0,
   reporter: [["list"]],
-  use: { baseURL: "http://127.0.0.1:3100", trace: "retain-on-failure" },
+  use: {
+    baseURL: "http://127.0.0.1:3100",
+    trace: "retain-on-failure",
+    // What an Australian phone shows: dd/mm/yyyy dates, Sydney clock.
+    locale: "en-AU",
+    timezoneId: "Australia/Sydney",
+  },
   projects: [
     { name: "iphone", use: iphone },
     {

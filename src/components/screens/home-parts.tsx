@@ -7,6 +7,7 @@ import { OutboxBadge } from "@/components/outbox-badge";
 import { TapeBar, type TapeBarProps } from "@/components/tape-bar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { lastLogText } from "./home-text";
 
 /**
  * Both Homes sit in one column (~720 px), centred on a tablet or a phone on its side and starting at the same left
@@ -203,10 +204,7 @@ export function JobCardSkeleton({ lines, figures }: { lines: number; figures: nu
   );
 }
 
-/** "4 days ago" for a job card's Last log line. */
-export function lastLogText(days: number | null): string {
-  return days === null ? "None yet" : days === 0 ? "Today" : days === 1 ? "Yesterday" : `${days} days ago`;
-}
+export { lastLogText };
 
 /** A manager job card's three figures: labour so far against its budget, forecast margin and the last log. */
 export function JobFigures({

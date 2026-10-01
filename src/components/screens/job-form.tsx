@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CheckCircle } from "@phosphor-icons/react";
 import type { ActionResult, Client, Id, JobType, ProjectStatus, StageDraft, StageProposal } from "@/data/contracts";
 import { createClient, createProject, updateProject } from "@/app/actions/projects";
+import { sum } from "@/domain/money";
 import { cx } from "@/lib/cx";
 import { formatMoney, formatQuantity } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -15,12 +16,13 @@ import { Select } from "@/components/ui/select";
 import { Sheet } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { KeepTogether } from "@/components/keep-together";
-import { CrewRowsSkeleton, ENTRY_WIDTH, FieldSkeleton, PinnedAction, usePinnedBar } from "./field-entry";
+import { CrewRowsSkeleton, FORM_WIDTH, FieldSkeleton, PinnedAction, usePinnedBar } from "./field-entry";
 import {
   JOB_TYPES,
   STATUSES,
   finishProblem,
   jobMissing,
+  jobNameFor,
   missingSentence,
   proposalSource,
   renumber,
@@ -50,6 +52,9 @@ const items = (stages: StageDraft[]): StageItem[] => stages.map((draft) => ({ ui
 
 const sameValues = (a: JobFormValues, b: JobFormValues) =>
   (Object.keys(a) as (keyof JobFormValues)[]).every((k) => a[k] === b[k]);
+
+/** The fields that show a server message beside them; any other refusal goes in the bar above Create job. */
+const FIELDS_WITH_SLOT = ["clientId", "siteAddress", "nickname", "startDate", "targetFinish"];
 
 /** Server messages that belong under one field, by the field's name in the input. */
 function issueFor(result: ActionResult<object> | null, field: string): string | undefined {
@@ -120,10 +125,11 @@ function QuickAddClient({
 
 function StageRows({ stages }: { stages: StageDraft[] }) {
   if (stages.length === 0) return <p className="text-body text-ink">There are no stages for this job type yet. Add the first one.</p>;
+  const total = sum(stages.map((s) => s.labourBudgetCents));
   return (
     <ol className="divide-y divide-line rounded-group border-group bg-surface">
       {stages.map((s) => (
-        <li key={s.position} className="flex min-h-14 items-center justify-between gap-4 px-4 py-2">
+        <li key={s.position} className="flex min-h-16 items-center justify-between gap-4 px-4 py-2">
           <span className="min-w-0">
             <span className="block text-body-strong text-ink [overflow-wrap:anywhere]">
               <KeepTogether text={s.name} />
@@ -133,6 +139,12 @@ function StageRows({ stages }: { stages: StageDraft[] }) {
           {s.labourBudgetCents > 0 ? <span className="shrink-0 whitespace-nowrap text-figure num text-ink">{formatMoney(s.labourBudgetCents)}</span> : null}
         </li>
       ))}
+      {total > 0 ? (
+        <li aria-label="Labour budget total" className="flex min-h-16 items-center justify-between gap-4 px-4 py-2">
+          <span className="text-body-strong text-ink">Labour budget total</span>
+          <span className="shrink-0 whitespace-nowrap text-figure num text-ink">{formatMoney(total)}</span>
+        </li>
+      ) : null}
     </ol>
   );
 }
@@ -142,8 +154,9 @@ function StageEditor({ rows, onChange }: { rows: StageItem[]; onChange: (rows: S
     onChange(rows.map((r) => (r.uid === uid ? { ...r, draft: { ...r.draft, ...patch } } : r)));
   return (
     <div className="flex flex-col gap-4">
+      <div role="group" aria-label="Stages" className="divide-y divide-line rounded-group border-group bg-surface">
       {rows.map((r, i) => (
-        <div key={r.uid} className="flex flex-col gap-4 rounded-group border-group bg-surface p-4">
+        <div key={r.uid} className="flex flex-col gap-4 p-4">
           <Field
             label={`Stage ${i + 1} name`}
             inputMode="text"
@@ -163,11 +176,12 @@ function StageEditor({ rows, onChange }: { rows: StageItem[]; onChange: (rows: S
               onCentsChange={(c) => set(r.uid, { materialsBudgetCents: c ?? 0 })}
             />
           </div>
-          <Button variant="ghost" tone="danger" onClick={() => onChange(rows.filter((x) => x.uid !== r.uid))} className="self-start">
+          <Button variant="ghost" tone="danger" onClick={() => onChange(rows.filter((x) => x.uid !== r.uid))} className="-ml-4 self-start">
             Remove stage {i + 1}
           </Button>
         </div>
       ))}
+      </div>
       <Button
         variant="secondary"
         onClick={() =>
@@ -215,14 +229,26 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
   const [saved, setSaved] = useState<{ name: string; stageCount: number } | null>(null);
 
   const isNew = mode === "new";
-  const set = <K extends keyof JobFormValues>(key: K, value: JobFormValues[K]) => setV((prev) => ({ ...prev, [key]: value }));
+  // Changing a field clears the refusal it may have caused, so the red words never outlive the fix.
+  const set = <K extends keyof JobFormValues>(key: K, value: JobFormValues[K]) => {
+    setV((prev) => ({ ...prev, [key]: value }));
+    setResult(null);
+    setFailed(null);
+  };
   const proposal = proposalFor(v.jobType);
   const stagesOk = stages.length > 0 && stages.every((s) => s.draft.name.trim() !== "");
   const stagesAccepted = accepted && !editingStages;
+  const stageHint = stages.length === 0 ? "Add at least one stage." : "Give every stage a name.";
+  const acceptStages = () => {
+    setEditingStages(false);
+    setAccepted(true);
+    setStages((rows) => items(renumber(rows.map((r) => r.draft))));
+  };
   const missing = jobMissing(v, { needStages: isNew, stagesAccepted });
   const dirty = isNew || !sameValues(v, initial);
   const ready = online && missing.length === 0 && dirty;
-  const hint = !online ? NEEDS_CONNECTION : (missingSentence(missing) ?? (dirty ? undefined : "Change something to save."));
+  // One line naming only the next thing to do.
+  const hint = !online ? NEEDS_CONNECTION : (missingSentence(missing.slice(0, 1)) ?? (dirty ? undefined : "Change something to save."));
   const finishError = finishProblem(v.startDate, v.targetFinish) ?? issueFor(result, "targetFinish");
 
   const { style, barProps } = usePinnedBar(saved);
@@ -241,7 +267,7 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
     setFailed(null);
     const fields = {
       clientId: v.clientId,
-      nickname: v.nickname.trim(),
+      nickname: jobNameFor(v),
       siteAddress: v.siteAddress.trim(),
       jobType: v.jobType,
       contractCents: v.contractCents ?? 0,
@@ -255,7 +281,7 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
         : await updateProject(projectId!, fields);
       setResult(r);
       if (r.ok) setSaved({ name: fields.nickname, stageCount: stages.length });
-      else if (r.issues.length === 0) setFailed(r.message);
+      else if (!r.issues.some((i) => FIELDS_WITH_SLOT.includes(i.field))) setFailed(r.message);
     } catch {
       setFailed(`Couldn't save this. ${NEEDS_CONNECTION}`);
     } finally {
@@ -275,17 +301,21 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
   }
 
   const title = isNew ? "New job" : "Edit job";
-  const back = (
-    <Button variant="link" href="/jobs" className="self-start">
-      Back to jobs
-    </Button>
+  const heading = (
+    <div className="flex flex-col gap-1">
+      <Button variant="link" href="/jobs" className="self-start">
+        Back to jobs
+      </Button>
+      <h1 className="text-title text-ink">{title}</h1>
+    </div>
   );
 
   if (saved) {
+    // The job's own page arrives with the job screen; until then the way on is another job, and the one link back
+    // is the link above the title (so the title holds its place from state to state).
     return (
-      <div data-screen="job-form" className={cx("flex flex-col gap-6", ENTRY_WIDTH)}>
-        {back}
-        <h1 className="text-title text-ink">{title}</h1>
+      <div data-screen="job-form" className={cx("flex flex-col gap-6", FORM_WIDTH)}>
+        {heading}
         <div role="status" className="flex flex-col items-start gap-3 rounded-group border-group bg-surface p-4">
           <p className="flex items-center gap-2 text-body-strong text-good">
             <CheckCircle size={24} aria-hidden="true" />
@@ -294,27 +324,19 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
           <p className="text-body text-ink">
             <KeepTogether text={isNew ? `${saved.name} is ready, with ${saved.stageCount} ${saved.stageCount === 1 ? "stage" : "stages"}.` : `Your changes to ${saved.name} are saved.`} />
           </p>
-          <div className="flex w-full flex-col gap-3 sm:flex-row">
-            <Button variant="primary" href="/jobs" className="sm:min-w-44">
-              Back to jobs
+          {isNew ? (
+            <Button variant="primary" onClick={reset} className="w-full sm:w-auto sm:min-w-44">
+              Add another job
             </Button>
-            {isNew ? (
-              <Button variant="secondary" onClick={reset} className="sm:min-w-44">
-                Add another job
-              </Button>
-            ) : null}
-          </div>
+          ) : null}
         </div>
       </div>
     );
   }
 
   return (
-    <div data-screen="job-form" style={style} className={cx("flex flex-col gap-6", ENTRY_WIDTH, "pin-pad")}>
-      <div className="flex flex-col gap-1">
-        {back}
-        <h1 className="text-title text-ink">{title}</h1>
-      </div>
+    <div data-screen="job-form" style={style} className={cx("flex flex-col gap-6", FORM_WIDTH, "pin-pad")}>
+      {heading}
 
       <div key={formKey} className="flex flex-col gap-4">
         {clients.length === 0 ? (
@@ -331,7 +353,7 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
             error={issueFor(result, "clientId")}
           />
         )}
-        <Button variant="secondary" onClick={() => setAdding(true)}>
+        <Button variant="secondary" disabled={!online} onClick={() => setAdding(true)}>
           Quick-add client
         </Button>
 
@@ -347,21 +369,21 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
         </div>
 
         <Field
-          label="Job name"
-          inputMode="text"
-          autoComplete="off"
-          hint="For example, Smith job — Ryde re-roof."
-          value={v.nickname}
-          onChange={(e) => set("nickname", e.target.value)}
-          error={issueFor(result, "nickname")}
-        />
-        <Field
           label="Site address"
           inputMode="text"
           autoComplete="off"
           value={v.siteAddress}
           onChange={(e) => set("siteAddress", e.target.value)}
           error={issueFor(result, "siteAddress")}
+        />
+        <Field
+          label="Job name (optional)"
+          inputMode="text"
+          autoComplete="off"
+          hint="Left blank, the job is named by its site address."
+          value={v.nickname}
+          onChange={(e) => set("nickname", e.target.value)}
+          error={issueFor(result, "nickname")}
         />
         <MoneyField
           label="Contract value (optional)"
@@ -404,20 +426,7 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
             <>
               {proposal ? <p className="text-body text-ink">{proposalSource(proposal)}</p> : null}
               {editingStages ? <StageEditor rows={stages} onChange={setStages} /> : <StageRows stages={stages.map((s) => s.draft)} />}
-              {editingStages ? (
-                <Button
-                  variant="secondary"
-                  disabled={!stagesOk}
-                  reason={stagesOk ? undefined : stages.length === 0 ? "Add at least one stage." : "Give every stage a name."}
-                  onClick={() => {
-                    setEditingStages(false);
-                    setAccepted(true);
-                    setStages((rows) => items(renumber(rows.map((r) => r.draft))));
-                  }}
-                >
-                  Accept stages
-                </Button>
-              ) : (
+              {editingStages ? null : (
                 <div className="flex flex-col gap-3 sm:flex-row">
                   {stagesAccepted ? (
                     <p role="status" className="flex min-h-12 items-center gap-2 text-body-strong text-good">
@@ -439,16 +448,22 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
         </section>
       ) : null}
 
-      <PinnedAction barProps={barProps} error={failed} hint={ready ? undefined : hint}>
-        <Button
-          disabled={!ready}
-          loading={saving}
-          loadingLabel={isNew ? "Creating job" : "Saving job"}
-          onClick={save}
-          className="w-full"
-        >
-          {isNew ? "Create job" : "Save changes"}
-        </Button>
+      <PinnedAction barProps={barProps} error={failed} hint={editingStages ? (stagesOk ? undefined : stageHint) : ready ? undefined : hint}>
+        {editingStages ? (
+          <Button disabled={!stagesOk} onClick={acceptStages} className="w-full">
+            Accept stages
+          </Button>
+        ) : (
+          <Button
+            disabled={!ready}
+            loading={saving}
+            loadingLabel={isNew ? "Creating job" : "Saving job"}
+            onClick={save}
+            className="w-full"
+          >
+            {isNew ? "Create job" : "Save changes"}
+          </Button>
+        )}
       </PinnedAction>
 
       <QuickAddClient
@@ -469,7 +484,7 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
 export function JobFormSkeleton({ mode }: { mode: "new" | "edit" }) {
   const { style, barProps } = usePinnedBar(null);
   return (
-    <div data-screen="job-form" aria-busy="true" style={style} className={cx("flex flex-col gap-6", ENTRY_WIDTH, "pin-pad")}>
+    <div data-screen="job-form" aria-busy="true" style={style} className={cx("flex flex-col gap-6", FORM_WIDTH, "pin-pad")}>
       <div className="flex flex-col gap-1">
         <Skeleton width={120} height={24} className="my-3" />
         <h1 className="text-title text-ink">{mode === "new" ? "New job" : "Edit job"}</h1>

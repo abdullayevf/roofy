@@ -13,13 +13,14 @@ export const metadata: Metadata = { title: "Jobs" };
 export default async function Page({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const ctx = await getData({ searchParams });
   const { actor, demo } = ctx;
-  if (demo.loading) return <JobsSkeleton manager={actor.role !== "foreman"} />;
+  if (demo.loading) return <JobsSkeleton manager={actor.role !== "foreman"} canAdd={actor.role === "owner" || actor.role === "manager"} />;
   const back = backLink(actor.role);
   if (!canOpen(actor.role, "jobs")) return <NoPermission backHref={back.href} backLabel={back.label} />;
-  const filter = parseStatusFilter((await searchParams).status);
+  // A foreman sees only their active jobs: no filter to pick.
+  const filter = actor.role === "foreman" ? "active" : parseStatusFilter((await searchParams).status);
   const canAdd = actor.role === "owner" || actor.role === "manager";
   const jobs = await loadJobs(ctx, filter);
   if (jobs.kind === "forbidden") return <NoPermission backHref={back.href} backLabel={back.label} />;
   if (jobs.kind === "unavailable") return <JobsError canAdd={canAdd} filter={filter} demo={demo.state ?? undefined} />;
-  return <JobsListBody list={jobs.list} filter={filter} anyJobs={jobs.anyJobs} canAdd={canAdd} demo={demo.state ?? undefined} />;
+  return <JobsListBody list={jobs.list} filter={filter} anyJobs={jobs.anyJobs} canAdd={canAdd} today={ctx.today} demo={demo.state ?? undefined} />;
 }

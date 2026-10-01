@@ -26,7 +26,7 @@ test.describe("New job", () => {
     await expect(page.getByRole("heading", { level: 1, name: "New job" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Back to jobs" })).toHaveAttribute("href", "/jobs");
     await expect(createJob(page)).toBeDisabled();
-    await expect(page.getByText("Choose a client, choose a job type, name the job, add the site address and accept the stages.")).toBeVisible();
+    await expect(page.getByText("Choose a client.")).toBeVisible();
     await expect(page.getByText("Choose a job type to see its stages.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Quick-add client" })).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
@@ -73,7 +73,7 @@ test.describe("New job", () => {
     await expect(done).toContainText(/Smith job — Ryde carport roof is ready, with \d+ stages\./);
     await page.getByRole("link", { name: "Back to jobs" }).last().click();
     await expect(page).toHaveURL(/\/jobs$/);
-    const card = page.locator('[data-screen="jobs"] a[href^="/jobs/"]:not([href="/jobs/new"])').filter({ hasText: "Ryde carport roof" });
+    const card = page.locator('[data-screen="jobs"] a[href^="/jobs/"]:not([href="/jobs/new"]):visible').filter({ hasText: "Ryde carport roof" });
     await expect(card).toBeVisible();
     await expect(card.getByText("No stage started")).toBeVisible();
   });
@@ -81,7 +81,9 @@ test.describe("New job", () => {
   test("Edit stages: rename, remove and add a stage, then Accept", async ({ page }) => {
     await signInAs(page, "manager", prefill({ type: "new_build" }));
     await page.getByRole("button", { name: "Edit stages" }).click();
-    await expect(createJob(page)).toBeDisabled();
+    // While stages are being edited the pinned action is Accept stages; Create job comes back after it (R5).
+    await expect(createJob(page)).toHaveCount(0);
+    await expect(page.locator('[data-slot="primary-action"]').getByRole("button", { name: "Accept stages" })).toBeVisible();
     await expect(page.getByLabel("Stage 1 name")).toHaveValue("Battens");
     await page.getByLabel("Stage 1 name").fill("Roof battens");
     await page.getByRole("button", { name: "Remove stage 2" }).click();
@@ -91,6 +93,7 @@ test.describe("New job", () => {
     await page.getByLabel("Stage 5 labour budget").blur();
     await expect(page.getByLabel("Stage 5 labour budget")).toHaveValue("1,250.00");
     await page.getByRole("button", { name: "Accept stages" }).click();
+    await expect(createJob(page)).toBeVisible();
     await expect(page.getByText("Roof battens")).toBeVisible();
     await expect(page.getByText("Final clean")).toBeVisible();
     await expect(page.getByRole("listitem").filter({ hasText: "Final clean" })).toContainText("$1,250.00");
@@ -138,9 +141,11 @@ test.describe("New job", () => {
 
   test("with no signal Create job is off and says it needs a connection, filled in or not", async ({ page }) => {
     await signInAs(page, "manager", prefill({ demo: "offline" }));
-    await expect(page.getByRole("status").filter({ hasText: "No signal" })).toBeVisible();
+    // The form never queues a save, so the "saved on this device" banner stays away and the form says it alone (R7).
+    await expect(page.getByRole("status").filter({ hasText: "No signal" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Quick-add client" })).toBeDisabled();
     await expect(createJob(page)).toBeDisabled();
-    await expect(page.getByText("Needs connection — try again once you're back online.")).toBeVisible();
+    await expect(page.getByText("Needs connection. Try again once you're back online.")).toBeVisible();
   });
 
   test("losing signal on the page turns Create job off, and getting it back turns it on", async ({ page, context }) => {
@@ -148,7 +153,7 @@ test.describe("New job", () => {
     await expect(createJob(page)).toBeEnabled();
     await context.setOffline(true);
     await expect(createJob(page)).toBeDisabled();
-    await expect(page.getByText("Needs connection — try again once you're back online.")).toBeVisible();
+    await expect(page.getByText("Needs connection. Try again once you're back online.")).toBeVisible();
     await context.setOffline(false);
     await expect(createJob(page)).toBeEnabled();
   });
@@ -191,6 +196,69 @@ test.describe("New job", () => {
   });
 });
 
+test.describe("New job: measured guards", () => {
+  test("Site address is the one required field: a blank job name is named by the address (R1)", async ({ page }) => {
+    await signInAs(page, "manager", prefill({ name: "" }));
+    await expect(createJob(page)).toBeEnabled();
+    await createJob(page).click();
+    await expect(page.getByRole("status").filter({ hasText: "Job added" })).toContainText("14 Quarry Rd, Ryde is ready");
+  });
+
+  test("the pinned hint names only the next missing thing, on one line", async ({ page }) => {
+    await signInAs(page, "manager", "/jobs/new");
+    const hint = page.locator('[data-slot="primary-action"] .pin-hint');
+    await expect(hint).toHaveText("Choose a client.");
+    const box = (await hint.boundingBox())!;
+    expect(box.height).toBeLessThanOrEqual(26);
+  });
+
+  test("the Back to jobs link has a 48 px tap area and dates use Atkinson (i1-F13, R2)", async ({ page }) => {
+    await signInAs(page, "manager", "/jobs/new");
+    const link = (await page.getByRole("link", { name: "Back to jobs" }).boundingBox())!;
+    expect(link.height).toBeGreaterThanOrEqual(48);
+    const font = await page.getByLabel("Start date (optional)").evaluate((el) => getComputedStyle(el).fontFamily);
+    expect(font).toMatch(/Atkinson/i);
+  });
+
+  test("stage review rows are 64 px with a total row; the editor is one group with Remove aligned to the labels (D7, D8)", async ({ page }) => {
+    await signInAs(page, "manager", prefill({ type: "new_build" }));
+    const rows = page.getByRole("list").filter({ hasText: "Battens" }).getByRole("listitem");
+    const heights = await rows.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
+    expect(heights.length).toBeGreaterThan(2);
+    for (const h of heights) expect(h).toBeGreaterThanOrEqual(64);
+    await expect(rows.last()).toContainText("Labour budget total");
+    await page.getByRole("button", { name: "Edit stages" }).click();
+    await expect(page.getByRole("group", { name: "Stages" })).toBeVisible();
+    const gap = await page.evaluate(() => {
+      const label = [...document.querySelectorAll("label")].find((l) => l.textContent?.includes("Stage 1 name"))!;
+      const remove = [...document.querySelectorAll("button")].find((b) => b.textContent?.includes("Remove stage 1"))!;
+      const range = document.createRange();
+      range.selectNodeContents(remove.querySelector("span") ?? remove);
+      return Math.abs(range.getBoundingClientRect().left - label.getBoundingClientRect().left);
+    });
+    expect(gap).toBeLessThanOrEqual(2);
+  });
+
+  test("a refused save with no field to blame says why in the bar (R-F1)", async ({ page }) => {
+    // A contract value over the cap is refused by the server and has no message slot beside its field.
+    await signInAs(page, "manager", prefill({ contract: "2000000000" }));
+    await createJob(page).click();
+    await expect(page.locator('[data-slot="primary-action"]')).toContainText("Check the contract value.");
+    await expect(page.getByRole("status").filter({ hasText: "Job added" })).toHaveCount(0);
+  });
+
+  test("after saving: one way back above the title, Add another job, and the title doesn't move (R4, D11)", async ({ page }) => {
+    await signInAs(page, "manager", prefill());
+    const before = (await page.getByRole("heading", { level: 1, name: "New job" }).boundingBox())!.y;
+    await createJob(page).click();
+    await expect(page.getByRole("status").filter({ hasText: "Job added" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Back to jobs" })).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "Add another job" })).toBeVisible();
+    const after = (await page.getByRole("heading", { level: 1, name: "New job" }).boundingBox())!.y;
+    expect(Math.abs(after - before)).toBeLessThanOrEqual(1);
+  });
+});
+
 test.describe("Edit job", () => {
   const path = `/jobs/${meta.projects.smith}/edit`;
 
@@ -216,7 +284,7 @@ test.describe("Edit job", () => {
     await page.getByRole("button", { name: "Save changes", exact: true }).click();
     await expect(page.getByRole("status")).toContainText("Your changes to Smith job — Ryde re-roof and gutters are saved.");
     await page.getByRole("link", { name: "Back to jobs" }).last().click();
-    await expect(page.locator('[data-screen="jobs"] a[href^="/jobs/"]:not([href="/jobs/new"])').filter({ hasText: "and gutters" })).toBeVisible();
+    await expect(page.locator('[data-screen="jobs"] a[href^="/jobs/"]:not([href="/jobs/new"]):visible').filter({ hasText: "and gutters" })).toBeVisible();
   });
 
   test("the status can change and the job moves to that filter", async ({ page }) => {
@@ -225,7 +293,7 @@ test.describe("Edit job", () => {
     await page.getByRole("button", { name: "Save changes", exact: true }).click();
     await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
     await page.goto("/jobs?status=on_hold");
-    await expect(page.locator('[data-screen="jobs"] a[href^="/jobs/"]:not([href="/jobs/new"])').filter({ hasText: "Smith job" })).toBeVisible();
+    await expect(page.locator('[data-screen="jobs"] a[href^="/jobs/"]:not([href="/jobs/new"]):visible').filter({ hasText: "Smith job" })).toBeVisible();
   });
 
   test("a job that isn't there is a not-found page; loading and error have their own states", async ({ page }) => {

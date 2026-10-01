@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { StageDraft, StageProposal } from "@/data/contracts";
 import {
   finishProblem,
+  jobAlertText,
+  jobLine,
   jobMissing,
+  jobNameFor,
+  lastLogOn,
+  overBudgetJobs,
   missingSentence,
   parseJobPrefill,
   parseStatusFilter,
@@ -30,9 +35,13 @@ describe("jobMissing", () => {
     expect(jobMissing({ ...base, clientId: "", nickname: " ", jobType: "" }, { needStages: true, stagesAccepted: false })).toEqual([
       "choose a client",
       "choose a job type",
-      "name the job",
       "accept the stages",
     ]);
+  });
+  it("does not ask for a job name: the site address names the job (R1)", () => {
+    expect(jobMissing({ ...base, nickname: "" }, { needStages: false, stagesAccepted: false })).toEqual([]);
+    expect(jobNameFor({ nickname: "  ", siteAddress: " 14 Quarry Rd, Ryde " })).toBe("14 Quarry Rd, Ryde");
+    expect(jobNameFor({ nickname: " Smith job ", siteAddress: "14 Quarry Rd" })).toBe("Smith job");
   });
   it("asks for the site address", () => {
     expect(jobMissing({ ...base, siteAddress: "" }, { needStages: false, stagesAccepted: false })).toEqual(["add the site address"]);
@@ -50,9 +59,9 @@ describe("jobMissing", () => {
 describe("missingSentence", () => {
   it("is undefined when nothing is missing", () => expect(missingSentence([])).toBeUndefined());
   it("capitalises one item and ends with a full stop", () => expect(missingSentence(["choose a client"])).toBe("Choose a client."));
-  it("joins two with 'and'", () => expect(missingSentence(["choose a client", "name the job"])).toBe("Choose a client and name the job."));
+  it("joins two with 'and'", () => expect(missingSentence(["choose a client", "add the site address"])).toBe("Choose a client and add the site address."));
   it("joins three with commas and 'and'", () =>
-    expect(missingSentence(["choose a client", "name the job", "add the site address"])).toBe("Choose a client, name the job and add the site address."));
+    expect(missingSentence(["choose a client", "choose a job type", "add the site address"])).toBe("Choose a client, choose a job type and add the site address."));
 });
 
 describe("finishProblem", () => {
@@ -154,5 +163,60 @@ describe("parseJobPrefill", () => {
       targetFinish: "",
       accepted: false,
     });
+  });
+});
+
+describe("jobAlertText (i1-F1: the sentence names the stage its amount belongs to)", () => {
+  it("red: the stage is over by its own amount", () => {
+    expect(jobAlertText({ level: "over", byCents: 10000 }, "Clean-up")).toBe("Clean-up is $100.00 over");
+  });
+  it("amber: the stage is trending over", () => {
+    expect(jobAlertText({ level: "trending", byCents: 77500 }, "Sheet install")).toBe("Sheet install is trending $775.00 over");
+  });
+  it("never states an amount with no stage to own it", () => {
+    expect(jobAlertText({ level: "over", byCents: 5000 }, null)).toBe("A stage is $50.00 over");
+  });
+});
+
+describe("jobLine (the one status line on a job row)", () => {
+  const stage = (name: string, status: "active" | "paused" = "active", pauseReason: "materials" | null = null) => ({ stageId: name, name, status, pauseReason });
+  const base = { status: "active" as const, pctBp: 4000, currentStages: [stage("Sheet install")] };
+  it("an alert replaces everything else on the line", () => {
+    expect(jobLine({ ...base, alert: { level: "over", severity: "over", byCents: 10000 }, alertStageName: "Clean-up" })).toEqual({
+      alert: { tone: "over", text: "Clean-up is $100.00 over" },
+    });
+  });
+  it("a paused stage shows as a Paused chip with its reason", () => {
+    expect(jobLine({ ...base, currentStages: [stage("Coat / paint", "paused", "materials")] })).toEqual({
+      chip: { status: "paused", reason: "materials" },
+      text: "Coat / paint",
+    });
+  });
+  it("a complete job says all stages are done, not that no stage started (i1-F4)", () => {
+    expect(jobLine({ status: "complete", pctBp: 10000, currentStages: [] })).toEqual({ chip: { status: "complete" }, text: "All stages done" });
+    expect(jobLine({ ...base, pctBp: 10000, currentStages: [] })).toEqual({ text: "All stages done" });
+  });
+  it("a job on hold keeps its chip and its stages", () => {
+    expect(jobLine({ ...base, status: "on_hold" })).toEqual({ chip: { status: "on-hold" }, text: "Sheet install" });
+  });
+  it("an active job with nothing started says so", () => {
+    expect(jobLine({ ...base, pctBp: 0, currentStages: [] })).toEqual({ text: "No stage started" });
+  });
+});
+
+describe("lastLogOn", () => {
+  it("uses days within a week and the date after it", () => {
+    expect(lastLogOn(0, "2026-09-28")).toBe("Today");
+    expect(lastLogOn(7, "2026-09-28")).toBe("7 days ago");
+    expect(lastLogOn(8, "2026-09-28")).toBe("Sun 20 Sep");
+    expect(lastLogOn(null, "2026-09-28")).toBe("None yet");
+  });
+});
+
+describe("overBudgetJobs", () => {
+  it("counts the jobs already over, not the ones trending over", () => {
+    const over = { level: "over" as const, severity: "over" as const, byCents: 1 };
+    const trending = { level: "trending" as const, severity: "watch" as const, byCents: 1 };
+    expect(overBudgetJobs([{ alert: over }, { alert: trending }, { alert: null }, { alert: over }])).toBe(2);
   });
 });
