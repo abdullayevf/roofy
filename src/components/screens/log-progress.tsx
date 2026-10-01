@@ -12,14 +12,13 @@ import { KeepTogether } from "@/components/keep-together";
 import { TapeBar } from "@/components/tape-bar";
 import { Button } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/choice-chip";
-import { ErrorMessage } from "@/components/ui/error-message";
 import { Field } from "@/components/ui/field";
 import { Segmented } from "@/components/ui/segmented";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusChip } from "@/components/ui/status-chip";
-import { CrewRowsSkeleton, ENTRY_WIDTH, EntryDate, EntryEmpty, EntrySkeleton, EntryTabs, FieldSkeleton, usePinnedBar } from "./field-entry";
-import { equalShares, hundredthsText, parseHundredths, progressAfter, progressLine, shareTotalError, sharesFromText } from "./field-input";
+import { CrewRowsSkeleton, ENTRY_WIDTH, EntryDate, EntryEmpty, EntrySkeleton, EntryTabs, FieldSkeleton, PinnedAction, usePinnedBar } from "./field-entry";
+import { equalShares, hundredthsText, orderByJob, parseHundredths, progressAfter, progressHint, progressLine, progressPreview, shareTotalError, sharesFromText } from "./field-input";
 
 export type ProgressStart = {
   stageId: string | null;
@@ -76,6 +75,8 @@ export function ProgressEntry({ defaults, start, today = defaults.date, demo }: 
   const latest = defaults.latestStages.find((l) => l.stageId === stageId) ?? null;
   const done = latest ? latest.quantityDone + (added[stageId] ?? 0) : null;
   const qty = parseHundredths(quantity);
+  // One crew order per chosen job: set when the job is chosen, never re-sorted by a stage pick or a tick.
+  const crewList = orderByJob(defaults.crew, stage ? defaults.crewByJob[stage.projectId] : undefined);
   const chosen = people.map((id) => defaults.crew.find((c) => c.id === id)).filter((c): c is CrewRowForeman => c !== undefined);
   const custom = mode === "custom" && chosen.length > 1;
   const typed = sharesFromText(chosen.map((c) => shareText[c.id] ?? ""));
@@ -86,9 +87,30 @@ export function ProgressEntry({ defaults, start, today = defaults.date, demo }: 
       ? splitByShares(qty, chosen.length, custom ? { mode: "custom", bp: typed.bp } : { mode: "equal" })
       : null;
   const unit = stage?.unit ?? "m2";
+  const entered = qty !== null && qty > 0 ? qty : 0;
+  const hint = progressHint({ stage: stage !== null, quantity: entered > 0, people: chosen.length > 0, totalError });
 
   function toggle(id: string, on: boolean) {
     setPeople((prev) => (on ? [...prev, id] : prev.filter((x) => x !== id)));
+  }
+
+  /** Under a ticked person when two or more share the work: their quantity, or their share box (with the quantity it makes). */
+  function shareDetail(c: CrewRowForeman, at: number) {
+    const quantityText = each ? formatQuantity(each[at] ?? 0, unit) : undefined;
+    if (!custom) return quantityText ? <p className="text-figure num text-ink">{quantityText}</p> : null;
+    return (
+      <Field
+        label={`${c.name}'s share`}
+        inputMode="decimal"
+        suffix="%"
+        autoComplete="off"
+        value={shareText[c.id] ?? ""}
+        invalid={totalError !== null || parseHundredths(shareText[c.id] ?? "") === null}
+        hint={quantityText}
+        onChange={(e) => setShareText((prev) => ({ ...prev, [c.id]: e.target.value }))}
+        className="max-w-48"
+      />
+    );
   }
 
   function chooseMode(next: "equal" | "custom") {
@@ -153,7 +175,7 @@ export function ProgressEntry({ defaults, start, today = defaults.date, demo }: 
       <div role="status" className="empty:hidden">
         {saved ? (
           <div className="flex flex-col items-start gap-3 rounded-group border-group bg-surface p-4">
-            <StatusChip status={saved.state === "logged" ? "sent" : "waiting"} />
+            <StatusChip plain status={saved.state === "logged" ? "sent" : "waiting"} />
             <p className="text-body-strong text-ink">
               {saved.state === "logged" ? "Logged" : "Saved on this device"}: {saved.text}
             </p>
@@ -161,7 +183,7 @@ export function ProgressEntry({ defaults, start, today = defaults.date, demo }: 
             {saved.after ? (
               <div className="flex w-full flex-col gap-1">
                 <TapeBar label={`${saved.stage} progress`} percent={saved.after.percent ?? 0} />
-                <p className="text-meta text-ink-2">
+                <p className="text-figure num text-ink">
                   <KeepTogether text={`${saved.stage} is now at ${formatQuantity(saved.after.done, saved.unit)}${saved.after.percent !== null ? ` (${saved.after.percent}%)` : ""}.`} />
                 </p>
               </div>
@@ -218,10 +240,12 @@ export function ProgressEntry({ defaults, start, today = defaults.date, demo }: 
             )}
             {latest && done !== null ? (
               <div className="flex flex-col gap-1.5">
-                <p className="text-body-strong text-ink">{progressLine(done, latest.plannedQuantity, latest.unit)}</p>
+                <p className="text-figure num text-ink">
+                  {entered > 0 ? progressPreview(done, entered, latest.plannedQuantity, latest.unit) : progressLine(done, latest.plannedQuantity, latest.unit)}
+                </p>
                 <TapeBar
                   label={`${latest.label} progress`}
-                  percent={latest.plannedQuantity ? progressAfter({ done, planned: latest.plannedQuantity }, 0).percent ?? 0 : 0}
+                  percent={latest.plannedQuantity ? progressAfter({ done, planned: latest.plannedQuantity }, entered).percent ?? 0 : 0}
                 />
               </div>
             ) : null}
@@ -230,7 +254,7 @@ export function ProgressEntry({ defaults, start, today = defaults.date, demo }: 
           <Field
             label="Quantity done"
             inputMode="decimal"
-            suffix={UNIT_WORD[unit]}
+            suffix={stage ? UNIT_WORD[unit] : undefined}
             value={quantity}
             autoComplete="off"
             onChange={(e) => setQuantity(e.target.value)}
@@ -239,13 +263,22 @@ export function ProgressEntry({ defaults, start, today = defaults.date, demo }: 
 
           <section className="flex flex-col gap-2">
             <h2 className="text-heading text-ink">Who did it</h2>
-            {defaults.crew.length === 0 ? (
+            {crewList.length === 0 ? (
               <p className="text-body text-ink-2">No crew yet. Add your crew first.</p>
             ) : (
               <CrewGroup>
-                {defaults.crew.map((c) => (
-                  <CrewChip key={c.id} name={c.name} pressed={people.includes(c.id)} onPressedChange={(on) => toggle(c.id, on)} />
-                ))}
+                {crewList.map((c) => {
+                  const at = chosen.findIndex((p) => p.id === c.id);
+                  return (
+                    <CrewChip
+                      key={c.id}
+                      name={c.name}
+                      pressed={people.includes(c.id)}
+                      onPressedChange={(on) => toggle(c.id, on)}
+                      detail={at >= 0 && chosen.length > 1 ? shareDetail(c, at) : undefined}
+                    />
+                  );
+                })}
               </CrewGroup>
             )}
           </section>
@@ -263,61 +296,37 @@ export function ProgressEntry({ defaults, start, today = defaults.date, demo }: 
                   { value: "custom", label: "Custom split" },
                 ]}
               />
-              {custom ? (
-                <div className="flex flex-col gap-3">
-                  {chosen.map((c) => (
-                    <Field
-                      key={c.id}
-                      label={`${c.name}'s share`}
-                      inputMode="decimal"
-                      suffix="%"
-                      autoComplete="off"
-                      value={shareText[c.id] ?? ""}
-                      onChange={(e) => setShareText((prev) => ({ ...prev, [c.id]: e.target.value }))}
-                    />
-                  ))}
-                  {totalError ? <ErrorMessage>{totalError}</ErrorMessage> : null}
-                </div>
-              ) : null}
-              {each ? (
-                <p className="text-meta text-ink-2">
-                  {chosen.map((c, i) => `${c.name} ${formatQuantity(each[i] ?? 0, unit)}`).join(", ")}
-                </p>
-              ) : null}
             </section>
           ) : null}
 
-          <div {...barProps} data-slot="primary-action" className="pin-action flex flex-col gap-3">
-            {error ? <ErrorMessage>{error}</ErrorMessage> : null}
-            <Button
-              disabled={!ready}
-              reason={ready || totalError ? undefined : "Choose a stage, a quantity and who did it."}
-              loading={saving}
-              loadingLabel="Saving progress"
-              onClick={save}
-              className="w-full"
-            >
+          <PinnedAction barProps={barProps} error={error} hint={ready ? undefined : hint}>
+            <Button disabled={!ready} loading={saving} loadingLabel="Saving progress" onClick={save} className="w-full">
               Save progress
             </Button>
-          </div>
+          </PinnedAction>
         </>
       )}
     </div>
   );
 }
 
-/** Progress while it loads (`?demo=loading`): the switch is live, the rest are blocks shaped like the content. */
+/** Progress while it loads (`?demo=loading`): the switch is live; stage chips, a tape line, the quantity box and plain crew rows. */
 export function ProgressSkeleton() {
   return (
     <EntrySkeleton screen="log-progress" active="progress">
       <div className="flex flex-col gap-3">
         <Skeleton width={120} height={24} />
-        <Skeleton height={52} />
+        <div className="flex gap-2">
+          <Skeleton width={150} height={48} />
+          <Skeleton width={150} height={48} />
+        </div>
+        <Skeleton width={140} height={28} />
+        <Skeleton height={16} />
       </div>
       <FieldSkeleton />
       <div className="flex flex-col gap-2">
         <Skeleton width={120} height={24} />
-        <CrewRowsSkeleton count={3} />
+        <CrewRowsSkeleton count={3} withLine={false} />
       </div>
     </EntrySkeleton>
   );

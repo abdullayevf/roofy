@@ -7,13 +7,12 @@ import { formatDate } from "@/lib/format";
 import { cx } from "@/lib/cx";
 import { EmptyState } from "@/components/empty-state";
 import { KeepTogether } from "@/components/keep-together";
-import { RetryButton } from "@/components/retry-button";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusChip, type Status } from "@/components/ui/status-chip";
-import { ENTRY_WIDTH } from "./field-entry";
-import { editHref, groupOutbox, outboxLine } from "./field-input";
+import { ENTRY_WIDTH, EntryEmptyFrame, LoadError } from "./field-entry";
+import { editHref, groupOutbox, outboxLine, outboxReason } from "./field-input";
 
 const CHIP: Record<OutboxState, Status> = {
   waiting: "waiting",
@@ -25,10 +24,12 @@ const CHIP: Record<OutboxState, Status> = {
 /**
  * Outbox (flows.md screen 24): every field entry by state: Needs attention, Sending, Waiting, Sent. A Needs
  * attention card carries the server's own reason, Edit and resend (reopens the original screen filled in) and
- * Discard, all in view. Reads the phone's own queue, so it works with no signal. (Phase 2 shows the demo outbox;
+ * Discard, all in view; a manager reads the server's message with its next step, a foreman the "Ask your manager"
+ * wording. Each state is one grouped block with `line` dividers, the status at the top right of every row (none in
+ * Needs attention, where the heading says it). Reads the phone's own queue, so it works with no signal. (Phase 2 shows the demo outbox;
  * Phase 5 swaps in the device queue.)
  */
-export function OutboxScreen({ items, today }: { items: OutboxItem[]; today: string }) {
+export function OutboxScreen({ items, today, foreman = false }: { items: OutboxItem[]; today: string; foreman?: boolean }) {
   const [gone, setGone] = useState<string[]>([]);
   const [confirm, setConfirm] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -42,7 +43,9 @@ export function OutboxScreen({ items, today }: { items: OutboxItem[]; today: str
       </div>
 
       {groups.length === 0 ? (
-        <EmptyState message="Nothing is waiting to send." actionLabel="Go to Log" href="/log" />
+        <EntryEmptyFrame>
+          <EmptyState message="Nothing is waiting to send." actionLabel="Go to Log" href="/log" />
+        </EntryEmptyFrame>
       ) : (
         groups.map((g) => (
           <section key={g.state} aria-labelledby={`outbox-${g.state}`} className="flex flex-col gap-2">
@@ -56,7 +59,7 @@ export function OutboxScreen({ items, today }: { items: OutboxItem[]; today: str
                 const attention = item.state === "needs_attention";
                 return (
                   <li key={id} className="flex flex-col gap-3 px-4 py-3">
-                    <div className="flex min-h-10 flex-col items-start gap-1 tablet:flex-row tablet:items-start tablet:justify-between tablet:gap-3">
+                    <div className="flex min-h-10 items-start justify-between gap-3">
                       <span className="flex min-w-0 flex-col items-start gap-0.5">
                         <span className="text-body-strong text-ink">{kind}</span>
                         <span className="text-meta text-ink-2 [overflow-wrap:anywhere]">
@@ -64,13 +67,13 @@ export function OutboxScreen({ items, today }: { items: OutboxItem[]; today: str
                         </span>
                         <span className="text-meta text-ink-2">{formatDate(item.date, today)}</span>
                       </span>
-                      <StatusChip status={CHIP[item.state]} plain={!attention} className="shrink-0" />
+                      {attention ? null : <StatusChip status={CHIP[item.state]} plain className="shrink-0" />}
                     </div>
                     {attention ? (
                       <div className="flex flex-col gap-3">
                         <p className="flex items-start gap-2 text-body text-over">
                           <WarningCircle size={24} aria-hidden="true" className="shrink-0" />
-                          <span className="min-w-0">{item.rejection?.message ?? "This entry couldn't be sent."}</span>
+                          <span className="min-w-0">{outboxReason(item.rejection, foreman)}</span>
                         </p>
                         <div className="flex flex-col gap-3 tablet:flex-row">
                           <Button href={editHref(item.entry)} className="w-full tablet:w-auto">
@@ -113,10 +116,7 @@ export function OutboxError() {
   return (
     <div data-screen="outbox" className={cx("flex flex-col gap-6", ENTRY_WIDTH)}>
       <h1 className="text-title text-ink">Outbox</h1>
-      <div role="alert" className="flex flex-col items-start gap-4 rounded-group border-group bg-surface p-4">
-        <p className="text-body text-ink">Couldn&apos;t load this. Try again.</p>
-        <RetryButton variant="secondary" />
-      </div>
+      <LoadError />
     </div>
   );
 }

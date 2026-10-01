@@ -9,12 +9,11 @@ import { cx } from "@/lib/cx";
 import { CrewChip, CrewGroup, type CrewChipProps } from "@/components/crew-chip";
 import { KeepTogether } from "@/components/keep-together";
 import { Button } from "@/components/ui/button";
-import { ErrorMessage } from "@/components/ui/error-message";
 import { Select } from "@/components/ui/select";
 import { StatusChip } from "@/components/ui/status-chip";
-import { CrewRowsSkeleton, ENTRY_WIDTH as WIDTH, EntryDate, EntryEmpty, EntrySkeleton, EntryTabs, FieldSkeleton, usePinnedBar, withDemo } from "./field-entry";
+import { CrewRowsSkeleton, ENTRY_WIDTH as WIDTH, EntryDate, EntryEmpty, EntrySkeleton, EntryTabs, FieldSkeleton, PinnedAction, usePinnedBar, withDemo } from "./field-entry";
 import { Skeleton } from "@/components/ui/skeleton";
-import { basisLabel, buildEntries, canLog, exceptionFor, initialException, pickableIds, usablePicks } from "./log-input";
+import { basisLabel, buildEntries, canLog, crewDayHint, exceptionFor, initialException, pickableIds, usablePicks } from "./log-input";
 
 type Saved = { state: "logged" | "waiting"; names: string[]; stageLabel: string };
 
@@ -73,6 +72,11 @@ export function LogCrewDay({ defaults, initialTicked = [], initialPicks, today =
   const ready = project !== null && stage !== null && crew.some((c) => ticked.has(c.crewMemberId) && canLog(c));
 
   const { style, barProps } = usePinnedBar(saved);
+  const hint = crewDayHint({
+    job: project !== null,
+    stage: stage !== null,
+    people: crew.some((c) => ticked.has(c.crewMemberId) && canLog(c)),
+  });
 
   const go = (url: string) => startNav(() => router.replace(url));
   /** The address for a new pick: the job and stage; whoever is ticked stays ticked, with their day or hours. */
@@ -206,7 +210,7 @@ export function LogCrewDay({ defaults, initialTicked = [], initialPicks, today =
       <div role="status" className="empty:hidden">
       {saved ? (
         <div className="flex flex-col items-start gap-3 rounded-group border-group bg-surface p-4">
-          <StatusChip status={saved.state === "logged" ? "sent" : "waiting"} />
+          <StatusChip plain status={saved.state === "logged" ? "sent" : "waiting"} />
           <p className="text-body-strong text-ink">
             {saved.state === "logged" ? "Logged" : "Saved on this device"}: {saved.names.join(", ")}
           </p>
@@ -260,19 +264,11 @@ export function LogCrewDay({ defaults, initialTicked = [], initialPicks, today =
             )}
           </section>
 
-          <div {...barProps} data-slot="primary-action" className="pin-action flex flex-col gap-3">
-            {error ? <ErrorMessage>{error}</ErrorMessage> : null}
-            <Button
-              disabled={!ready}
-              reason={ready ? undefined : "Choose a job, a stage and at least one person."}
-              loading={saving}
-              loadingLabel="Saving day"
-              onClick={save}
-              className="w-full"
-            >
+          <PinnedAction barProps={barProps} error={error} hint={ready ? undefined : hint}>
+            <Button disabled={!ready} loading={saving} loadingLabel="Saving day" onClick={save} className="w-full">
               Save day
             </Button>
-          </div>
+          </PinnedAction>
         </>
       )}
     </div>

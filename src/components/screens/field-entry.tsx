@@ -2,18 +2,20 @@
 
 import { useEffect, useRef, useState, useTransition, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
+import { WarningCircle } from "@phosphor-icons/react";
 import { addDays } from "@/domain/dates";
 import { formatDate } from "@/lib/format";
 import { cx } from "@/lib/cx";
 import { EmptyState } from "@/components/empty-state";
 import { Segmented } from "@/components/ui/segmented";
-import { Select } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { ErrorMessage } from "@/components/ui/error-message";
 import { RetryButton } from "@/components/retry-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { keyboardInset } from "./field-input";
 
 /** The widest a field-entry screen grows (grouped rows read badly wider, so landscape phones stop here too). */
-export const ENTRY_WIDTH = "max-w-150";
+export const ENTRY_WIDTH = "mx-auto w-full max-w-150";
 
 export type EntryKind = "crew-day" | "progress" | "no-work";
 
@@ -45,8 +47,8 @@ export function EntryTabs({ active, demo }: { active: EntryKind; demo?: string }
 }
 
 /**
- * "Today, Mon 28 Sep" above the 2 px ink rule the chalk line draws along when the entry is saved. With `onPick`
- * the date is the one control for the day (today or yesterday) instead of a plain line.
+ * "Today, Mon 28 Sep" above the 2 px ink rule the chalk line draws along when the entry is saved. With `onPick` the
+ * same line carries one control beside it that moves the entry to the other day (today or yesterday).
  */
 export function EntryDate({
   date,
@@ -62,26 +64,17 @@ export function EntryDate({
   const yesterday = addDays(today, -1);
   const word = date === today ? "Today" : date === yesterday ? "Yesterday" : null;
   const text = `${word ? `${word}, ` : ""}${formatDate(date, today)}`;
-  const value = date === today ? "today" : date === yesterday ? "yesterday" : "date";
   return (
     <div className="flex flex-col gap-2">
-      {onPick && !saved ? (
-        <Select
-          label="Date"
-          value={value}
-          onChange={(e) => onPick(e.target.value === "yesterday" ? "yesterday" : "today")}
-          options={[
-            { value: "today", label: `Today, ${formatDate(today, today)}` },
-            { value: "yesterday", label: `Yesterday, ${formatDate(yesterday, today)}` },
-            ...(value === "date" ? [{ value: "date", label: text }] : []),
-          ]}
-        />
-      ) : (
-        <>
-          <p className="text-meta text-ink-2">Date</p>
-          <p className="text-heading text-ink">{text}</p>
-        </>
-      )}
+      <p className="text-meta text-ink-2">Date</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-heading text-ink">{text}</p>
+        {onPick && !saved ? (
+          <Button variant="link" onClick={() => onPick(date === today ? "yesterday" : "today")} className="shrink-0">
+            {date === today ? "Use yesterday" : "Use today"}
+          </Button>
+        ) : null}
+      </div>
       <span aria-hidden="true" data-slot="date-rule" className="relative block h-0.5 bg-ink">
         <span
           data-testid="chalk-line"
@@ -95,9 +88,14 @@ export function EntryDate({
   );
 }
 
+/** An empty state centred in the column and the space the page leaves (the same on every field-entry screen). */
+export function EntryEmptyFrame({ children }: { children: React.ReactNode }) {
+  return <div className="flex min-h-[50dvh] flex-col justify-center">{children}</div>;
+}
+
 /**
  * Nothing to log to. A manager is told what to add; a foreman is told they can log once a manager adds them to a
- * job (field-1 ruling F3/D11), with no button they cannot use.
+ * job (field-1 ruling F3/D11), with a way back to Home and no button they cannot use.
  */
 export function EntryEmpty({
   foreman,
@@ -110,10 +108,14 @@ export function EntryEmpty({
   actionLabel: string;
   href: string;
 }) {
-  return foreman ? (
-    <EmptyState message="You can log once a manager adds you to a job." />
-  ) : (
-    <EmptyState message={managerMessage} actionLabel={actionLabel} href={href} />
+  return (
+    <EntryEmptyFrame>
+      {foreman ? (
+        <EmptyState message="You can log once a manager adds you to a job." actionLabel="Go to Home" href="/" />
+      ) : (
+        <EmptyState message={managerMessage} actionLabel={actionLabel} href={href} />
+      )}
+    </EntryEmptyFrame>
   );
 }
 
@@ -190,6 +192,31 @@ export function usePinnedBar(remeasureOn: unknown) {
   };
 }
 
+/**
+ * The pinned bar's content: an error from a failed save, the primary button, and under it one sentence naming only
+ * what is still missing (body size, `ink`). Spread `barProps` from `usePinnedBar`. The sentence goes in a compact
+ * bar's place under 500 px tall (CSS hides it there).
+ */
+export function PinnedAction({
+  barProps,
+  error,
+  hint,
+  children,
+}: {
+  barProps: ReturnType<typeof usePinnedBar>["barProps"];
+  error?: string | null;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div {...barProps} data-slot="primary-action" className="pin-action flex flex-col gap-3">
+      {error ? <ErrorMessage>{error}</ErrorMessage> : null}
+      {children}
+      {hint ? <p className="pin-hint text-body text-ink">{hint}</p> : null}
+    </div>
+  );
+}
+
 /** A label and a field: what a Job, Stage or Quantity box looks like while it loads. */
 export function FieldSkeleton() {
   return (
@@ -201,14 +228,14 @@ export function FieldSkeleton() {
 }
 
 /** Crew rows: name, then the smaller line under it, and the 48 px box on the right. */
-export function CrewRowsSkeleton({ count }: { count: number }) {
+export function CrewRowsSkeleton({ count, withLine = true }: { count: number; withLine?: boolean }) {
   return (
     <div className="divide-y divide-line overflow-hidden rounded-group border-group bg-surface">
       {Array.from({ length: count }, (_, i) => (
         <div key={i} className="flex min-h-16 items-center justify-between gap-4 px-4 py-2">
           <div className="flex flex-col gap-1.5">
             <Skeleton width={120} height={20} />
-            <Skeleton width={72} height={16} />
+            {withLine ? <Skeleton width={72} height={16} /> : null}
           </div>
           <Skeleton width={48} height={48} />
         </div>
@@ -219,11 +246,13 @@ export function CrewRowsSkeleton({ count }: { count: number }) {
 
 /**
  * A field-entry screen while it loads (`?demo=loading`): the title and the switch stay live, the date is a
- * label and a line, and `children` are blocks shaped like the form. The action is a button-sized block.
+ * label and a line, and `children` are blocks shaped like this screen's form. The Save block is pinned like the
+ * real bar (a button-sized block).
  */
 export function EntrySkeleton({ screen, active, children }: { screen: string; active: EntryKind; children: React.ReactNode }) {
+  const { style, barProps } = usePinnedBar(null);
   return (
-    <div data-screen={screen} aria-busy="true" className={cx("flex flex-col gap-6", ENTRY_WIDTH)}>
+    <div data-screen={screen} aria-busy="true" style={style} className={cx("flex flex-col gap-6", ENTRY_WIDTH, "pin-pad")}>
       <EntryTabs active={active} demo="loading" />
       <div className="flex flex-col gap-2">
         <Skeleton width={48} height={20} />
@@ -231,7 +260,9 @@ export function EntrySkeleton({ screen, active, children }: { screen: string; ac
         <span aria-hidden="true" className="block h-0.5 bg-line" />
       </div>
       {children}
-      <Skeleton height={52} />
+      <PinnedAction barProps={barProps}>
+        <Skeleton height={52} />
+      </PinnedAction>
     </div>
   );
 }
@@ -241,10 +272,20 @@ export function EntryError({ screen, active, demo }: { screen: string; active: E
   return (
     <div data-screen={screen} className={cx("flex flex-col gap-6", ENTRY_WIDTH)}>
       <EntryTabs active={active} demo={demo} />
-      <div role="alert" className="flex flex-col items-start gap-4 rounded-group border-group bg-surface p-4">
-        <p className="text-body text-ink">Couldn&apos;t load this. Try again.</p>
-        <RetryButton variant="secondary" />
-      </div>
+      <LoadError />
+    </div>
+  );
+}
+
+/** "Couldn't load this. Try again." with the warning icon in `over` and a retry button. */
+export function LoadError() {
+  return (
+    <div role="alert" className="flex flex-col items-start gap-4 rounded-group border-group bg-surface p-4">
+      <p className="flex items-start gap-2 text-body text-ink">
+        <WarningCircle size={24} aria-hidden="true" className="shrink-0 text-over" />
+        Couldn&apos;t load this. Try again.
+      </p>
+      <RetryButton variant="secondary" />
     </div>
   );
 }

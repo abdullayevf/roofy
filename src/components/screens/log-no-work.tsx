@@ -9,12 +9,11 @@ import { cx } from "@/lib/cx";
 import { CrewChip, CrewGroup, type CrewChipProps } from "@/components/crew-chip";
 import { Button } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/choice-chip";
-import { ErrorMessage } from "@/components/ui/error-message";
 import { Field } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusChip } from "@/components/ui/status-chip";
-import { CrewRowsSkeleton, ENTRY_WIDTH, EntryDate, EntryEmpty, EntrySkeleton, EntryTabs, FieldSkeleton, usePinnedBar, withDemo } from "./field-entry";
-import { reasonLabel } from "./field-input";
+import { CrewRowsSkeleton, ENTRY_WIDTH, EntryDate, EntryEmpty, EntrySkeleton, EntryTabs, FieldSkeleton, PinnedAction, usePinnedBar, withDemo } from "./field-entry";
+import { noWorkHint, reasonLabel } from "./field-input";
 
 const REASONS: NoWorkReason[] = ["rain", "leave", "sick", "other"];
 
@@ -103,7 +102,7 @@ export function NoWorkEntry({ defaults, today, start, demo }: NoWorkEntryProps) 
       <div role="status" className="empty:hidden">
         {saved ? (
           <div className="flex flex-col items-start gap-3 rounded-group border-group bg-surface p-4">
-            <StatusChip status={saved.state === "logged" ? "sent" : "waiting"} />
+            <StatusChip plain status={saved.state === "logged" ? "sent" : "waiting"} />
             <p className="text-body-strong text-ink">
               {saved.state === "logged" ? "Saved" : "Saved on this device"}: {saved.text}
             </p>
@@ -153,37 +152,33 @@ export function NoWorkEntry({ defaults, today, start, demo }: NoWorkEntryProps) 
             </CrewGroup>
           </section>
 
-          <div {...barProps} data-slot="primary-action" className="pin-action flex flex-col gap-3">
-            {error ? <ErrorMessage>{error}</ErrorMessage> : null}
-            <Button
-              disabled={!ready}
-              reason={ready ? undefined : "Choose who didn't work and why."}
-              loading={saving}
-              loadingLabel="Saving"
-              onClick={save}
-              className="w-full"
-            >
-              Save
+          <PinnedAction barProps={barProps} error={error} hint={noWorkHint({ people: people.length > 0, reason: reason !== "" })}>
+            <Button disabled={!ready} loading={saving} loadingLabel="Saving" onClick={save} className="w-full">
+              Save no work
             </Button>
-          </div>
+          </PinnedAction>
         </>
       )}
     </div>
   );
 }
 
-/** No-work while it loads (`?demo=loading`): the switch is live, the rest are blocks shaped like the content. */
+/** No-work while it loads (`?demo=loading`): the switch is live; reason chips and a note box, then plain crew rows with a note line. */
 export function NoWorkSkeleton() {
   return (
     <EntrySkeleton screen="log-no-work" active="no-work">
       <div className="flex flex-col gap-3">
         <Skeleton width={72} height={24} />
-        <Skeleton height={52} />
+        <div className="flex gap-2">
+          <Skeleton width={80} height={48} />
+          <Skeleton width={80} height={48} />
+          <Skeleton width={80} height={48} />
+        </div>
         <FieldSkeleton />
       </div>
       <div className="flex flex-col gap-2">
         <Skeleton width={160} height={24} />
-        <CrewRowsSkeleton count={4} />
+        <CrewRowsSkeleton count={4} withLine={false} />
       </div>
     </EntrySkeleton>
   );

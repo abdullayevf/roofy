@@ -16,5 +16,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
     const back = backLink(actor.role);
     return <NoPermission backHref={back.href} backLabel={back.label} />;
   }
-  return <OutboxScreen items={demo.outbox} today={today} />;
+  const foreman = actor.role === "foreman";
+  // A foreman is only ever sent the wording written for them.
+  const items = foreman ? demo.outbox.map((i) => (i.rejection ? { ...i, rejection: { code: i.rejection.code, message: i.rejection.message } } : i)) : demo.outbox;
+  return <OutboxScreen items={items} today={today} foreman={foreman} />;
 }

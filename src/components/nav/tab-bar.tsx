@@ -110,7 +110,7 @@ export function TabBar({ role, active, fixed = true, outboxCount = 0, outboxAtte
               <span
                 className={cx(
                   "max-w-full text-center text-tab [overflow-wrap:anywhere]",
-                  isActive ? "text-chalk-link" : "text-ink",
+                  isActive ? "text-chalk-link" : "text-ink-2",
                 )}
               >
                 {item.label}

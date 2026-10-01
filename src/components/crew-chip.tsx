@@ -57,6 +57,8 @@ export type CrewChipProps = {
   multiplier?: Hundredths;
   onMultiplierChange?: (value: Hundredths) => void;
   onPressedChange?: (pressed: boolean) => void;
+  /** Shown under the name while ticked, inside the tinted row (a progress split: this person's quantity or share). */
+  detail?: ReactNode;
   disabled?: boolean;
   /** Demo-only: forces the focus ring on the check box so it shows up in a static screenshot. */
   focusVisible?: boolean;
@@ -83,6 +85,7 @@ export function CrewChip({
   multiplier = 100,
   onMultiplierChange,
   onPressedChange,
+  detail,
   disabled,
   focusVisible,
   className,
@@ -93,77 +96,79 @@ export function CrewChip({
 
   return (
     <div className={cx("flex flex-col bg-surface", className)}>
-      <button
-        type="button"
-        aria-pressed={pressed}
-        disabled={disabled}
-        onClick={() => {
-          const next = !pressed;
-          setPressed(next);
-          onPressedChange?.(next);
-        }}
-        className={cx(
-          "group flex min-h-[64px] w-full items-start justify-between gap-4 px-4 py-2 text-left outline-none active:bg-galv",
-          // The whole row is the target, so the whole ticked row is tinted, not just the box.
-          pressed && "bg-tape/25",
-        )}
-      >
-        <span className="flex min-h-12 min-w-0 flex-col items-start justify-center">
-          <span className={cx("text-body-strong", disabled ? "text-ink-2" : "text-ink")}>{name}</span>
-          {basis ? <span className="text-meta text-ink-2">{basis}</span> : null}
-          {note ? (
-            <span
-              className={cx(
-                "mt-1 flex items-start gap-2 text-meta",
-                note.tone === "watch" ? "text-watch" : "text-ink-2",
-              )}
-            >
-              <NoteIcon size={24} aria-hidden="true" className="shrink-0" />
-              {note.text}
-            </span>
-          ) : null}
-        </span>
-        <span
-          aria-hidden="true"
+      {/* The tape tint carries through the row and its day or hours controls: it is the "ticked" signal. */}
+      <div className={cx("flex flex-col", pressed && "bg-tape/25")}>
+        <button
+          type="button"
+          aria-pressed={pressed}
+          disabled={disabled}
+          onClick={() => {
+            const next = !pressed;
+            setPressed(next);
+            onPressedChange?.(next);
+          }}
           className={cx(
-            "flex h-12 w-12 shrink-0 items-center justify-center rounded-control border-2",
-            pressed ? "border-ink bg-tape" : disabled ? "border-edge bg-galv" : "border-ink bg-surface",
-            focusVisible
-              ? "outline outline-[3px] outline-offset-2 outline-chalk-link"
-              : "group-focus-visible:outline group-focus-visible:outline-[3px] group-focus-visible:outline-offset-2 group-focus-visible:outline-chalk-link",
+            "group flex min-h-[64px] w-full items-start justify-between gap-4 px-4 py-2 text-left outline-none active:bg-galv",
           )}
         >
-          {pressed ? <Check size={24} weight="bold" className="text-on-tape" /> : null}
-        </span>
-      </button>
-      {pressed && exception ? (
-        <div className="flex flex-wrap items-center gap-3 px-4 pb-3">
-          {exception === "half-day" ? (
-            <DayToggle
-              label={`${name}'s day`}
-              value={exceptionValue}
-              defaultValue={exceptionValue === undefined ? 50 : undefined}
-              onChange={onExceptionChange}
-            />
-          ) : (
-            <Stepper
-              label={`${name}'s hours`}
-              value={exceptionValue}
-              defaultValue={exceptionValue === undefined ? 650 : undefined}
-              onChange={onExceptionChange}
-            />
-          )}
-          {exception === "hours" && onMultiplierChange ? (
-            <Segmented
-              legend={`${name}'s overtime`}
-              name={`${name}-overtime`}
-              options={OVERTIME}
-              value={String(multiplier)}
-              onChange={(v) => onMultiplierChange(Number(v))}
-            />
-          ) : null}
-        </div>
-      ) : null}
+          <span className="flex min-h-12 min-w-0 flex-col items-start justify-center">
+            <span className="text-body-strong text-ink">{name}</span>
+            {basis ? <span className="text-meta text-ink-2">{basis}</span> : null}
+            {note ? (
+              <span
+                className={cx(
+                  "mt-1 flex items-start gap-2 text-meta",
+                  note.tone === "watch" ? "text-watch" : "text-ink-2",
+                )}
+              >
+                <NoteIcon size={24} aria-hidden="true" className="shrink-0" />
+                {note.text}
+              </span>
+            ) : null}
+          </span>
+          <span
+            aria-hidden="true"
+            className={cx(
+              "flex h-12 w-12 shrink-0 items-center justify-center rounded-control border-2",
+              pressed ? "border-ink bg-tape" : disabled ? "border-edge bg-galv" : "border-ink bg-surface",
+              focusVisible
+                ? "outline outline-[3px] outline-offset-2 outline-chalk-link"
+                : "group-focus-visible:outline group-focus-visible:outline-[3px] group-focus-visible:outline-offset-2 group-focus-visible:outline-chalk-link",
+            )}
+          >
+            {pressed ? <Check size={24} weight="bold" className="text-on-tape" /> : null}
+          </span>
+        </button>
+        {pressed && detail ? <div className="px-4 pb-3">{detail}</div> : null}
+        {pressed && exception ? (
+          <div className="flex flex-wrap items-center gap-3 px-4 pb-3">
+            {exception === "half-day" ? (
+              <DayToggle
+                label={`${name}'s day`}
+                value={exceptionValue}
+                defaultValue={exceptionValue === undefined ? 50 : undefined}
+                onChange={onExceptionChange}
+              />
+            ) : (
+              <Stepper
+                label={`${name}'s hours`}
+                value={exceptionValue}
+                defaultValue={exceptionValue === undefined ? 650 : undefined}
+                onChange={onExceptionChange}
+              />
+            )}
+            {exception === "hours" && onMultiplierChange ? (
+              <Segmented
+                legend={`${name}'s overtime`}
+                name={`${name}-overtime`}
+                options={OVERTIME}
+                value={String(multiplier)}
+                onChange={(v) => onMultiplierChange(Number(v))}
+              />
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

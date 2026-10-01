@@ -11,6 +11,8 @@ export type FieldProps = Omit<ComponentPropsWithoutRef<"input">, "id"> & {
   hint?: string;
   /** Message stating what went wrong and how to fix it. Shown below in `over`. */
   error?: string;
+  /** The `over` border without a message of its own (the reason is stated elsewhere, e.g. in a pinned bar). */
+  invalid?: boolean;
   /** In-field unit suffix shown inside the box, e.g. "m²" on a quantity field. */
   suffix?: string;
   /** In-field leading mark shown inside the box, e.g. "$" on an amount field. */
@@ -28,6 +30,7 @@ export function Field({
   inputMode,
   hint,
   error,
+  invalid,
   suffix,
   leading,
   focusVisible,
@@ -48,7 +51,7 @@ export function Field({
         {...inputProps}
         id={id}
         inputMode={inputMode}
-        invalid={Boolean(error)}
+        invalid={Boolean(error) || invalid}
         suffix={suffix}
         leading={leading}
         focusVisible={focusVisible}
