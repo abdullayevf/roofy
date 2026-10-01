@@ -56,6 +56,55 @@ test.describe("Jobs list (manager)", () => {
     for (const r of rows) expect(r.row).toBeLessThanOrEqual(160);
   });
 
+  test("on its side the phone shows Add job in the header row, not pinned, and at least one job on the first screen (i2-F4)", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "below 1024 px only");
+    await page.setViewportSize({ width: 844, height: 390 });
+    await signInAs(page, "manager");
+    await expect(cards(page).first()).toBeVisible();
+    await expect(page.locator('[data-slot="primary-action"]:visible')).toHaveCount(0);
+    const add = (await page.getByRole("link", { name: "Add job" }).boundingBox())!;
+    const title = (await page.getByRole("heading", { level: 1, name: "Jobs" }).boundingBox())!;
+    expect(Math.abs(add.y + add.height / 2 - (title.y + title.height / 2))).toBeLessThanOrEqual(16);
+    expect(add.height).toBeGreaterThanOrEqual(48);
+    // At least 48 px of the first job shows above the tab bar.
+    const tabs = (await page.getByRole("navigation", { name: "Primary" }).boundingBox())!;
+    const row = (await jobRows(page).first().boundingBox())!;
+    expect(row.y + 48).toBeLessThanOrEqual(tabs.y);
+  });
+
+  test("the Add job bar is as wide as the list column on a phone and a tablet (i2-D6)", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "below 1024 px only");
+    for (const size of [{ width: 390, height: 780 }, { width: 820, height: 1180 }]) {
+      await page.setViewportSize(size);
+      await signInAs(page, "manager");
+      await expect(cards(page).first()).toBeVisible();
+      const list = (await jobRows(page).first().locator('xpath=ancestor::div[contains(@class,"rounded-group")][1]').boundingBox())!;
+      const button = (await page.getByRole("link", { name: "Add job" }).boundingBox())!;
+      expect(Math.abs(button.x - list.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(button.width - list.width)).toBeLessThanOrEqual(1);
+    }
+  });
+
+  test("a phone row's chevron is centred on the row (i2-D10)", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "the table has no chevron");
+    await signInAs(page, "manager");
+    for (const row of await jobRows(page).all()) {
+      const box = (await row.boundingBox())!;
+      const chevron = (await row.locator(":scope > svg").boundingBox())!;
+      expect(Math.abs(chevron.y + chevron.height / 2 - (box.y + box.height / 2))).toBeLessThanOrEqual(2);
+    }
+  });
+
+  test("the desktop table has a compact tape bar in Done, and every row is the same height (i2-D4, i2-D12)", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "a table from 1024 px");
+    await signInAs(page, "manager", "/jobs?status=all");
+    const bars = page.locator('[data-screen="jobs"] table [data-job-row] [role="progressbar"]');
+    expect(await bars.count()).toBeGreaterThan(5);
+    expect((await bars.first().boundingBox())!.width).toBeGreaterThanOrEqual(80);
+    const heights = await jobRows(page).evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
+    expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(1);
+  });
+
   test("Add job is under the thumb on a phone: in the bottom third of the screen", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "desktop", "a button beside the title from 1024 px");
     await signInAs(page, "manager");
@@ -128,7 +177,14 @@ test.describe("Jobs list (manager)", () => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "manager", "/jobs?demo=empty");
     await expect(page.getByText("No jobs yet. Add your first job.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Add your first job" })).toHaveAttribute("href", "/jobs/new");
+    if (isPhone(testInfo.project.name)) {
+      // The button is pinned like on every other state, not left in the middle of the screen (i2-F14).
+      const add = page.getByRole("link", { name: "Add your first job" });
+      await expect(add).toHaveAttribute("href", "/jobs/new");
+      expect((await add.boundingBox())!.y).toBeGreaterThan(page.viewportSize()!.height * 0.66);
+    } else {
+      await expect(page.getByRole("link", { name: "Add job" })).toHaveAttribute("href", "/jobs/new");
+    }
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
@@ -138,17 +194,29 @@ test.describe("Jobs list (manager)", () => {
     await expect(page.locator('[data-screen="jobs"]')).toHaveAttribute("aria-busy", "true");
     await expect(page.getByRole("heading", { level: 1, name: "Jobs" })).toBeVisible();
     await expect(cards(page)).toHaveCount(0);
+    // A line stands where the over-budget headline will be (i2-D8); on desktop the Add job block is beside the title.
+    const heights = await page.locator('[data-screen="jobs"] > div').first().locator("span.bg-line:visible").evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
+    expect(heights).toContain(32);
+    if (isPhone(testInfo.project.name)) {
+      expect(heights).not.toContain(52);
+      await expect(page.locator('[data-screen="jobs"] table')).toBeHidden();
+    } else {
+      // The rows are table-shaped on desktop, not phone cards under a table header (i2-D8).
+      expect(heights).toContain(52);
+      await expect(page.locator('[data-screen="jobs"] table [data-job-skeleton]')).toHaveCount(4);
+      await expect(page.getByRole("columnheader", { name: "Done" })).toBeVisible();
+      expect(await page.locator('[data-screen="jobs"] .lg\\:hidden span.bg-line:visible').count()).toBe(0);
+    }
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
-  test("an error keeps the title and filter and offers Try again", async ({ page }) => {
+  test("an error keeps the title and filter; Try again is the primary button and there is no Add job (i2-F6)", async ({ page }) => {
     await signInAs(page, "manager", "/jobs?demo=error");
     await expect(page.getByRole("heading", { level: 1, name: "Jobs" })).toBeVisible();
     await expect(page.locator('[data-screen="jobs"] [role="alert"]')).toContainText("Couldn't load this. Try again.");
-    await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Try again" })).toHaveAttribute("data-variant", "primary");
     await expect(page.getByRole("radio", { name: "Active" })).toBeVisible();
-    // Add job stays within reach on the error state too (pinned on a phone, beside the title on desktop).
-    await expect(page.getByRole("link", { name: "Add job" })).toHaveAttribute("href", "/jobs/new");
+    await expect(page.getByRole("link", { name: "Add job" })).toHaveCount(0);
   });
 
   test("no permission says so plainly with a way back", async ({ page }) => {
@@ -190,6 +258,9 @@ test.describe("Jobs list (manager)", () => {
     await page.getByRole("radio", { name: "All" }).click();
     const search = page.getByRole("searchbox", { name: "Search jobs" });
     await expect(search).toBeVisible();
+    // The search is above the filter chips (i1-D14).
+    const found = (await search.boundingBox())!;
+    expect(found.y + found.height).toBeLessThanOrEqual((await page.getByRole("radio", { name: "Active" }).boundingBox())!.y);
     await search.fill("Smith job");
     await expect(jobRows(page).filter({ hasText: "Smith job" })).toHaveCount(1);
     expect(await jobRows(page).count()).toBeLessThan(20);
@@ -238,6 +309,13 @@ test.describe("Jobs list (foreman)", () => {
 });
 
 test.describe("Jobs list (accountant)", () => {
+  test("loading has no Add job block (RR5)", async ({ page }) => {
+    await signInAs(page, "accountant", "/jobs?demo=loading");
+    await expect(page.locator('[data-screen="jobs"]')).toHaveAttribute("aria-busy", "true");
+    const heights = await page.locator('[data-screen="jobs"] > div').first().locator("span.bg-line:visible").evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
+    expect(heights).not.toContain(52);
+  });
+
   test("can read the list but not add a job", async ({ page }) => {
     await signInAs(page, "accountant");
     await expect(cards(page).first()).toBeVisible();

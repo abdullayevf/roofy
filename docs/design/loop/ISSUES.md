@@ -426,37 +426,37 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | jobs-1/i1-D11 | jobs-1 | P2 | job-new/saved/iphone | = F8; title 20 px lower than other states | Ruling R4; hold title position | fixed in iteration 2 and again in iteration 3 (R10: title "Job added", Log today on this job), awaiting critics | 1 |
 | jobs-1/i1-D12 | jobs-1 | P2 | job-new/offline/all | = F9 | Ruling R7 | fixed in iteration 2, awaiting critics | 1 |
 | jobs-1/i1-D13 | jobs-1 | P2 | jobs-list vs job-new/desktop | List left-aligned, form centred | One content alignment | fixed in iteration 2, awaiting critics | 1 |
-| jobs-1/i1-D14 | jobs-1 | P2 | jobs-list/all/iphone | 150 jobs, "Show 143 more", no search; "46 days ago" | Search above filters on All; dates ("Mon 7 Sep") after 7 days | fixed in iteration 2, awaiting critics | 1 |
+| jobs-1/i1-D14 | jobs-1 | P2 | jobs-list/all/iphone | 150 jobs, "Show 143 more", no search; "46 days ago" | Search above filters on All; dates ("Mon 7 Sep") after 7 days | fixed in iteration 2; search moved above the filters in round 2C1, awaiting critics | 1 |
 | jobs-1/i1-D15 | jobs-1 | P3 | jobs-list foreman vs manager | "Last log / 4 days ago" vs "Last logged 3 days ago" | One phrasing | fixed in iteration 2, awaiting critics | 1 |
 | jobs-1/i1-D16 | jobs-1 | P3 | job-edit/normal/desktop/dark | Selected chip check widens chip, row wraps | Reserve check width | won't fix: ChoiceChip is shared; reserving the check's width moves every chip row in the app; revisit in the system pass | 1 |
 | jobs-1/i1-D17 | jobs-1 | P3 | job-new/normal/tablet | Pinned bar white slab, no top rule, cuts Status select | `line` top rule | won't fix: DESIGN.md section 5 makes the phone and tablet bar a solid surface bar with an ink rule (shared with the Log forms, accepted in field-2); the line rule is from 1024 px | 1 |
 | jobs-1/i2-F1 | jobs-1 | P0 | jobs-list all/manager/iphone | Headline "132 jobs over budget" vs 1 of ~20 rows flagged; Hunter $2,120 of $2,000, Complete, no over line | Ruling R9 | fixed in iteration 3, awaiting critics | 2 |
 | jobs-1/i2-F2 | jobs-1 | P1 | job-new+job-edit/phones+landscape | Dates mm/dd/yyyy (10/09 reads as 10 Sep); value in mono font | Ruling R8 | fixed in iteration 3, awaiting critics | 2 |
 | jobs-1/i2-F3 | jobs-1 | P2 | jobs-list normal/phones | "$4,000.00 of $4,300.00" unlabelled next to "Clean-up is $100.00 over" | Label once: "spent of $4,300.00 budget" |
-| jobs-1/i2-F4 | jobs-1 | P2 | jobs-list normal/landscape | Add job bar + tab bar ~135/390 px; no rows on first screen | Landscape: Add job in header row, not pinned |
+| jobs-1/i2-F4 | jobs-1 | P2 | jobs-list normal/landscape | Add job bar + tab bar ~135/390 px; no rows on first screen | Landscape: Add job in header row, not pinned | fixed in round 2C1, awaiting critics |
 | jobs-1/i2-F5 | jobs-1 | P2 | job-new saved/iphone | No way into the job; no pointer to the first log | Ruling R10 | fixed in iteration 3, awaiting critics | 2 |
-| jobs-1/i2-F6 | jobs-1 | P2 | jobs-list error/phones | Add job pinned primary; Try again only outlined | Hide Add job in error; Try again primary |
+| jobs-1/i2-F6 | jobs-1 | P2 | jobs-list error/phones | Add job pinned primary; Try again only outlined | Hide Add job in error; Try again primary | fixed in round 2C1, awaiting critics |
 | jobs-1/i2-F7 | jobs-1 | P2 | job-new editing-stages/iphone | 7×3 fields, ~24 px red Remove links | Ruling R11 | fixed in iteration 3, awaiting critics | 2 |
 | jobs-1/i2-F8 | jobs-1 | P2 | job-new+job-edit/phones | Back to jobs looks like a 24 px link | Visible 48 px padded row (guard) |
 | jobs-1/i2-F9 | jobs-1 | P2 | job-new+job-edit/landscape | Disabled Create/Save shows no reason in landscape | Reason line in landscape too (guard) |
 | jobs-1/i2-F10 | jobs-1 | P2 | job-new/keyboard | Keyboard capture not in slices | Conductor: critic reads the png directly |
 | jobs-1/i2-F11 | jobs-1 | P3 | job-new no-clients/iphone | "Choose a client." with no clients; Quick-add secondary | "Add a client first."; Quick-add primary |
-| jobs-1/i2-F12 | jobs-1 | P3 | jobs-list/all phones | Unexplained dark tick mid-bar | Label or remove |
+| jobs-1/i2-F12 | jobs-1 | P3 | jobs-list/all phones | Unexplained dark tick mid-bar | Label or remove | left open: the taller 50% tick is the DESIGN.md tape bar |
 | jobs-1/i2-F13 | jobs-1 | P3 | job-new/iphone | Empty date fields show no format hint | Covered by R8 | fixed in iteration 3, awaiting critics | 2 |
-| jobs-1/i2-F14 | jobs-1 | P3 | jobs-list empty/phones | Empty-state button mid-screen | Pin like other states |
+| jobs-1/i2-F14 | jobs-1 | P3 | jobs-list empty/phones | Empty-state button mid-screen | Pin like other states | fixed in round 2C1, awaiting critics |
 | jobs-1/i2-F15 | jobs-1 | P3 | job-new loading/phones | Skeleton shows 4 stage rows, loaded form shows a line | Match loaded form |
 | jobs-1/i2-D1 | jobs-1 | P1 | job-new+job-edit/all | = i2-F2; date value indented 4 px past other inputs | Ruling R8 + align | fixed in iteration 3, awaiting critics | 2 |
 | jobs-1/i2-D2 | jobs-1 | P1 | jobs-list/all/iphone+desktop | = i2-F1 | Ruling R9 | fixed in iteration 3, awaiting critics | 2 |
 | jobs-1/i2-D3 | jobs-1 | P2 | jobs-list/normal/all | "1 job over budget" but Wong's figure is under (one stage over) | Ruling R9 | fixed in iteration 3, awaiting critics | 2 |
-| jobs-1/i2-D4 | jobs-1 | P2 | jobs-list/desktop | Done column bare "65%", no tape bar | Compact tape bar in Done column |
+| jobs-1/i2-D4 | jobs-1 | P2 | jobs-list/desktop | Done column bare "65%", no tape bar | Compact tape bar in Done column | fixed in round 2C1, awaiting critics |
 | jobs-1/i2-D5 | jobs-1 | P2 | job-new/editing-stages/iphone | "Stage N …" labels, ~380 px per stage, ~2,600 px for 7 | Ruling R11 | fixed in iteration 3, awaiting critics | 2 |
-| jobs-1/i2-D6 | jobs-1 | P2 | jobs-list/normal/tablet | Add job bar 600 px vs list 720 px | Bar matches content column (guard) |
+| jobs-1/i2-D6 | jobs-1 | P2 | jobs-list/normal/tablet | Add job bar 600 px vs list 720 px | Bar matches content column (guard) | fixed in round 2C1, awaiting critics |
 | jobs-1/i2-D7 | jobs-1 | P2 | job-new filled+normal, job-edit/desktop | Pinned strip clips date fields; no `line` top rule at rest | `galv` strip, constant `line` rule, content padding (guard) |
-| jobs-1/i2-D8 | jobs-1 | P2 | jobs-list loading/desktop | Phone-shaped skeleton under table; no headline skeleton | Table-shaped skeleton + headline line |
+| jobs-1/i2-D8 | jobs-1 | P2 | jobs-list loading/desktop | Phone-shaped skeleton under table; no headline skeleton | Table-shaped skeleton + headline line | fixed in round 2C1, awaiting critics |
 | jobs-1/i2-D9 | jobs-1 | P2 | job-new filled | Contract $18,500 < labour budget total $24,600 | Believable prefill (e.g. $38,500) |
-| jobs-1/i2-D10 | jobs-1 | P3 | jobs-list/iphone+tablet | Chevron top-aligned | Centre on row |
+| jobs-1/i2-D10 | jobs-1 | P3 | jobs-list/iphone+tablet | Chevron top-aligned | Centre on row | fixed in round 2C1, awaiting critics |
 | jobs-1/i2-D11 | jobs-1 | P3 | jobs-list/all | "On hold" + "(paused: client)" | "On hold: client" |
-| jobs-1/i2-D12 | jobs-1 | P3 | jobs-list/all/desktop | Row heights 49 vs 53 px; sort breaks (8 Jul between 22 and 17 Jun) | Same height; sort by last log newest first |
+| jobs-1/i2-D12 | jobs-1 | P3 | jobs-list/all/desktop | Row heights 49 vs 53 px; sort breaks (8 Jul between 22 and 17 Jun) | Same height; sort by last log newest first | row heights fixed in round 2C1; sort order left open (rows stay A to Z by name) |
 | jobs-1/i2-D13 | jobs-1 | P3 | job-new filled | Total row looks like stage rows | Heavier divider or semibold label |
 | jobs-1/i2-D14 | jobs-1 | P3 | job-new offline/iphone | Hint wraps; no offline banner at all | One-line hint; slim offline banner back |
 | jobs-1/i2-D15 | jobs-1 | P3 | job-new saved/iphone | Title "New job" above "Job added" | Title "Job added" | fixed in iteration 3, awaiting critics | 2 |

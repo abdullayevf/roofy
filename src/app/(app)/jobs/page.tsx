@@ -21,6 +21,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
   const canAdd = actor.role === "owner" || actor.role === "manager";
   const jobs = await loadJobs(ctx, filter);
   if (jobs.kind === "forbidden") return <NoPermission backHref={back.href} backLabel={back.label} />;
-  if (jobs.kind === "unavailable") return <JobsError canAdd={canAdd} filter={filter} demo={demo.state ?? undefined} />;
+  if (jobs.kind === "unavailable") return <JobsError filter={filter} demo={demo.state ?? undefined} />;
   return <JobsListBody list={jobs.list} filter={filter} anyJobs={jobs.anyJobs} canAdd={canAdd} today={ctx.today} demo={demo.state ?? undefined} />;
 }

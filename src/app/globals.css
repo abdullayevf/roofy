@@ -302,6 +302,24 @@ body {
     width: 10rem;
   }
 }
+/*
+ * The Jobs list's Add job bar (a list, not a form): as wide as the list column (45 rem) rather than the form column
+ * (37.5 rem), so the bar's edges are the list's edges. A phone on its side has no bar: Add job is the header's button
+ * there, because the bar and the tab bar took 135 of 390 px and left no job on the first screen.
+ */
+@media (max-width: 1023px) and (min-height: 500px) {
+  .jobs-add-bar .pin-action {
+    width: min(100%, 45rem);
+  }
+}
+@media (max-height: 499px) {
+  .jobs-add-bar {
+    display: none;
+  }
+  .jobs-add-head {
+    display: block;
+  }
+}
 @media (min-width: 1024px) {
   .pin-action {
     position: sticky;

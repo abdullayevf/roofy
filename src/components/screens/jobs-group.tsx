@@ -12,7 +12,8 @@ import { Field } from "@/components/ui/field";
 import { StatusChip } from "@/components/ui/status-chip";
 import { FOCUS, GROUP, whole } from "./home-parts";
 import { showMoreText } from "./home-text";
-import { jobLine, lastLogOn, type JobLine } from "./job-input";
+import { jobLine, lastLogOn, statusEmptyMessage, type JobFilter, type JobLine } from "./job-input";
+import { JobsFilter } from "./jobs-filter";
 
 /** How many jobs show before "Show N more" (a long history is one tap away, not a long scroll). */
 export const JOBS_SHOWN = 20;
@@ -20,11 +21,11 @@ export const JOBS_SHOWN = 20;
 type Item = { row: ProjectRowForeman; money: ProjectRowManager | null };
 
 /** The one status line: the alert with its icon, or a chip and the current stages. */
-function StatusLine({ line }: { line: JobLine }) {
+function StatusLine({ line, even = false }: { line: JobLine; even?: boolean }) {
   const over = line.alert?.tone === "over";
   const Glyph = over ? WarningCircle : WarningDiamond;
   return (
-    <span data-job-status="" className="flex flex-wrap items-center gap-x-2 text-meta text-ink">
+    <span data-job-status="" className={cx("flex flex-wrap items-center gap-x-2 text-meta text-ink", even && "min-h-6")}>
       {line.chip ? <StatusChip plain status={line.chip.status} reason={line.chip.reason} /> : null}
       {line.alert ? (
         <span className={cx("flex items-start gap-1.5", over ? "text-over" : "text-watch")}>
@@ -59,24 +60,22 @@ function PhoneRow({ item }: { item: Item }) {
       href={`/jobs/${row.id}`}
       prefetch={false}
       data-job-row=""
-      className={cx("block min-h-16 px-4 py-2 first:rounded-t-group last:rounded-b-group active:bg-galv", FOCUS)}
+      className={cx("relative block min-h-16 py-2 pl-4 pr-9 first:rounded-t-group last:rounded-b-group active:bg-galv", FOCUS)}
     >
-      <span className="flex items-start justify-between gap-3">
-        <span data-job-name="" className="min-w-0 text-body-strong text-ink [overflow-wrap:anywhere]">
-          <KeepTogether text={row.name} />
-        </span>
-        <CaretRight size={24} aria-hidden="true" className="mt-0.5 shrink-0 text-ink-2" />
+      <span data-job-name="" className="block text-body-strong text-ink [overflow-wrap:anywhere]">
+        <KeepTogether text={row.name} />
       </span>
       <StatusLine line={jobLine({ ...row, alert: money?.alert, alertStageName: money?.alertStageName, over: money?.over })} />
       <TapeBar label={`${row.name} progress`} percent={whole(row.pctBp)} />
       {money ? <LabourFigure money={money} labelled /> : null}
+      <CaretRight size={24} aria-hidden="true" className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-2" />
     </Link>
   );
 }
 
-const TH = "px-4 py-2 text-left text-meta text-ink font-normal";
+export const TH = "px-4 py-2 text-left text-meta text-ink font-normal";
 // A chip line is 24 px tall (its icon), so with the 24 px name the cell is 48 px; py-0.5 keeps the row at 53 px, under the 56 px cap.
-const TD = "px-4 py-0.5 align-middle";
+export const TD = "px-4 py-0.5 align-middle";
 
 /** From 1024 px: a table with the whole row as the link. Job, how far along, labour of budget, margin, last log. */
 function JobsTable({ items, today }: { items: Item[]; today: string }) {
@@ -86,7 +85,7 @@ function JobsTable({ items, today }: { items: Item[]; today: string }) {
       <thead>
         <tr>
           <th scope="col" className={TH}>Job</th>
-          <th scope="col" className={cx(TH, "w-40")}>Done</th>
+          <th scope="col" className={cx(TH, "w-56")}>Done</th>
           {manager ? <th scope="col" className={cx(TH, "text-right")}>Labour of budget</th> : null}
           {manager ? <th scope="col" className={cx(TH, "text-right")}>Margin</th> : null}
           <th scope="col" className={cx(TH, "text-right")}>Last log</th>
@@ -103,10 +102,10 @@ function JobsTable({ items, today }: { items: Item[]; today: string }) {
               >
                 <KeepTogether text={row.name} />
               </Link>
-              <StatusLine line={jobLine({ ...row, alert: money?.alert, alertStageName: money?.alertStageName, over: money?.over })} />
+              <StatusLine even line={jobLine({ ...row, alert: money?.alert, alertStageName: money?.alertStageName, over: money?.over })} />
             </td>
             <td className={TD}>
-              <span className="text-figure num text-ink">{whole(row.pctBp)}%</span>
+              <TapeBar compact label={`${row.name} progress`} percent={whole(row.pctBp)} />
             </td>
             {money ? (
               <td className={cx(TD, "text-right")}>
@@ -123,26 +122,37 @@ function JobsTable({ items, today }: { items: Item[]; today: string }) {
 }
 
 /**
- * The jobs in one group. Past `JOBS_SHOWN` there is a search by name or address (a long history is found, not scrolled)
- * and the rest open in place from a full-width "Show N more" row.
+ * The Jobs list below its title: a search by name or address once there are more than `JOBS_SHOWN` jobs (a long
+ * history is found, not scrolled), then the status filter under it, then the jobs. Past `JOBS_SHOWN` the rest open in
+ * place from a full-width "Show N more" row. A foreman has no filter.
  */
-export function JobsGroup({ list, today }: { list: ProjectList; today: string }) {
+export function JobsBrowse({ list, today, filter, demo }: { list: ProjectList; today: string; filter: JobFilter; demo?: string }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const everyone: Item[] =
     list.view === "manager"
       ? list.rows.map((r) => ({ row: r, money: r }))
       : list.rows.map((r) => ({ row: r, money: null }));
-  const q = query.trim().toLowerCase();
+  const searchable = everyone.length > JOBS_SHOWN;
+  // A search left in the box while a shorter filter hides it must not keep filtering.
+  const q = searchable ? query.trim().toLowerCase() : "";
   const all = q ? everyone.filter(({ row }) => `${row.name} ${row.siteAddress}`.toLowerCase().includes(q)) : everyone;
   const shown = open ? all : all.slice(0, JOBS_SHOWN);
   const rest = all.length - JOBS_SHOWN;
+  const foreman = list.view === "foreman";
   return (
-    <div className="flex flex-col gap-4">
-      {everyone.length > JOBS_SHOWN ? (
-        <Field label="Search jobs" inputMode="search" type="search" autoComplete="off" value={query} onChange={(e) => setQuery(e.target.value)} />
+    <>
+      {searchable || !foreman ? (
+        <div className="flex flex-col gap-4">
+          {searchable ? (
+            <Field label="Search jobs" inputMode="search" type="search" autoComplete="off" value={query} onChange={(e) => setQuery(e.target.value)} />
+          ) : null}
+          {foreman ? null : <JobsFilter value={filter} demo={demo} />}
+        </div>
       ) : null}
-      {all.length === 0 ? (
+      {list.rows.length === 0 ? (
+        <p className="text-body text-ink">{statusEmptyMessage(filter === "all" ? "active" : filter)}</p>
+      ) : all.length === 0 ? (
         <p className="text-body text-ink">No job matches &ldquo;{query.trim()}&rdquo;.</p>
       ) : (
         <div className={cx(GROUP, "overflow-hidden")}>
@@ -169,6 +179,6 @@ export function JobsGroup({ list, today }: { list: ProjectList; today: string })
           ) : null}
         </div>
       )}
-    </div>
+    </>
   );
 }

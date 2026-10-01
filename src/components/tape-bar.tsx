@@ -28,6 +28,8 @@ export type TapeBarProps = {
   note?: string;
   /** The caption beside the %: "done" by default, "Whole job" on a job card. Same slot either way. */
   scope?: string;
+  /** A table cell's bar: the % alone in a slot sized to "100%", with no caption (the column header says "done"). */
+  compact?: boolean;
   className?: string;
 };
 
@@ -83,6 +85,7 @@ export function TapeBar({
   markerTone = tone,
   note,
   scope = "done",
+  compact = false,
   className,
 }: TapeBarProps) {
   const clamped = Math.max(0, Math.min(100, percent));
@@ -94,7 +97,15 @@ export function TapeBar({
   const captionAtStart = marker !== undefined && marker.percent < 12;
 
   return (
-    <div className={cx("grid grid-cols-[minmax(0,1fr)_min(8.5rem,45%)] items-center gap-x-[min(1.75rem,8vw)] gap-y-1", className)}>
+    <div
+      className={cx(
+        "grid items-center gap-y-1",
+        compact
+          ? "grid-cols-[minmax(0,1fr)_3.5rem] gap-x-3"
+          : "grid-cols-[minmax(0,1fr)_min(8.5rem,45%)] gap-x-[min(1.75rem,8vw)]",
+        className,
+      )}
+    >
       <div className="relative h-3">
         <div
           role="progressbar"
@@ -140,7 +151,7 @@ export function TapeBar({
       </div>
       <span className="flex flex-wrap items-baseline gap-x-1.5">
         <span className="whitespace-nowrap text-figure num text-ink">{clamped}%</span>
-        <span className="whitespace-nowrap text-body text-ink-2">{scope}</span>
+        {compact ? null : <span className="whitespace-nowrap text-body text-ink-2">{scope}</span>}
       </span>
       {marker && forecastLabel ? (
         <div className="relative h-6">

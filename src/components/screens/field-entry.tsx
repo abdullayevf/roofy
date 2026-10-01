@@ -279,15 +279,18 @@ export function EntryError({ screen, active, demo }: { screen: string; active: E
   );
 }
 
-/** "Couldn't load this. Try again." with the warning icon in `over` and a retry button. */
-export function LoadError() {
+/**
+ * "Couldn't load this. Try again." with the warning icon in `over` and a retry button. `primary` makes the retry the
+ * screen's one primary button (a screen with no other action, like the Jobs list's error).
+ */
+export function LoadError({ primary = false }: { primary?: boolean }) {
   return (
     <div role="alert" className="flex flex-col items-start gap-4 rounded-group border-group bg-surface p-4">
       <p className="flex items-start gap-2 text-body text-ink">
         <WarningCircle size={24} aria-hidden="true" className="shrink-0 text-over" />
         Couldn&apos;t load this. Try again.
       </p>
-      <RetryButton variant="secondary" />
+      <RetryButton variant={primary ? "primary" : "secondary"} />
     </div>
   );
 }
