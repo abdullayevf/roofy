@@ -1,7 +1,7 @@
 import type { ActiveJobRow, HomeManager, OutboxState } from "@/data/contracts";
 import type { Unit } from "@/domain/types";
 import { WarningCircle, WarningDiamond } from "@phosphor-icons/react/dist/ssr";
-import { formatDate, formatMoney, formatRoundedQuantity } from "@/lib/format";
+import { formatDate, formatRoundedQuantity } from "@/lib/format";
 import { cx } from "@/lib/cx";
 import { Button } from "@/components/ui/button";
 import { List, type ListRow } from "@/components/ui/list";
@@ -11,7 +11,6 @@ import { attentionSentence, foremanHeadline, lastUpdatedText, jobAlertText, over
 import { AttentionList } from "./attention-list";
 import {
   AttentionRowSkeleton,
-  CARD_BLOCK,
   COLUMN,
   FOCUS,
   GROUP,
@@ -20,6 +19,7 @@ import {
   HomeTitle,
   JobCard,
   JobCardSkeleton,
+  JobFigures,
   KeyFigure,
   KeyFigureSkeleton,
   ListRowSkeleton,
@@ -34,11 +34,6 @@ const UNIT_ORDER: { unit: Unit; label: string }[] = [
   { unit: "lm", label: "Length installed" },
   { unit: "each", label: "Items installed" },
 ];
-
-/** "4 days ago" for the card's Last log line. */
-function lastLog(days: number | null): string {
-  return days === null ? "None yet" : days === 0 ? "Today" : days === 1 ? "Yesterday" : `${days} days ago`;
-}
 
 function JobRow({ job }: { job: ActiveJobRow }) {
   const alert = jobAlertText(job.alert, job.alertStageName, job.alertStageForecastCents, job.alertStageBudgetCents);
@@ -61,17 +56,12 @@ function JobRow({ job }: { job: ActiveJobRow }) {
         forecastLabel: forecast === undefined ? undefined : "Forecast",
       }}
     >
-      <dl className={`mt-2 grid ${CARD_BLOCK} grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-4 gap-y-1`}>
-        <dt className="text-meta text-ink">
-          <span className="block whitespace-nowrap">Labour so far</span>
-          <span className="block">of {formatMoney(job.labourBudgetCents)} budget</span>
-        </dt>
-        <dd className="text-right text-figure num text-ink [overflow-wrap:anywhere]">{formatMoney(job.labourActualCents)}</dd>
-        <dt className="whitespace-nowrap text-meta text-ink">Forecast margin</dt>
-        <dd className="text-right text-figure num text-ink [overflow-wrap:anywhere]">{formatMoney(job.forecastMarginCents)}</dd>
-        <dt className="whitespace-nowrap text-meta text-ink">Last log</dt>
-        <dd className="text-right text-figure num text-ink [overflow-wrap:anywhere]">{lastLog(job.daysSinceLastLog)}</dd>
-      </dl>
+      <JobFigures
+        labourActualCents={job.labourActualCents}
+        labourBudgetCents={job.labourBudgetCents}
+        forecastMarginCents={job.forecastMarginCents}
+        daysSinceLastLog={job.daysSinceLastLog}
+      />
     </JobCard>
   );
 }

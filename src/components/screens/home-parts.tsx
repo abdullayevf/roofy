@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { CaretRight } from "@phosphor-icons/react/dist/ssr";
 import { cx } from "@/lib/cx";
+import { KeepTogether } from "@/components/keep-together";
+import { formatMoney } from "@/lib/format";
 import { OutboxBadge } from "@/components/outbox-badge";
 import { TapeBar, type TapeBarProps } from "@/components/tape-bar";
 import { Button } from "@/components/ui/button";
@@ -106,7 +108,9 @@ export function JobCard({
     >
       <span className="flex items-start justify-between gap-3">
         <span className="min-w-0">
-          <span className="block text-body-strong text-ink [overflow-wrap:anywhere]">{name}</span>
+          <span className="block text-body-strong text-ink [overflow-wrap:anywhere]">
+            <KeepTogether text={name} />
+          </span>
           {lines.map((line, i) => (
             <span key={i} className="block text-meta text-ink [overflow-wrap:anywhere]">
               {line}
@@ -196,5 +200,37 @@ export function JobCardSkeleton({ lines, figures }: { lines: number; figures: nu
         </div>
       )}
     </div>
+  );
+}
+
+/** "4 days ago" for a job card's Last log line. */
+export function lastLogText(days: number | null): string {
+  return days === null ? "None yet" : days === 0 ? "Today" : days === 1 ? "Yesterday" : `${days} days ago`;
+}
+
+/** A manager job card's three figures: labour so far against its budget, forecast margin and the last log. */
+export function JobFigures({
+  labourActualCents,
+  labourBudgetCents,
+  forecastMarginCents,
+  daysSinceLastLog,
+}: {
+  labourActualCents: number;
+  labourBudgetCents: number;
+  forecastMarginCents: number;
+  daysSinceLastLog: number | null;
+}) {
+  return (
+    <dl className={`mt-2 grid ${CARD_BLOCK} grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-4 gap-y-1`}>
+      <dt className="text-meta text-ink">
+        <span className="block whitespace-nowrap">Labour so far</span>
+        <span className="block">of {formatMoney(labourBudgetCents)} budget</span>
+      </dt>
+      <dd className="text-right text-figure num text-ink [overflow-wrap:anywhere]">{formatMoney(labourActualCents)}</dd>
+      <dt className="whitespace-nowrap text-meta text-ink">Forecast margin</dt>
+      <dd className="text-right text-figure num text-ink [overflow-wrap:anywhere]">{formatMoney(forecastMarginCents)}</dd>
+      <dt className="whitespace-nowrap text-meta text-ink">Last log</dt>
+      <dd className="text-right text-figure num text-ink [overflow-wrap:anywhere]">{lastLogText(daysSinceLastLog)}</dd>
+    </dl>
   );
 }

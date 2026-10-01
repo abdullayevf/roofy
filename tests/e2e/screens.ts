@@ -17,7 +17,19 @@
 import type { Page } from "@playwright/test";
 import { getSeed } from "../../src/data/fake/store";
 
-const { meta } = getSeed();
+const seed = getSeed();
+const { meta } = seed;
+
+/** A new job opened filled in: Smith's next job, Metal re-roof, its stages (from the last metal re-roof job) accepted. */
+const smithClientId = seed.projects.find((p) => p.id === meta.projects.smith)!.clientId;
+const JOB_PREFILL = `/jobs/new?${new URLSearchParams({
+  client: smithClientId,
+  type: "metal_reroof",
+  name: "Smith job — Ryde carport roof",
+  address: "14 Quarry Rd, Ryde",
+  contract: "1850000",
+  accepted: "1",
+}).toString()}`;
 
 /**
  * `?demo=` states, per `src/data/fake/demo.ts` (Task 6), PLUS the literal
@@ -318,26 +330,121 @@ export const SCREENS: ScreenSpec[] = [
   },
 
   // --- jobs-1 (Task 13): Jobs list (9), New/edit job (10) --------------
+  // Trimmed like field-2: manager (an owner sees the same) and foreman only; offline is the shell's banner on the list,
+  // so only the form (a disabled Create job saying why) captures it.
   {
     id: "jobs-list",
     group: "jobs-1",
     route: "/jobs",
-    states: ["normal", "empty", "loading", "error", "offline", "foreman"],
-    roles: ["owner", "manager", "foreman"],
+    states: ["normal", "empty", "loading", "error", "foreman"],
+    roles: ["manager"],
+  },
+  {
+    // Every status at once: the Quoted, On hold and Complete jobs carry their status under the address.
+    id: "jobs-list-all",
+    group: "jobs-1",
+    route: "/jobs?status=all",
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // A foreman with no jobs: one sentence and a way to Log, no Add job.
+    id: "jobs-list-foreman-empty",
+    group: "jobs-1",
+    route: "/jobs",
+    states: ["empty"],
+    roles: ["foreman"],
+    viewports: ["iphone"],
+    lightOnly: true,
+    noExtras: true,
   },
   {
     id: "job-new",
     group: "jobs-1",
     route: "/jobs/new",
-    states: ENTRY_STATES.concat("loading"),
-    roles: ["owner", "manager"],
+    states: ["normal", "loading", "error", "offline"],
+    roles: ["manager"],
+    // The job name with the keyboard up; the pinned Create job must stay in view.
+    keyboard: { field: "Job name", action: "Create job" },
+  },
+  {
+    // A new workspace: no clients to pick, only Quick-add client.
+    id: "job-new-no-clients",
+    group: "jobs-1",
+    route: "/jobs/new",
+    states: ["empty"],
+    roles: ["manager"],
+    viewports: ["iphone"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // Smith, Metal re-roof, named and addressed, the stages from the last metal re-roof job accepted: Create job ready.
+    id: "job-new-filled",
+    group: "jobs-1",
+    route: JOB_PREFILL,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // The stage editor: names and budgets, Remove stage, Add stage.
+    id: "job-new-editing-stages",
+    group: "jobs-1",
+    route: JOB_PREFILL,
+    states: ["normal"],
+    roles: ["manager"],
+    steps: ["Edit stages"],
+    viewports: ["iphone"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // Quick-add client: the sheet with Client name and Save client.
+    id: "job-new-quick-add",
+    group: "jobs-1",
+    route: "/jobs/new",
+    states: ["normal"],
+    roles: ["manager"],
+    steps: ["Quick-add client"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // A target finish before the start: the message under the field, Create job off, the sentence naming the fix.
+    id: "job-new-invalid",
+    group: "jobs-1",
+    route: `${JOB_PREFILL}&start=2026-10-05&finish=2026-10-01`,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // Saved: "Job added" with Back to jobs and Add another job.
+    id: "job-new-saved",
+    group: "jobs-1",
+    route: JOB_PREFILL,
+    states: ["normal"],
+    roles: ["manager"],
+    steps: ["Create job"],
+    viewports: ["iphone"],
+    lightOnly: true,
+    noExtras: true,
   },
   {
     id: "job-edit",
     group: "jobs-1",
-    route: "/jobs/:jobId/edit",
-    states: ENTRY_STATES.concat("loading"),
-    roles: ["owner", "manager"],
+    route: `/jobs/${meta.projects.smith}/edit`,
+    states: ["normal", "loading"],
+    roles: ["manager"],
   },
 
   // --- jobs-2 (Task 14): Job detail (11), Stage detail (12), Stage done (13)

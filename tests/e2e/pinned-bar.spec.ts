@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { getSeed } from "../../src/data/fake/store";
 
 /**
  * The pinned Save bar below 1024 px: one fixed bar flush on the tab bar, the same at every scroll position, as wide as the
@@ -8,6 +9,8 @@ const SCREENS = [
   { name: "Log crew-day", path: "/log" },
   { name: "Progress", path: "/log/progress" },
   { name: "No work", path: "/log/no-work" },
+  { name: "New job", path: "/jobs/new" },
+  { name: "Edit job", path: `/jobs/${getSeed().meta.projects.smith}/edit` },
 ];
 const SIZES = [
   { name: "phone", width: 390, height: 780 },
