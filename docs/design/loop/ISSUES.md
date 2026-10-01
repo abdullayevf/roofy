@@ -339,3 +339,36 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | field-2/i1-D18 | field-2 | P3 | log-*/loading | Skeleton rows single bars; no label blocks | Shape like content | fixed in iteration 2, awaiting critics | 1 |
 | field-2/i1-D19 | field-2 | P3 | log-crew-day/normal/desktop | 48 px box in 57 px row | 64 px row or 40 px box with 48 px hit area | fixed in iteration 2, awaiting critics | 1 |
 | field-2/i1-D20 | field-2 | P3 | log-no-work/normal/all | "Optional" as helper text | Label "Note (optional)" | fixed in iteration 2, awaiting critics | 1 |
+| field-2/i2-F1 | field-2 | P1 | outbox/attention+mixed/manager/phone | Manager sees "…Ask your manager." foreman wording | Role-worded reason; manager gets server message with a next step | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-F2 | field-2 | P1 | log-progress/split-error/manager/iphone | "Shares must add up to 100%" below the crew list; Save disabled with no hint | Error in the pinned hint line, or scroll to it | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-F3 | field-2 | P1 | log-*/landscape + installed-landscape | Save unpinned at the bottom; raised Log circle covers chips | Keep bar pinned in landscape or shrink Log circle; bottom padding so circle never covers controls | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-F4 | field-2 | P2 | log-crew-day/filled/manager/iphone | After Same as yesterday, Sam's row (½ day) far down after Josh | Ticked people at top after a copy, or "2 ticked" summary | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-F5 | field-2 | P2 | log-progress/split/manager/iphone | Split result below all rows; tape shows old 120 of 400 | Split under ticked people or in bar; preview "240 of 400 m² after this" | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-F6 | field-2 | P2 | log-crew-day/logged-today/manager/iphone | Hint still says "Choose a job, a stage and at least one person." | Hint names what's missing | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-F7 | field-2 | P2 | log-no-work/all | Boxed dropdown date + heavy rule; differs from other log screens | Same date control on all three | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-F8 | field-2 | P2 | log-progress, log-no-work, outbox/error+offline/iphone | No error/offline captures for these; no-work saved and "already has a log" not shown | Capture and design these states | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-F9 | field-2 | P2 | all log screens/normal/iphone | Disabled-Save hint ~13 px light grey | Body size, main ink | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-F10 | field-2 | P2 | all/landscape + installed-landscape | Left column ~616 px with dead right strip; outbox empty off-centre | Centre column; align empty state | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-F11 | field-2 | P3 | outbox/all/phone | "Log" label bold/dark when not current | Inactive style unless Log is current | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-F12 | field-2 | P3 | log-crew-day, log-progress/loading/iphone | Skeleton Save bar in flow; real one pinned | Pin skeleton bar | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-F13 | field-2 | P3 | log-crew-day/foreman-empty | No way back | "Go to Home" link | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-F14 | field-2 | P3 | log-progress/normal/iphone | "m²" shown before a stage is chosen | Blank unit until stage chosen | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-D1 | field-2 | P1 | log-*/normal/tablet-light | At scroll end the bar sits in the page, slab ~160 px above tab bar; at top no rule/surface, Save overlaps "Tom" | One fixed surface bar flush on tab bar, column width, both scroll positions | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-D2 | field-2 | P2 | all Log screens/tablet-light | 600 px column pinned left, ~200 px empty right; empty states centred in it | Centre column; centre empty states | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-D3 | field-2 | P2 | log-no-work/all | Date is a bordered select + ink rule; other screens use Barlow date on the rule | Date-rule component on all three | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-D4 | field-2 | P2 | log-crew-day/filled/iphone, desktop | ½-day toggle and 8 h stepper in untinted band below the tinted row | Carry the tape tint through expanded controls | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-D5 | field-2 | P2 | log-progress, log-no-work, outbox/loading | Skeletons copy crew-day layout | Size each skeleton to its own screen | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-D6 | field-2 | P2 | log-crew-day/logged-today/iphone | Stale hint | Name only what's missing | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-D7 | field-2 | P2 | outbox/attention, mixed/manager | Manager told "Ask your manager." | Role-aware reason with a next step | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-D8 | field-2 | P2 | outbox/mixed, attention/iphone vs desktop | Status bottom-left on phone, top-right desktop; each group an outlined card | Status top right at every width; one grouped surface block with line dividers per section | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-D9 | field-2 | P2 | log-progress/split, saved | "120 of 400 m²" in body/meta, not `figure` | Barlow `figure` | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-D10 | field-2 | P2 | log-progress/split-error/iphone | Share inputs lack `over` border | `over` border on offending inputs | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-D11 | field-2 | P2 | log-no-work/filled, blocked, saved | Not captured | Add the three states | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-D12 | field-2 | P2 | log-*/normal/desktop | Sticky strip cuts list mid-row with no `line` rule until scroll end | 16 px padding + `line` rule whenever overlapping | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-D13 | field-2 | P3 | log-crew-day/loading/iphone | Skeleton Save in flow | Pin it | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-D14 | field-2 | P3 | log-crew-day/logged-today/iphone | Greyed names likely < 4.5:1 | Name in `ink`; state via note + disabled box | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-D15 | field-2 | P3 | log-no-work/all | Button just "Save" | "Save no work" or "Mark no work" | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-D16 | field-2 | P3 | outbox/attention | "Needs attention" three times | Drop chip in that section | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-D17 | field-2 | P3 | log-crew-day, progress/saved/iphone | "Sent" as bordered pill | Plain status (icon + word) | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-D18 | field-2 | P3 | log-progress/split | List re-sorts after stage pick (rows move under thumb) | One fixed order | fixed in iteration 3, awaiting critics | 2 |
+| field-2/i2-D19 | field-2 | P3 | log-crew-day/error | Error card lacks icon/severity | warning-circle icon in `over` | fixed in iteration 3, awaiting critics | 2 |
