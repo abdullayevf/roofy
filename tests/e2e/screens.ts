@@ -353,8 +353,8 @@ export const SCREENS: ScreenSpec[] = [
     route: "/jobs/new",
     states: ["normal", "loading", "error", "offline"],
     roles: ["manager"],
-    // The job name with the keyboard up; the pinned Create job must stay in view.
-    keyboard: { field: "Job name", action: "Create job" },
+    // The site address with the keyboard up; the pinned Create job must stay in view.
+    keyboard: { field: "Site address", action: "Create job" },
   },
   {
     // A new workspace: no clients to pick, only Quick-add client.
