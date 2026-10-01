@@ -5,7 +5,7 @@ import { lumpSumLines } from "@/domain/piece";
 import { forecastLabour, projectMargins, projectPercentBp, stagePercentBp } from "@/domain/progress";
 import { lostWorkingDays, realWorkingDays } from "@/domain/segments";
 import { DataError, type ProjectDetailManager, type StageDetailManager } from "../../contracts";
-import { jobAlertText } from "@/components/screens/job-input";
+import { jobAlertText, jobLine, overBudgetJobs } from "@/components/screens/job-input";
 import { getSeed } from "../store";
 import { fake } from "./testing";
 
@@ -148,6 +148,25 @@ describe("job detail (manager)", () => {
     expect(wong.alert).toMatchObject({ level: "over", byCents: 10000 });
     expect(wong.alertStageName).toBe("Clean-up");
     expect(jobAlertText(wong.alert!, wong.alertStageName)).toBe("Clean-up is $100.00 over");
+  });
+
+  it("one rule decides over: a row's over line and the headline count agree (R9: Hunter by labour, Wong by stage)", async () => {
+    const { data, actor } = fake("manager");
+    const list = await data.projects.list(actor, { status: "all" });
+    if (list.view !== "manager") throw new Error("expected the manager view");
+    const row = (name: string) => list.rows.find((r) => r.name.startsWith(name))!;
+    // Hunter: Complete, $2,120.00 of $2,000.00 labour, no stage over on its own - it still gets its line.
+    const hunter = row("Hunter job \u2014 Avalon");
+    expect(hunter.over).toEqual({ kind: "labour", byCents: 12000 });
+    expect(jobLine(hunter).alert?.text).toBe("Labour is $120.00 over budget");
+    // Wong: Active, labour under budget ($4,000.00 of $4,300.00), one stage over.
+    const wong = row("Wong job");
+    expect(wong.over).toEqual({ kind: "stage", stageName: "Clean-up", byCents: 10000 });
+    expect(jobLine({ ...wong, over: wong.over }).alert?.text).toBe("Clean-up is $100.00 over");
+    // Every row the rule flags shows an over line; every row it doesn't has none; the headline counts the flagged rows.
+    for (const r of list.rows) expect(jobLine(r).alert?.tone === "over", r.name).toBe(r.over !== null);
+    expect(overBudgetJobs(list.rows)).toBe(list.rows.filter((r) => r.over !== null).length);
+    expect(overBudgetJobs(list.rows.filter((r) => r.status === "active"))).toBe(1);
   });
 
   it("the jobs list defaults to active jobs; 'all' adds on-hold, complete and closed", async () => {

@@ -1,6 +1,8 @@
 import { addDays } from "@/domain/dates";
 import { sum } from "@/domain/money";
+import { jobOver } from "@/domain/progress";
 import type {
+  JobOverDto,
   Actor,
   Client,
   CrewWeekForeman,
@@ -84,6 +86,17 @@ export function createProjectService(c: FakeContext): ProjectService {
     };
   }
 
+  /** The one over-budget rule (domain `jobOver`), as the row carries it. */
+  function overOf(f: ReturnType<typeof c.fig.project>): JobOverDto | null {
+    const o = jobOver(
+      f.labourActualCents,
+      f.labourBudgetCents,
+      f.stages.map((s) => ({ name: s.stage.name, actualCents: s.actualCents, budgetCents: s.stage.labourBudgetCents })),
+    );
+    if (o === null) return null;
+    return o.kind === "labour" ? o : { kind: "stage", stageName: o.stage, byCents: o.byCents };
+  }
+
   function rowManager(p: ProjectRow): ProjectRowManager {
     const f = c.fig.project(p.id);
     return {
@@ -93,6 +106,7 @@ export function createProjectService(c: FakeContext): ProjectService {
       labourBudgetCents: f.labourBudgetCents,
       forecastMarginCents: f.margins.forecastMarginCents,
       alert: f.alert,
+      over: overOf(f),
       alertStageName: f.alert ? (f.stages.find((s) => s.alert === f.alert)?.stage.name ?? null) : null,
     };
   }

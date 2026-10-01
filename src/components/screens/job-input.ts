@@ -1,4 +1,4 @@
-import type { BudgetAlertDto, JobType, ProjectStatus, StageChip, StageDraft, StageProposal } from "@/data/contracts";
+import type { BudgetAlertDto, JobOverDto, JobType, ProjectStatus, StageChip, StageDraft, StageProposal } from "@/data/contracts";
 import { addDays } from "@/domain/dates";
 import type { Cents } from "@/domain/types";
 import { formatDate, formatMoney } from "@/lib/format";
@@ -142,24 +142,42 @@ const JOB_CHIP: Record<Exclude<ProjectStatus, "active">, Status> = {
   closed: "closed",
 };
 
-/** What a job row's one status line says: the alert, else a chip, else its current stages. */
+/** The over-budget sentence, naming what is over: "Labour is $120.00 over budget" or "Sheet install is $100.00 over". */
+export function jobOverText(over: JobOverDto): string {
+  const by = formatMoney(over.byCents);
+  return over.kind === "labour" ? `Labour is ${by} over budget` : `${over.stageName} is ${by} over`;
+}
+
+/**
+ * What a job row's one status line says: over budget (any status), else on an active job the trending alert,
+ * else a chip with the current stages. A job that isn't active keeps its chip beside the over-budget sentence.
+ */
 export function jobLine(row: {
   status: ProjectStatus;
   pctBp: number;
   currentStages: StageChip[];
   alert?: BudgetAlertDto | null;
   alertStageName?: string | null;
+  over?: JobOverDto | null;
 }): JobLine {
-  if (row.alert && row.status === "active") {
-    return { alert: { tone: row.alert.level === "over" ? "over" : "watch", text: jobAlertText(row.alert, row.alertStageName ?? null) } };
+  const over: JobLine["alert"] | undefined = row.over ? { tone: "over", text: jobOverText(row.over) } : undefined;
+  if (row.status === "active") {
+    if (over) return { alert: over };
+    if (row.alert) return { alert: { tone: "watch", text: jobAlertText(row.alert, row.alertStageName ?? null) } };
   }
-  if (row.status === "complete" || row.status === "closed") return { chip: { status: JOB_CHIP[row.status] }, text: "All stages done" };
   const paused = row.currentStages.find((s) => s.status === "paused" && s.pauseReason);
   if (row.status === "active" && paused?.pauseReason) {
     return { chip: { status: "paused", reason: pauseReasonText(paused.pauseReason) }, text: paused.name };
   }
-  const text = row.currentStages.length === 0 && row.pctBp >= 10000 ? "All stages done" : stageLine(row.currentStages);
-  return row.status === "active" ? { text } : { chip: { status: JOB_CHIP[row.status] }, text };
+  if (row.status === "active") {
+    return { text: row.currentStages.length === 0 && row.pctBp >= 10000 ? "All stages done" : stageLine(row.currentStages) };
+  }
+  const chip: NonNullable<JobLine["chip"]> = { status: JOB_CHIP[row.status] };
+  if (row.status === "on_hold" && paused?.pauseReason) chip.reason = pauseReasonText(paused.pauseReason);
+  if (over) return { chip, alert: over };
+  if (row.status === "complete" || (row.status === "closed" && row.pctBp >= 10000)) return { chip, text: "All stages done" };
+  const names = row.status === "on_hold" ? row.currentStages.map((s) => s.name) : null;
+  return { chip, text: names && names.length > 0 ? names.join(", ") : stageLine(row.currentStages) };
 }
 
 /** A job's last log: "3 days ago" within a week, then the date ("Mon 7 Sep"). */
@@ -167,5 +185,5 @@ export function lastLogOn(days: number | null, today: string): string {
   return days !== null && days > 7 ? formatDate(addDays(today, -days), today) : lastLogText(days);
 }
 
-/** How many of these jobs are already over a stage's labour budget (the lead line on the Jobs list). */
-export const overBudgetJobs = (rows: { alert: BudgetAlertDto | null }[]): number => rows.filter((r) => r.alert?.level === "over").length;
+/** How many of these jobs are over budget by the same rule as each row's line (the lead line on the Jobs list). */
+export const overBudgetJobs = (rows: { over: JobOverDto | null }[]): number => rows.filter((r) => r.over !== null).length;

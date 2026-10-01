@@ -63,6 +63,9 @@ import { resolveRoute, SCREENS, type DemoState, type Role, type ScreenSpec } fro
 
 type Engine = "chromium" | "webkit";
 
+/** What an Australian phone shows: dd/mm/yyyy dates and the Sydney clock, in every capture context (R8). */
+const AU_PHONE = { locale: "en-AU", timezoneId: "Australia/Sydney" } as const;
+
 type Viewport = {
   name: "iphone" | "android" | "desktop" | "landscape" | "tablet";
   width: number;
@@ -184,6 +187,7 @@ async function captureOne(opts: {
     viewport: { width: viewport.width, height: viewport.height },
     colorScheme: scheme,
     reducedMotion: "reduce",
+    ...AU_PHONE,
   });
 
   // state:"foreman" forces the foreman role/DTO for this one capture,
@@ -273,6 +277,7 @@ async function captureInstalled(opts: {
     viewport: size,
     colorScheme: "light",
     reducedMotion: "reduce",
+    ...AU_PHONE,
   });
   if (role) await context.addCookies([{ name: "roofy_role", value: role, url: base }]);
   const page = await context.newPage();
@@ -379,6 +384,7 @@ async function captureKeyboard(opts: {
     viewport: { width: viewport.width, height: viewport.height },
     colorScheme: "light",
     reducedMotion: "reduce",
+    ...AU_PHONE,
   });
   if (role) await context.addCookies([{ name: "roofy_role", value: role, url: base }]);
   const page = await context.newPage();
@@ -505,13 +511,15 @@ async function main(): Promise<void> {
   const noWebkit = process.env.ROOFY_NO_WEBKIT === "1";
   const chromiumExecutable = process.env.ROOFY_CHROMIUM_EXECUTABLE;
 
-  const chromiumBrowser = await chromium.launch(
-    chromiumExecutable ? { executablePath: chromiumExecutable } : undefined,
-  );
+  // The native date input takes its format from the browser's UI language, not only the context locale.
+  const chromiumBrowser = await chromium.launch({
+    ...(chromiumExecutable ? { executablePath: chromiumExecutable } : {}),
+    args: ["--lang=en-AU"],
+  });
   let webkitBrowser: Browser | undefined;
   if (!noWebkit) {
     try {
-      webkitBrowser = await webkit.launch();
+      webkitBrowser = await webkit.launch({ env: { ...process.env, LANG: "en_AU.UTF-8" } });
     } catch (err) {
       console.warn(
         `design-capture: WebKit launch failed, falling back to Chromium for the iphone viewport (set ROOFY_NO_WEBKIT=1 to silence this). ${String(err)}`,

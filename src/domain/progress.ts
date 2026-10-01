@@ -52,6 +52,28 @@ export function budgetAlert(
   return null;
 }
 
+/** Why a job counts as over budget: its labour as a whole, or one stage (the worst). */
+export type JobOver = { kind: "labour"; byCents: Cents } | { kind: "stage"; stage: string; byCents: Cents };
+
+/**
+ * The one rule for "this job is over budget", used by a job's row and by the Jobs headline count.
+ * Over = labour spent passes the job's labour budget (the job as a whole), or any stage has spent more than its own.
+ * The job as a whole wins when both are true.
+ */
+export function jobOver(
+  labourActualCents: Cents,
+  labourBudgetCents: Cents,
+  stages: { name: string; actualCents: Cents; budgetCents: Cents }[],
+): JobOver | null {
+  if (labourActualCents > labourBudgetCents) return { kind: "labour", byCents: labourActualCents - labourBudgetCents };
+  let worst: JobOver | null = null;
+  for (const s of stages) {
+    const by = s.actualCents - s.budgetCents;
+    if (by > 0 && (worst === null || by > worst.byCents)) worst = { kind: "stage", stage: s.name, byCents: by };
+  }
+  return worst;
+}
+
 export interface MarginInput {
   contractCents: Cents;
   projectPctBp: BasisPoints;

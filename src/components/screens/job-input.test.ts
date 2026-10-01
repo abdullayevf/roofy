@@ -179,12 +179,39 @@ describe("jobAlertText (i1-F1: the sentence names the stage its amount belongs t
 });
 
 describe("jobLine (the one status line on a job row)", () => {
-  const stage = (name: string, status: "active" | "paused" = "active", pauseReason: "materials" | null = null) => ({ stageId: name, name, status, pauseReason });
+  const stage = (name: string, status: "active" | "paused" = "active", pauseReason: "materials" | "client" | null = null) => ({ stageId: name, name, status, pauseReason });
   const base = { status: "active" as const, pctBp: 4000, currentStages: [stage("Sheet install")] };
-  it("an alert replaces everything else on the line", () => {
-    expect(jobLine({ ...base, alert: { level: "over", severity: "over", byCents: 10000 }, alertStageName: "Clean-up" })).toEqual({
+  it("an over-budget stage replaces everything else on the line and names the stage", () => {
+    expect(jobLine({ ...base, over: { kind: "stage", stageName: "Clean-up", byCents: 10000 } })).toEqual({
       alert: { tone: "over", text: "Clean-up is $100.00 over" },
     });
+  });
+  it("labour over the job's budget says so, with no stage (R9)", () => {
+    expect(jobLine({ ...base, over: { kind: "labour", byCents: 12000 } })).toEqual({
+      alert: { tone: "over", text: "Labour is $120.00 over budget" },
+    });
+  });
+  it("a trending job is amber and names its stage", () => {
+    expect(jobLine({ ...base, alert: { level: "trending", severity: "watch", byCents: 77500 }, alertStageName: "Sheet install" })).toEqual({
+      alert: { tone: "watch", text: "Sheet install is trending $775.00 over" },
+    });
+  });
+  it("a finished job over budget keeps its chip and gets the over line (Hunter: Complete, $2,120 of $2,000)", () => {
+    expect(jobLine({ status: "complete", pctBp: 10000, currentStages: [], over: { kind: "labour", byCents: 12000 } })).toEqual({
+      chip: { status: "complete" },
+      alert: { tone: "over", text: "Labour is $120.00 over budget" },
+    });
+  });
+  it("on hold names its reason in the chip, with no parenthetical (i2-D11)", () => {
+    expect(jobLine({ ...base, status: "on_hold", currentStages: [stage("Coat / paint", "paused", "client")] })).toEqual({
+      chip: { status: "on-hold", reason: "client" },
+      text: "Coat / paint",
+    });
+  });
+  it("a closed job shows its real stage state unless it finished (RR8)", () => {
+    expect(jobLine({ status: "closed", pctBp: 10000, currentStages: [] })).toEqual({ chip: { status: "closed" }, text: "All stages done" });
+    expect(jobLine({ ...base, status: "closed", pctBp: 4000 })).toEqual({ chip: { status: "closed" }, text: "Sheet install" });
+    expect(jobLine({ ...base, status: "closed", pctBp: 0, currentStages: [] })).toEqual({ chip: { status: "closed" }, text: "No stage started" });
   });
   it("a paused stage shows as a Paused chip with its reason", () => {
     expect(jobLine({ ...base, currentStages: [stage("Coat / paint", "paused", "materials")] })).toEqual({
@@ -214,9 +241,9 @@ describe("lastLogOn", () => {
 });
 
 describe("overBudgetJobs", () => {
-  it("counts the jobs already over, not the ones trending over", () => {
-    const over = { level: "over" as const, severity: "over" as const, byCents: 1 };
-    const trending = { level: "trending" as const, severity: "watch" as const, byCents: 1 };
-    expect(overBudgetJobs([{ alert: over }, { alert: trending }, { alert: null }, { alert: over }])).toBe(2);
+  it("counts the jobs the over rule flags, by labour or by stage, not the ones only trending over", () => {
+    const labour = { kind: "labour" as const, byCents: 1 };
+    const stage = { kind: "stage" as const, stageName: "Clean-up", byCents: 1 };
+    expect(overBudgetJobs([{ over: labour }, { over: null }, { over: stage }, { over: null }])).toBe(2);
   });
 });

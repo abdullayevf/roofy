@@ -217,8 +217,34 @@ test.describe("New job: measured guards", () => {
     await signInAs(page, "manager", "/jobs/new");
     const link = (await page.getByRole("link", { name: "Back to jobs" }).boundingBox())!;
     expect(link.height).toBeGreaterThanOrEqual(48);
-    const font = await page.getByLabel("Start date (optional)").evaluate((el) => getComputedStyle(el).fontFamily);
-    expect(font).toMatch(/Atkinson/i);
+    // The date value is Atkinson and starts where a text field's value starts (R8).
+    const look = (label: string) =>
+      page.getByLabel(label).evaluate((el) => {
+        const cs = getComputedStyle(el);
+        return { font: cs.fontFamily, size: cs.fontSize, padLeft: cs.paddingLeft };
+      });
+    const date = await look("Start date (optional)");
+    const text = await look("Site address");
+    expect(date.font).toMatch(/Atkinson/i);
+    expect(date.font).toBe(text.font);
+    expect(date.size).toBe(text.size);
+    expect(date.padLeft).toBe(text.padLeft);
+    // The browser's own inner padding on the date value is removed, so it starts where a text value starts.
+    // Chromium can't read a computed style for that inner part, so the guard reads the rule itself.
+    const editPadding = await page.evaluate(() =>
+      [...document.styleSheets]
+        .flatMap((sheet) => [...sheet.cssRules])
+        .filter((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText.includes("::-webkit-datetime-edit"))
+        .map((r) => r.style.paddingLeft || r.style.padding)
+        .filter(Boolean),
+    );
+    expect(editPadding).toContain("0px");
+  });
+
+  test("the browser shows an Australian phone's dates: en-AU and the Sydney clock (R8)", async ({ page }) => {
+    await signInAs(page, "manager", "/jobs/new");
+    const env = await page.evaluate(() => ({ lang: navigator.language, zone: Intl.DateTimeFormat().resolvedOptions().timeZone, day: new Date(2026, 8, 10).toLocaleDateString() }));
+    expect(env).toEqual({ lang: "en-AU", zone: "Australia/Sydney", day: "10/09/2026" });
   });
 
   test("stage review rows are 64 px with a total row; the editor is one group with Remove aligned to the labels (D7, D8)", async ({ page }) => {

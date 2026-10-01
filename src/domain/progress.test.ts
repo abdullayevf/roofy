@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   budgetAlert,
   forecastLabour,
+  jobOver,
   projectMargins,
   projectPercentBp,
   stageExpectedLabour,
@@ -105,5 +106,34 @@ describe("projectMargins", () => {
         stages: [{ forecastCents: null, labourBudgetCents: 100_000, actualLabourCents: 200_000 }],
       }).forecastMarginCents,
     ).toBe(1_000_000 - (200_000 + 900_000 + 0));
+  });
+});
+
+describe("jobOver (R9: the one rule for an over-budget job)", () => {
+  const st = (name: string, actualCents: number, budgetCents: number) => ({ name, actualCents, budgetCents });
+  it("is not over when labour and every stage are within budget", () => {
+    expect(jobOver(150_000, 200_000, [st("Sheet install", 100_000, 120_000), st("Clean-up", 50_000, 80_000)])).toBeNull();
+    expect(jobOver(0, 0, [])).toBeNull();
+  });
+  it("is over when labour passes the job's labour budget, even with no stage over", () => {
+    expect(jobOver(212_000, 200_000, [st("Sheet install", 100_000, 100_000), st("Clean-up", 112_000, 100_000)])).toEqual({
+      kind: "labour",
+      byCents: 12_000,
+    });
+  });
+  it("is over when one stage is over though the job is under, and names the worst stage", () => {
+    expect(jobOver(400_000, 500_000, [st("Sheet install", 100_000, 90_000), st("Clean-up", 40_000, 30_000)])).toEqual({
+      kind: "stage",
+      stage: "Sheet install",
+      byCents: 10_000,
+    });
+    expect(jobOver(400_000, 500_000, [st("Clean-up", 40_000, 30_000), st("Flashings", 60_000, 30_000)])).toEqual({
+      kind: "stage",
+      stage: "Flashings",
+      byCents: 30_000,
+    });
+  });
+  it("names the job as a whole when both are true", () => {
+    expect(jobOver(300_000, 200_000, [st("Clean-up", 50_000, 30_000)])).toEqual({ kind: "labour", byCents: 100_000 });
   });
 });

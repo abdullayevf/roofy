@@ -26,7 +26,7 @@ test.describe("Jobs list (manager)", () => {
     // Smith is trending over on one stage: the line names the stage that owns the amount (i1-F1).
     await expect(jobRows(page).filter({ hasText: "Smith job" }).getByText("Sheet install is trending $775.00 over")).toBeVisible();
     if (isPhone(testInfo.project.name)) await expect(smith.getByRole("progressbar")).toBeVisible();
-    await expect(jobRows(page).filter({ hasText: "Smith job" }).getByText(/^of \$[\d,]+\.\d{2}$/)).toBeVisible();
+    await expect(jobRows(page).filter({ hasText: "Smith job" }).getByText(/^(spent )?of \$[\d,]+\.\d{2}( budget)?$/)).toBeVisible();
     await expect(page.getByRole("link", { name: "Add job" })).toHaveAttribute("href", "/jobs/new");
     // The lead line counts the jobs already over budget (D5).
     await expect(page.getByText(/^(\d+ jobs? over budget|No jobs over budget)$/)).toBeVisible();
@@ -65,10 +65,25 @@ test.describe("Jobs list (manager)", () => {
     expect(box.height).toBeGreaterThanOrEqual(48);
   });
 
-  test("a finished job says all its stages are done, not that none started (i1-F4)", async ({ page }) => {
+  test("a finished job says all its stages are done, or that it went over; never that none started (i1-F4, R9)", async ({ page }) => {
     await signInAs(page, "manager", "/jobs?status=complete");
-    await expect(jobRows(page).first()).toContainText("All stages done");
     await expect(page.getByText("No stage started")).toHaveCount(0);
+    for (const row of await jobRows(page).all()) await expect(row).toContainText(/All stages done|over/);
+  });
+
+  test("one rule says over: the headline counts the rows that carry an over line (R9: Wong by stage)", async ({ page }) => {
+    await signInAs(page, "manager");
+    await expect(page.getByText("1 job over budget", { exact: true })).toBeVisible();
+    await expect(jobRows(page).filter({ hasText: / is \$[\d,]+\.\d{2} over/ })).toHaveCount(1);
+    await expect(jobRows(page).filter({ hasText: "Wong job" }).getByText("Clean-up is $100.00 over")).toBeVisible();
+  });
+
+  test("a finished job over its labour budget gets its line (R9: Hunter, $2,120.00 of $2,000.00)", async ({ page }) => {
+    await signInAs(page, "manager", "/jobs?status=complete");
+    await page.getByRole("searchbox", { name: "Search jobs" }).fill("Hunter job");
+    const hunter = jobRows(page).filter({ hasText: "Avalon leak repair" });
+    await expect(hunter.getByText("Labour is $120.00 over budget")).toBeVisible();
+    await expect(hunter.getByText("Complete", { exact: true })).toBeVisible();
   });
 
   test("the filter changes the list and the address, and says so when there are none", async ({ page }) => {
@@ -77,7 +92,7 @@ test.describe("Jobs list (manager)", () => {
     await expect(page).toHaveURL(/\/jobs\?status=on_hold$/);
     await expect(cards(page)).toHaveCount(1);
     await expect(cards(page).first()).toContainText("Kelly");
-    await expect(jobRows(page).first().getByText("On hold", { exact: true })).toBeVisible();
+    await expect(jobRows(page).first().getByText(/^On hold(: .+)?$/)).toBeVisible();
     await page.getByRole("radio", { name: "Quoted" }).click();
     await expect(page.getByText("No quoted jobs.")).toBeVisible();
     await expect(cards(page)).toHaveCount(0);

@@ -21,30 +21,32 @@ type Item = { row: ProjectRowForeman; money: ProjectRowManager | null };
 
 /** The one status line: the alert with its icon, or a chip and the current stages. */
 function StatusLine({ line }: { line: JobLine }) {
-  if (line.alert) {
-    const over = line.alert.tone === "over";
-    const Glyph = over ? WarningCircle : WarningDiamond;
-    return (
-      <span data-job-status="" className={cx("flex items-start gap-1.5 text-meta", over ? "text-over" : "text-watch")}>
-        <Glyph size={20} aria-hidden="true" className="shrink-0" />
-        <span className="[overflow-wrap:anywhere]">{line.alert.text}</span>
-      </span>
-    );
-  }
+  const over = line.alert?.tone === "over";
+  const Glyph = over ? WarningCircle : WarningDiamond;
   return (
     <span data-job-status="" className="flex flex-wrap items-center gap-x-2 text-meta text-ink">
       {line.chip ? <StatusChip plain status={line.chip.status} reason={line.chip.reason} /> : null}
+      {line.alert ? (
+        <span className={cx("flex items-start gap-1.5", over ? "text-over" : "text-watch")}>
+          <Glyph size={20} aria-hidden="true" className="shrink-0" />
+          <span className="[overflow-wrap:anywhere]">{line.alert.text}</span>
+        </span>
+      ) : null}
       {line.text ? <span className="[overflow-wrap:anywhere]">{line.text}</span> : null}
     </span>
   );
 }
 
-/** Labour so far against its budget: the row's one figure. */
-function LabourFigure({ money }: { money: ProjectRowManager }) {
+/** Labour so far against its budget: the row's one figure. On a phone it says what the pair is ("spent of $4,300.00 budget"); the table's header does that. */
+function LabourFigure({ money, labelled = false }: { money: ProjectRowManager; labelled?: boolean }) {
   return (
     <span className="flex items-baseline justify-end gap-1.5 whitespace-nowrap">
       <span className="text-figure num text-ink">{formatMoney(money.labourActualCents)}</span>
-      <span className="text-meta text-ink">of {formatMoney(money.labourBudgetCents)}</span>
+      <span className="text-meta text-ink">
+        {labelled ? "spent of " : "of "}
+        {formatMoney(money.labourBudgetCents)}
+        {labelled ? " budget" : ""}
+      </span>
     </span>
   );
 }
@@ -65,9 +67,9 @@ function PhoneRow({ item }: { item: Item }) {
         </span>
         <CaretRight size={24} aria-hidden="true" className="mt-0.5 shrink-0 text-ink-2" />
       </span>
-      <StatusLine line={jobLine({ ...row, alert: money?.alert, alertStageName: money?.alertStageName })} />
+      <StatusLine line={jobLine({ ...row, alert: money?.alert, alertStageName: money?.alertStageName, over: money?.over })} />
       <TapeBar label={`${row.name} progress`} percent={whole(row.pctBp)} />
-      {money ? <LabourFigure money={money} /> : null}
+      {money ? <LabourFigure money={money} labelled /> : null}
     </Link>
   );
 }
@@ -101,7 +103,7 @@ function JobsTable({ items, today }: { items: Item[]; today: string }) {
               >
                 <KeepTogether text={row.name} />
               </Link>
-              <StatusLine line={jobLine({ ...row, alert: money?.alert, alertStageName: money?.alertStageName })} />
+              <StatusLine line={jobLine({ ...row, alert: money?.alert, alertStageName: money?.alertStageName, over: money?.over })} />
             </td>
             <td className={TD}>
               <span className="text-figure num text-ink">{whole(row.pctBp)}%</span>

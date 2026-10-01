@@ -341,6 +341,16 @@ input[type="date"] {
   font-size: inherit;
 }
 input[type="date"]::-webkit-datetime-edit,
-input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+input[type="date"]::-webkit-datetime-edit-day-field,
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-year-field,
+input[type="date"]::-webkit-datetime-edit-text {
   font-family: inherit;
+  font-variant-numeric: normal;
+}
+/* The value starts where a text field's value starts: the browser pads the edit area a few pixels in by default. */
+input[type="date"]::-webkit-datetime-edit,
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
 }

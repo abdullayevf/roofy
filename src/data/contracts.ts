@@ -401,7 +401,12 @@ export interface ProjectRowManager extends ProjectRowForeman {
   alert: BudgetAlertDto | null;
   /** The stage that alert belongs to: its `byCents` is that stage's, not the job's. */
   alertStageName: string | null;
+  /** Over budget by the one rule (`jobOver` in the domain): the job's labour as a whole, or its worst stage. */
+  over: JobOverDto | null;
 }
+
+/** What makes a job over budget: `labour` = the job's labour as a whole; `stage` = one stage (named). */
+export type JobOverDto = { kind: "labour"; byCents: Cents } | { kind: "stage"; stageName: string; byCents: Cents };
 
 export type ProjectList =
   | { view: "manager"; access: Access; rows: ProjectRowManager[] }
