@@ -77,7 +77,7 @@ test.describe("Jobs list (manager)", () => {
     await expect(page).toHaveURL(/\/jobs\?status=on_hold$/);
     await expect(cards(page)).toHaveCount(1);
     await expect(cards(page).first()).toContainText("Kelly");
-    await expect(cards(page).first().getByText("On hold", { exact: true })).toBeVisible();
+    await expect(jobRows(page).first().getByText("On hold", { exact: true })).toBeVisible();
     await page.getByRole("radio", { name: "Quoted" }).click();
     await expect(page.getByText("No quoted jobs.")).toBeVisible();
     await expect(cards(page)).toHaveCount(0);

@@ -73,7 +73,8 @@ test.describe("New job", () => {
     await expect(done).toContainText(/Smith job — Ryde carport roof is ready, with \d+ stages\./);
     await page.getByRole("link", { name: "Back to jobs" }).last().click();
     await expect(page).toHaveURL(/\/jobs$/);
-    const card = page.locator('[data-screen="jobs"] a[href^="/jobs/"]:not([href="/jobs/new"]):visible').filter({ hasText: "Ryde carport roof" });
+    // A phone row is one link; a desktop table row has the link on the name only, so find the row, not the link.
+    const card = page.locator('[data-screen="jobs"] [data-job-row]:visible').filter({ hasText: "Ryde carport roof" });
     await expect(card).toBeVisible();
     await expect(card.getByText("No stage started")).toBeVisible();
   });
