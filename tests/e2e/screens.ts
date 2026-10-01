@@ -88,7 +88,7 @@ export type ScreenSpec = {
   lightOnly?: boolean;
   /** Skip the extra installed-mode, landscape, tablet and keyboard captures. */
   noExtras?: boolean;
-  /** Labels of buttons pressed in order once the page has loaded, before the shot (a save, then "Log another stage"). */
+  /** Labels of buttons pressed in order once the page has loaded, before the shot (a save, then "Log another stage"); "radio:No work" presses a switch option. */
   steps?: string[];
   /** Cut the network after the page has loaded and before `steps`, so a save is kept on the phone. */
   goOffline?: boolean;
@@ -278,6 +278,40 @@ export const SCREENS: ScreenSpec[] = [
     states: ["normal"],
     roles: ["manager"],
     steps: ["Save progress"],
+    viewports: ["iphone"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // Jake ticked for rain, with the reason chosen: the date on its rule, Save no work ready.
+    id: "log-no-work-filled",
+    group: "field-2",
+    route: `/log/no-work?crew=${meta.crew.jake}&reason=rain`,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // Jake already has a log today (saved on the grid, then Log > No work): his row is off with the reason.
+    id: "log-no-work-blocked",
+    group: "field-2",
+    route: `/log?project=${meta.projects.smith}&stage=${meta.stages.smithSheetInstall}&crew=${meta.crew.jake}`,
+    states: ["normal"],
+    roles: ["manager"],
+    steps: ["Save day", "radio:No work"],
+    viewports: ["iphone"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    id: "log-no-work-saved",
+    group: "field-2",
+    route: `/log/no-work?crew=${meta.crew.jake}&reason=rain`,
+    states: ["normal"],
+    roles: ["manager"],
+    steps: ["Save no work"],
     viewports: ["iphone"],
     lightOnly: true,
     noExtras: true,

@@ -34,13 +34,43 @@ test.describe("Progress entry", () => {
     await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "30");
   });
 
+  test("the unit stays blank until a stage is chosen, and the tape previews the total once a quantity is typed", async ({ page }) => {
+    await signInAs(page, "manager");
+    await expect(page.getByText("m²", { exact: true })).toHaveCount(0);
+    await page.getByRole("radiogroup", { name: "Recent stages" }).getByRole("radio", { name: /Sheet install/ }).first().click();
+    await expect(page.getByText("m²", { exact: true })).toBeVisible();
+    await page.getByLabel("Quantity done").fill("120");
+    await expect(page.getByText("240 of 400 m² after this")).toBeVisible();
+    await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "60");
+  });
+
+  test("the disabled Save names only what is missing", async ({ page }) => {
+    await signInAs(page, "manager");
+    const bar = page.locator('[data-slot="primary-action"]');
+    await expect(bar).toContainText("Choose a stage, type how much was done and tick at least one person.");
+    await page.getByRole("radiogroup", { name: "Recent stages" }).getByRole("radio", { name: /Sheet install/ }).first().click();
+    await expect(bar).toContainText("Type how much was done and tick at least one person.");
+    await page.getByLabel("Quantity done").fill("120");
+    await expect(bar).toContainText("Tick at least one person.");
+  });
+
+  test("the crew order is fixed once the job is chosen: ticking people does not move rows", async ({ page }) => {
+    await signInAs(page, "manager");
+    await page.getByRole("radiogroup", { name: "Recent stages" }).getByRole("radio", { name: /Sheet install/ }).first().click();
+    const names = () => page.locator('[data-screen="log-progress"] button[aria-pressed]').allInnerTexts();
+    const before = await names();
+    await chip(page, /^Sam\b/).click();
+    await chip(page, /^Dima\b/).click();
+    expect(await names()).toEqual(before);
+  });
+
   test("120 m² split equally between two people shows 60 m² each and saves; the tape moves to 60%", async ({ page }) => {
     await signInAs(page, "manager");
     await page.getByRole("radiogroup", { name: "Recent stages" }).getByRole("radio", { name: /Sheet install/ }).first().click();
     await page.getByLabel("Quantity done").fill("120");
     await chip(page, /^Sam\b/).click();
     await chip(page, /^Dima\b/).click();
-    await expect(page.getByText("Sam 60 m², Dima 60 m²")).toBeVisible();
+    await expect(page.getByText("60 m²", { exact: true })).toHaveCount(2);
     await page.getByRole("button", { name: "Save progress" }).click();
     const status = page.getByRole("status").filter({ hasText: "Logged" });
     await expect(status).toContainText("120 m² on Sheet install, Sam and Dima");
@@ -64,9 +94,14 @@ test.describe("Progress entry", () => {
     await page.getByLabel("Dima's share").fill("32");
     await expect(page.getByText("Shares must add up to 100%. Currently 92%.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Save progress" })).toBeDisabled();
+    // The bar's line states it, and both share boxes take the `over` border.
+    await expect(page.locator('[data-slot="primary-action"]')).toContainText("Shares must add up to 100%. Currently 92%.");
+    await expect(page.getByLabel("Sam's share")).toHaveAttribute("aria-invalid", "true");
+    await expect(page.getByLabel("Dima's share")).toHaveAttribute("aria-invalid", "true");
     await page.getByLabel("Dima's share").fill("40");
     await expect(page.getByText("Shares must add up to 100%.")).toHaveCount(0);
-    await expect(page.getByText("Sam 72 m², Dima 48 m²")).toBeVisible();
+    await expect(page.getByText("72 m²", { exact: true })).toBeVisible();
+    await expect(page.getByText("48 m²", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Save progress" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Logged" })).toBeVisible();
   });
@@ -132,7 +167,7 @@ test.describe("Progress entry", () => {
     await page.getByLabel("Quantity done").fill("120");
     await chip(page, /^Sam\b/).click();
     await chip(page, /^Dima\b/).click();
-    await expect(page.getByText("Sam 60 m², Dima 60 m²")).toBeVisible();
+    await expect(page.getByText("60 m²", { exact: true })).toHaveCount(2);
     await page.getByRole("button", { name: "Save progress" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Logged" })).toBeVisible();
     expect(await page.locator("main").innerText()).not.toMatch(/\$\d|\brate\b/i);

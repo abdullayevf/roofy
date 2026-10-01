@@ -215,8 +215,10 @@ async function captureOne(opts: {
   // Screens whose shot is an outcome press their buttons first (a save, then "Log another stage").
   if (screen.goOffline) await context.setOffline(true);
   for (const step of screen.steps ?? []) {
-    await page.getByRole("button", { name: step, exact: true }).click();
-    await page.waitForTimeout(300);
+    // "radio:No work" presses a segmented choice instead of a button.
+    const radio = step.startsWith("radio:");
+    await page.getByRole(radio ? "radio" : "button", { name: radio ? step.slice(6) : step, exact: true }).click();
+    await page.waitForTimeout(radio ? 1200 : 300);
   }
 
   const fileName = `${label}.png`;

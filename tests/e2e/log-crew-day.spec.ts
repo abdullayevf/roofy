@@ -19,7 +19,7 @@ test.describe("Log crew-day grid", () => {
     await expect(page.getByText("Today, Mon 28 Sep")).toBeVisible();
     await expect(page.getByRole("button", { name: "Same as yesterday" })).toBeEnabled();
     await expect(page.getByRole("button", { name: "Save day" })).toBeDisabled();
-    await expect(page.getByText("Choose a job, a stage and at least one person.")).toBeVisible();
+    await expect(page.getByText("Choose a job and a stage, and tick at least one person.")).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
@@ -37,7 +37,7 @@ test.describe("Log crew-day grid", () => {
         expect(rowBox.y + rowBox.height).toBeLessThanOrEqual(barBox.y);
       };
       // Disabled with its reason line (the tallest normal state), then enabled.
-      await expect(page.getByText("Choose a job, a stage and at least one person.")).toBeVisible();
+      await expect(page.getByText("Choose a job and a stage, and tick at least one person.")).toBeVisible();
       await clears();
       await page.getByRole("button", { name: "Same as yesterday" }).click();
       await expect(page.getByRole("button", { name: "Save day" })).toBeEnabled();
@@ -111,9 +111,43 @@ test.describe("Log crew-day grid", () => {
   test("on a chosen job, crew who logged there in the last 7 days come first, then the rest A to Z", async ({ page }) => {
     await signInAs(page, "manager", `/log?project=${meta.projects.smith}`);
     const names = await page.locator('[data-screen="log"] section button[aria-pressed]').evaluateAll((els) => els.map((e) => (e.textContent ?? "").split(/Day|Hourly|Hours only|m²|lm|Each/)[0]!.trim()));
-    expect(names.slice(0, 5)).toEqual(["Ben", "Dima", "Jake", "Josh", "Sam"]);
+    expect(names.slice(0, 5).sort()).toEqual(["Ben", "Dima", "Jake", "Josh", "Sam"]);
     const rest = names.slice(5);
     expect(rest).toEqual([...rest].sort((a, b) => a.localeCompare(b)));
+  });
+
+  test("after Same as yesterday, yesterday's crew are on top and a tick or a stage pick never reorders", async ({ page }) => {
+    await signInAs(page, "manager");
+    await page.getByRole("button", { name: "Same as yesterday" }).click();
+    const names = () => page.locator('[data-screen="log"] section button[aria-pressed]').evaluateAll((els) => els.map((e) => (e.textContent ?? "").split(/Day|Hourly|Hours only|m²|lm|Each|Paid/)[0]!.trim()));
+    const before = await names();
+    expect(before.slice(0, 2).sort()).toEqual(["Dima", "Sam"]);
+    await page.getByRole("button", { name: /^Ben\s/ }).click();
+    expect(await names()).toEqual(before);
+  });
+
+  test("the hint under Save day names only what is missing", async ({ page }) => {
+    await signInAs(page, "manager");
+    const bar = page.locator('[data-slot="primary-action"]');
+    await expect(bar).toContainText("Choose a job and a stage, and tick at least one person.");
+    await page.getByLabel("Job", { exact: true }).selectOption({ index: 1 });
+    await expect(bar).not.toContainText("Choose a job");
+    await expect(bar).toContainText("tick at least one person.", { ignoreCase: true });
+    await page.getByRole("button", { name: "Same as yesterday" }).click();
+    await expect(page.getByRole("button", { name: "Save day" })).toBeEnabled();
+    await expect(bar).not.toContainText("tick", { ignoreCase: true });
+    const size = await page.getByText("Choose a job and a stage").count();
+    expect(size).toBe(0);
+  });
+
+  test("a ticked person's half-day and hours controls sit in the same tinted band as the row", async ({ page }) => {
+    await signInAs(page, "manager");
+    await page.getByRole("button", { name: "Same as yesterday" }).click();
+    const sam = page.getByRole("button", { name: /^Sam\s/ });
+    // The row's button and its controls share one tinted wrapper.
+    const band = sam.locator("xpath=..");
+    expect(await band.evaluate((e) => getComputedStyle(e).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
+    await expect(band.getByRole("radio", { name: "½ day" }).first()).toBeVisible();
   });
 
   test("a foreman is offered only the crew who have worked on their jobs", async ({ page }) => {
@@ -162,6 +196,20 @@ test.describe("Log crew-day grid", () => {
     await expect(page.getByRole("status").filter({ hasText: "Saved on this device:" })).toBeVisible();
     await expect(page.getByRole("link", { name: "1 to send" })).toBeVisible();
     await context.setOffline(false);
+  });
+
+  test("a foreman with no jobs can go back to Home", async ({ page }) => {
+    await signInAs(page, "foreman", "/log?demo=empty");
+    await expect(page.getByText("You can log once a manager adds you to a job.")).toBeVisible();
+    await page.getByRole("link", { name: "Go to Home" }).click();
+    await expect(page).toHaveURL(/\/(\?|$)/);
+  });
+
+  test("the error card carries the warning icon in the over colour", async ({ page }) => {
+    await signInAs(page, "manager", "/log?demo=error");
+    const icon = page.getByRole("alert").locator("svg").first();
+    await expect(icon).toBeVisible();
+    await expect(icon).toHaveClass(/text-over/);
   });
 
   test("?demo=noperm shows no access", async ({ page }) => {
@@ -286,11 +334,13 @@ test.describe("Log crew-day grid", () => {
       expect(await bar(page).evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
     });
 
-    test("on a phone on its side (under 500 px tall) it is in the page, not pinned", async ({ page }, testInfo) => {
+    test("on a phone on its side (under 500 px tall) it stays pinned but compact, with no helper line", async ({ page }, testInfo) => {
       test.skip(!isPhone(testInfo.project.name), "phones only");
       await page.setViewportSize({ width: 844, height: 390 });
       await signInAs(page, "manager");
-      expect(await bar(page).evaluate((el) => getComputedStyle(el).position)).toBe("static");
+      expect(await bar(page).evaluate((el) => getComputedStyle(el).position)).toBe("fixed");
+      await expect(bar(page).locator(".pin-hint")).toBeHidden();
+      expect((await bar(page).boundingBox())!.height).toBeLessThan(100);
     });
 
     test("on a tablet it is as wide as the content column and no wider", async ({ page }, testInfo) => {

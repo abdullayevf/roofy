@@ -16,11 +16,10 @@ test.describe("No-work marker", () => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "manager");
     await expect(page.getByRole("radio", { name: "No work" })).toBeChecked();
-    await expect(page.getByLabel("Date")).toHaveValue("today");
-    await expect(page.getByLabel("Date").locator("option:checked")).toHaveText("Today, Mon 28 Sep");
-    await expect(page.getByRole("radio", { name: "Yesterday" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
-    await expect(page.getByText("Choose who didn't work and why.")).toBeVisible();
+    await expect(page.getByText("Today, Mon 28 Sep")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Use yesterday" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save no work", exact: true })).toBeDisabled();
+    await expect(page.getByText("Tick at least one person and choose why.")).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
@@ -36,12 +35,12 @@ test.describe("No-work marker", () => {
 
   test("an address with the day, people, reason and note opens the form filled in and sends that day", async ({ page }) => {
     await signInAs(page, "manager", `/log/no-work?date=2026-09-27&crew=${meta.crew.jake}&reason=sick&note=Site+flooded`);
-    await expect(page.getByLabel("Date").locator("option:checked")).toHaveText("Yesterday, Sun 27 Sep");
+    await expect(page.getByText("Yesterday, Sun 27 Sep")).toBeVisible();
     await expect(page.getByRole("button", { name: /^Jake\b/ })).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByRole("radio", { name: "Sick" })).toBeChecked();
     await expect(page.getByLabel("Note (optional)")).toHaveValue("Site flooded");
     const push = page.waitForRequest((r) => r.url().endsWith("/api/sync/push"));
-    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.getByRole("button", { name: "Save no work", exact: true }).click();
     const body = (await push).postData() ?? "";
     expect(body).toContain('"date":"2026-09-27"');
     expect(body).toContain('"note":"Site flooded"');
@@ -51,11 +50,11 @@ test.describe("No-work marker", () => {
     await signInAs(page, "manager");
     await page.getByRole("button", { name: /^Jake\b/ }).click();
     await page.getByRole("radio", { name: "Rain" }).click();
-    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.getByRole("button", { name: "Save no work", exact: true }).click();
     await expect(page.getByRole("status").filter({ hasText: "Saved" })).toContainText("Jake marked as rain on Mon 28 Sep");
     await expect(page.getByTestId("chalk-line")).toHaveClass(/w-full/);
     await page.getByRole("button", { name: "Mark someone else" }).click();
-    await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Save no work", exact: true })).toBeDisabled();
   });
 
   test("Yesterday moves the day and keeps who and why", async ({ page }) => {
@@ -63,8 +62,8 @@ test.describe("No-work marker", () => {
     await page.getByRole("button", { name: /^Jake\b/ }).click();
     await page.getByRole("radio", { name: "Sick" }).click();
     await page.getByLabel("Note (optional)").fill("Site flooded");
-    await page.getByLabel("Date").selectOption("yesterday");
-    await expect(page.getByLabel("Date").locator("option:checked")).toHaveText("Yesterday, Sun 27 Sep");
+    await page.getByRole("button", { name: "Use yesterday" }).click();
+    await expect(page.getByText("Yesterday, Sun 27 Sep")).toBeVisible();
     await expect(page.getByLabel("Note (optional)")).toHaveValue("Site flooded");
     await expect(page.getByRole("button", { name: /^Jake\b/ })).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByRole("radio", { name: "Sick" })).toBeChecked();
@@ -86,7 +85,7 @@ test.describe("No-work marker", () => {
     await signInAs(page, "foreman");
     await page.getByRole("button", { name: /^Jake\b/ }).click();
     await page.getByRole("radio", { name: "Rain" }).click();
-    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.getByRole("button", { name: "Save no work", exact: true }).click();
     await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog, skip: { keyboard: true } });
     await expectNoMoney(page, ["/log/no-work", "/log/no-work?demo=empty", "/log/no-work?demo=loading", "/log/no-work?demo=offline", "/log/no-work?demo=waiting", "/log/no-work?demo=noperm"]);
@@ -104,6 +103,7 @@ test.describe("No-work marker", () => {
     await expect(page.getByText("No crew yet. Add your first crew member.")).toBeVisible();
     await signInAs(page, "foreman", "/log/no-work?demo=empty");
     await expect(page.getByText("You can log once a manager adds you to a job.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Go to Home" })).toBeVisible();
   });
 
   test("?demo=error keeps the title and switch and says so in the form area; ?demo=noperm shows no access", async ({ page }) => {

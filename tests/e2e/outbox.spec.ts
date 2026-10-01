@@ -35,26 +35,28 @@ test.describe("Outbox", () => {
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
-  test("a status is an icon and a word with no chip border, except Needs attention", async ({ page }) => {
+  test("a status is an icon and a word with no chip border, and Needs attention has none inside its own section", async ({ page }) => {
     await signInAs(page, "manager", "/outbox?demo=mixed");
     const border = (name: string) =>
       page.locator('[data-screen="outbox"] li').getByText(name, { exact: true }).first().evaluate((el) => getComputedStyle(el.parentElement!).borderTopWidth);
     for (const word of ["Waiting", "Sending", "Sent"]) expect(await border(word)).toBe("0px");
-    expect(await border("Needs attention")).not.toBe("0px");
+    await expect(page.locator('[data-screen="outbox"] li').getByText("Needs attention", { exact: true })).toHaveCount(0);
   });
 
-  test("mixed: all four groups, the chip sits under the label on a phone, the badge is not repeated on the page", async ({ page }, testInfo) => {
+  test("mixed: all four groups, one grouped block per group, the status top right at every width, the badge is not repeated on the page", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "manager", "/outbox?demo=mixed");
     for (const title of ["Needs attention", "Sending", "Waiting", "Sent"])
       await expect(page.getByRole("heading", { level: 2, name: new RegExp(`^${title} \\(1\\)`) })).toBeVisible();
     await expect(page.getByRole("link", { name: /to send|needs attention/ })).toHaveCount(0);
-    if (isPhone(testInfo.project.name) && page.viewportSize()!.width < 600) {
-      const rows = page.locator('[data-screen="outbox"] li');
-      const label = (await rows.nth(1).getByText("Progress", { exact: true }).boundingBox())!;
-      const status = (await rows.nth(1).getByText("Sending", { exact: true }).boundingBox())!;
-      expect(status.y).toBeGreaterThan(label.y + label.height - 1);
-    }
+    await expect(page.locator('[data-screen="outbox"] ul')).toHaveCount(4);
+    const row = page.locator('[data-screen="outbox"] li').nth(1);
+    const label = (await row.getByText("Progress", { exact: true }).boundingBox())!;
+    const status = (await row.getByText("Sending", { exact: true }).boundingBox())!;
+    expect(status.y).toBeLessThan(label.y + label.height); // beside the label, not under it
+    expect(status.x).toBeGreaterThan(label.x + label.width);
+    const block = (await row.boundingBox())!;
+    expect(status.x + status.width).toBeGreaterThan(block.x + block.width - 24); // at the right edge
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
@@ -67,7 +69,8 @@ test.describe("Outbox", () => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "manager", "/outbox?demo=attention");
     await expect(page.getByRole("heading", { level: 2, name: /^Needs attention \(1\)/ })).toBeVisible();
-    await expect(page.getByText("You don't have access to this job any more. Ask your manager.")).toBeVisible();
+    await expect(page.getByText("Smith job was archived. Pick another job.")).toBeVisible();
+    await expect(page.getByText("Ask your manager")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Edit and resend" })).toHaveAttribute("href", /^\/log\?date=2026-09-28&project=.+&stage=.+&crew=.+&ex=.+/);
     await expect(page.getByRole("button", { name: "Discard", exact: true })).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
@@ -88,6 +91,7 @@ test.describe("Outbox", () => {
   test("a foreman has the Outbox tab and sees the same rows with no money", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "foreman", "/outbox?demo=attention");
+    await expect(page.getByText("You don't have access to this job any more. Ask your manager.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Edit and resend" })).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
     await expectNoMoney(page, ["/outbox", "/outbox?demo=empty", "/outbox?demo=loading", "/outbox?demo=offline", "/outbox?demo=waiting", "/outbox?demo=attention", "/outbox?demo=mixed", "/outbox?demo=noperm"]);

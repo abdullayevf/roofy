@@ -7,7 +7,7 @@ test("Fix a rejected crew day and resend it: badge, Edit and resend, a different
   const taps = new Taps("Outbox needs attention");
   await taps.tap(page.getByRole("link", { name: "1 entry needs attention" }));
   await expect(page).toHaveURL(/\/outbox/);
-  await expect(page.getByText("You don't have access to this job any more. Ask your manager.")).toBeVisible();
+  await expect(page.getByText("Smith job was archived. Pick another job.")).toBeVisible();
   await taps.tap(page.getByRole("link", { name: "Edit and resend" }));
   await expect(page.getByRole("button", { name: /^Sam\s/ })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("button", { name: /^Dima\s/ })).toHaveAttribute("aria-pressed", "true");

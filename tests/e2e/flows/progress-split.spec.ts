@@ -17,7 +17,8 @@ for (const role of ["manager", "foreman"]) {
     await quantity.fill("120");
     await taps.tap(page.getByRole("button", { name: /^Sam\b/ }));
     await taps.tap(page.getByRole("button", { name: /^Dima\b/ }));
-    await expect(page.getByText("Sam 60 m², Dima 60 m²")).toBeVisible();
+    await expect(page.getByText("60 m²", { exact: true })).toHaveCount(2);
+    await expect(page.getByText("240 of 400 m² after this")).toBeVisible();
     await taps.tap(page.getByRole("button", { name: "Save progress" }));
     const status = page.getByRole("status").filter({ hasText: "Logged" });
     await expect(status.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "60");

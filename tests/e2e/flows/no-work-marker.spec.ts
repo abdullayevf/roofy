@@ -8,11 +8,11 @@ for (const role of ["manager", "foreman"]) {
     const taps = new Taps("No-work marker");
     await taps.tap(page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Log" }));
     await taps.tap(page.getByRole("radio", { name: "No work" }));
-    await expect(page.getByLabel("Date").locator("option:checked")).toHaveText("Today, Mon 28 Sep");
+    await expect(page.getByText("Today, Mon 28 Sep")).toBeVisible();
     await page.waitForLoadState("networkidle"); // the page is interactive before the first tap
     await taps.tap(page.getByRole("button", { name: /^Jake\b/ }));
     await taps.tap(page.getByRole("radio", { name: "Rain" }));
-    await taps.tap(page.getByRole("button", { name: "Save", exact: true }));
+    await taps.tap(page.getByRole("button", { name: "Save no work", exact: true }));
     await expect(page.getByRole("status").filter({ hasText: "Saved" })).toContainText("Jake marked as rain");
     expect(taps.count).toBe(5);
     taps.assertWithin(5);
