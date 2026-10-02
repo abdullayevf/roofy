@@ -1,6 +1,7 @@
 import { dayKey } from "@/domain/attendance";
 import { addDays, eachDay } from "@/domain/dates";
 import { sum } from "@/domain/money";
+import { jobOver } from "@/domain/progress";
 import type { PayPeriod } from "@/domain/periods";
 import { ratioBp } from "@/domain/ratios";
 import type { Unit } from "@/domain/types";
@@ -207,6 +208,12 @@ export function createHomeService(c: FakeContext): HomeService {
           daysSinceLastLog: f.daysSinceLastLog,
           alert: f.alert,
           alertStageName: worst?.stage.name ?? null,
+          over:
+            jobOver(
+              f.labourActualCents,
+              f.labourBudgetCents,
+              f.stages.map((s) => ({ name: s.stage.name, actualCents: s.actualCents, budgetCents: s.stage.labourBudgetCents })),
+            ) !== null,
           alertStageForecastCents: worst ? (worst.forecastCents ?? worst.expectedCents) : null,
           alertStageBudgetCents: worst?.stage.labourBudgetCents ?? null,
           forecastBp: ratioBp(f.labourExpectedCents, f.labourBudgetCents),

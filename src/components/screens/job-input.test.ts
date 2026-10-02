@@ -15,6 +15,7 @@ import {
   proposalSource,
   refusalBarMessage,
   renumber,
+  stageEditState,
   statusEmptyMessage,
 } from "./job-input";
 
@@ -271,6 +272,42 @@ describe("jobSaveState (RR3)", () => {
   it("a finish before the start is not ready even when something changed", () => {
     const v = { ...base, startDate: "2026-10-10", targetFinish: "2026-10-01" };
     expect(jobSaveState(v, base, open)).toEqual({ ready: false, hint: "Move the target finish to after the start." });
+  });
+});
+
+describe("a money field that can't be read never saves as $0.00", () => {
+  const open = { isNew: true, stagesAccepted: true };
+  it("an unreadable contract value blocks Create job and the sentence names it, ahead of anything else", () => {
+    expect(jobSaveState({ ...base, contractCents: "unreadable" }, base, open)).toEqual({ ready: false, hint: "Fix the contract value." });
+    expect(jobSaveState({ ...base, clientId: "", contractCents: "unreadable" }, base, open).hint).toBe("Fix the contract value.");
+  });
+  it("an unreadable contract value blocks Save changes on an edit, though it reads as a change", () => {
+    const edit = { isNew: false, stagesAccepted: false };
+    expect(jobSaveState({ ...base, contractCents: "unreadable" }, { ...base, contractCents: 5_000_000 }, edit)).toEqual({
+      ready: false,
+      hint: "Fix the contract value.",
+    });
+  });
+  it("a blank contract value is not unreadable: it is optional", () => {
+    expect(jobSaveState({ ...base, contractCents: null }, base, open)).toEqual({ ready: true, hint: undefined });
+  });
+});
+
+describe("stageEditState (Accept stages while editing)", () => {
+  const named = (name: string, unreadable?: { labour?: string; materials?: string }) => ({ name, unreadable });
+  it("ready when every stage has a name and every budget can be read", () => {
+    expect(stageEditState([named("Strip"), named("Sheet install")])).toEqual({ ready: true, hint: undefined });
+  });
+  it("needs at least one stage, and a name on each", () => {
+    expect(stageEditState([])).toEqual({ ready: false, hint: "Add at least one stage." });
+    expect(stageEditState([named("Strip"), named("  ")])).toEqual({ ready: false, hint: "Give every stage a name." });
+  });
+  it("an unreadable budget blocks Accept stages and the sentence names the stage and the budget", () => {
+    expect(stageEditState([named("Strip"), named("Sheet install", { labour: "1.2.3" })])).toEqual({
+      ready: false,
+      hint: "Fix stage 2's labour budget.",
+    });
+    expect(stageEditState([named("", { materials: "abc" })]).hint).toBe("Fix stage 1's materials budget.");
   });
 });
 

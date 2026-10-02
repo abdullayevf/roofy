@@ -1036,6 +1036,8 @@ export interface ActiveJobRow {
   /** The worst stage alert on the job (pay rules §12 is per stage), with the stage it belongs to. */
   alert: BudgetAlertDto | null;
   alertStageName: string | null;
+  /** Over budget by the Jobs list's one rule (`jobOver` in the domain); a job only trending over is not. */
+  over: boolean;
   /** That stage's forecast labour and its labour budget (the stage line under the tape), null without an alert. */
   alertStageForecastCents: Cents | null;
   alertStageBudgetCents: Cents | null;

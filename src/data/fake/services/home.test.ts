@@ -87,6 +87,17 @@ describe("home (manager)", () => {
     expect(smith.currentStages.map((s) => [s.name, s.status])).toEqual([["Sheet install", "active"]]);
   });
 
+  it("an active job is over budget by the Jobs list's one rule (spec review 3: same words, same rule)", async () => {
+    const home = await managerHome();
+    const { data, actor } = fake("manager");
+    const list = await data.projects.list(actor, { status: "active" });
+    if (list.view !== "manager") throw new Error("expected the manager view");
+    const overIds = list.rows.filter((r) => r.over !== null).map((r) => r.id).sort();
+    expect(home.activeJobs.filter((j) => j.over).map((j) => j.projectId).sort()).toEqual(overIds);
+    // A job only trending over is not over budget.
+    for (const j of home.activeJobs) if (j.alert?.level === "trending" && !overIds.includes(j.projectId)) expect(j.over).toBe(false);
+  });
+
   it("the forecast marker is the job's expected labour ÷ its labour budget, for every job; the stage line has the stage's own figures", async () => {
     const home = await managerHome();
     const smith = home.activeJobs.find((j) => j.projectId === seed.meta.projects.smith)!;

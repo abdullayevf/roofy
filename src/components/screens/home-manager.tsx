@@ -134,8 +134,8 @@ export function HomeManagerBody({ home, role, outbox, deviceItems = [], offline 
       </div>
     );
   }
-  const flagged = home.activeJobs.filter((j) => j.alert !== null).length;
-  const trending = home.activeJobs.filter((j) => j.alert?.level === "trending").length;
+  // The Jobs list's rule and words: a job only trending over is in Needs attention, not in this count.
+  const over = home.activeJobs.filter((j) => j.over).length;
   const fixing = foremanHeadline({ jobs: [], crewCount: 0 }, deviceItems, home.today, Object.fromEntries(home.activeJobs.map((j) => [j.projectId, j.name])));
   const week = home.lastWeek;
   const pay = home.payPeriod;
@@ -158,10 +158,9 @@ export function HomeManagerBody({ home, role, outbox, deviceItems = [], offline 
             </Button>
           </>
         ) : null}
-        {flagged > 0 ? (
-          <a href="#needs-attention" className={cx("mt-2 block max-w-fit rounded-control", FOCUS)}>
-            <KeyFigure>{overBudgetFigure(flagged)}</KeyFigure>
-            {trending > 0 ? <span className="block text-body text-ink">Includes jobs trending over their labour budget.</span> : null}
+        {over > 0 ? (
+          <a href="#needs-attention" className={cx("mt-2 flex min-h-12 max-w-fit items-center rounded-control", FOCUS)}>
+            <KeyFigure>{overBudgetFigure(over)}</KeyFigure>
           </a>
         ) : null}
       </header>

@@ -110,11 +110,12 @@ test.describe("Home (manager)", () => {
     expect(new Set(xs).size).toBe(1);
   });
 
-  test("the key figure counts jobs over or trending over and jumps to Needs attention", async ({ page }) => {
+  test("the key figure counts jobs over budget by the Jobs list's rule (trending is not over) and jumps to Needs attention", async ({ page }) => {
     await signInAs(page, "manager");
     const link = page.getByRole("link", { name: /^\d+ jobs? over budget/ });
-    await expect(link.locator("p")).toHaveText(/^\d+ jobs? over budget$/);
-    await expect(link).toContainText("Includes jobs trending over their labour budget.");
+    // Same words, same rule: the seed's active jobs have one over budget (the Jobs list says the same); Sheet install and Repairs are only trending.
+    await expect(link.locator("p")).toHaveText("1 job over budget");
+    await expect(link).not.toContainText("trending");
     await expect(link).toHaveAttribute("href", "#needs-attention");
     // Directly under the title, above Needs attention.
     const [title, fig, section] = await Promise.all([
@@ -124,6 +125,8 @@ test.describe("Home (manager)", () => {
     ]);
     expect(fig!.y).toBeGreaterThan(title!.y);
     expect(fig!.y).toBeLessThan(section!.y);
+    // Without the trending line the figure alone is the link: still a 48 px target.
+    expect(fig!.height).toBeGreaterThanOrEqual(48);
     await expect(link.locator("p")).toHaveClass(/text-figure-xl/);
   });
 

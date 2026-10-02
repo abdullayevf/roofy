@@ -106,7 +106,7 @@ export function jobAlertText(
   return { tone: alert.level === "over" ? "over" : "watch", text };
 }
 
-/** Home's key figure: how many jobs are over budget (or trending over). */
+/** Home's and the Jobs list's key figure: how many jobs are over budget (domain `jobOver`; trending is not over). */
 export const overBudgetFigure = (n: number): string => `${n} ${n === 1 ? "job" : "jobs"} over budget`;
 
 /** "Sheet install, Flashings (paused: weather)" for a job's current stages. */

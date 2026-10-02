@@ -21,7 +21,7 @@ const prefill = (extra: Record<string, string> = {}) =>
   `/jobs/new?${new URLSearchParams({ client: smithClientId, type: "metal_reroof", name: "Smith job — Ryde carport roof", address: "14 Quarry Rd, Ryde", accepted: "1", ...extra })}`;
 
 test.describe("New job", () => {
-  test("opens blank with Create job off and one sentence naming everything still to do", async ({ page }, testInfo) => {
+  test("opens blank with Create job off and one sentence naming only the next thing to do", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "manager", "/jobs/new");
     await expect(page.getByRole("heading", { level: 1, name: "New job" })).toBeVisible();
@@ -122,6 +122,29 @@ test.describe("New job", () => {
     await page.getByRole("button", { name: "Accept stages" }).evaluate((el) => (el as HTMLElement).click());
     await expect(createJob(page)).toBeVisible();
     await expect(page.getByRole("listitem").filter({ hasText: "Final clean" })).toContainText("$1,250.00");
+  });
+
+  test("a stage budget that can't be read turns Accept stages off, names the stage, and keeps its text (spec review 1)", async ({ page }) => {
+    await signInAs(page, "manager", prefill());
+    await page.getByRole("button", { name: "Edit stages" }).click();
+    const stages = page.getByRole("group", { name: "Stages" });
+    await stages.getByRole("button", { expanded: false }).first().click();
+    const budget = page.getByLabel("Stage 1 labour budget");
+    await budget.fill("1.2.3");
+    // Still being typed: a script click on Accept commits it first and then refuses, never a $0.00 budget.
+    await page.getByRole("button", { name: "Accept stages" }).evaluate((el) => (el as HTMLElement).click());
+    const accept = page.getByRole("button", { name: "Accept stages" });
+    await expect(accept).toBeDisabled();
+    await expect(page.getByText("Fix stage 1's labour budget.")).toBeVisible();
+    await expect(page.getByText("Enter an amount in dollars and cents, like 1,482.00.")).toBeVisible();
+    // Closed and opened again, the row says so and the field still holds what was typed.
+    await stages.getByRole("button", { expanded: true }).click();
+    await expect(stages.getByRole("button").first()).toContainText("Fix the budget");
+    await stages.getByRole("button").first().click();
+    await expect(budget).toHaveValue("1.2.3");
+    await budget.fill("1,250");
+    await budget.blur();
+    await expect(accept).toBeEnabled();
   });
 
   test("a stage with no name can't be accepted", async ({ page }) => {
@@ -536,6 +559,27 @@ test.describe("Edit job", () => {
     await expect(page.getByRole("status")).toContainText("Your changes to Smith job — Ryde re-roof and gutters are saved.");
     await page.getByRole("link", { name: "Back to jobs" }).last().click();
     await expect(page.locator('[data-screen="jobs"] a[href^="/jobs/"]:not([href="/jobs/new"]):visible').filter({ hasText: "and gutters" })).toBeVisible();
+  });
+
+  test("a contract value that can't be read turns Save changes off, names it, and is never stored as $0.00 (spec review 1)", async ({ page }) => {
+    await signInAs(page, "manager", path);
+    const contract = page.getByLabel("Contract value (optional)");
+    await expect(contract).toHaveValue(/^\d{1,3}(,\d{3})*\.\d{2}$/);
+    const [before, name] = [await contract.inputValue(), await page.getByLabel("Job name").inputValue()];
+    expect(before).not.toBe("0.00");
+    const save = page.getByRole("button", { name: "Save changes", exact: true });
+    await page.getByLabel("Job name").fill(`${name} (mistyped contract)`);
+    await contract.fill(`${before}.0`);
+    // Still being typed: a script click on Save commits it first and then refuses.
+    await save.evaluate((el) => (el as HTMLElement).click());
+    await expect(save).toBeDisabled();
+    await expect(page.getByText("Fix the contract value.")).toBeVisible();
+    await expect(page.getByText("Enter an amount in dollars and cents, like 1,482.00.")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Changes saved" })).toHaveCount(0);
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByLabel("Contract value (optional)")).toHaveValue(before);
+    await expect(page.getByLabel("Job name")).toHaveValue(name);
   });
 
   test("the status can change and the job moves to that filter", async ({ page }) => {

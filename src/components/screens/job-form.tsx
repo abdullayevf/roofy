@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, type Dispatch, type SetStateAction } from "react";
+import { useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { CaretDown, CaretLeft, CaretUp, CheckCircle } from "@phosphor-icons/react";
 import type { ActionResult, Client, Id, JobType, ProjectStatus, StageDraft, StageProposal } from "@/data/contracts";
 import { createClient, createProject, updateProject } from "@/app/actions/projects";
 import { sum } from "@/domain/money";
+import type { Cents } from "@/domain/types";
 import { cx } from "@/lib/cx";
 import { formatMoney, formatQuantity } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -28,11 +30,16 @@ import {
   proposalSource,
   refusalBarMessage,
   renumber,
+  stageEditState,
   type JobFormValues,
 } from "./job-input";
 import { NEEDS_CONNECTION, useOnline } from "./use-online";
 
-type StageItem = { uid: number; draft: StageDraft };
+/** A stage being edited. `unreadable` keeps a budget's text as typed while it can't be read, so it never becomes $0.00. */
+type StageItem = { uid: number; draft: StageDraft; unreadable?: { labour?: string; materials?: string } };
+type Budget = "labour" | "materials";
+const BUDGET_KEY = { labour: "labourBudgetCents", materials: "materialsBudgetCents" } as const;
+const editView = (rows: StageItem[]) => rows.map((r) => ({ name: r.draft.name, unreadable: r.unreadable }));
 
 export type JobFormProps = {
   mode: "new" | "edit";
@@ -154,6 +161,15 @@ function StageEditor({ rows, onChange }: { rows: StageItem[]; onChange: Dispatch
   // Updates build on the latest rows, so a budget committed by a blur is not lost to the tap that caused the blur.
   const set = (uid: number, patch: Partial<StageDraft>) =>
     onChange((cur) => cur.map((r) => (r.uid === uid ? { ...r, draft: { ...r.draft, ...patch } } : r)));
+  // A budget that can't be read keeps its text (and the stage's last good amount) until it is fixed.
+  const setBudget = (uid: number, which: Budget, cents: Cents | null | "unreadable", text: string) =>
+    onChange((cur) =>
+      cur.map((r) => {
+        if (r.uid !== uid) return r;
+        const unreadable = { ...r.unreadable, [which]: cents === "unreadable" ? text : undefined };
+        return cents === "unreadable" ? { ...r, unreadable } : { ...r, unreadable, draft: { ...r.draft, [BUDGET_KEY[which]]: cents ?? 0 } };
+      }),
+    );
   // A field commits on blur; a tap on a button may not blur it (iOS), so commit before the open row changes.
   const commit = () => (document.activeElement as HTMLElement | null)?.blur();
   const toggle = (uid: number) => {
@@ -175,7 +191,9 @@ function StageEditor({ rows, onChange }: { rows: StageItem[]; onChange: Dispatch
               >
                 <span className="min-w-0 text-body-strong text-ink [overflow-wrap:anywhere]">{r.draft.name.trim() || "New stage"}</span>
                 <span className="flex shrink-0 items-center gap-2">
-                  {r.draft.labourBudgetCents > 0 ? <span className="whitespace-nowrap text-figure num text-ink">{formatMoney(r.draft.labourBudgetCents)}</span> : null}
+                  {r.unreadable?.labour !== undefined || r.unreadable?.materials !== undefined ? (
+                    <span className="text-meta text-over">Fix the budget</span>
+                  ) : r.draft.labourBudgetCents > 0 ? <span className="whitespace-nowrap text-figure num text-ink">{formatMoney(r.draft.labourBudgetCents)}</span> : null}
                   {isOpen ? <CaretUp size={24} aria-hidden="true" className="text-ink-2" /> : <CaretDown size={24} aria-hidden="true" className="text-ink-2" />}
                 </span>
               </button>
@@ -194,13 +212,15 @@ function StageEditor({ rows, onChange }: { rows: StageItem[]; onChange: Dispatch
                       label="Labour budget"
                       ariaLabel={`Stage ${i + 1} labour budget`}
                       defaultCents={r.draft.labourBudgetCents}
-                      onCentsChange={(c) => set(r.uid, { labourBudgetCents: c ?? 0 })}
+                      defaultText={r.unreadable?.labour}
+                      onCentsChange={(c, text) => setBudget(r.uid, "labour", c, text)}
                     />
                     <MoneyField
                       label="Materials budget"
                       ariaLabel={`Stage ${i + 1} materials budget`}
                       defaultCents={r.draft.materialsBudgetCents}
-                      onCentsChange={(c) => set(r.uid, { materialsBudgetCents: c ?? 0 })}
+                      defaultText={r.unreadable?.materials}
+                      onCentsChange={(c, text) => setBudget(r.uid, "materials", c, text)}
                     />
                   </div>
                   <Button
@@ -277,12 +297,19 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
     setFailed(null);
   };
   const proposal = proposalFor(v.jobType);
-  const stagesOk = stages.length > 0 && stages.every((s) => s.draft.name.trim() !== "");
+  const stageEdit = stageEditState(editView(stages));
+  const stagesOk = stageEdit.ready;
   const stagesAccepted = accepted && !editingStages;
-  const stageHint = stages.length === 0 ? "Add at least one stage." : "Give every stage a name.";
+  // The latest values after a commit forced by `commitTyping`, for the buttons that check them before acting.
+  const latest = useRef({ v, stages });
+  useLayoutEffect(() => {
+    latest.current = { v, stages };
+  });
+  // A tap on a button may not blur a field still being typed (iOS): commit it now, so the check sees what it became.
+  const commitTyping = () => flushSync(() => (document.activeElement as HTMLElement | null)?.blur());
   const acceptStages = () => {
-    // A tap on Accept may not blur a budget still being typed (iOS); commit it first, as the stage rows do.
-    (document.activeElement as HTMLElement | null)?.blur();
+    commitTyping();
+    if (!stageEditState(editView(latest.current.stages)).ready) return;
     setEditingStages(false);
     setAccepted(true);
     setStages((rows) => items(renumber(rows.map((r) => r.draft))));
@@ -303,7 +330,9 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
   }
 
   async function save() {
-    if (v.jobType === "") return;
+    commitTyping();
+    const v = latest.current.v;
+    if (v.jobType === "" || v.contractCents === "unreadable") return;
     setSaving(true);
     setResult(null);
     setFailed(null);
@@ -437,7 +466,7 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
         <MoneyField
           label="Contract value (optional)"
           hint="Before GST."
-          defaultCents={v.contractCents ?? undefined}
+          defaultCents={typeof v.contractCents === "number" ? v.contractCents : undefined}
           onCentsChange={(c) => set("contractCents", c)}
         />
         <div className="grid gap-4 sm:grid-cols-2">
@@ -497,7 +526,7 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
         </section>
       ) : null}
 
-      <PinnedAction barProps={barProps} error={failed} hintOnSide hint={editingStages ? (stagesOk ? undefined : stageHint) : ready ? undefined : hint}>
+      <PinnedAction barProps={barProps} error={failed} hintOnSide hint={editingStages ? stageEdit.hint : ready ? undefined : hint}>
         {editingStages ? (
           <Button disabled={!stagesOk} onClick={acceptStages} className="w-full">
             Accept stages

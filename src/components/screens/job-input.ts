@@ -52,7 +52,8 @@ export type JobFormValues = {
   jobType: JobType | "";
   nickname: string;
   siteAddress: string;
-  contractCents: Cents | null;
+  /** Integer cents, null when left blank, or "unreadable" when the typed text can't be read (never saved as $0.00). */
+  contractCents: Cents | null | "unreadable";
   status: ProjectStatus;
   /** `YYYY-MM-DD` or "". */
   startDate: string;
@@ -70,6 +71,8 @@ export const jobNameFor = (v: Pick<JobFormValues, "nickname" | "siteAddress">): 
 /** What the person still has to do before Create job (or Save changes) works, in form order. */
 export function jobMissing(v: JobFormValues, stages: { needStages: boolean; stagesAccepted: boolean; noClients?: boolean }): string[] {
   const missing: string[] = [];
+  // Text that can't be read as money comes first: saving it would quietly store $0.00.
+  if (v.contractCents === "unreadable") missing.push("fix the contract value");
   if (!v.clientId) missing.push(stages.noClients ? "add a client first" : "choose a client");
   if (!v.jobType) missing.push("choose a job type");
   if (!v.siteAddress.trim()) missing.push("add the site address");
@@ -115,6 +118,24 @@ export function jobSaveState(
     ready: missing.length === 0 && dirty,
     hint: missingSentence(missing.slice(0, 1)) ?? (dirty ? undefined : "Change something to save."),
   };
+}
+
+/**
+ * Whether Accept stages works while the stages are being edited, and the one sentence under it when it does not.
+ * A budget whose text can't be read (kept as typed in `unreadable`) blocks it ahead of anything else.
+ */
+export function stageEditState(stages: { name: string; unreadable?: { labour?: string; materials?: string } }[]): {
+  ready: boolean;
+  hint: string | undefined;
+} {
+  const bad = stages.findIndex((s) => s.unreadable?.labour !== undefined || s.unreadable?.materials !== undefined);
+  if (bad >= 0) {
+    const which = stages[bad]!.unreadable?.labour !== undefined ? "labour" : "materials";
+    return { ready: false, hint: `Fix stage ${bad + 1}'s ${which} budget.` };
+  }
+  if (stages.length === 0) return { ready: false, hint: "Add at least one stage." };
+  if (stages.some((s) => s.name.trim() === "")) return { ready: false, hint: "Give every stage a name." };
+  return { ready: true, hint: undefined };
 }
 
 /** Where a proposed stage list came from, in a sentence. */
