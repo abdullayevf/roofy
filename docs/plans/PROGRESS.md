@@ -3,11 +3,11 @@
 ## Current
 
 - Phase: 2 — Design system and full prototype. Branch `phase/2-design-prototype` (local on the VPS, not pushed, not merged). Plan: `docs/plans/03-design-prototype.md`.
-- Session 2026-10-02 STOPPED mid Task 13 on the RUNBOOK §5 budget: 11 runs, ≈444/450 tool uses (two limit-cut runs counted at 45). Ledger STOP note: `.superpowers/sdd/03-design-prototype/progress.md`.
-- Task 13 commits: 565032a (landscape bar), 5c51ea9 (screens), 2320074 (fix round 1 from iteration 1, avg 66: field 64, design 68), fcbb5b0 (desktop table e2e), 06761e2 (keyboard capture on Site address). e2e green on 3 projects (253 passed, 26 skipped); verify green.
-- Iteration 2 is CAPTURED (84 captures, 0 fail, all 170 critic images changed; iteration 1 was never `--accept`ed, so critics read all slices) but not yet scored.
-- **Next (owner first raises or accepts Task 13's budget):** iteration 2 critics (all slices) + round-1 re-review (2320074..06761e2 vs task-13-round1.md) → fix round 2 → iteration 3 (last) → spec-reviewer (opus, 03875e1..HEAD) → tick Task 13.
-- Then: Tasks 14–23 in order. Briefs for screen groups must be smaller: three round-1 implementer runs hit the 45-step cap.
+- Session 2026-10-02 ended after Task 13. Ledger: `.superpowers/sdd/03-design-prototype/progress.md`.
+- Done and reviewed: Tasks 1–13. Task 13 = 565032a..544e9e7: Jobs list + New/edit job; design loop 66 → 71 → 75.5, accepted under the 3-iteration cap (open rows in ISSUES.md, incl. P1 i3-F1: Chromium's native date field shows mm/dd in captures). Code review + 2 re-reviews, spec review + re-review clean. verify green (752 unit); full e2e 3 projects 766 passed, 1 cold-start timeout that passed on re-run.
+- **Next: Task 14** (Jobs 2/2: Job detail, Stage detail, Stage Done + lump-sum split). Write `task-14-brief.md` first; split the fix work into runs of ≤ 30 steps from the start (Task 13: seven implementer runs hit the 45-step cap).
+- Then: Tasks 15–23 in order.
+- Known flaky (iphone, passed on re-run): flows/no-work-marker.spec.ts:6, log-progress.spec.ts:135, design-page.spec.ts:45 on a cold server.
 - Environment: real WebKit works on the VPS. Never stop the server with `pkill -f "next start"`; kill the PID from `ss -ltnp | grep 3100`.
 
 ### Run rules
@@ -92,6 +92,9 @@
 - Phase 2 (session rule): agents stop the app only with `kill <pid>` from `ss -ltnp | grep 3100`; a pattern kill (`pkill -f next-server`) on 2026-09-30 stopped another project's Next 14 server on this machine.
 - Phase 2 Task 13: New job requires only Site address; Job name is optional and a blank name uses the site address (flows.md:276 has one "nickname/site address" tap; onboarding stays at 25). Playwright projects run in `en-AU` so date fields show what an Australian phone shows. Phone job rows follow the §4 list row (one figure); desktop ≥ 1024 shows a 48 px table.
 - Phase 2 Task 13 (deviation): the conductor changed one string in `tests/e2e/screens.ts` (keyboard capture field → "Site address") itself, because a dispatch would have overrun the §5 budget.
+- Phase 2 Task 13 (rulings R8–R11): captures run with an en-AU locale (WebKit `LANG`, Chromium `--lang`); one `jobOver` rule (src/domain) decides "over budget" for job rows, the Jobs list headline and Home (product spec §5.9 keeps "trending" separate, shown in Needs attention); after creating a job the main action is "Log today on this job"; stages edit as compact rows, one open at a time. An unreadable money field blocks Save and Accept stages.
+- Phase 2 Task 13 (deviation): three implementer commits (6d9bb8b..0011fbc range) carry a "Sonnet 5.5" Co-Authored-By trailer instead of Opus 5.5. History not rewritten (destructive git needs the owner); the implementer rules now say to copy the trailer exactly.
+- Phase 2 Task 13 (owner, 2026-10-02): the §5 run budget was lifted for Task 13 to finish it with every gate kept.
 
 ## Gate evidence
 
