@@ -155,7 +155,7 @@ describe("job detail (manager)", () => {
     const list = await data.projects.list(actor, { status: "all" });
     if (list.view !== "manager") throw new Error("expected the manager view");
     const row = (name: string) => list.rows.find((r) => r.name.startsWith(name))!;
-    // Hunter: Complete, $2,120.00 of $2,000.00 labour, no stage over on its own - it still gets its line.
+    // Hunter: Complete, $2,120.00 of $2,000.00 labour. Labour is the sum of its stages, so a stage is over too; the job as a whole wins the wording.
     const hunter = row("Hunter job \u2014 Avalon");
     expect(hunter.over).toEqual({ kind: "labour", byCents: 12000 });
     expect(jobLine(hunter).alert?.text).toBe("Labour is $120.00 over budget");

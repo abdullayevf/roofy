@@ -96,7 +96,7 @@ export function CrewChip({
 
   return (
     <div className={cx("flex flex-col bg-surface", className)}>
-      {/* The tape tint carries through the row and its day or hours controls: it is the "ticked" signal. */}
+      {/* The tape tint carries through the row and its day or hours controls: it is the "ticked" signal. Small grey text goes ink on it, or it drops under 4.5:1 in the dark theme. */}
       <div className={cx("flex flex-col", pressed && "bg-tape/25")}>
         <button
           type="button"
@@ -113,12 +113,12 @@ export function CrewChip({
         >
           <span className="flex min-h-12 min-w-0 flex-col items-start justify-center">
             <span className="text-body-strong text-ink">{name}</span>
-            {basis ? <span className="text-meta text-ink-2">{basis}</span> : null}
+            {basis ? <span className={cx("text-meta", pressed ? "text-ink" : "text-ink-2")}>{basis}</span> : null}
             {note ? (
               <span
                 className={cx(
                   "mt-1 flex items-start gap-2 text-meta",
-                  note.tone === "watch" ? "text-watch" : "text-ink-2",
+                  note.tone === "watch" ? "text-watch" : pressed ? "text-ink" : "text-ink-2",
                 )}
               >
                 <NoteIcon size={24} aria-hidden="true" className="shrink-0" />

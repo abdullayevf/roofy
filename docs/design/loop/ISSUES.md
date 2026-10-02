@@ -432,7 +432,7 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | jobs-1/i1-D17 | jobs-1 | P3 | job-new/normal/tablet | Pinned bar white slab, no top rule, cuts Status select | `line` top rule | won't fix: DESIGN.md section 5 makes the phone and tablet bar a solid surface bar with an ink rule (shared with the Log forms, accepted in field-2); the line rule is from 1024 px | 1 |
 | jobs-1/i2-F1 | jobs-1 | P0 | jobs-list all/manager/iphone | Headline "132 jobs over budget" vs 1 of ~20 rows flagged; Hunter $2,120 of $2,000, Complete, no over line | Ruling R9 | fixed in iteration 3, awaiting critics | 2 |
 | jobs-1/i2-F2 | jobs-1 | P1 | job-new+job-edit/phones+landscape | Dates mm/dd/yyyy (10/09 reads as 10 Sep); value in mono font | Ruling R8 | fixed in iteration 3, awaiting critics | 2 |
-| jobs-1/i2-F3 | jobs-1 | P2 | jobs-list normal/phones | "$4,000.00 of $4,300.00" unlabelled next to "Clean-up is $100.00 over" | Label once: "spent of $4,300.00 budget" |
+| jobs-1/i2-F3 | jobs-1 | P2 | jobs-list normal/phones | "$4,000.00 of $4,300.00" unlabelled next to "Clean-up is $100.00 over" | Label once: "spent of $4,300.00 budget" | fixed in round 2C1 (guarded in round 3), awaiting critics |
 | jobs-1/i2-F4 | jobs-1 | P2 | jobs-list normal/landscape | Add job bar + tab bar ~135/390 px; no rows on first screen | Landscape: Add job in header row, not pinned | fixed in round 2C1, awaiting critics |
 | jobs-1/i2-F5 | jobs-1 | P2 | job-new saved/iphone | No way into the job; no pointer to the first log | Ruling R10 | fixed in iteration 3, awaiting critics | 2 |
 | jobs-1/i2-F6 | jobs-1 | P2 | jobs-list error/phones | Add job pinned primary; Try again only outlined | Hide Add job in error; Try again primary | fixed in round 2C1, awaiting critics |
@@ -455,8 +455,33 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | jobs-1/i2-D8 | jobs-1 | P2 | jobs-list loading/desktop | Phone-shaped skeleton under table; no headline skeleton | Table-shaped skeleton + headline line | fixed in round 2C1, awaiting critics |
 | jobs-1/i2-D9 | jobs-1 | P2 | job-new filled | Contract $18,500 < labour budget total $24,600 | Believable prefill (e.g. $38,500) | fixed in round 2C2 (contract $38,500), awaiting critics |
 | jobs-1/i2-D10 | jobs-1 | P3 | jobs-list/iphone+tablet | Chevron top-aligned | Centre on row | fixed in round 2C1, awaiting critics |
-| jobs-1/i2-D11 | jobs-1 | P3 | jobs-list/all | "On hold" + "(paused: client)" | "On hold: client" |
+| jobs-1/i2-D11 | jobs-1 | P3 | jobs-list/all | "On hold" + "(paused: client)" | "On hold: client" | fixed in round 2C1 (guarded in round 3), awaiting critics |
 | jobs-1/i2-D12 | jobs-1 | P3 | jobs-list/all/desktop | Row heights 49 vs 53 px; sort breaks (8 Jul between 22 and 17 Jun) | Same height; sort by last log newest first | row heights fixed in round 2C1; sort order left open (rows stay A to Z by name) |
 | jobs-1/i2-D13 | jobs-1 | P3 | job-new filled | Total row looks like stage rows | Heavier divider or semibold label | fixed in round 2C2 (2 px ink rule above the total), awaiting critics |
 | jobs-1/i2-D14 | jobs-1 | P3 | job-new offline/iphone | Hint wraps; no offline banner at all | One-line hint; slim offline banner back | left in round 2C2: the offline banner is ruled out by R7; the offline sentence still wraps on a phone |
 | jobs-1/i2-D15 | jobs-1 | P3 | job-new saved/iphone | Title "New job" above "Job added" | Title "Job added" | fixed in iteration 3, awaiting critics | 2 |
+| jobs-1/i3-F1 | jobs-1 | P1 | job-new+job-edit/android, landscape, desktop, tablet | Chromium native date shows mm/dd/yyyy in capture (iPhone/WebKit fixed: 31/08/2026) | Open: own en-AU date display or verified Chromium locale; real AU devices follow their locale |
+| jobs-1/i3-F2 | jobs-1 | P2 | jobs-list + job-new/edit/phones | Slashed-zero mono digits in figures, inputs, dates (§7 tell) | Barlow/body tabular figures |
+| jobs-1/i3-F3 | jobs-1 | P2 | jobs-list all+normal | "132 jobs over budget" counts stage-over jobs under budget overall | Words match the rule ("with a stage over budget") |
+| jobs-1/i3-F4 | jobs-1 | P2 | job-new error/phones | Back is a bare link; Try again outlined | 48 px Back row; Try again primary |
+| jobs-1/i3-F5 | jobs-1 | P2 | job-new editing-stages/iphone | Remove ~20 px red link | 48 px secondary-danger button + undo |
+| jobs-1/i3-F6 | jobs-1 | P3 | jobs-list normal/landscape | Header + chips ~230/390 px; no full row | One-row headline + scrolling chips |
+| jobs-1/i3-F7 | jobs-1 | P3 | job-new/iphone | Empty dates: no hint or icon | Placeholder + calendar icon |
+| jobs-1/i3-F8 | jobs-1 | P3 | job-new saved/iphone | Primary at y≈230, empty below | Pin primary in the bar |
+| jobs-1/i3-F9 | jobs-1 | P3 | jobs-list loading/phones | No Add job bar in skeleton | Skeleton bar |
+| jobs-1/i3-F10 | jobs-1 | P3 | jobs-list all/iphone | Status + over line share or wrap inconsistently | Always two lines |
+| jobs-1/i3-D1 | jobs-1 | P1 | job-new+job-edit/desktop+tablet | = i3-F1 | = i3-F1 |
+| jobs-1/i3-D2 | jobs-1 | P2 | jobs-list normal+all | = i3-F3 (Wong counted) | = i3-F3 |
+| jobs-1/i3-D3 | jobs-1 | P2 | jobs-list, job-new, job-edit/tablet | Two-toned pinned bar | One solid bar, one rule |
+| jobs-1/i3-D4 | jobs-1 | P2 | jobs-list loading/desktop | Skeleton header/columns don't match table | Real header row, aligned blocks |
+| jobs-1/i3-D5 | jobs-1 | P2 | jobs-list all | = i3-F10; "Labour is … over budget" vs "X is $Y over" | Chip then sentence; one sentence shape |
+| jobs-1/i3-D6 | jobs-1 | P2 | job-new error/all | = i3-F4; desktop panel 1168 px vs 600 form column | Keep in form column |
+| jobs-1/i3-D7 | jobs-1 | P2 | jobs-list empty/desktop | Add job ~600 px from the sentence | Button under the sentence |
+| jobs-1/i3-D8 | jobs-1 | P3 | jobs-list all | Sort neither A–Z nor by last log | Newest last log first |
+| jobs-1/i3-D9 | jobs-1 | P3 | job-new invalid, job-edit/iphone | Date value 4 px right of other inputs | Remove inner padding |
+| jobs-1/i3-D10 | jobs-1 | P3 | job-new normal/iphone | = i3-F7 | = i3-F7 |
+| jobs-1/i3-D11 | jobs-1 | P3 | jobs-list normal | "Ryde heritage" naming; "Labour of budget" vs "spent of … budget" | Rename; one wording |
+| jobs-1/i3-D12 | jobs-1 | P3 | job-new filled, job-edit/desktop | "New build" chip wraps alone | Fit five chips in 600 px |
+| jobs-1/i3-D13 | jobs-1 | P3 | job-new offline/iphone | Offline sentence wraps | "Needs connection to save." |
+| jobs-1/i3-D14 | jobs-1 | P3 | jobs-list + job-new error | "Couldn't load this. Try again." | "Couldn't load your jobs." |
+| jobs-1/i3-D15 | jobs-1 | P3 | job-new quick-add/iphone | Grabber straddles sheet edge; Save 16 px from bottom | Grabber inside; safe-area padding |

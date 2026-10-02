@@ -281,6 +281,8 @@ export function JobForm({ mode, projectId, clients: initialClients, initial, pro
   const stagesAccepted = accepted && !editingStages;
   const stageHint = stages.length === 0 ? "Add at least one stage." : "Give every stage a name.";
   const acceptStages = () => {
+    // A tap on Accept may not blur a budget still being typed (iOS); commit it first, as the stage rows do.
+    (document.activeElement as HTMLElement | null)?.blur();
     setEditingStages(false);
     setAccepted(true);
     setStages((rows) => items(renumber(rows.map((r) => r.draft))));

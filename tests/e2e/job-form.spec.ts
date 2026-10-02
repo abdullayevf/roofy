@@ -111,6 +111,19 @@ test.describe("New job", () => {
     await expect(page.getByRole("status")).toContainText("with 5 stages.");
   });
 
+  test("Accept stages keeps a budget still being typed (RR2-2)", async ({ page }) => {
+    await signInAs(page, "manager", prefill({ type: "new_build" }));
+    await page.getByRole("button", { name: "Edit stages" }).click();
+    await page.getByRole("button", { name: "Add stage" }).click();
+    await page.getByLabel("Stage 6 name").fill("Final clean");
+    await page.getByLabel("Stage 6 labour budget").fill("1250");
+    // A tap on iOS may not blur the field. A script click does not move focus either, so the field is still being typed in.
+    await expect(page.getByLabel("Stage 6 labour budget")).toBeFocused();
+    await page.getByRole("button", { name: "Accept stages" }).evaluate((el) => (el as HTMLElement).click());
+    await expect(createJob(page)).toBeVisible();
+    await expect(page.getByRole("listitem").filter({ hasText: "Final clean" })).toContainText("$1,250.00");
+  });
+
   test("a stage with no name can't be accepted", async ({ page }) => {
     await signInAs(page, "manager", prefill());
     await page.getByRole("button", { name: "Edit stages" }).click();
@@ -238,28 +251,40 @@ test.describe("New job: measured guards", () => {
     const column = (await page.getByLabel("Site address").boundingBox())!;
     expect(Math.abs(link.width - column.width)).toBeLessThanOrEqual(1);
     expect(await backLink.evaluate((el) => getComputedStyle(el).borderBottomWidth)).not.toBe("0px");
-    // The date value is Atkinson and starts where a text field's value starts (R8).
+    // The date value is Atkinson at a text field's size (R8). The input's own font is not enough: the day, month, year and
+    // separator parts are inside the browser, and a computed style can't be read for them (Chromium answers with the
+    // input's own, WebKit with nothing). So each part must carry its own rule that inherits the font, and the two outer
+    // parts must have their padding removed so the value starts where a text value starts.
     const look = (label: string) =>
       page.getByLabel(label).evaluate((el) => {
         const cs = getComputedStyle(el);
-        return { font: cs.fontFamily, size: cs.fontSize, padLeft: cs.paddingLeft };
+        return { font: cs.fontFamily, size: cs.fontSize };
       });
     const date = await look("Start date (optional)");
     const text = await look("Site address");
     expect(date.font).toMatch(/Atkinson/i);
     expect(date.font).toBe(text.font);
     expect(date.size).toBe(text.size);
-    expect(date.padLeft).toBe(text.padLeft);
-    // The browser's own inner padding on the date value is removed, so it starts where a text value starts.
-    // Chromium can't read a computed style for that inner part, so the guard reads the rule itself.
-    const editPadding = await page.evaluate(() =>
-      [...document.styleSheets]
-        .flatMap((sheet) => [...sheet.cssRules])
-        .filter((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText.includes("::-webkit-datetime-edit"))
-        .map((r) => r.style.paddingLeft || r.style.padding)
-        .filter(Boolean),
+    const parts = ["edit", "edit-fields-wrapper", "edit-day-field", "edit-month-field", "edit-year-field", "edit-text"];
+    const rules = await page.evaluate(
+      (names) =>
+        names.map((name) => {
+          const hits = [...document.styleSheets]
+            .flatMap((sheet) => [...sheet.cssRules])
+            .filter((r): r is CSSStyleRule => r instanceof CSSStyleRule)
+            .filter((r) => r.selectorText.split(",").some((sel) => sel.trim().endsWith(`::-webkit-datetime-${name}`)));
+          return {
+            name,
+            font: hits.map((r) => r.style.fontFamily).filter(Boolean),
+            padding: hits.map((r) => r.style.paddingLeft || r.style.padding).filter(Boolean),
+          };
+        }),
+      parts,
     );
-    expect(editPadding).toContain("0px");
+    for (const part of rules) {
+      expect(part.font, `${part.name} inherits the font`).toContain("inherit");
+      if (part.name === "edit" || part.name === "edit-fields-wrapper") expect(part.padding, `${part.name} has no padding`).toContain("0px");
+    }
   });
 
   test("the browser shows an Australian phone's dates: en-AU and the Sydney clock (R8)", async ({ page }) => {

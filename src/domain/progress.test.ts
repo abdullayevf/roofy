@@ -115,7 +115,15 @@ describe("jobOver (R9: the one rule for an over-budget job)", () => {
     expect(jobOver(150_000, 200_000, [st("Sheet install", 100_000, 120_000), st("Clean-up", 50_000, 80_000)])).toBeNull();
     expect(jobOver(0, 0, [])).toBeNull();
   });
-  it("is over when labour passes the job's labour budget, even with no stage over", () => {
+  it("is not over on an exact tie, for the job or a stage (spec: over means strictly more)", () => {
+    expect(jobOver(100, 100, [st("A", 100, 100)])).toBeNull();
+    expect(jobOver(100_000, 100_000, [st("Sheet install", 60_000, 60_000), st("Clean-up", 40_000, 40_000)])).toBeNull();
+  });
+  it("is over when anything is spent against a $0 budget", () => {
+    expect(jobOver(1, 0, [st("A", 1, 0)])).toEqual({ kind: "labour", byCents: 1 });
+    expect(jobOver(100_000, 0, [])).toEqual({ kind: "labour", byCents: 100_000 });
+  });
+  it("is over when labour passes the job's labour budget, and says so for the job, not a stage", () => {
     expect(jobOver(212_000, 200_000, [st("Sheet install", 100_000, 100_000), st("Clean-up", 112_000, 100_000)])).toEqual({
       kind: "labour",
       byCents: 12_000,

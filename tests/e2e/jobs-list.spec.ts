@@ -26,7 +26,9 @@ test.describe("Jobs list (manager)", () => {
     // Smith is trending over on one stage: the line names the stage that owns the amount (i1-F1).
     await expect(jobRows(page).filter({ hasText: "Smith job" }).getByText("Sheet install is trending $775.00 over")).toBeVisible();
     if (isPhone(testInfo.project.name)) await expect(smith.getByRole("progressbar")).toBeVisible();
-    await expect(jobRows(page).filter({ hasText: "Smith job" }).getByText(/^(spent )?of \$[\d,]+\.\d{2}( budget)?$/)).toBeVisible();
+    // One exact form per layout: the phone figure names the pair, the table's header does it on desktop (i2-F3).
+    const figure = isPhone(testInfo.project.name) ? /^spent of \$[\d,]+\.\d{2} budget$/ : /^of \$[\d,]+\.\d{2}$/;
+    await expect(jobRows(page).filter({ hasText: "Smith job" }).getByText(figure)).toBeVisible();
     await expect(page.getByRole("link", { name: "Add job" })).toHaveAttribute("href", "/jobs/new");
     // The lead line counts the jobs already over budget (D5).
     await expect(page.getByText(/^(\d+ jobs? over budget|No jobs over budget)$/)).toBeVisible();
@@ -141,7 +143,7 @@ test.describe("Jobs list (manager)", () => {
     await expect(page).toHaveURL(/\/jobs\?status=on_hold$/);
     await expect(cards(page)).toHaveCount(1);
     await expect(cards(page).first()).toContainText("Kelly");
-    await expect(jobRows(page).first().getByText(/^On hold(: .+)?$/)).toBeVisible();
+    await expect(jobRows(page).first().getByText("On hold: client", { exact: true })).toBeVisible();
     await page.getByRole("radio", { name: "Quoted" }).click();
     await expect(page.getByText("No quoted jobs.")).toBeVisible();
     await expect(cards(page)).toHaveCount(0);

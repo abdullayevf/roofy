@@ -219,7 +219,8 @@ body {
  *   content column (the full width up to 600 px, then 600 px centred), the same at every scroll position. Its
  *   bottom padding is the raised Log circle's overhang, so the button sits clear of the circle. With the keyboard up
  *   the screen sets `data-keyboard` and the bar sits on the visual viewport (`--keyboard-inset`) instead.
- * - A short viewport (under 500 px tall) uses a compact bar: no helper line, less padding.
+ * - A short viewport (under 500 px tall) uses a compact bar: one row, less padding, and no helper line unless the screen
+ *   asks for it beside the button (`hintOnSide`: the job form). The Jobs list has no bar there; Add job is in its header.
  * - Desktop (1024 px and up): sticky at the bottom of the column, 16 px padding and a `line` rule on top.
  * The page reads the bar's measured height from `--pin-action-height` (set by the screen, 9 rem until measured).
  */
@@ -268,7 +269,8 @@ body {
 }
 /*
  * A phone on its side (under 500 px tall, under 1024 px wide): the bar is one row on the page background, the full
- * width of the screen, 8 px padding all round and no helper line. An error from a failed save sits on the left of
+ * width of the screen, 8 px padding all round and no helper line (except `.pin-hint-side`, the job form's one sentence,
+ * which sits on the left too). An error from a failed save sits on the left of
  * the raised Log circle, the button on the right of it, so neither is under the circle's overhang (the manager's
  * circle is in the middle, the foreman's at five eighths).
  */
