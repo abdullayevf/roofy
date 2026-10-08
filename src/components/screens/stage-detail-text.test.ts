@@ -76,6 +76,10 @@ describe("forecastWorkingText", () => {
   it("shows the spent so far, the progress it is at and the forecast, from the figures it is given", () => {
     expect(forecastWorkingText({ actualCents: 143250, pctBp: 3000, forecastCents: 477500 })).toBe("$1,432.50 spent at 30% done, so about $4,775.00 for the whole stage.");
   });
+  it("shows a part-percent to two places so the line adds up by hand (30.49%, not 30%), a whole one without them", () => {
+    expect(forecastWorkingText({ actualCents: 100000, pctBp: 3049, forecastCents: 327976 })).toBe("$1,000.00 spent at 30.49% done, so about $3,279.76 for the whole stage.");
+    expect(forecastWorkingText({ actualCents: 143250, pctBp: 3000, forecastCents: 477500 })).toContain("spent at 30% done");
+  });
   it("says there is no forecast yet when the stage has not got far enough to give one", () => {
     expect(forecastWorkingText({ actualCents: 0, pctBp: 0, forecastCents: null })).toBe("$0.00 spent at 0% done. No forecast until some work is done.");
   });

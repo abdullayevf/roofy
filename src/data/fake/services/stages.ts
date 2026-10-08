@@ -337,11 +337,6 @@ function resumeStage(c: FakeContext, actor: Actor, input: StageResumeInput): Ent
   return entryResult(actor, [seg.id], []);
 }
 
-/**
- * Done (Owner/Manager only): closes the open segment at completion + 1 day, and on a lump-sum stage
- * splits the lump sum over the confirmed people with `lumpSumLines` (pay rules §5) — one log each,
- * dated the completion date.
- */
 /** Done needs an Active or Paused stage, a date no later than today (workspace timezone) and each person once. */
 function requireDoneable(c: FakeContext, st: StageRow, completedOn: LocalDate, crewMemberIds: readonly Id[]): void {
   if (st.status === "done") throw conflict("This stage is already done.");
@@ -350,6 +345,11 @@ function requireDoneable(c: FakeContext, st: StageRow, completedOn: LocalDate, c
   if (new Set(crewMemberIds).size !== crewMemberIds.length) throw invalid("Each person can only be listed once.");
 }
 
+/**
+ * Done (Owner/Manager only): closes the open segment at completion + 1 day, and on a lump-sum stage
+ * splits the lump sum over the confirmed people with `lumpSumLines` (pay rules §5) — one log each,
+ * dated the completion date.
+ */
 function confirmDone(c: FakeContext, actor: Actor, input: StageDoneInput): EntryResult {
   requireEditor(c, actor);
   const st = c.requireStage(actor, input.stageId);

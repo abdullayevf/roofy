@@ -212,7 +212,7 @@ export function StageDone({
               yet.
             </p>
           </div>
-          <Button variant="secondary" href={`/log?project=${proposal.projectId}`} className="self-start">
+          <Button variant="secondary" href={`/log?project=${proposal.projectId}&stage=${proposal.stageId}`} className="self-start">
             Log crew time
           </Button>
         </section>

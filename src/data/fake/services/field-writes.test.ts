@@ -289,6 +289,21 @@ describe("stage pause and resume", () => {
     });
   });
 
+  it("a stage opened by a log on day D and paused on D has no days worked, so that day's log is flagged paused_stage", async () => {
+    // Recorded decision (PROGRESS.md, Task 14): kept as spec-valid under the half-open ranges of pay rules §13.
+    const { data, actor } = fakeSession("manager");
+    const flashings = smithStage("Flashings, gutters & downpipes");
+    const saved = await data.logs.saveCrewDay(actor, day([daily(crew.mick)], { stageId: flashings, date: "2026-09-22" }));
+    expect(saved.flags).toEqual(["auto_started"]);
+    await data.stages.pause(actor, { stageId: flashings, date: "2026-09-22", reason: "weather", note: null });
+    const st = await data.stages.get(actor, flashings);
+    expect(st.segments).toEqual([{ start: "2026-09-22", end: "2026-09-22", pauseReason: "weather", pauseNote: null }]);
+    const draft = await data.payRuns.draft(actor); // last week, 21–27 Sep
+    const flagged = draft!.flags.filter((f) => f.kind === "paused_stage" && f.logIds.includes(saved.ids[0]!));
+    expect(flagged).toHaveLength(1);
+    expect(flagged[0]!.dates).toEqual(["2026-09-22"]);
+  });
+
   it("pausing a paused stage changes nothing; a Done stage can't be paused; dates must follow the segment", async () => {
     const { data, actor } = fakeSession("manager");
     expect(

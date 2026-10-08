@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CrewDayInput, PushResponse } from "@/data/contracts";
 import { APP_VERSION, buildEnvelope, PUSH_URL, submit, submitMany } from "./submit";
 
@@ -38,6 +38,8 @@ describe("buildEnvelope", () => {
   });
 });
 
+afterEach(() => vi.unstubAllGlobals());
+
 describe("submit", () => {
   it("POSTs one envelope as JSON to the push endpoint and returns its result", async () => {
     const result = { status: "applied", result: { ids: ["l1"], flags: ["auto_started"] } };
@@ -67,6 +69,17 @@ describe("submit", () => {
       fetch: fetchReturning({ error: { code: "invalid", message: "Send at most 25 entries at a time." } }, 400),
     });
     expect(refused).toMatchObject({ status: "rejected", code: "invalid", message: "Send at most 25 entries at a time." });
+  });
+
+  it("a phone that knows it has no signal sends nothing (no failed request in the console) and answers retry", async () => {
+    vi.stubGlobal("navigator", { onLine: false });
+    const fetch = fetchReturning({ results: [] });
+    const r = await submit("crew_day", input, { fetch });
+    expect(r.status).toBe("retry");
+    expect(fetch).not.toHaveBeenCalled();
+    vi.stubGlobal("navigator", { onLine: true });
+    await submit("crew_day", input, { fetch });
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it("an answer without this entry's id counts as retry", async () => {

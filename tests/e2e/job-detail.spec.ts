@@ -14,6 +14,15 @@ async function signInAs(page: Page, role: string, next = smith) {
 const stageRows = (page: Page) => page.locator("[data-stage-row]");
 
 test.describe("Job detail (manager)", () => {
+  test("names as long as real ones get wrap, even at 200% text size, and never push the page sideways", async ({ page }, testInfo) => {
+    const consoleLog = collectConsole(page);
+    await signInAs(page, "manager", `/jobs/${meta.fixtures.longNames}`);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Featherstonehaugh");
+    const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(over).toBeLessThanOrEqual(0);
+    await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
+  });
+
   test("shows the job, its status, a row per stage that opens the stage, and the money", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "manager");

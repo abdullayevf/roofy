@@ -1,15 +1,21 @@
 // @vitest-environment node
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { ProjectDetail, StageDetail } from "../../contracts";
+import type { DoneProposal, ProjectDetail, StageDetail } from "../../contracts";
 import { JobDetailBody } from "@/components/screens/job-detail";
 import { StageDetailBody } from "@/components/screens/stage-detail";
+import { StageDone } from "@/components/screens/stage-done";
 import { expectNoMoney } from "../../dto";
 import { getSeed } from "../store";
 import { fake } from "./testing";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => {} }) }));
-vi.mock("@/app/actions/stages", () => ({ startStage: async () => ({ ok: true }), reopenStage: async () => ({ ok: true }) }));
+vi.mock("@/app/actions/stages", () => ({
+  startStage: async () => ({ ok: true }),
+  reopenStage: async () => ({ ok: true }),
+  proposeStageDone: async () => ({ ok: false }),
+  confirmStageDone: async () => ({ ok: true }),
+}));
 
 const { meta } = getSeed();
 const TODAY = "2026-09-28";
@@ -72,5 +78,28 @@ describe("stage detail on the populated Smith sheet install", () => {
     expect(html).not.toContain("$");
     expect(html).not.toContain("Money");
     expect(html).not.toContain("Forecast");
+  });
+});
+
+describe("stage done on a lump-sum stage nobody has logged work on", () => {
+  const proposal: DoneProposal = {
+    stageId: "s1",
+    stageName: "Ridge capping",
+    projectId: "p1",
+    projectName: "Harris ridge",
+    completedOn: TODAY,
+    lumpSumCents: 200000,
+    crew: [],
+  };
+  const html = renderToStaticMarkup(<StageDone proposal={proposal} today={TODAY} />);
+
+  it("says nobody has logged work, instead of an empty split", () => {
+    expect(html).toContain("data-split-empty");
+    expect(html).toContain("$2,000.00 is shared by everyone who logged work on this stage. Nobody has logged work on it yet.");
+    expect(html).not.toContain("data-shares-left");
+  });
+
+  it("offers Log crew time, opened on this job and this stage", () => {
+    expect(html).toMatch(/<a[^>]*href="\/log\?project=p1&(amp;)?stage=s1"[^>]*>(<[^>]+>)*Log crew time/);
   });
 });

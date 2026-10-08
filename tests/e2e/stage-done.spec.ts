@@ -75,6 +75,17 @@ test.describe("Stage done (manager)", () => {
     await expect(page.locator("[data-stage-controls]")).toHaveAttribute("data-status", "done");
   });
 
+  test("an edited split that adds up keeps Confirm done clear of the home bar once the keyboard is down", async ({ page }, testInfo) => {
+    await signInAs(page, "manager", donePage);
+    await share(page, "Sam").fill("40");
+    await share(page, "Tom").fill("40");
+    await share(page, "Dima").fill("20");
+    await share(page, "Dima").blur();
+    await expect(page.locator('[data-slot="primary-action"]')).not.toHaveAttribute("data-keyboard", "true");
+    await expect(confirm(page)).toBeEnabled();
+    await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), skip: { keyboard: true } });
+  });
+
   test("loading, error and offline", async ({ page }, testInfo) => {
     await signInAs(page, "manager", `${donePage}?demo=loading`);
     await expect(page.locator('[data-screen="stage-done"]')).toHaveAttribute("aria-busy", "true");

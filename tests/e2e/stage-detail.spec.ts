@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { collectConsole, expectScreenHealthy } from "./guards";
+import { checkConsole, collectConsole, expectScreenHealthy } from "./guards";
 import { expectNoMoney } from "./money-scan";
 import { getSeed } from "../../src/data/fake/store";
 
@@ -128,6 +128,7 @@ test.describe("Pause sheet", () => {
   // (src/offline/submit.ts counts it, nothing re-sends it). The test holds what the screen says, and that pausing
   // again with signal reaches the server. Durable waiting entries arrive with the real sync in a later phase.
   test("with no signal the pause is kept on the phone and the stage says Waiting; with signal a pause reaches the server", async ({ page, context }) => {
+    const consoleLog = collectConsole(page);
     await signInAs(page, "manager", active);
     await expect(controls(page)).toHaveAttribute("data-status", "active");
     await context.setOffline(true);
@@ -136,6 +137,8 @@ test.describe("Pause sheet", () => {
     await expect(controls(page).getByText("Waiting", { exact: true })).toBeVisible();
     await expect(controls(page).getByText("Saved on this device. It will send when you have signal.")).toBeVisible();
     await expect(controls(page)).toHaveAttribute("data-status", "paused");
+    // A phone with no signal sends nothing, so no failed request lands in the console (the console-clean guard).
+    expect(checkConsole(consoleLog).failures).toEqual([]);
     await context.setOffline(false);
     await page.reload();
     await expect(controls(page)).toHaveAttribute("data-status", "active");

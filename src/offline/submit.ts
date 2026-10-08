@@ -66,6 +66,8 @@ export async function submitMany(
   options: SubmitOptions = {},
 ): Promise<PushResult[]> {
   if (envelopes.length > MAX_PUSH_BATCH) throw new RangeError(`at most ${MAX_PUSH_BATCH} mutations per push`);
+  // A phone that knows it has no signal sends nothing: a request that cannot go out only fills the console.
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return retryAll(envelopes);
   const fetchFn = options.fetch ?? ((url, init) => fetch(url, init));
   let response: Response;
   try {

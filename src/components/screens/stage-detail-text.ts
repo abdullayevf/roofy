@@ -3,6 +3,7 @@ import type { PauseReason } from "@/domain/segments";
 import { addDays } from "@/domain/dates";
 import type { Status } from "@/components/ui/status-chip";
 import { formatDate, formatMoney, formatQuantity } from "@/lib/format";
+import { hundredthsText } from "./field-input";
 
 type StageStatus = StageDetail["status"];
 
@@ -68,7 +69,7 @@ export function lostDaysRows(lost: Record<PauseReason, number>): { label: string
 
 /** The forecast's working in words, from the figures the server worked out ("$1,432.50 spent at 30% done, so about $4,775.00 for the whole stage."). Shows them; does no sums. */
 export function forecastWorkingText(w: { actualCents: number; pctBp: number; forecastCents: number | null }): string {
-  const spent = `${formatMoney(w.actualCents)} spent at ${Math.round(w.pctBp / 100)}% done`;
+  const spent = `${formatMoney(w.actualCents)} spent at ${hundredthsText(w.pctBp)}% done`;
   return w.forecastCents === null ? `${spent}. No forecast until some work is done.` : `${spent}, so about ${formatMoney(w.forecastCents)} for the whole stage.`;
 }
 

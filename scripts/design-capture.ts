@@ -222,8 +222,12 @@ async function captureOne(opts: {
     // "fill:Sam's share=60" types into a labelled field.
     const fill = /^fill:(.+?)=(.*)$/.exec(step);
     if (fill) {
-      await page.getByLabel(fill[1]!, { exact: true }).fill(fill[2]!);
-      await page.waitForTimeout(300);
+      const box = page.getByLabel(fill[1]!, { exact: true });
+      await box.fill(fill[2]!);
+      // The shot is the settled screen: the person has finished typing and put the keyboard away, so the pinned
+      // bar is back above the tab bar and the home bar (with a field focused it would sit on the keyboard).
+      await box.blur();
+      await page.waitForTimeout(450);
       continue;
     }
     // "radio:No work" presses a segmented choice instead of a button.
