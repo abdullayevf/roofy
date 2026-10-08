@@ -16,7 +16,7 @@ Why (measured with `python3 scripts/usage-report.py`, $220 to 2026-10-02): condu
 
 - Read only: this file; `sed -n '/^## Current/,/^## Log/p' docs/plans/PROGRESS.md`; `tail -30 .superpowers/sdd/<plan>/progress.md` (the ledger). Never diffs (use `--stat`), logs, screenshots, whole plan/spec/flows files, or any file over 100 lines. Command output: `| tail -15` at most.
 - Never writes product code or tests. Writes only briefs, fix lists, ledger lines, PROGRESS.md and docs commits.
-- **One session per task.** When a task is complete (ledger, plan tick and PROGRESS.md committed), stop and tell the owner: "Task N done. Type `/clear`, then `next`." A fresh session costs a few k tokens; carrying a 100k+ history costs that on every step.
+- **One session per slice.** A session finishes the current task or about 4 dispatch rounds, commits ledger and PROGRESS.md, then ends. `scripts/loop.sh` starts the next fresh session with `scripts/loop/PROMPT.md` (by hand: `/clear`, then paste that prompt). The loop stops when `.superpowers/STOP` exists (§6 questions, phase gate done, budget exceeded, no progress twice). A fresh session costs a few k tokens; carrying a 100k+ history costs that on every step.
 - Dispatch with the Agent tool (`subagent_type`: implementer, reviewer, spec-reviewer, design-critic, field-critic). Prompt at most 12 lines: task id, rules file, brief file, report file, other inputs by path. No pasted text.
 - Replies at most 10 lines; reports and critic tables are files, read only when acting on them.
 - After every completion notice, append one ledger line: `<time> <agent> <task/round> <STATUS> tool_uses=<n> tokens=<n>`; keep a running total per task.

@@ -3,9 +3,9 @@
 ## Current
 
 - Phase: 2 — Design system and full prototype. Branch `phase/2-design-prototype` (local on the VPS, not pushed, not merged). Plan: `docs/plans/03-design-prototype.md`.
-- Session 2026-10-02 ended after Task 13. Ledger: `.superpowers/sdd/03-design-prototype/progress.md`.
-- Done and reviewed: Tasks 1–13. Task 13 = 565032a..544e9e7: Jobs list + New/edit job; design loop 66 → 71 → 75.5, accepted under the 3-iteration cap (open rows in ISSUES.md, incl. P1 i3-F1: Chromium's native date field shows mm/dd in captures). Code review + 2 re-reviews, spec review + re-review clean. verify green (752 unit); full e2e 3 projects 766 passed, 1 cold-start timeout that passed on re-run.
-- **Next: Task 14** (Jobs 2/2: Job detail, Stage detail, Stage Done + lump-sum split). Write `task-14-brief.md` first; split the fix work into runs of ≤ 30 steps from the start (Task 13: seven implementer runs hit the 45-step cap).
+- Ledger: `.superpowers/sdd/03-design-prototype/progress.md` (per-run lines; read its tail for where a task stands).
+- Done and reviewed: Tasks 1–13 (Task 13 = 565032a..544e9e7, design loop accepted at 75.5 under the 3-iteration cap; open rows in ISSUES.md).
+- **Now: Task 14** (Job detail 11, Stage detail 12, Stage done 13). Brief `.superpowers/sdd/03-design-prototype/task-14-brief.md`; base commit c201236. Built: run A c8750ff (screen 11), run B 020705f (screen 12, pause sheet, fixtures). Run B2 2402423 (screen-12 e2e, pause flow, manifest, manager stage money; "Mark stage done" link 404s until run C). Next: run C (screen 13 + split editor + e2e) → parallel review → capture `jobs-2` → design loop.
 - Then: Tasks 15–23 in order.
 - Known flaky (iphone, passed on re-run): flows/no-work-marker.spec.ts:6, log-progress.spec.ts:135, design-page.spec.ts:45 on a cold server.
 - Environment: real WebKit works on the VPS. Never stop the server with `pkill -f "next start"`; kill the PID from `ss -ltnp | grep 3100`.
