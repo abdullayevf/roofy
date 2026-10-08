@@ -15,3 +15,4 @@
 - Unreadable or empty share/percent boxes never count as 0%; block Confirm with a hint (same rule as money).
 - Working lines that explain a figure show percents to two places when not whole (30.49%, not 30%), so the line adds up by hand.
 - Date inputs read dd/mm/yyyy on every browser and in every capture (en-AU locale), not just iPhone.
+- Measure or capture a sheet or page only after it has settled (expectStill in guards.ts); on desktop, scope locators to the visible layout, since phone rows stay in the DOM hidden.
