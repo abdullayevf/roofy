@@ -138,6 +138,32 @@ describe("stage done with a lump sum, and reopen", () => {
     expect(e.code).toBe("invalid");
   });
 
+  it("a completion date after today (workspace timezone) is refused by the service", async () => {
+    const { data, actor } = fakeSession("manager");
+    const later = await refusal(data.stages.confirmDone(actor, { ...done, completedOn: "2026-09-29" }));
+    expect([later.code, later.message]).toEqual(["invalid", "Pick a date that is today or earlier."]);
+    const proposal = await refusal(data.stages.doneProposal(actor, stages.harrisRidge, "2026-09-29"));
+    expect(proposal.message).toBe("Pick a date that is today or earlier.");
+  });
+
+  it("the service refuses the same person twice, and stages that are not Active or Paused", async () => {
+    const { data, actor } = fakeSession("manager");
+    const twice = [crew.sam, crew.sam, crew.dima];
+    const dupDone = await refusal(
+      data.stages.confirmDone(actor, { ...done, crewMemberIds: twice, shares: { mode: "custom", bp: [3334, 3333, 3333] } }),
+    );
+    expect([dupDone.code, dupDone.message]).toEqual(["invalid", "Each person can only be listed once."]);
+    const dupProposal = await refusal(
+      data.stages.doneProposal(actor, stages.harrisRidge, "2026-09-28", { crewMemberIds: twice, bp: [3334, 3333, 3333] }),
+    );
+    expect(dupProposal.message).toBe("Each person can only be listed once.");
+    const finished = await refusal(data.stages.doneProposal(actor, stages.patelSheetInstall));
+    expect([finished.code, finished.message]).toEqual(["conflict", "This stage is already done."]);
+    const notStarted = seed.stages.find((s) => s.status === "not_started")!;
+    const fresh = await refusal(data.stages.doneProposal(actor, notStarted.id));
+    expect(fresh.code).toBe("conflict");
+  });
+
   it("reopen before approval deletes the lump-sum logs; the stage is active again", async () => {
     const { data, actor } = fakeSession("manager");
     await data.stages.confirmDone(actor, done);

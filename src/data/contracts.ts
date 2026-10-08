@@ -193,6 +193,8 @@ export interface FileRef {
   bytes: number;
   kind: "photo" | "pdf" | "other";
   uploadedAt: Instant;
+  /** The date it was added, in the workspace timezone (what screens show; never uploadedAt's UTC date). */
+  uploadedOn: LocalDate;
 }
 
 // ─── Work logs ──────────────────────────────────────────────────────────────

@@ -19,7 +19,7 @@ import {
   usePinnedBar,
 } from "./field-entry";
 import { hundredthsText, parseHundredths, sharesFromText } from "./field-input";
-import { doneHint, doneSplit, sharesLeftText } from "./stage-done-input";
+import { doneHint, doneSplit, sharesLeftText, splitEdited, unreadableShare } from "./stage-done-input";
 import { useOnline } from "./use-online";
 
 const FAILED = "Couldn't mark this stage done. Try again.";
@@ -53,28 +53,33 @@ export function StageDone({
   const [shareText, setShareText] = useState<Record<string, string>>(() =>
     Object.fromEntries(proposal.crew.map((p) => [p.crewMemberId, hundredthsText(p.shareBp)])),
   );
-  const [edited, setEdited] = useState(false);
-  const [amounts, setAmounts] = useState<Record<string, number>>(() =>
-    Object.fromEntries(proposal.crew.map((p) => [p.crewMemberId, p.amountCents])),
-  );
+  // Server amounts for a custom split; the proposal's own amounts while the split is untouched.
+  const [customAmounts, setCustomAmounts] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { style, barProps } = usePinnedBar(null);
 
   const lump = proposal.lumpSumCents;
   const splitNeeded = lump !== null && proposal.crew.length > 0;
-  const typed = sharesFromText(proposal.crew.map((p) => shareText[p.crewMemberId] ?? ""));
+  const nobodyLogged = lump !== null && proposal.crew.length === 0;
+  const texts = proposal.crew.map((p) => shareText[p.crewMemberId] ?? "");
+  const typed = sharesFromText(texts);
+  const edited = splitEdited(
+    proposal.crew.map((p) => p.shareBp),
+    texts,
+  );
+  const unreadable = unreadableShare(proposal.crew.map((p, i) => ({ name: p.name, text: texts[i]! })));
   const people = proposal.crew.map((p, i) => ({ crewMemberId: p.crewMemberId, bp: typed.bp[i] ?? 0 }));
   const left = splitNeeded ? sharesLeftText(typed.total) : null;
   const hint =
-    doneHint({ total: typed.total, online, splitNeeded }) ??
+    doneHint({ total: typed.total, online, splitNeeded, unreadable, nobodyLogged }) ??
     (date ? undefined : "Pick the date the stage was finished.");
   const ready = hint === undefined;
   const sendKey = JSON.stringify(doneSplit(people, edited, splitNeeded));
 
   // An edited split that adds up to 100% goes back to the server for its amounts (largest remainder lives there).
   useEffect(() => {
-    if (!edited || !splitNeeded || typed.total !== 10000) return;
+    if (!edited || !splitNeeded || unreadable || typed.total !== 10000) return;
     const send = JSON.parse(sendKey) as ReturnType<typeof doneSplit>;
     if (send.shares.mode !== "custom") return;
     let live = true;
@@ -82,17 +87,16 @@ export function StageDone({
     void proposeStageDone(proposal.stageId, date || today, { crewMemberIds: send.crewMemberIds, bp })
       .then((r) => {
         if (live && r.ok)
-          setAmounts(Object.fromEntries(r.proposal.crew.map((p) => [p.crewMemberId, p.amountCents])));
+          setCustomAmounts(Object.fromEntries(r.proposal.crew.map((p) => [p.crewMemberId, p.amountCents])));
       })
       .catch(() => undefined);
     return () => {
       live = false;
     };
-  }, [sendKey, edited, splitNeeded, typed.total, proposal.stageId, date, today]);
+  }, [sendKey, edited, splitNeeded, unreadable, typed.total, proposal.stageId, date, today]);
 
   function typeShare(id: string, text: string) {
-    setEdited(true);
-    setAmounts({});
+    setCustomAmounts({});
     setShareText((prev) => ({ ...prev, [id]: text }));
   }
 
@@ -177,7 +181,7 @@ export function StageDone({
           <ul className="flex flex-col gap-4">
             {proposal.crew.map((p) => {
               const text = shareText[p.crewMemberId] ?? "";
-              const amount = amounts[p.crewMemberId];
+              const amount = edited ? customAmounts[p.crewMemberId] : p.amountCents;
               return (
                 <li key={p.crewMemberId} data-share-row={p.name}>
                   <Field
@@ -198,6 +202,19 @@ export function StageDone({
           <p data-shares-left="" className={cx("text-body", left ? "text-ink" : "text-ink-2")}>
             {left ?? "Shares add up to 100%"}
           </p>
+        </section>
+      ) : nobodyLogged ? (
+        <section data-split="" data-split-empty="" className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-heading text-ink">Lump sum split</h2>
+            <p className="text-body text-ink-2">
+              {formatMoney(lump)} is shared by everyone who logged work on this stage. Nobody has logged work on it
+              yet.
+            </p>
+          </div>
+          <Button variant="secondary" href={`/log?project=${proposal.projectId}`} className="self-start">
+            Log crew time
+          </Button>
         </section>
       ) : null}
       <PinnedAction barProps={barProps} error={error} hint={hint}>

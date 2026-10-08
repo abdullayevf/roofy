@@ -220,7 +220,7 @@ function Files({ job, today }: { job: ProjectDetail; today: string }) {
   const rows: ListRow[] = job.files.map((f) => ({
     key: f.id,
     primary: f.name,
-    meta: `${f.kind === "photo" ? "Photo" : f.kind === "pdf" ? "PDF" : "File"}, added ${formatDate(f.uploadedAt.slice(0, 10), today)}`,
+    meta: `${f.kind === "photo" ? "Photo" : f.kind === "pdf" ? "PDF" : "File"}, added ${formatDate(f.uploadedOn, today)}`,
   }));
   return (
     <Section title="Files">

@@ -200,6 +200,7 @@ export class FakeContext {
       bytes: f.bytes,
       kind: f.mime.startsWith("image/") ? "photo" : f.mime === "application/pdf" ? "pdf" : "other",
       uploadedAt: f.createdAt,
+      uploadedOn: todayIn(this.t.workspace.timezone, new Date(f.createdAt)),
     };
   }
 }

@@ -7,7 +7,7 @@ import { lostWorkingDays, realWorkingDays } from "@/domain/segments";
 import { DataError, type ProjectDetailManager, type StageDetailManager } from "../../contracts";
 import { jobAlertText, jobLine, overBudgetJobs } from "@/components/screens/job-input";
 import { getSeed } from "../store";
-import { fake } from "./testing";
+import { fake, fakeSession } from "./testing";
 
 const seed = getSeed();
 const { meta } = seed;
@@ -348,5 +348,16 @@ describe("crew this week (foreman) leaves out adjustments", () => {
     const manager = as("manager");
     const m = await manager.data.projects.get(manager.actor, meta.projects.smith);
     expect(m.crewThisWeek.map((w) => w.name)).toContain(other.name);
+  });
+});
+
+describe("job files", () => {
+  it("a file's added date is the workspace-timezone date, not the UTC date (00:30 Mon in Sydney)", async () => {
+    const { data, actor, store } = fakeSession("manager");
+    const file = store.tables.files.find((f) => f.entityType === "project" && f.entityId === meta.projects.smith)!;
+    file.createdAt = "2026-09-27T14:30:00.000Z";
+    const detail = await data.projects.get(actor, meta.projects.smith);
+    const ref = detail.files.find((f) => f.id === file.id)!;
+    expect([ref.uploadedAt, ref.uploadedOn]).toEqual(["2026-09-27T14:30:00.000Z", "2026-09-28"]);
   });
 });

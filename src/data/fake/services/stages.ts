@@ -196,6 +196,7 @@ export function createStageService(c: FakeContext): StageService {
     async doneProposal(actor: Actor, stageId: Id, completedOn?: LocalDate, split?: DoneSplit): Promise<DoneProposal> {
       if (!c.access(actor).canEdit) throw forbidden();
       const st = c.requireStage(actor, stageId);
+      requireDoneable(c, st, completedOn ?? c.today, split?.crewMemberIds ?? []);
       const crewIds = split ? split.crewMemberIds : stageLoggers(c, st.id);
       if (split && (split.bp.length !== crewIds.length || split.bp.reduce((a, b) => a + b, 0) !== 10_000 || split.bp.some((b) => b <= 0))) {
         throw invalid("Shares must add up to 100%, one share per person.");
@@ -290,10 +291,9 @@ function pauseStage(c: FakeContext, actor: Actor, input: StagePauseInput): Entry
     throw conflict("This stage hasn't started yet, so there's nothing to pause.");
   if (st.status === "paused") return entryResult(actor, [], []);
   const open = openSegment(c.t, st.id)!;
-  if (input.date <= open.startDate) {
-    throw invalid(
-      `This stage started on ${dateText(c, open.startDate)}. Pick the first day not worked, after that.`,
-    );
+  // Pausing on the start day is allowed: the segment [start, start) is empty, no days worked (pay rules §13).
+  if (input.date < open.startDate) {
+    throw invalid(`This stage started on ${dateText(c, open.startDate)}. Pick that day or later.`);
   }
   write(c, actor, "stage_pause", (w) => {
     open.endDate = input.date;
@@ -342,11 +342,18 @@ function resumeStage(c: FakeContext, actor: Actor, input: StageResumeInput): Ent
  * splits the lump sum over the confirmed people with `lumpSumLines` (pay rules §5) — one log each,
  * dated the completion date.
  */
+/** Done needs an Active or Paused stage, a date no later than today (workspace timezone) and each person once. */
+function requireDoneable(c: FakeContext, st: StageRow, completedOn: LocalDate, crewMemberIds: readonly Id[]): void {
+  if (st.status === "done") throw conflict("This stage is already done.");
+  if (st.status === "not_started") throw conflict("This stage hasn't started yet. Log work on it first.");
+  if (completedOn > c.today) throw invalid("Pick a date that is today or earlier.");
+  if (new Set(crewMemberIds).size !== crewMemberIds.length) throw invalid("Each person can only be listed once.");
+}
+
 function confirmDone(c: FakeContext, actor: Actor, input: StageDoneInput): EntryResult {
   requireEditor(c, actor);
   const st = c.requireStage(actor, input.stageId);
-  if (st.status === "done") throw conflict("This stage is already done.");
-  if (st.status === "not_started") throw conflict("This stage hasn't started yet. Log work on it first.");
+  requireDoneable(c, st, input.completedOn, input.crewMemberIds);
   const last = lastSegment(c.t, st.id)!;
   if (input.completedOn < last.startDate) {
     throw invalid(`Pick a completion date on or after ${dateText(c, last.startDate)}.`);

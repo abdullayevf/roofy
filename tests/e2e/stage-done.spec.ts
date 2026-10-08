@@ -46,6 +46,22 @@ test.describe("Stage done (manager)", () => {
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
   });
 
+  test("retyping the equal split keeps the E5.1 cents; an empty box blocks Confirm and is never 0%", async ({ page }) => {
+    await signInAs(page, "manager", donePage);
+    await share(page, "Sam").fill("33.34");
+    await share(page, "Tom").fill("33.33");
+    await expect(page.locator('[data-share-row="Tom"]')).toContainText("$666.67");
+    await expect(page.locator('[data-share-row="Dima"]')).toContainText("$666.66");
+    await share(page, "Sam").fill("");
+    await share(page, "Tom").fill("50");
+    await share(page, "Dima").fill("50");
+    await expect(page.getByText("Check Sam's share", { exact: true })).toBeVisible();
+    await expect(confirm(page)).toBeDisabled();
+    await share(page, "Sam").fill("abc");
+    await expect(page.getByText("Check Sam's share", { exact: true })).toBeVisible();
+    await expect(confirm(page)).toBeDisabled();
+  });
+
   test("an edited split gets its amounts back from the server and confirms", async ({ page }) => {
     await signInAs(page, "manager", donePage);
     await share(page, "Sam").fill("40");

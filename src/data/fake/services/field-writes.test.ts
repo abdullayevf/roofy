@@ -314,16 +314,30 @@ describe("stage pause and resume", () => {
     const early = await refusal(
       data.stages.pause(actor, {
         stageId: stages.smithSheetInstall,
-        date: "2026-09-23",
+        date: "2026-09-22",
         reason: "weather",
         note: null,
       }),
     );
-    expect(early.message).toBe(
-      "This stage started on Wed 23 Sep. Pick the first day not worked, after that.",
-    );
+    expect(early.message).toBe("This stage started on Wed 23 Sep. Pick that day or later.");
     const back = await refusal(data.stages.resume(actor, { stageId: stages.rydeCoat, date: "2026-09-10" }));
     expect(back.message).toBe("This stage was paused from Mon 14 Sep. Pick that day or later.");
+  });
+
+  it("pausing on the day the stage started is allowed: an empty segment, no days worked (pay rules §13)", async () => {
+    const { data, actor } = fakeSession("foreman");
+    await data.stages.pause(actor, {
+      stageId: stages.smithSheetInstall,
+      date: "2026-09-23",
+      reason: "weather",
+      note: null,
+    });
+    const st = await data.stages.get(actor, stages.smithSheetInstall);
+    expect([st.status, st.segments.at(-1)!.start, st.segments.at(-1)!.end]).toEqual([
+      "paused",
+      "2026-09-23",
+      "2026-09-23",
+    ]);
   });
 
   it("a foreman can't pause a stage on a job he isn't assigned to", async () => {
