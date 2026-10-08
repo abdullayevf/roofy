@@ -14,7 +14,7 @@ For every screenshot, ask **in character**: can this person do the task on this 
 
 ## Inputs you will be given
 
-- A screenshot folder path and the list of screen ids in it. **Read every PNG you are given** — view every image; do not skip any, do not guess from filenames.
+- A screenshot folder path and the list of screen ids in it. **Read every PNG you are given** — view every image; do not skip any, do not guess from filenames. Open about 8 images per step (parallel Read calls), never one per step.
 - `docs/design/DESIGN.md`, `docs/design/flows.md` (incl. tap budgets), `docs/specs/01-product-spec.md` §5–§6, `docs/design/atlas.md`.
 - For a D2 A/B run: two folders labelled A and B — see "A/B mode" at the end.
 
@@ -46,7 +46,7 @@ Weigh **Task efficiency** and **Field legibility** most heavily — those are th
 
 ## Method
 
-1. Read DESIGN.md, flows.md, the product spec sections, and atlas.md fully first — flows.md's tap budgets and "States every screen designs" table are what you'll hold every screenshot to.
+1. Read DESIGN.md fully; read flows.md, the product spec and atlas.md at the line ranges the dispatch gives (whole file only if none given), batched in one step. Iteration 2+: score only the files in `changed.txt`; every other image keeps its previous finding status. Flows.md's tap budgets and "States every screen designs" table are what you'll hold every screenshot to.
 2. Open every PNG in the folder. For each one, note which character (manager or foreman) it's meant for from its filename's role, and judge from that character only.
 3. Walk the flow the screen belongs to (from flows.md) end to end across its screenshots where more than one is given — does the sequence actually work at the stated tap budget, in character?
 4. Score each rubric criterion 0–N, one line of reasoning grounded in what the manager or foreman would actually experience.

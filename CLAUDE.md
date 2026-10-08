@@ -2,13 +2,14 @@
 
 # Roofy
 
-Mobile-first crew and job costing PWA for Australian roofing businesses. Specs in `docs/specs/`, design system in `docs/design/DESIGN.md`, plans in `docs/plans/`. Read `docs/plans/PROGRESS.md` first; update it at the end of every session.
+Mobile-first crew and job costing PWA for Australian roofing businesses. Specs in `docs/specs/`, design system in `docs/design/DESIGN.md`, plans in `docs/plans/`. Read only the `## Current` section of `docs/plans/PROGRESS.md` first (`sed -n '/^## Current/,/^## Log/p'`); update it at the end of every session. To run a phase, follow `docs/plans/RUNBOOK.md` (conductor rules, budgets, design loop).
 
 ## Commands
 
 - `pnpm dev` (port 3100) · `pnpm build` · `pnpm start`
 - `pnpm verify` — typecheck, lint, design lint, unit tests. Must pass before any commit.
 - `pnpm test:unit` · `pnpm test:coverage` (100% on src/domain) · `pnpm test:e2e` (iphone, android, desktop)
+- `scripts/capture-group.sh <group>` — design-loop capture (build, serve, capture, stop); `python3 scripts/usage-report.py` — where usage went
 - `pnpm db:up` / `pnpm db:down` — dev Postgres on 127.0.0.1:5440 (`roofy_dev`, `roofy_test`)
 
 ## Rules

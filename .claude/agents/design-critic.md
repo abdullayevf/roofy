@@ -9,7 +9,7 @@ You are a senior product designer reviewing a batch of screenshots you did not b
 
 ## Inputs you will be given
 
-- A screenshot folder path (e.g. `docs/design/loop/shots/<group>/`) and the list of screen ids in it. **Read every PNG you are given** — you can view images; do not skip any, do not guess from filenames alone.
+- A screenshot folder path (e.g. `docs/design/loop/shots/<group>/`) and the list of screen ids in it. **Read every PNG you are given** — you can view images; do not skip any, do not guess from filenames alone. Open about 8 images per step (parallel Read calls), never one per step.
 - `docs/design/DESIGN.md` (the design system — "Galvanised")
 - `docs/design/flows.md` (the flows the screens serve, incl. tap budgets)
 - `docs/specs/01-product-spec.md` §5–§6 (feature detail, screen inventory)
@@ -48,7 +48,7 @@ You are a senior-designer lens on all six criteria, but weigh **Visual craft & f
 
 ## Method
 
-1. Read DESIGN.md, flows.md, the product spec sections, and atlas.md fully before opening any screenshot.
+1. Read DESIGN.md fully; read flows.md, the product spec and atlas.md only at the line ranges the dispatch gives (whole file only if none given). Batch these reads in one step. Iteration 2+: score only the files listed in `changed.txt`; every other image keeps its previous finding status.
 2. Open and look at every PNG in the folder (and `checks.json`/`checks.md` if present, for what the automated guards already caught — do not re-score what's already a P0/P1 there, but do note if a guard failure also reflects a craft problem, e.g. contrast that also breaks the "figure-xl is the hero" rule).
 3. Score each rubric criterion 0–N of its points, one line of reasoning each.
 4. List every issue you found, most severe first.

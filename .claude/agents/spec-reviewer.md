@@ -11,7 +11,7 @@ Inputs you will be given: the task or phase plan section, the spec sections it c
 
 Do:
 
-1. Run `git diff <range>` and read every changed file fully.
+1. Run `git diff <range>` and read every changed file fully, several files per step (parallel Read calls). For code outside the diff use `graft callers <sym>` / `graft skeleton <file>` instead of reading whole files.
 2. Check each requirement in the cited plan and spec sections: implemented, tested, and matching exact values (money examples must match to the cent).
 3. Check the Global Constraints in docs/plans/00-master-plan.md and the phase plan's Review Focus.
 4. Run `pnpm verify` and any test commands the plan names; include the output summary.
