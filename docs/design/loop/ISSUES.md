@@ -485,3 +485,39 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | jobs-1/i3-D13 | jobs-1 | P3 | job-new offline/iphone | Offline sentence wraps | "Needs connection to save." |
 | jobs-1/i3-D14 | jobs-1 | P3 | jobs-list + job-new error | "Couldn't load this. Try again." | "Couldn't load your jobs." |
 | jobs-1/i3-D15 | jobs-1 | P3 | job-new quick-add/iphone | Grabber straddles sheet edge; Save 16 px from bottom | Grabber inside; safe-area padding |
+| jobs-2/i1-F1 | jobs-2 | P1 | stage-detail paused, paused-weather, offline-waiting | Resume and Mark stage done both solid primary; gloved mis-tap risk | Resume is the one primary; Mark done outline. guard: one primary per screen |
+| jobs-2/i1-F2 | jobs-2 | P1 | stage-detail-paused-weather | Chip "Paused: Weather" but timeline still "From Wed 23 Sep / Working" | Close the open segment at today; add Paused (Weather) line |
+| jobs-2/i1-F3 | jobs-2 | P2 | stage-done-offline | Banner says entries saved on device and will send, but button says Needs connection; dash chain | One sentence: "No signal. Marking done needs a connection." |
+| jobs-2/i1-F4 | jobs-2 | P2 | stage-detail offline manager | Mark stage done active offline; blocked only after the form | Disable on stage detail with "Needs connection" |
+| jobs-2/i1-F5 | jobs-2 | P2 | stage-done all | "Photo (optional)" small grey vs other labels bold + Optional below (lesson) | Same label style. guard |
+| jobs-2/i1-F6 | jobs-2 | P2 | stage-detail-loading | Skeleton plain blocks, not shaped (lesson) | Shape like chip, buttons, rows. guard |
+| jobs-2/i1-F7 | jobs-2 | P2 | stage-detail portrait+landscape | Pause/Mark done at top, out of thumb reach; no pinned bar in landscape (lesson) | Pinned bottom bar, compact row in landscape. guard |
+| jobs-2/i1-F8 | jobs-2 | P2 | stage/job detail empty, long-names | Empty money rows "Budget" no figure / "$0.00" | "No budget set" / "No contract value" |
+| jobs-2/i1-F9 | jobs-2 | P2 | stage-done android+landscape | Date 09/28/2026 (US order); = T13 i3-F1 | en-AU on date field. guard: dd/mm/yyyy |
+| jobs-2/i1-F10 | jobs-2 | P2 | job-detail normal manager iphone | "69% done" first; over-budget warning below fold | Money + warning up |
+| jobs-2/i1-F11 | jobs-2 | P2 | job-detail recent logs | Hours-only logs show "$0.00" | "Time only" |
+| jobs-2/i1-F12 | jobs-2 | P2 | job-detail-empty | Second primary "Edit job" under outline "Edit job" | "Add stages" the one primary |
+| jobs-2/i1-F13 | jobs-2 | P2 | job-detail foreman | No "Add expense" shortcut the foreman flow calls for | Add it (no money) |
+| jobs-2/i1-F14 | jobs-2 | P2 | stage-detail not-started | Timeline heading over a bare line | "Not started yet." |
+| jobs-2/i1-F15 | jobs-2 | P3 | stage-detail | Over-budget warning twice; done stage says Working; Forecast labour redundant when done | Once; "Done"; hide forecast when done |
+| jobs-2/i1-F16 | jobs-2 | P3 | stage-detail-done installed landscape | Log button covers reopen/lump-sum line | Bottom padding = bar height |
+| jobs-2/i1-F17 | jobs-2 | P3 | no-access pages | "Go to Home" vs "Back to Log" | One wording |
+| jobs-2/i1-D1 | jobs-2 | P1 | stage-detail all, iphone+tablet | Start/Pause/Resume/Mark done under chip at top; out of thumb reach, pushes % done down (§5) | Pinned bottom action bar like stage-done; figure-xl under title |
+| jobs-2/i1-D2 | jobs-2 | P2 | stage-done all | No key figure; $2,000.00 in body text; share amounts meta under input, not right column (lesson) | "$2,000.00 lump sum" figure-xl; rows name / % / amount right tabular |
+| jobs-2/i1-D3 | jobs-2 | P2 | stage-done equal split | 33.34% → $666.67 and 33.33% → $666.67 / $666.66; doesn't add up by hand | Working line "Split equally; 1c rounding goes to <name>" |
+| jobs-2/i1-D4 | jobs-2 | P2 | stage-done/stage-detail loading | Skeletons not shaped like content (lesson) | Match real rows |
+| jobs-2/i1-D5 | jobs-2 | P2 | stage-done all | "Photo (optional)" meta vs bold labels + Optional helper (lesson) | One label style |
+| jobs-2/i1-D6 | jobs-2 | P2 | stage-done offline | Dash-chain banner contradicts Needs connection (lesson) | "No signal. Marking a stage done needs a connection." |
+| jobs-2/i1-D7 | jobs-2 | P2 | stage-detail money | Materials row breaks Labour pattern (Budget no amount / amount as figure) | Match Labour: actual figure, "Budget $X" meta |
+| jobs-2/i1-D8 | jobs-2 | P2 | stage-detail paused, paused-weather, offline-waiting | Resume and Mark done both primary | Resume primary, Mark done secondary |
+| jobs-2/i1-D9 | jobs-2 | P2 | job-detail all + empty | Edit job between header and hero; twice on empty | Edit as header action; empty CTA "Add stage" |
+| jobs-2/i1-D10 | jobs-2 | P2 | job-detail owner/manager iphone | Over-budget warning and money below first screen | Needs-attention row under hero |
+| jobs-2/i1-D11 | jobs-2 | P2 | stage-detail not-started | Timeline heading over bare rule | "Not started yet. Starts when the first day is logged." |
+| jobs-2/i1-D12 | jobs-2 | P2 | job-detail recent logs | Time-only logs "$0.00" | Meta "Time only, paid by m²", no figure |
+| jobs-2/i1-D13 | jobs-2 | P2 | job-detail stage rows | "Done  Done Mon 31 Aug" | "Finished Mon 31 Aug" |
+| jobs-2/i1-D14 | jobs-2 | P2 guard | stage-done desktop | Date 09/28/2026 on desktop, 28/09/2026 on iPhone | en-AU locale in capture and serve; locale guard |
+| jobs-2/i1-D15 | jobs-2 | P2 | job/stage detail desktop | Single 720 px column, ~45% of 1440 empty | Two columns: stages left, money right |
+| jobs-2/i1-D16 | jobs-2 | P3 | stage-done not-100 | Hint twice; all three inputs red | Keep bar hint; one sum-error style |
+| jobs-2/i1-D17 | jobs-2 | P3 | stage-done saved | Only spinner; no success state | Capture return to stage with done confirmation |
+| jobs-2/i1-D18 | jobs-2 | P3 | stage-detail normal, done | Warning twice; done stage shows forecast + Working | Once; hide forecast when done; date range + Done |
+| jobs-2/i1-D19 | jobs-2 | P3 | stage-detail/stage-done foreman | Pause primary for foreman, secondary for manager; no-access says Back to Log while Jobs tab selected | One hierarchy; "Back to stage" |

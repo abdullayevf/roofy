@@ -5,8 +5,8 @@
 - Phase: 2 — Design system and full prototype. Branch `phase/2-design-prototype` (local on the VPS, not pushed, not merged). Plan: `docs/plans/03-design-prototype.md`.
 - Ledger: `.superpowers/sdd/03-design-prototype/progress.md` (per-run lines; read its tail for where a task stands).
 - Done and reviewed: Tasks 1–13 (Task 13 = 565032a..544e9e7, design loop accepted at 75.5 under the 3-iteration cap; open rows in ISSUES.md).
-- **Now: Task 14** (Job detail 11, Stage detail 12, Stage done 13). Brief `.superpowers/sdd/03-design-prototype/task-14-brief.md`; base c201236. Built: runs A c8750ff, B 020705f, B2 2402423, C d0f3e53. Reviewed (task-14-review.md, task-14-spec-review.md: 0 blocking); fix list task-14-fix.md done: part X de4f6ed (opus), part Y 042ccde. Task e2e at d0f3e53 on 3 projects green.
-- **Next:** re-review of fixes only, in parallel: `reviewer` checks CR1–CR4, CR6–CR10, CR12–CR13 and `spec-reviewer` (opus) checks SR1–SR3, range d0f3e53..042ccde (reports task-14-fix-x/y-report.md). Then `scripts/capture-group.sh jobs-2` → design loop (cap 3) → plan tick. T14 so far: 9 runs, 309 tool uses (screen-group budget 28 runs / 800).
+- **Now: Task 14** (Job detail 11, Stage detail 12, Stage done 13). Brief `.superpowers/sdd/03-design-prototype/task-14-brief.md`; base c201236. Built A–C (c8750ff..d0f3e53); review fixes de4f6ed, 042ccde (re-reviewed: code closed, spec CLEAN); guard fixes 70ac00e. Design loop jobs-2 iter 1: design 72, field 75, avg 73.5, P1 3 (SCORES/ISSUES updated).
+- **Next:** fix list `.superpowers/sdd/03-design-prototype/task-14-design-fix-1.md`: run 1a (opus, stage detail) then run 1b (sonnet, job detail + stage done), reports task-14-design-fix-1a/1b-report.md. Then `scripts/capture-group.sh jobs-2` (0 failures) → iter 2 critics on `changed.txt` only, capped ~50 tool uses each → iter 3 at most → task e2e on 3 projects → plan tick. Budget: T14 at 15 runs, 601 tool uses of 28 / 800; if a run would pass 800, write the STOP note.
 - Then: Tasks 15–23 in order.
 - Known flaky (iphone, passed on re-run): flows/no-work-marker.spec.ts:6, log-progress.spec.ts:135, design-page.spec.ts:45 on a cold server.
 - Environment: real WebKit works on the VPS. Never stop the server with `pkill -f "next start"`; kill the PID from `ss -ltnp | grep 3100`.
@@ -37,6 +37,8 @@
 
 ## Decisions and deviations
 
+- Task 14 (2026-10-08): a stage paused on the same day it was started by a log gets an empty segment, so that day's log is flagged `paused_stage` (pay rules §9 check, a warning, not a block). Kept as spec-valid under §13 half-open ranges; a test will pin it. Revisit if field feedback says a same-day rain pause should keep the day.
+- Task 14: the forecast working line sits on stage detail, not behind tap 2, until the `/history?job=` list exists (Task 18).
 - TypeScript pinned to ~6.0.3 (TS 7 native compiler not yet supported by Next.js tooling).
 - Dev server bound to `127.0.0.1` (not all interfaces).
 - `eslint-config-prettier` wired last in `eslint.config.mjs` so it can turn off conflicting stylistic rules.

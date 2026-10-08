@@ -31,3 +31,4 @@ Score history for every screen group's design loop (`docs/specs/04-design-proces
 | jobs-1  | 1         | 68           | 64          | 66      | 9           | yes (84 captures, 0 fail)                                                                                        |
 | jobs-1  | 2         | 71           | 71          | 71      | 3           | yes (84 captures, 0 fail)                                                                                        |
 | jobs-1  | 3         | 77           | 74          | 75.5    | 1           | yes (84 captures, 0 fail); accepted under the 3-iteration cap                                                    |
+| jobs-2  | 1         | 72           | 75          | 73.5    | 3           | yes (320 captures, 0 fail after guard fix 70ac00e)                                                               |
