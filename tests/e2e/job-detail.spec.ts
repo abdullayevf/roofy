@@ -35,6 +35,19 @@ test.describe("Job detail (manager)", () => {
     // The trending stage says so on its row.
     await expect(stageRows(page).filter({ hasText: "Sheet install" }).getByText(/over budget/)).toBeVisible();
     await expect(page.getByRole("link", { name: "Edit job" })).toHaveAttribute("href", `${smith}/edit`);
+    // Edit job is a header action on the Back row's line, not a second block under the address (i1-D9).
+    const back = (await page.getByRole("link", { name: "Back to jobs" }).boundingBox())!;
+    const edit = (await page.getByRole("link", { name: "Edit job" }).boundingBox())!;
+    expect(Math.abs(edit.y - back.y), "Edit job shares the Back row").toBeLessThan(6);
+    expect(edit.x, "Edit job sits at the right").toBeGreaterThan(back.x + back.width);
+    // The over-budget warning is on the first screen, under the hero (i1-D10/F10).
+    const warning = page.locator("[data-needs-attention]");
+    await expect(warning).toContainText(/Labour .*over budget/);
+    const warningBox = (await warning.boundingBox())!;
+    expect(warningBox.y + warningBox.height, "warning above the fold").toBeLessThanOrEqual(page.viewportSize()!.height);
+    // A finished stage reads "Finished ...", never "Done Done" (i1-D13); no row prints $0.00 for a time-only log (i1-D12).
+    await expect(page.locator("[data-stage-list]")).not.toContainText("Done Done");
+    await expect(page.locator('[data-screen="job-detail"]')).not.toContainText("$0.00");
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 

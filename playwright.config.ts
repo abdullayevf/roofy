@@ -6,7 +6,12 @@ const noWebkit = process.env.ROOFY_NO_WEBKIT === "1";
 // the revision this Playwright version expects (and downloading a new one isn't
 // possible): point at the browser binary that is actually installed.
 const chromiumExecutable = process.env.ROOFY_CHROMIUM_EXECUTABLE;
-const chromiumLaunchOptions = chromiumExecutable ? { executablePath: chromiumExecutable } : undefined;
+// Chromium takes the date field's order (dd/mm/yyyy) from the process language (LANGUAGE), not from the
+// context locale or --lang, so every Chromium launch gets an Australian one.
+const chromiumLaunchOptions = {
+  ...(chromiumExecutable ? { executablePath: chromiumExecutable } : {}),
+  env: { ...process.env, LANGUAGE: "en_AU", LC_ALL: "en_AU.UTF-8", LANG: "en_AU.UTF-8" } as Record<string, string>,
+};
 
 // Containers without WebKit installed (no download available) opt in to running
 // the "iphone" project on Chromium instead, keeping the iPhone 14 device shape:

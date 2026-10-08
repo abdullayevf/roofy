@@ -8,9 +8,9 @@ const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 type StageProgress = Pick<StageRowForeman, "status" | "unit" | "quantityDone" | "plannedQuantity" | "completedOn">;
 
-/** The line under a stage's name: "40 m² of 400 m²", "Done Tue 15 Sep", or nothing when there is nothing to say. */
+/** The line under a stage's name: "40 m² of 400 m²", "Finished Tue 15 Sep", or nothing when there is nothing to say. */
 export function stageProgressText(stage: StageProgress, today: string): string {
-  if (stage.status === "done" && stage.completedOn) return `Done ${formatDate(stage.completedOn, today)}`;
+  if (stage.status === "done" && stage.completedOn) return `Finished ${formatDate(stage.completedOn, today)}`;
   if (!stage.unit) return "";
   if (stage.plannedQuantity !== null) return `${formatQuantity(stage.quantityDone, stage.unit)} of ${formatQuantity(stage.plannedQuantity, stage.unit)}`;
   return `${formatQuantity(stage.quantityDone, stage.unit)} done`;
@@ -38,4 +38,10 @@ export function logQuantityText(log: Pick<LogRowForeman, "basis" | "unit" | "qua
 export function stageAlertNote(alert: BudgetAlertDto): string {
   const by = formatMoney(alert.byCents);
   return alert.level === "over" ? `${by} over budget` : `Trending ${by} over budget`;
+}
+
+/** The over-budget warning as one sentence under the hero: "Labour $123.45 over budget" or "Labour trending $123.45 over budget". */
+export function labourAlertSentence(alert: BudgetAlertDto): string {
+  const note = stageAlertNote(alert);
+  return `Labour ${note.charAt(0).toLowerCase()}${note.slice(1)}`;
 }

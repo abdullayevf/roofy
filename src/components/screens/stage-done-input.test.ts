@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { doneHint, doneSplit, NOBODY_LOGGED, sharesLeftText, splitEdited, unreadableShare } from "./stage-done-input";
+import { doneHint, doneSplit, equalSplitNote, NOBODY_LOGGED, sharesLeftText, splitEdited, unreadableShare } from "./stage-done-input";
 
 describe("sharesLeftText (what is left to share)", () => {
   it("says how much is left under 100%", () => expect(sharesLeftText(8800)).toBe("12% left to share"));
@@ -64,4 +64,22 @@ describe("doneHint with a lump sum and nobody logged", () => {
   it("keeps Confirm off with a plain hint", () =>
     expect(doneHint({ total: 0, online: true, splitNeeded: false, nobodyLogged: true })).toBe(NOBODY_LOGGED));
   it("says to log crew time first", () => expect(NOBODY_LOGGED).toBe("Nobody has logged work on this stage yet. Log crew time first."));
+});
+
+describe("equalSplitNote (the working line under an equal split)", () => {
+  const row = (name: string, amountCents: number) => ({ name, amountCents });
+  it("names the people who get the extra cent", () =>
+    expect(equalSplitNote([row("Sam", 66667), row("Tom", 66667), row("Dima", 66666)])).toBe(
+      "Split equally; 1c rounding goes to Sam and Tom.",
+    ));
+  it("names one person", () => expect(equalSplitNote([row("Sam", 50001), row("Tom", 50000)])).toBe("Split equally; 1c rounding goes to Sam."));
+  it("lists three with a comma and 'and'", () =>
+    expect(equalSplitNote([row("A", 101), row("B", 101), row("C", 101), row("D", 100)])).toBe(
+      "Split equally; 1c rounding goes to A, B and C.",
+    ));
+  it("has nothing to explain when every share is the same", () =>
+    expect(equalSplitNote([row("Sam", 100000), row("Tom", 100000)])).toBe("Split equally."));
+  it("says nothing when the amounts are not one cent apart (not an equal split)", () =>
+    expect(equalSplitNote([row("Sam", 70000), row("Tom", 30000)])).toBeNull());
+  it("says nothing for nobody", () => expect(equalSplitNote([])).toBeNull());
 });

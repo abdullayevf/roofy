@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { collectConsole, expectScreenHealthy } from "./guards";
+import { checkDateFields, collectConsole, expectScreenHealthy } from "./guards";
 import { expectNoMoney } from "./money-scan";
 import { getSeed } from "../../src/data/fake/store";
 
@@ -21,7 +21,14 @@ test.describe("Stage done (manager)", () => {
     await signInAs(page, "manager", donePage);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Ridge bedding & pointing");
     await expect(page.getByLabel("Finished on")).toHaveValue("2026-09-28");
-    await expect(page.getByText(/\$2,000\.00 shared by everyone who logged/)).toBeVisible();
+    // The key figure: the lump sum, figure-xl, with its words beside it (i1-D2).
+    const key = page.locator("[data-key-figure]");
+    await expect(key).toContainText("$2,000.00");
+    await expect(key).toContainText("lump sum");
+    await expect(key.locator("[data-figure]")).toHaveCSS("font-size", /^(40|48)px$/);
+    await expect(page.getByText("Shared by everyone who logged work on this stage.")).toBeVisible();
+    // The working line that lets the manager add the equal split up by hand (i1-D3). Sam and Tom hold the extra cent.
+    await expect(page.locator("[data-split-note]")).toHaveText("Split equally; 1c rounding goes to Sam and Tom.");
     const rows: [string, string, string][] = [["Sam", "33.34", "$666.67"], ["Tom", "33.33", "$666.67"], ["Dima", "33.33", "$666.66"]];
     for (const [name, pct, amount] of rows) {
       await expect(share(page, name)).toHaveValue(pct);
@@ -30,6 +37,38 @@ test.describe("Stage done (manager)", () => {
     await expect(left(page)).toHaveText("Shares add up to 100%");
     await expect(confirm(page)).toBeEnabled();
     await expect(page.getByRole("link", { name: "Back to stage" })).toHaveAttribute("href", stagePage);
+
+    // Name on the left, the % box, the amount in one right-aligned tabular column (i1-D2, lessons).
+    const boxes = await Promise.all(
+      ["Sam", "Tom", "Dima"].map(async (name) => {
+        const row = page.locator(`[data-share-row="${name}"]`);
+        return {
+          name: (await row.locator("[data-share-name]").boundingBox())!,
+          input: (await share(page, name).boundingBox())!,
+          amount: (await row.locator("[data-share-amount]").boundingBox())!,
+        };
+      }),
+    );
+    for (const b of boxes) {
+      expect(b.name.x + b.name.width, "name sits left of the % box").toBeLessThanOrEqual(b.input.x + 1);
+      expect(b.input.x + b.input.width, "% box sits left of the amount").toBeLessThanOrEqual(b.amount.x + 1);
+    }
+    expect(new Set(boxes.map((b) => Math.round(b.amount.x + b.amount.width))).size, "amounts share one right edge").toBe(1);
+    expect(new Set(boxes.map((b) => Math.round(b.input.x))).size, "% boxes share one left edge").toBe(1);
+    await expect(page.locator("[data-share-amount]").first()).toHaveCSS("text-align", "right");
+    await expect(page.locator("[data-share-amount]").first()).toHaveCSS("font-variant-numeric", /tabular-nums/);
+
+    // The Photo label is the same style as Note's, with Optional under it (i1-D5/F5).
+    const label = page.getByText("Photo", { exact: true });
+    const note = page.locator('label:has-text("Note")');
+    for (const prop of ["font-size", "font-weight", "color", "font-family"]) {
+      expect(await label.evaluate((el, p) => getComputedStyle(el).getPropertyValue(p), prop), `Photo label ${prop}`).toBe(
+        await note.evaluate((el, p) => getComputedStyle(el).getPropertyValue(p), prop),
+      );
+    }
+    const photoBox = (await label.boundingBox())!;
+    const optionalBox = (await page.locator("[data-photo-optional]").boundingBox())!;
+    expect(optionalBox.y, "Optional sits below the Photo label").toBeGreaterThanOrEqual(photoBox.y + photoBox.height - 1);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
@@ -94,7 +133,28 @@ test.describe("Stage done (manager)", () => {
     await page.goto(`${donePage}?demo=offline`);
     await expect(confirm(page)).toBeDisabled();
     await expect(page.getByText(/^Needs connection/)).toBeVisible();
+    // One plain sentence that agrees with the disabled button; Mark done never queues (i1-D6/F3).
+    await expect(page.getByRole("status")).toHaveText("No signal. Marking a stage done needs a connection.");
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
+  });
+
+  test("the loading skeleton is the form's shape: same rows, about the same height (i1-D4/F6)", async ({ page }) => {
+    await signInAs(page, "manager", donePage);
+    const real = (await page.locator('[data-screen="stage-done"]').boundingBox())!;
+    await page.goto(`${donePage}?demo=loading`);
+    const skeleton = page.locator('[data-screen="stage-done"][aria-busy="true"]');
+    await expect(skeleton).toBeVisible();
+    await expect(skeleton.locator("[data-skeleton-share-row]")).toHaveCount(3);
+    await expect(skeleton.locator("[data-skeleton-field]")).toHaveCount(2);
+    const box = (await skeleton.boundingBox())!;
+    expect(Math.abs(box.height - real.height) / real.height, `skeleton ${box.height}px vs form ${real.height}px`).toBeLessThan(0.15);
+  });
+
+  test("the date field reads dd/mm/yyyy on every browser (i1-D14/F9)", async ({ page }) => {
+    await signInAs(page, "manager", donePage);
+    await expect(page.getByLabel("Finished on")).toBeVisible();
+    const result = await checkDateFields(page);
+    expect(result.failures).toEqual([]);
   });
 
   test("a stage that is already done goes back to its page", async ({ page }) => {

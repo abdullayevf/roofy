@@ -661,6 +661,45 @@ export async function checkBarClearsLogCircle(page: Page): Promise<GuardResult> 
 // Composition
 // ---------------------------------------------------------------------------
 
+/**
+ * Date inputs read dd/mm/yyyy on every browser, not just the iPhone shot (i1-D14/F9, T13 i3-F1). A date input's
+ * value is always yyyy-mm-dd; what the person sees is the browser's field order. Chromium shows it in the
+ * accessibility tree (Day, Month, Year spinbuttons), so read the order there; other engines are held to the
+ * en-AU document language and clock instead. Passes when the page has no date input.
+ */
+export async function checkDateFields(page: Page): Promise<GuardResult> {
+  const failures: string[] = [];
+  const count = await page.locator('input[type="date"]:visible').count();
+  if (count > 0) {
+    const env = await page.evaluate(() => ({
+      lang: document.documentElement.lang,
+      today: new Date(2026, 8, 28).toLocaleDateString(),
+    }));
+    if (env.lang !== "en-AU") failures.push(`<html lang> is "${env.lang}", not en-AU`);
+    if (env.today !== "28/09/2026") failures.push(`the browser writes 28 Sep 2026 as ${env.today}, not 28/09/2026`);
+    if (page.context().browser()?.browserType().name() === "chromium") {
+      const cdp = await page.context().newCDPSession(page);
+      try {
+        const { nodes } = (await cdp.send("Accessibility.getFullAXTree")) as {
+          nodes: { role?: { value?: string }; name?: { value?: string } }[];
+        };
+        const order = nodes
+          .filter((n) => n.role?.value === "spinbutton" && ["Day", "Month", "Year"].includes(n.name?.value ?? ""))
+          .map((n) => n.name!.value!);
+        // Each date input contributes Day, Month, Year in the order the browser draws them.
+        for (let i = 0; i + 2 < order.length; i += 3) {
+          const shown = order.slice(i, i + 3).join("/");
+          if (shown !== "Day/Month/Year") failures.push(`date input ${i / 3 + 1} is ${shown}, not Day/Month/Year`);
+        }
+        if (order.length === 0) failures.push("no date field parts in the accessibility tree");
+      } finally {
+        await cdp.detach();
+      }
+    }
+  }
+  return { name: "dateFields", ok: failures.length === 0, failures };
+}
+
 export type ScreenHealthOptions = {
   /** Whether target-size (48x48) is enforced; phone viewports only. */
   phone: boolean;
@@ -671,7 +710,7 @@ export type ScreenHealthOptions = {
   /** Skip individual checks (design-capture uses this for states that don't apply, e.g. no need to re-check axe on every scheme). */
   skip?: Partial<
     Record<
-      "overflow" | "touchTargets" | "axe" | "console" | "contrast" | "safeAreas" | "keyboard" | "textZoom",
+      "overflow" | "touchTargets" | "axe" | "console" | "contrast" | "safeAreas" | "keyboard" | "textZoom" | "dateFields",
       boolean
     >
   >;
@@ -689,6 +728,7 @@ export async function checkScreenHealthy(page: Page, opts: ScreenHealthOptions):
   const results: GuardResult[] = [];
 
   if (!skip.overflow) results.push(await checkNoOverflow(page));
+  if (!skip.dateFields) results.push(await checkDateFields(page));
   if (!skip.touchTargets) results.push(await checkTouchTargets(page, { phone: opts.phone }));
   if (!skip.axe) results.push(await checkAxe(page));
   if (!skip.console && opts.console) {

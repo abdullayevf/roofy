@@ -8,7 +8,7 @@ describe("stageProgressText", () => {
     expect(stageProgressText(stage, "2026-09-28")).toBe("40 m² of 400 m²");
   });
   it("says when a done stage finished", () => {
-    expect(stageProgressText({ ...stage, status: "done", completedOn: "2026-09-15" }, "2026-09-28")).toBe("Done Tue 15 Sep");
+    expect(stageProgressText({ ...stage, status: "done", completedOn: "2026-09-15" }, "2026-09-28")).toBe("Finished Tue 15 Sep");
   });
   it("is empty for a stage with no unit that is not done", () => {
     expect(stageProgressText({ ...stage, unit: null, plannedQuantity: null }, "2026-09-28")).toBe("");

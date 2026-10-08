@@ -9,9 +9,9 @@ import { cx } from "@/lib/cx";
 import { KeepTogether } from "@/components/keep-together";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  CrewRowsSkeleton,
   ENTRY_WIDTH,
   FieldSkeleton,
   LoadError,
@@ -19,7 +19,7 @@ import {
   usePinnedBar,
 } from "./field-entry";
 import { hundredthsText, parseHundredths, sharesFromText } from "./field-input";
-import { doneHint, doneSplit, sharesLeftText, splitEdited, unreadableShare } from "./stage-done-input";
+import { doneHint, doneSplit, equalSplitNote, sharesLeftText, splitEdited, unreadableShare } from "./stage-done-input";
 import { useOnline } from "./use-online";
 
 const FAILED = "Couldn't mark this stage done. Try again.";
@@ -71,6 +71,8 @@ export function StageDone({
   const unreadable = unreadableShare(proposal.crew.map((p, i) => ({ name: p.name, text: texts[i]! })));
   const people = proposal.crew.map((p, i) => ({ crewMemberId: p.crewMemberId, bp: typed.bp[i] ?? 0 }));
   const left = splitNeeded ? sharesLeftText(typed.total) : null;
+  // The equal split's working line comes from the server's own amounts; once the shares are edited it goes.
+  const splitNote = splitNeeded && !edited ? equalSplitNote(proposal.crew.map((p) => ({ name: p.name, amountCents: p.amountCents }))) : null;
   const hint =
     doneHint({ total: typed.total, online, splitNeeded, unreadable, nobodyLogged }) ??
     (date ? undefined : "Pick the date the stage was finished.");
@@ -133,6 +135,14 @@ export function StageDone({
           Mark <KeepTogether text={proposal.stageName} /> done
         </h1>
         <p className="text-meta text-ink-2 [overflow-wrap:anywhere]">{proposal.projectName}</p>
+        {lump !== null ? (
+          <p data-key-figure="" className="flex flex-wrap items-baseline gap-x-2 pt-2">
+            <span data-figure="" className="num text-figure-xl text-ink">
+              {formatMoney(lump)}
+            </span>
+            <span className="text-body text-ink-2">lump sum</span>
+          </p>
+        ) : null}
       </div>
       <Field
         label="Finished on"
@@ -152,8 +162,11 @@ export function StageDone({
         maxLength={500}
         onChange={(e) => setNote(e.target.value)}
       />
-      <div className="flex flex-col gap-2">
-        <p className="text-meta text-ink-2">Photo (optional)</p>
+      <div className="flex flex-col gap-1.5">
+        <p className="text-body-strong text-ink">Photo</p>
+        <span data-photo-optional="" className="text-meta text-ink-2">
+          Optional
+        </span>
         {photo ? (
           <div className="flex items-center justify-between gap-3">
             <p data-photo="" className="text-body text-ink">
@@ -174,31 +187,46 @@ export function StageDone({
           <div className="flex flex-col gap-1">
             <h2 className="text-heading text-ink">Lump sum split</h2>
             <p className="text-body text-ink-2">
-              {formatMoney(lump)} shared by everyone who logged work on this stage. Change the shares if it
-              wasn&apos;t equal.
+              Shared by everyone who logged work on this stage. Change the shares if it wasn&apos;t equal.
             </p>
           </div>
           <ul className="flex flex-col gap-4">
             {proposal.crew.map((p) => {
               const text = shareText[p.crewMemberId] ?? "";
               const amount = edited ? customAmounts[p.crewMemberId] : p.amountCents;
+              const inputId = `share-${p.crewMemberId}`;
               return (
-                <li key={p.crewMemberId} data-share-row={p.name}>
-                  <Field
-                    label={`${p.name}'s share`}
+                <li key={p.crewMemberId} data-share-row={p.name} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <label
+                    htmlFor={inputId}
+                    data-share-name=""
+                    className="min-w-24 flex-1 text-body-strong text-ink [overflow-wrap:anywhere]"
+                  >
+                    {p.name}
+                  </label>
+                  <Input
+                    id={inputId}
+                    aria-label={`${p.name}'s share`}
                     inputMode="decimal"
                     suffix="%"
                     autoComplete="off"
                     value={text}
                     invalid={left !== null || parseHundredths(text) === null}
-                    {...(amount !== undefined ? { hint: formatMoney(amount) } : {})}
                     onChange={(e) => typeShare(p.crewMemberId, e.target.value)}
-                    className="max-w-60"
+                    className="w-28 shrink-0"
                   />
+                  <span data-share-amount="" className="num ml-auto min-w-24 text-right text-body text-ink">
+                    {amount !== undefined ? formatMoney(amount) : ""}
+                  </span>
                 </li>
               );
             })}
           </ul>
+          {splitNote ? (
+            <p data-split-note="" className="text-body text-ink-2">
+              {splitNote}
+            </p>
+          ) : null}
           <p data-shares-left="" className={cx("text-body", left ? "text-ink" : "text-ink-2")}>
             {left ?? "Shares add up to 100%"}
           </p>
@@ -242,17 +270,43 @@ export function StageDoneError({ jobId, stageId }: { jobId: string; stageId: str
 }
 
 export function StageDoneSkeleton({ jobId, stageId }: { jobId: string; stageId: string }) {
+  const { style, barProps } = usePinnedBar(null);
   return (
-    <div data-screen="stage-done" aria-busy="true" className={cx("flex flex-col gap-6", ENTRY_WIDTH)}>
-      <BackToStage jobId={jobId} stageId={stageId} />
-      <Skeleton width={240} height={32} />
-      <FieldSkeleton />
-      <FieldSkeleton />
-      <Skeleton width={140} height={48} />
+    <div data-screen="stage-done" aria-busy="true" style={style} className={cx("flex flex-col gap-6 pin-pad", ENTRY_WIDTH)}>
       <div className="flex flex-col gap-2">
-        <Skeleton width={160} height={24} />
-        <CrewRowsSkeleton count={3} withLine={false} />
+        <BackToStage jobId={jobId} stageId={stageId} />
+        <Skeleton width={240} height={32} />
+        <Skeleton width={160} height={20} />
+        <Skeleton width={200} height={44} />
       </div>
+      <div data-skeleton-field="">
+        <FieldSkeleton />
+      </div>
+      <div data-skeleton-field="">
+        <FieldSkeleton />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Skeleton width={72} height={24} />
+        <Skeleton width={72} height={20} />
+        <Skeleton width={140} height={48} />
+      </div>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <Skeleton width={160} height={28} />
+          <Skeleton height={48} />
+        </div>
+        {Array.from({ length: 3 }, (_, i) => (
+          <div key={i} data-skeleton-share-row="" className="flex items-center gap-3">
+            <Skeleton height={24} className="flex-1" />
+            <Skeleton width={112} height={52} />
+            <Skeleton width={96} height={24} />
+          </div>
+        ))}
+        <Skeleton width={180} height={24} />
+      </div>
+      <PinnedAction barProps={barProps}>
+        <Skeleton height={52} />
+      </PinnedAction>
     </div>
   );
 }

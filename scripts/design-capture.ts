@@ -522,15 +522,18 @@ async function main(): Promise<void> {
   const noWebkit = process.env.ROOFY_NO_WEBKIT === "1";
   const chromiumExecutable = process.env.ROOFY_CHROMIUM_EXECUTABLE;
 
-  // The native date input takes its format from the browser's UI language, not only the context locale.
+  // The native date input takes its field order from the process language (LANGUAGE), not from the context
+  // locale or --lang: without it Chromium shows 09/28/2026 on the android, landscape and desktop shots.
+  const AU_ENV = { ...process.env, LANGUAGE: "en_AU", LC_ALL: "en_AU.UTF-8", LANG: "en_AU.UTF-8" } as Record<string, string>;
   const chromiumBrowser = await chromium.launch({
     ...(chromiumExecutable ? { executablePath: chromiumExecutable } : {}),
     args: ["--lang=en-AU"],
+    env: AU_ENV,
   });
   let webkitBrowser: Browser | undefined;
   if (!noWebkit) {
     try {
-      webkitBrowser = await webkit.launch({ env: { ...process.env, LANG: "en_AU.UTF-8" } });
+      webkitBrowser = await webkit.launch({ env: AU_ENV });
     } catch (err) {
       console.warn(
         `design-capture: WebKit launch failed, falling back to Chromium for the iphone viewport (set ROOFY_NO_WEBKIT=1 to silence this). ${String(err)}`,

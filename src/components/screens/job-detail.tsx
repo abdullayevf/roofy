@@ -5,6 +5,7 @@ import { cx } from "@/lib/cx";
 import { formatDate, formatMoney } from "@/lib/format";
 import { EmptyState } from "@/components/empty-state";
 import { KeepTogether } from "@/components/keep-together";
+import { NeedsAttentionItem } from "@/components/needs-attention-item";
 import { TapeBar } from "@/components/tape-bar";
 import { Button } from "@/components/ui/button";
 import { List, type ListRow } from "@/components/ui/list";
@@ -13,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusChip, type Status } from "@/components/ui/status-chip";
 import { COLUMN, FOCUS, GROUP, KeyFigure, KeyFigureSkeleton, Section, whole } from "./home-parts";
 import { LoadError } from "./field-entry";
-import { crewWeekText, jobStageStatus, logQuantityText, stageAlertNote, stageProgressText } from "./job-detail-text";
+import { crewWeekText, jobStageStatus, labourAlertSentence, logQuantityText, stageAlertNote, stageProgressText } from "./job-detail-text";
 import { jobTypeLabel } from "./job-input";
 
 /** How many recent logs and expenses show before the link to the full list. */
@@ -39,9 +40,16 @@ function Header({ job }: { job: ProjectDetail }) {
   const editable = manager && job.access.canEdit;
   return (
     <div className="flex flex-col gap-2">
-      <Button variant="link" href="/jobs" className="self-start">
-        Back to jobs
-      </Button>
+      <div className="flex items-center justify-between gap-3">
+        <Button variant="link" href="/jobs">
+          Back to jobs
+        </Button>
+        {editable ? (
+          <Button variant="link" href={`/jobs/${job.id}/edit`}>
+            Edit job
+          </Button>
+        ) : null}
+      </div>
       <h1 data-job-title="" className="text-title text-ink [overflow-wrap:anywhere]">
         <KeepTogether text={job.name} />
       </h1>
@@ -52,11 +60,6 @@ function Header({ job }: { job: ProjectDetail }) {
         </p>
       </div>
       <p className="text-meta text-ink-2 [overflow-wrap:anywhere]">{job.siteAddress}</p>
-      {editable ? (
-        <Button variant="secondary" href={`/jobs/${job.id}/edit`} className="self-start">
-          Edit job
-        </Button>
-      ) : null}
     </div>
   );
 }
@@ -102,7 +105,7 @@ function Stages({ job, today }: { job: ProjectDetail; today: string }) {
   return (
     <Section title="Stages">
       {stages.length === 0 ? (
-        <EmptyState message="This job has no stages yet." {...(job.view === "manager" && job.access.canEdit ? { actionLabel: "Edit job", href: `/jobs/${job.id}/edit` } : {})} />
+        <EmptyState message="This job has no stages yet." {...(job.view === "manager" && job.access.canEdit ? { actionLabel: "Add stage", href: `/jobs/${job.id}/edit` } : {})} />
       ) : (
         <div data-stage-list="" className={cx(GROUP, "divide-y")}>
           {stages.map((s) => (
@@ -121,7 +124,7 @@ function Money({ job }: { job: ProjectDetailManager }) {
     {
       key: "labour",
       primary: "Labour",
-      meta: `Budget ${formatMoney(job.labour.budgetCents)}`,
+      meta: job.labour.budgetCents === 0 ? "No budget set" : `Budget ${formatMoney(job.labour.budgetCents)}`,
       figure: <MoneyCell cents={job.labour.actualCents} />,
       href: historyHref(job.id),
       ...(job.alert && labourTone ? { status: { tone: labourTone, text: stageAlertNote(job.alert) } } : {}),
@@ -129,14 +132,14 @@ function Money({ job }: { job: ProjectDetailManager }) {
     {
       key: "materials",
       primary: "Materials",
-      meta: `Budget ${formatMoney(job.materials.budgetCents)}`,
+      meta: job.materials.budgetCents === 0 ? "No budget set" : `Budget ${formatMoney(job.materials.budgetCents)}`,
       figure: <MoneyCell cents={job.materials.actualCents} />,
       href: `/expenses?job=${job.id}`,
     },
     {
       key: "margin",
       primary: "Forecast margin",
-      meta: `Contract ${formatMoney(job.contractCents)}`,
+      meta: job.contractCents === 0 ? "No contract value" : `Contract ${formatMoney(job.contractCents)}`,
       figure: <MoneyCell cents={job.margins.forecastMarginCents} />,
       href: historyHref(job.id),
     },
@@ -179,8 +182,8 @@ function RecentLogs({ job, today }: { job: ProjectDetail; today: string }) {
   const rows: ListRow[] = shown.map((l) => ({
     key: l.id,
     primary: `${l.crewName}, ${l.stageName}`,
-    meta: `${formatDate(l.date, today)}, ${logQuantityText(l)}`,
-    ...(isManagerLog(l) ? { figure: <MoneyCell cents={l.amountCents} />, href: historyHref(job.id) } : {}),
+    meta: `${formatDate(l.date, today)}, ${logQuantityText(l)}${isManagerLog(l) && l.amountCents === 0 ? ", time only" : ""}`,
+    ...(isManagerLog(l) ? { ...(l.amountCents === 0 ? {} : { figure: <MoneyCell cents={l.amountCents} /> }), href: historyHref(job.id) } : {}),
   }));
   return (
     <Section title="Recent logs">
@@ -241,6 +244,15 @@ export function JobDetailBody({ job, today }: { job: ProjectDetail; today: strin
         <KeyFigure>{whole(job.pctBp)}% done</KeyFigure>
         <TapeBar label={`${job.name} progress`} percent={whole(job.pctBp)} scope="Whole job" />
       </div>
+      {job.view === "manager" && job.alert ? (
+        <div data-needs-attention="" className={GROUP}>
+          <NeedsAttentionItem
+            severity={job.alert.level === "over" ? "over" : "watch"}
+            sentence={labourAlertSentence(job.alert)}
+            href={historyHref(job.id)}
+          />
+        </div>
+      ) : null}
       <Stages job={job} today={today} />
       {job.view === "manager" ? <Money job={job} /> : null}
       <CrewThisWeek job={job} />

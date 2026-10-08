@@ -51,3 +51,19 @@ export function doneHint(s: {
   }
   return s.online ? undefined : NEEDS_CONNECTION;
 }
+
+/**
+ * The line that lets the manager add an equal split up by hand: "Split equally; 1c rounding goes to Sam and Tom."
+ * The amounts come from the server; this only reads who holds the extra cent. Null when the amounts are not an
+ * equal split (more than 1c apart) or nobody is listed.
+ */
+export function equalSplitNote(rows: readonly { name: string; amountCents: number }[]): string | null {
+  if (rows.length === 0) return null;
+  const low = Math.min(...rows.map((r) => r.amountCents));
+  const high = Math.max(...rows.map((r) => r.amountCents));
+  if (high === low) return "Split equally.";
+  if (high - low !== 1) return null;
+  const names = rows.filter((r) => r.amountCents === high).map((r) => r.name);
+  const list = names.length === 1 ? names[0]! : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]!}`;
+  return `Split equally; 1c rounding goes to ${list}.`;
+}
