@@ -219,6 +219,13 @@ async function captureOne(opts: {
   // Screens whose shot is an outcome press their buttons first (a save, then "Log another stage").
   if (screen.goOffline) await context.setOffline(true);
   for (const step of screen.steps ?? []) {
+    // "fill:Sam's share=60" types into a labelled field.
+    const fill = /^fill:(.+?)=(.*)$/.exec(step);
+    if (fill) {
+      await page.getByLabel(fill[1]!, { exact: true }).fill(fill[2]!);
+      await page.waitForTimeout(300);
+      continue;
+    }
     // "radio:No work" presses a segmented choice instead of a button.
     const radio = step.startsWith("radio:");
     await page.getByRole(radio ? "radio" : "button", { name: radio ? step.slice(6) : step, exact: true }).click();

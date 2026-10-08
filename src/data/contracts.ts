@@ -582,6 +582,12 @@ export interface DoneProposal {
   crew: { crewMemberId: Id; name: string; shareBp: BasisPoints; amountCents: Cents }[];
 }
 
+/** An edited Done split sent back for amounts: who shares, and each share in basis points (must total 10 000). */
+export interface DoneSplit {
+  crewMemberIds: Id[];
+  bp: BasisPoints[];
+}
+
 /** A stage as proposed for a new job (from the last same-type job, else the template). */
 export interface StageDraft {
   name: string;
@@ -1528,7 +1534,8 @@ export interface StageService {
   pause(actor: Actor, input: StagePauseInput): Promise<EntryResult>;
   resume(actor: Actor, input: StageResumeInput): Promise<EntryResult>;
   /** Manager/Owner only. */
-  doneProposal(actor: Actor, stageId: Id, completedOn?: LocalDate): Promise<DoneProposal>;
+  /** With `split`, the amounts follow the edited shares (custom basis points totalling 10 000). */
+  doneProposal(actor: Actor, stageId: Id, completedOn?: LocalDate, split?: DoneSplit): Promise<DoneProposal>;
   confirmDone(actor: Actor, input: StageDoneInput): Promise<EntryResult>;
   reopen(actor: Actor, stageId: Id): Promise<EntryResult>;
   setManualPct(actor: Actor, stageId: Id, pctBp: ManualPctBp): Promise<EntryResult>;

@@ -26,6 +26,8 @@ const smithClientId = seed.projects.find((p) => p.id === meta.projects.smith)!.c
 const smithStage = (name: string) => seed.stages.find((st) => st.projectId === meta.projects.smith && st.name === name)!.id;
 const STAGE_DONE = smithStage("Site setup & safety");
 const STAGE_NOT_STARTED = smithStage("Flashings, gutters & downpipes");
+/** Screen 13 on Harris ridge (E5.1: $2,000.00 lump sum, Sam/Tom/Dima). */
+const STAGE_DONE_ROUTE = `/jobs/${meta.projects.harris}/stages/${meta.stages.harrisRidge}/done`;
 /** The address of a stage page. */
 const stageRoute = (jobId: string, stageId: string) => `/jobs/${jobId}/stages/${stageId}`;
 
@@ -107,7 +109,7 @@ export type ScreenSpec = {
   lightOnly?: boolean;
   /** Skip the extra installed-mode, landscape, tablet and keyboard captures. */
   noExtras?: boolean;
-  /** Labels of buttons pressed in order once the page has loaded, before the shot (a save, then "Log another stage"); "radio:No work" presses a switch option. */
+  /** Labels of buttons pressed in order once the page has loaded, before the shot (a save, then "Log another stage"); "radio:No work" presses a switch option; "fill:Sam's share=60" types into a field. */
   steps?: string[];
   /** Cut the network after the page has loaded and before `steps`, so a save is kept on the phone. */
   goOffline?: boolean;
@@ -538,11 +540,46 @@ export const SCREENS: ScreenSpec[] = [
     noExtras: true,
   },
   {
+    // Screen 13: Harris ridge, $2,000.00 lump sum logged by Sam, Tom and Dima (E5.1). Foreman gets No permission.
     id: "stage-done",
     group: "jobs-2",
-    route: "/jobs/:jobId/stages/:stageId/done",
-    states: ["normal", "loading", "error"],
-    roles: ["owner", "manager"],
+    route: STAGE_DONE_ROUTE,
+    states: ["normal", "loading", "error", "offline", "foreman"],
+    roles: ["manager"],
+  },
+  {
+    id: "stage-done-not-100",
+    group: "jobs-2",
+    route: STAGE_DONE_ROUTE,
+    states: ["normal"],
+    roles: ["manager"],
+    steps: ["fill:Sam's share=30"],
+    viewports: ["iphone"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    id: "stage-done-edited",
+    group: "jobs-2",
+    route: STAGE_DONE_ROUTE,
+    states: ["normal"],
+    roles: ["manager"],
+    steps: ["fill:Sam's share=40", "fill:Tom's share=40", "fill:Dima's share=20"],
+    viewports: ["iphone"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // After Confirm done: the stage page, now Done.
+    id: "stage-done-saved",
+    group: "jobs-2",
+    route: STAGE_DONE_ROUTE,
+    states: ["normal"],
+    roles: ["manager"],
+    steps: ["Confirm done"],
+    viewports: ["iphone"],
+    lightOnly: true,
+    noExtras: true,
   },
 
   // --- crew (Task 15): Crew list (14), Crew member detail (15), Payout (20)

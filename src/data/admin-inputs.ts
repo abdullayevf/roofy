@@ -5,6 +5,7 @@
  */
 import { z } from "zod";
 import type {
+  DoneSplit,
   CategoryInput,
   ClientInput,
   CrewInput,
@@ -131,6 +132,20 @@ export const stageDoneSchema: z.ZodType<StageDoneInput> = z
     shares: sharesSchema,
   })
   .superRefine((d, ctx) => checkShares(d.shares, d.crewMemberIds.length, ctx));
+
+/** An edited Done split sent back for amounts (`stages.doneProposal`): positive shares totalling 100%. */
+export const doneSplitSchema: z.ZodType<DoneSplit> = z
+  .object({
+    crewMemberIds: z
+      .array(idSchema)
+      .min(1)
+      .max(30)
+      .refine((ids) => new Set(ids).size === ids.length, { error: "Each person can be in the split once." }),
+    bp: z.array(z.int().min(1).max(10_000)).max(30),
+  })
+  .refine((d) => d.bp.length === d.crewMemberIds.length && d.bp.reduce((a, b) => a + b, 0) === 10_000, {
+    error: "Shares must add up to 100%.",
+  });
 
 export const manualPctSchema: z.ZodType<ManualPctBp> = z.union(
   [z.literal(0), z.literal(2500), z.literal(5000), z.literal(7500), z.literal(10000)],

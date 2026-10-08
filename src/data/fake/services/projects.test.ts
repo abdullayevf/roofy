@@ -264,6 +264,24 @@ describe("stage detail", () => {
     );
   });
 
+  it("Harris ridge Done proposal with an edited split: amounts come back from the shares, largest remainder", async () => {
+    const { data, actor } = fake("manager");
+    const equal = await data.stages.doneProposal(actor, meta.stages.harrisRidge);
+    const ids = equal.crew.map((x) => x.crewMemberId);
+    const p = await data.stages.doneProposal(actor, meta.stages.harrisRidge, "2026-09-28", {
+      crewMemberIds: [ids[0]!, ids[1]!],
+      bp: [6000, 4000],
+    });
+    expect(p.crew.map((x) => [x.name, x.shareBp, x.amountCents])).toEqual([
+      ["Sam", 6000, 120000],
+      ["Tom", 4000, 80000],
+    ]);
+    expect(p.crew.map((x) => x.amountCents)).toEqual(lumpSumLines(200000, [ids[0]!, ids[1]!], { mode: "custom", bp: [6000, 4000] }).map((l) => l.amountCents));
+    await expect(
+      data.stages.doneProposal(actor, meta.stages.harrisRidge, "2026-09-28", { crewMemberIds: ids, bp: [5000, 3000, 1000] }),
+    ).rejects.toMatchObject({ code: "invalid" });
+  });
+
   it("Brown ridge (done, lump sum paid) shows each person's share", async () => {
     const s = (await stage(meta.stages.brownRidge)) as StageDetailManager;
     expect(s.lumpSumShares.map((x) => [crewName(x.crewMemberId), x.amountCents])).toEqual([

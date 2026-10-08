@@ -1,9 +1,10 @@
 "use server";
 /** Stage Start / Done (lump-sum split) / Reopen / manual % — Owner and Manager (never a foreman). */
-import { idSchema, localDateSchema, manualPctSchema, stageDoneSchema } from "@/data/admin-inputs";
+import { doneSplitSchema, idSchema, localDateSchema, manualPctSchema, stageDoneSchema } from "@/data/admin-inputs";
 import type {
   ActionResult,
   DoneProposal,
+  DoneSplit,
   EntryResult,
   Id,
   LocalDate,
@@ -32,11 +33,12 @@ export async function startStage(
 export async function proposeStageDone(
   stageId: Id,
   completedOn: LocalDate,
+  split: DoneSplit | null = null,
 ): Promise<ActionResult<{ proposal: DoneProposal }>> {
   return act(
-    [idSchema, localDateSchema],
-    [stageId, completedOn],
-    async ({ data, actor }, id, d) => ({ proposal: await data.stages.doneProposal(actor, id, d) }),
+    [idSchema, localDateSchema, doneSplitSchema.nullable()],
+    [stageId, completedOn, split],
+    async ({ data, actor }, id, d, s) => ({ proposal: await data.stages.doneProposal(actor, id, d, s ?? undefined) }),
     [],
   );
 }

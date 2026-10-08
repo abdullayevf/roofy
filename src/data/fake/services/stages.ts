@@ -7,6 +7,7 @@ import type { LocalDate } from "@/domain/types";
 import type {
   Actor,
   DoneProposal,
+  DoneSplit,
   EntryResult,
   Id,
   ManualPctBp,
@@ -192,21 +193,27 @@ export function createStageService(c: FakeContext): StageService {
     },
 
     /** Stage Done (manager/owner): an equal split of the lump sum among everyone who logged. */
-    async doneProposal(actor: Actor, stageId: Id, completedOn?: LocalDate): Promise<DoneProposal> {
+    async doneProposal(actor: Actor, stageId: Id, completedOn?: LocalDate, split?: DoneSplit): Promise<DoneProposal> {
       if (!c.access(actor).canEdit) throw forbidden();
       const st = c.requireStage(actor, stageId);
-      const crewIds = stageLoggers(c, st.id);
+      const crewIds = split ? split.crewMemberIds : stageLoggers(c, st.id);
+      if (split && (split.bp.length !== crewIds.length || split.bp.reduce((a, b) => a + b, 0) !== 10_000 || split.bp.some((b) => b <= 0))) {
+        throw invalid("Shares must add up to 100%, one share per person.");
+      }
+      if (split) for (const id of crewIds) requireCrewOn(c, id, completedOn ?? c.today);
       const shares =
         crewIds.length === 0
           ? []
-          : splitWeighted(
-              10_000,
-              crewIds.map(() => 1),
-            );
+          : split
+            ? split.bp
+            : splitWeighted(
+                10_000,
+                crewIds.map(() => 1),
+              );
       const amounts =
         st.lumpSumCents === null || crewIds.length === 0
           ? crewIds.map(() => 0)
-          : lumpSumLines(st.lumpSumCents, crewIds, { mode: "equal" }).map((l) => l.amountCents);
+          : lumpSumLines(st.lumpSumCents, crewIds, split ? { mode: "custom", bp: split.bp } : { mode: "equal" }).map((l) => l.amountCents);
       return {
         stageId: st.id,
         stageName: st.name,
