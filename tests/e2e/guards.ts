@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { runAxe } from "./axe";
 import { contrastRatio } from "../../scripts/check-contrast";
 
@@ -750,4 +750,30 @@ export async function expectScreenHealthy(page: Page, opts: ScreenHealthOptions)
 
   const message = failed.map((r) => `[${r.name}]\n  ${r.failures.join("\n  ")}`).join("\n\n");
   throw new Error(`expectScreenHealthy: ${failed.length} guard(s) failed:\n\n${message}`);
+}
+
+/**
+ * Waits until a sliding sheet or dialog has stopped: its box is the same for five frames running. `toBeVisible` is true
+ * the moment the sheet starts to slide in, so a position read straight after it can come from mid-slide.
+ */
+export async function expectStill(target: Locator, timeout = 5000): Promise<void> {
+  await target.evaluate(
+    (el, ms) =>
+      new Promise<void>((resolve, reject) => {
+        const started = performance.now();
+        let last = "";
+        let same = 0;
+        const frame = () => {
+          const r = el.getBoundingClientRect();
+          const now = `${r.x},${r.y},${r.width},${r.height}`;
+          same = now === last ? same + 1 : 0;
+          last = now;
+          if (same >= 5) resolve();
+          else if (performance.now() - started > ms) reject(new Error(`still moving after ${ms} ms (${now})`));
+          else requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+      }),
+    timeout,
+  );
 }

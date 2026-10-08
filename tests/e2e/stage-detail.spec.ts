@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { checkBarClearsLogCircle, checkConsole, checkContentClearsPinnedBar, checkOnePrimary, checkPrimaryInBottomThird, collectConsole, expectScreenHealthy } from "./guards";
+import { checkBarClearsLogCircle, checkConsole, checkContentClearsPinnedBar, checkOnePrimary, checkPrimaryInBottomThird, collectConsole, expectScreenHealthy, expectStill } from "./guards";
 import { expectNoMoney } from "./money-scan";
 import { getSeed } from "../../src/data/fake/store";
 
@@ -150,6 +150,8 @@ test.describe("Pause sheet", () => {
     await expect(sheet).toBeVisible();
     const note = sheet.getByLabel("Add a note first (optional)");
     const reasons = ["Weather", "Waiting on materials", "Waiting on client/builder", "Crew on another job", "Other"];
+    // The sheet slides up from the bottom: measure only once it has stopped, or the first box is read mid-slide.
+    await expectStill(sheet);
     const noteBox = (await note.boundingBox())!;
     let previous = noteBox.y;
     for (const name of reasons) {

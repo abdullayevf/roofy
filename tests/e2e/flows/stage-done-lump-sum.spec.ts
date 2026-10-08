@@ -9,7 +9,9 @@ test("Stage done with lump sum as manager: 5 taps, the stage is then Done", asyn
   await page.goto(`/prototype/role?as=manager&next=%2F`);
   const taps = new Taps("Stage done with lump sum");
   await taps.tap(page.getByRole("link", { name: "Jobs", exact: true }).first());
-  await taps.tap(page.locator(`a[href="/jobs/${meta.projects.harris}"]`).first());
+  // The Jobs list holds the job twice (a phone row hidden from 1024 px, a table row shown there), so take the one on show,
+  // and only on the Jobs screen: not the Home row that is still on screen while the page changes.
+  await taps.tap(page.locator(`[data-screen="jobs"] a[href="/jobs/${meta.projects.harris}"]:visible`).first());
   await taps.tap(page.locator("[data-stage-row]").filter({ hasText: "Ridge bedding & pointing" }));
   await taps.tap(page.getByRole("link", { name: "Mark stage done", exact: true }));
   await expect(page.getByLabel("Sam's share", { exact: true })).toHaveValue("33.34");
