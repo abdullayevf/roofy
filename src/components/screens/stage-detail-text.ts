@@ -2,7 +2,7 @@ import type { SegmentDto, StageActions, StageDetail } from "@/data/contracts";
 import type { PauseReason } from "@/domain/segments";
 import { addDays } from "@/domain/dates";
 import type { Status } from "@/components/ui/status-chip";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatMoney, formatQuantity } from "@/lib/format";
 
 type StageStatus = StageDetail["status"];
 
@@ -64,4 +64,15 @@ export function lostDaysRows(lost: Record<PauseReason, number>): { label: string
     label: c.label,
     text: `${lost[c.reason]} ${lost[c.reason] === 1 ? "day" : "days"}`,
   }));
+}
+
+/** The forecast's working in words, from the figures the server worked out ("$1,432.50 spent at 30% done, so about $4,775.00 for the whole stage."). Shows them; does no sums. */
+export function forecastWorkingText(w: { actualCents: number; pctBp: number; forecastCents: number | null }): string {
+  const spent = `${formatMoney(w.actualCents)} spent at ${Math.round(w.pctBp / 100)}% done`;
+  return w.forecastCents === null ? `${spent}. No forecast until some work is done.` : `${spent}, so about ${formatMoney(w.forecastCents)} for the whole stage.`;
+}
+
+/** A progress entry as a row: its date, the quantity with its unit, and who entered it. */
+export function progressRowText(p: { date: string; quantity: number; unit: "m2" | "lm" | "each"; enteredByName: string }, today: string): { primary: string; quantity: string; meta: string } {
+  return { primary: formatDate(p.date, today), quantity: formatQuantity(p.quantity, p.unit), meta: `Entered by ${p.enteredByName}` };
 }

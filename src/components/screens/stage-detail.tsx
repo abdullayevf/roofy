@@ -1,5 +1,5 @@
 import type { StageDetail, StageDetailManager } from "@/data/contracts";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import { KeepTogether } from "@/components/keep-together";
 import { TapeBar } from "@/components/tape-bar";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { COLUMN, KeyFigure, Section, whole } from "./home-parts";
 import { LoadError } from "./field-entry";
 import { stageAlertNote, stageProgressText } from "./job-detail-text";
 import { StageControls } from "./stage-controls";
-import { lostDaysRows, segmentText } from "./stage-detail-text";
+import { forecastWorkingText, lostDaysRows, progressRowText, segmentText } from "./stage-detail-text";
 
 /** Where a figure's source lines are: the record history for the job (the lists it links to are built in later tasks). */
 const historyHref = (jobId: string) => `/history?job=${jobId}`;
@@ -28,7 +28,7 @@ function Money({ stage }: { stage: StageDetailManager }) {
       ...(stage.alert && tone ? { status: { tone, text: stageAlertNote(stage.alert) } } : {}),
     },
     ...(stage.forecastLabourCents !== null
-      ? [{ key: "forecast", primary: "Forecast labour", meta: "At this pace", figure: <MoneyCell cents={stage.forecastLabourCents} />, href: historyHref(stage.projectId) }]
+      ? [{ key: "forecast", primary: "Forecast labour", meta: stage.forecastWorking ? forecastWorkingText(stage.forecastWorking) : "At this pace", figure: <MoneyCell cents={stage.forecastLabourCents} />, href: historyHref(stage.projectId) }]
       : []),
     {
       key: "materials",
@@ -103,7 +103,12 @@ export function StageDetailBody({ stage, today, demoOffline }: { stage: StageDet
       ) : null}
       {stage.progress.length > 0 ? (
         <Section title="Progress">
-          <List rows={stage.progress.map((p) => ({ key: p.id, primary: formatDate(p.date, today), meta: `Entered by ${p.enteredByName}` }))} />
+          <List
+            rows={stage.progress.map((p) => {
+              const t = progressRowText(p, today);
+              return { key: p.id, primary: t.primary, meta: t.meta, figure: <span className="whitespace-nowrap text-figure num text-ink">{t.quantity}</span> };
+            })}
+          />
         </Section>
       ) : null}
     </div>

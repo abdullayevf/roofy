@@ -18,3 +18,15 @@ test("Stage done with lump sum as manager: 5 taps, the stage is then Done", asyn
   expect(taps.count).toBe(5);
   taps.assertWithin(5);
 });
+
+/** The spec keeps Mark stage done for managers: a foreman sees the stage but is stopped at the done page. */
+test("Stage done as a foreman: no Mark stage done on the stage, and the done page says No access", async ({ page }) => {
+  await page.goto(`/prototype/role?as=foreman&next=%2F`);
+  await page.locator(`a[href="/jobs/${meta.projects.smith}"]`).first().click();
+  await page.locator("[data-stage-row]").filter({ hasText: "Sheet install" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Sheet install" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Mark stage done", exact: true })).toHaveCount(0);
+  await page.goto(`${page.url()}/done`);
+  await expect(page.getByRole("heading", { level: 1, name: "No access" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Confirm done", exact: true })).toHaveCount(0);
+});

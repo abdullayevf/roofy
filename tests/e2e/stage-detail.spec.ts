@@ -41,6 +41,13 @@ test.describe("Stage detail (manager)", () => {
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
+  test("the forecast labour row shows its working, and each progress entry shows its quantity and unit", async ({ page }) => {
+    await signInAs(page, "manager", active);
+    await expect(page.getByText("$1,432.50 spent at 30% done, so about $4,775.00 for the whole stage.")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Progress" })).toBeVisible();
+    expect(await page.getByText(/^\d[\d,]*(\.\d+)? m²$/).count(), "a quantity with its unit on every progress row").toBeGreaterThan(0);
+  });
+
   test("a stage that is not started offers Start and not Pause", async ({ page }) => {
     await signInAs(page, "manager", notStarted);
     await expect(controls(page)).toHaveAttribute("data-status", "not_started");
@@ -110,17 +117,36 @@ test.describe("Pause sheet", () => {
     await expect(controls(page).getByText("Weather")).toBeVisible();
     await expect(button(page, "Resume stage")).toBeVisible();
     await expect(button(page, "Pause stage")).toHaveCount(0);
+    // The server holds the pause, not just this screen: a fresh load still says Paused, with the reason.
+    await page.reload();
+    await expect(controls(page)).toHaveAttribute("data-status", "paused");
+    await expect(controls(page).getByText("Weather")).toBeVisible();
+    await expect(button(page, "Resume stage")).toBeVisible();
   });
 
-  test("with no signal the pause is kept on the phone and the stage says Waiting", async ({ page, context }) => {
+  // Phase 2 limit: a field entry sent without signal is shown as waiting on this phone but is not kept for later
+  // (src/offline/submit.ts counts it, nothing re-sends it). The test holds what the screen says, and that pausing
+  // again with signal reaches the server. Durable waiting entries arrive with the real sync in a later phase.
+  test("with no signal the pause is kept on the phone and the stage says Waiting; with signal a pause reaches the server", async ({ page, context }) => {
     await signInAs(page, "manager", active);
     await expect(controls(page)).toHaveAttribute("data-status", "active");
     await context.setOffline(true);
     await button(page, "Pause stage").click();
     await page.getByRole("dialog", { name: "Pause stage" }).getByRole("button", { name: "Waiting on materials", exact: true }).click();
     await expect(controls(page).getByText("Waiting", { exact: true })).toBeVisible();
-    await expect(controls(page).getByText("Saved on this device")).toBeVisible();
+    await expect(controls(page).getByText("Saved on this device. It will send when you have signal.")).toBeVisible();
     await expect(controls(page)).toHaveAttribute("data-status", "paused");
+    await context.setOffline(false);
+    await page.reload();
+    await expect(controls(page)).toHaveAttribute("data-status", "active");
+    await expect(controls(page).getByText("Saved on this device")).toHaveCount(0);
+    await button(page, "Pause stage").click();
+    await page.getByRole("dialog", { name: "Pause stage" }).getByRole("button", { name: "Waiting on materials", exact: true }).click();
+    await expect(controls(page)).toHaveAttribute("data-status", "paused");
+    await expect(controls(page).getByText("Saved on this device")).toHaveCount(0);
+    await page.reload();
+    await expect(controls(page)).toHaveAttribute("data-status", "paused");
+    await expect(controls(page).getByText("Waiting on materials")).toBeVisible();
   });
 });
 
@@ -137,11 +163,18 @@ test.describe("Stage detail (foreman)", () => {
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
+  test("a foreman's progress entries show the quantity and unit, with no dollar sign", async ({ page }) => {
+    await signInAs(page, "foreman", active);
+    await expect(page.getByRole("heading", { level: 2, name: "Progress" })).toBeVisible();
+    expect(await page.getByText(/^\d[\d,]*(\.\d+)? m²$/).count()).toBeGreaterThan(0);
+    await expect(page.getByText("$")).toHaveCount(0);
+  });
+
   test("a stage on a job the foreman is not on says they cannot open it", async ({ page }) => {
     const harris = `/jobs/${meta.projects.harris}/stages/${meta.stages.harrisTile}`;
     await signInAs(page, "foreman", harris);
     await expect(page.locator('[data-screen="stage-detail"]')).toHaveCount(0);
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "No access" })).toBeVisible();
     await expect(page.getByText(/Harris|Tile install/)).toHaveCount(0);
   });
 });

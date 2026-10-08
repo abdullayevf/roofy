@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SegmentDto, StageActions } from "@/data/contracts";
-import { lostDaysRows, PAUSE_CHOICES, segmentText, stageActionsNow, stageChipFor } from "./stage-detail-text";
+import { forecastWorkingText, lostDaysRows, PAUSE_CHOICES, progressRowText, segmentText, stageActionsNow, stageChipFor } from "./stage-detail-text";
 
 const none: StageActions = { canStart: false, canPause: false, canResume: false, canMarkDone: false, canReopen: false, canSetManualPct: false };
 const TODAY = "2026-09-28";
@@ -69,5 +69,24 @@ describe("lostDaysRows", () => {
   });
   it("is empty when nothing was lost", () => {
     expect(lostDaysRows({ weather: 0, materials: 0, client: 0, other_job: 0, other: 0 })).toEqual([]);
+  });
+});
+
+describe("forecastWorkingText", () => {
+  it("shows the spent so far, the progress it is at and the forecast, from the figures it is given", () => {
+    expect(forecastWorkingText({ actualCents: 143250, pctBp: 3000, forecastCents: 477500 })).toBe("$1,432.50 spent at 30% done, so about $4,775.00 for the whole stage.");
+  });
+  it("says there is no forecast yet when the stage has not got far enough to give one", () => {
+    expect(forecastWorkingText({ actualCents: 0, pctBp: 0, forecastCents: null })).toBe("$0.00 spent at 0% done. No forecast until some work is done.");
+  });
+});
+
+describe("progressRowText", () => {
+  const row = { date: "2026-09-26", quantity: 4000, unit: "m2" as const, enteredByName: "Dean Nguyen" };
+  it("names the quantity with its unit, then who entered it", () => {
+    expect(progressRowText(row, TODAY)).toEqual({ primary: "Sat 26 Sep", quantity: "40 m²", meta: "Entered by Dean Nguyen" });
+  });
+  it("never carries a dollar sign", () => {
+    expect(JSON.stringify(progressRowText(row, TODAY))).not.toContain("$");
   });
 });

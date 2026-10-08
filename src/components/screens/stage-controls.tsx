@@ -14,7 +14,7 @@ import { StatusChip } from "@/components/ui/status-chip";
 import { PAUSE_CHOICES, stageActionsNow, stageChipFor } from "./stage-detail-text";
 import { NEEDS_CONNECTION, useOnline } from "./use-online";
 
-type Local = { from: StageDetail["status"]; status: "paused" | "active"; reason: PauseReason | null };
+type Local = { status: "paused" | "active"; reason: PauseReason | null };
 
 export type StageControlsProps = {
   stageId: string;
@@ -43,8 +43,14 @@ export function StageControls({ stageId, jobId, status, pauseReason, longPauseDa
   const [error, setError] = useState<string | null>(null);
   const [waiting, setWaiting] = useState(false);
 
-  // A phone-kept change only counts while the server still shows the status it was made from.
-  const mine = local && local.from === status ? local : null;
+  // What the phone kept only stands until the server shows a new status. Then the server's word wins and the note goes.
+  const [seen, setSeen] = useState(status);
+  if (seen !== status) {
+    setSeen(status);
+    setLocal(null);
+    setWaiting(false);
+  }
+  const mine = local;
   const shownStatus = mine?.status ?? status;
   const shownReason = mine ? mine.reason : pauseReason;
   const now = stageActionsNow(actions, status, mine?.status ?? null);
@@ -53,7 +59,7 @@ export function StageControls({ stageId, jobId, status, pauseReason, longPauseDa
   async function field(kind: "pause" | "resume", reason?: PauseReason) {
     setError(null);
     setWaiting(false);
-    setLocal({ from: status, status: kind === "pause" ? "paused" : "active", reason: reason ?? null });
+    setLocal({ status: kind === "pause" ? "paused" : "active", reason: reason ?? null });
     try {
       const result =
         kind === "pause" && reason
@@ -64,8 +70,10 @@ export function StageControls({ stageId, jobId, status, pauseReason, longPauseDa
         setError(result.message);
         return;
       }
-      if (result.status === "applied") router.refresh();
-      else setWaiting(true);
+      if (result.status === "applied") {
+        setWaiting(false);
+        router.refresh();
+      } else setWaiting(true);
     } catch {
       setLocal(null);
       setError(kind === "pause" ? "Couldn't pause this stage. Try again." : "Couldn't restart this stage. Try again.");

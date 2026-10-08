@@ -39,11 +39,18 @@ test.describe("Job detail (manager)", () => {
     expect(over).toBeLessThanOrEqual(0);
   });
 
-  test("every row with a figure links to the lines behind it", async ({ page }) => {
+  // The lists these open (Record history, Expenses) are built in Tasks 16 and 18, which must honour `job=`; until then
+  // they are placeholders that ignore it, so this test holds the address the lists will be given, not the lists.
+  test("every row with a figure links to the lines behind it, filtered to this job", async ({ page }) => {
     await signInAs(page, "manager");
     const hrefs = await page.locator('[data-screen="job-detail"] a[href^="/history"], [data-screen="job-detail"] a[href^="/expenses"]').evaluateAll((els) => els.map((e) => e.getAttribute("href")));
     expect(hrefs.length).toBeGreaterThan(2);
-    for (const h of hrefs) expect(h).toMatch(/^\/(history|expenses)/);
+    for (const h of hrefs) expect(h, "a job-filtered list or one expense").toMatch(new RegExp(`^/(history\\?job=${meta.projects.smith}|expenses\\?job=${meta.projects.smith}|expenses/[\\w-]+)$`));
+    expect(hrefs).toContain(`/history?job=${meta.projects.smith}`);
+    expect(hrefs).toContain(`/expenses?job=${meta.projects.smith}`);
+    for (const name of ["Labour", "Materials", "Forecast margin"]) {
+      await expect(page.locator('[data-screen="job-detail"] a[href^="/history"], [data-screen="job-detail"] a[href^="/expenses"]').filter({ hasText: name }).first(), `${name} opens its lines`).toBeVisible();
+    }
   });
 });
 
