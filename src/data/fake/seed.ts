@@ -79,6 +79,8 @@ export interface SeedMeta {
     brownRidge: Id;
     kellyRepairs: Id;
   };
+  /** Jobs that exist for the design loop: one with no stages, one with very long names. */
+  fixtures: { noStages: Id; longNames: Id; longNamesStage: Id };
   payRuns: { review: Id; current: Id; lastApproved: Id };
   logs: { lateEntry: Id; adjustment: Id; adjustedOriginal: Id };
   expenses: { dimaScrews: Id; smithSheets: Id };
@@ -1336,6 +1338,57 @@ export function buildSeed(): Seed {
     b.at("2026-09-23", "08:05"),
   );
 
+  // Two screen fixtures, added last so nothing above shifts and left off the foreman's jobs: a quoted job with no stages yet, and a quoted job whose
+  // client, job, address and stage names are as long as real ones get (the design loop checks that nothing overflows).
+  const fixtureProject = (
+    client: { name: string; phone: string; email: string },
+    nickname: string,
+    siteAddress: string,
+    createdOn: LocalDate,
+  ) => {
+    const c = {
+      ...b.base(b.at(createdOn, "09:00")),
+      name: client.name,
+      phone: client.phone,
+      email: client.email,
+      address: siteAddress,
+    };
+    t.clients.push(c);
+    const row = b.addProject({ clientId: c.id, nickname, siteAddress, jobType: "restoration", status: "quoted", createdOn });
+    return row;
+  };
+  const noStages = fixtureProject(
+    { name: "Priya Nair", phone: "0413 555 244", email: "priya.nair@example.com" },
+    "Nair job — Gladesville carport",
+    "9 Linden Ave, Gladesville NSW 2111",
+    "2026-09-24",
+  );
+  const longNames = fixtureProject(
+    {
+      name: "Bartholomew Featherstonehaugh-Montgomery and Sons Heritage Property Holdings",
+      phone: "0413 555 245",
+      email: "accounts@featherstonehaugh-montgomery-heritage-holdings.example.com",
+    },
+    "Featherstonehaugh-Montgomery estate — Woollahra heritage slate and copper roof restoration, east and west wings",
+    "Unit 14, The Old Woollahra Telephone Exchange Building, 2-14 Queen Victoria Street Extension, Woollahra NSW 2025",
+    "2026-09-24",
+  );
+  const longStage = b.addStage(
+    longNames,
+    {
+      name: "Remove, number, catalogue and carefully store the original Welsh slate for re-use on the east wing",
+      unit: "m2",
+      labourShareBp: 5000,
+      materialsShareBp: 5000,
+    },
+    1,
+  );
+  b.addStage(
+    longNames,
+    { name: "Copper valley, flashing and box gutter fabrication", unit: "lm", labourShareBp: 5000, materialsShareBp: 5000 },
+    2,
+  );
+
   return {
     ...t,
     meta: {
@@ -1360,6 +1413,7 @@ export function buildSeed(): Seed {
         brownRidge: stageOf("B6").id,
         kellyRepairs: stageOf("K3").id,
       },
+      fixtures: { noStages: noStages.id, longNames: longNames.id, longNamesStage: longStage.id },
       payRuns: { review: review.id, current: current.id, lastApproved: lastApproved.id },
       logs: { lateEntry: lateEntry!.id, adjustment: adjustment.id, adjustedOriginal: original.id },
       expenses: { dimaScrews: dimaScrews.id, smithSheets: smithSheets.id },
