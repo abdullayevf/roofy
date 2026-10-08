@@ -12,3 +12,4 @@
 - Unreadable money input never saves as $0.00; refuse with a hint instead.
 - Back row is a 48 px target on phone.
 - Foreman variants show dates, names, reasons and counts only: no $ anywhere, including aria labels and empty states.
+- Unreadable or empty share/percent boxes never count as 0%; block Confirm with a hint (same rule as money).

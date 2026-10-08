@@ -5,7 +5,8 @@
 - Phase: 2 — Design system and full prototype. Branch `phase/2-design-prototype` (local on the VPS, not pushed, not merged). Plan: `docs/plans/03-design-prototype.md`.
 - Ledger: `.superpowers/sdd/03-design-prototype/progress.md` (per-run lines; read its tail for where a task stands).
 - Done and reviewed: Tasks 1–13 (Task 13 = 565032a..544e9e7, design loop accepted at 75.5 under the 3-iteration cap; open rows in ISSUES.md).
-- **Now: Task 14** (Job detail 11, Stage detail 12, Stage done 13). Brief `.superpowers/sdd/03-design-prototype/task-14-brief.md`; base commit c201236. Built: run A c8750ff (screen 11), run B 020705f (screen 12, pause sheet, fixtures). Run B2 2402423 (screen-12 e2e, pause flow, manifest, manager stage money; "Mark stage done" link 404s until run C). Next: run C (screen 13 + split editor + e2e) → parallel review → capture `jobs-2` → design loop.
+- **Now: Task 14** (Job detail 11, Stage detail 12, Stage done 13). Brief `.superpowers/sdd/03-design-prototype/task-14-brief.md`; base c201236. Built: runs A c8750ff, B 020705f, B2 2402423, C d0f3e53. Reviewed (task-14-review.md, task-14-spec-review.md: 0 blocking); fix list task-14-fix.md done: part X de4f6ed (opus), part Y 042ccde. Task e2e at d0f3e53 on 3 projects green.
+- **Next:** re-review of fixes only, in parallel: `reviewer` checks CR1–CR4, CR6–CR10, CR12–CR13 and `spec-reviewer` (opus) checks SR1–SR3, range d0f3e53..042ccde (reports task-14-fix-x/y-report.md). Then `scripts/capture-group.sh jobs-2` → design loop (cap 3) → plan tick. T14 so far: 9 runs, 309 tool uses (screen-group budget 28 runs / 800).
 - Then: Tasks 15–23 in order.
 - Known flaky (iphone, passed on re-run): flows/no-work-marker.spec.ts:6, log-progress.spec.ts:135, design-page.spec.ts:45 on a cold server.
 - Environment: real WebKit works on the VPS. Never stop the server with `pkill -f "next start"`; kill the PID from `ss -ltnp | grep 3100`.
@@ -95,6 +96,7 @@
 - Phase 2 Task 13 (rulings R8–R11): captures run with an en-AU locale (WebKit `LANG`, Chromium `--lang`); one `jobOver` rule (src/domain) decides "over budget" for job rows, the Jobs list headline and Home (product spec §5.9 keeps "trending" separate, shown in Needs attention); after creating a job the main action is "Log today on this job"; stages edit as compact rows, one open at a time. An unreadable money field blocks Save and Accept stages.
 - Phase 2 Task 13 (deviation): three implementer commits (6d9bb8b..0011fbc range) carry a "Sonnet 5.5" Co-Authored-By trailer instead of Opus 5.5. History not rewritten (destructive git needs the owner); the implementer rules now say to copy the trailer exactly.
 - Phase 2 Task 13 (owner, 2026-10-02): the §5 run budget was lifted for Task 13 to finish it with every gate kept.
+- 2026-10-08 Task 14: a foreman cannot mark a stage done (product spec line 49 overrides the Task 14 brief); foreman gets No access on `/jobs/<id>/stages/<stageId>/done`. CR4: figure links on screens 11/12 point at `/history?job=` and `/expenses?job=`; those pages are placeholders, so honouring `job` is an acceptance item in Tasks 16 and 18. CR5: two Task 14 commits (c8750ff, 020705f) carry a Sonnet trailer; history not rewritten (destructive git = owner).
 
 ## Gate evidence
 
