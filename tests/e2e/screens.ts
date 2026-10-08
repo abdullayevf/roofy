@@ -438,7 +438,7 @@ export const SCREENS: ScreenSpec[] = [
     id: "job-detail",
     group: "jobs-2",
     route: "/jobs/:jobId",
-    states: ["normal", "empty", "loading", "error", "offline", "foreman", "noperm"],
+    states: ["normal", "loading", "error", "offline", "foreman", "noperm"],
     roles: ["owner", "manager", "foreman"],
   },
   {
@@ -590,8 +590,8 @@ export const SCREENS: ScreenSpec[] = [
  * take with these placeholders still reads sensibly.
  */
 export const PLACEHOLDER_IDS: Record<string, string> = {
-  jobId: "smith-ryde-reroof",
-  stageId: "sheet-install",
+  jobId: meta.projects.smith,
+  stageId: meta.stages.smithSheetInstall,
   crewId: "dima",
   expenseId: "screws-receipt",
   runId: "current-week",
