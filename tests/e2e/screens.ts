@@ -22,6 +22,13 @@ const { meta } = seed;
 
 /** A new job opened filled in: Smith's next job, Metal re-roof, its stages (from the last metal re-roof job) accepted. */
 const smithClientId = seed.projects.find((p) => p.id === meta.projects.smith)!.clientId;
+/** A Smith job stage by name: one that is done, one active (`meta.stages.smithSheetInstall`), one not started. */
+const smithStage = (name: string) => seed.stages.find((st) => st.projectId === meta.projects.smith && st.name === name)!.id;
+const STAGE_DONE = smithStage("Site setup & safety");
+const STAGE_NOT_STARTED = smithStage("Flashings, gutters & downpipes");
+/** The address of a stage page. */
+const stageRoute = (jobId: string, stageId: string) => `/jobs/${jobId}/stages/${stageId}`;
+
 export const JOB_PREFILL = `/jobs/new?${new URLSearchParams({
   client: smithClientId,
   type: "metal_reroof",
@@ -442,11 +449,93 @@ export const SCREENS: ScreenSpec[] = [
     roles: ["owner", "manager", "foreman"],
   },
   {
+    // A quoted job with no stages yet: "No stages yet" and a way to add them.
+    id: "job-detail-empty",
+    group: "jobs-2",
+    route: `/jobs/${meta.fixtures.noStages}`,
+    states: ["normal"],
+    roles: ["manager"],
+  },
+  {
+    // Client, job, address and stage names as long as real ones get: nothing may overflow.
+    id: "job-detail-long-names",
+    group: "jobs-2",
+    route: `/jobs/${meta.fixtures.longNames}`,
+    states: ["normal"],
+    roles: ["manager"],
+  },
+  {
     id: "stage-detail",
     group: "jobs-2",
     route: "/jobs/:jobId/stages/:stageId",
     states: ["normal", "loading", "error", "offline", "foreman", "noperm"],
     roles: ["owner", "manager", "foreman"],
+  },
+  {
+    id: "stage-detail-not-started",
+    group: "jobs-2",
+    route: stageRoute(meta.projects.smith, STAGE_NOT_STARTED),
+    states: ["normal", "foreman"],
+    roles: ["manager"],
+  },
+  {
+    // Paused waiting on materials for over five working days: the "paused too long" note.
+    id: "stage-detail-paused",
+    group: "jobs-2",
+    route: stageRoute(meta.projects.rydeHeritage, meta.stages.rydeCoat),
+    states: ["normal"],
+    roles: ["manager"],
+  },
+  {
+    id: "stage-detail-done",
+    group: "jobs-2",
+    route: stageRoute(meta.projects.smith, STAGE_DONE),
+    states: ["normal", "foreman"],
+    roles: ["manager"],
+  },
+  {
+    id: "stage-detail-long-names",
+    group: "jobs-2",
+    route: stageRoute(meta.fixtures.longNames, meta.fixtures.longNamesStage),
+    states: ["normal"],
+    roles: ["manager"],
+  },
+  {
+    // The pause sheet open: a note field, then five reasons.
+    id: "stage-detail-pause-sheet",
+    group: "jobs-2",
+    route: stageRoute(meta.projects.smith, meta.stages.smithSheetInstall),
+    states: ["normal"],
+    roles: ["manager"],
+    steps: ["Pause stage"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // Paused at once on tapping Weather: the sheet closes and the chip says Paused, Weather.
+    id: "stage-detail-paused-weather",
+    group: "jobs-2",
+    route: stageRoute(meta.projects.smith, meta.stages.smithSheetInstall),
+    states: ["normal"],
+    roles: ["manager"],
+    steps: ["Pause stage", "Weather"],
+    viewports: ["iphone"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // No signal: the pause is kept on the phone and the chip says Waiting.
+    id: "stage-detail-offline-waiting",
+    group: "jobs-2",
+    route: stageRoute(meta.projects.smith, meta.stages.smithSheetInstall),
+    states: ["offline"],
+    roles: ["manager"],
+    goOffline: true,
+    steps: ["Pause stage", "Waiting on materials"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
   },
   {
     id: "stage-done",

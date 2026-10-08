@@ -238,6 +238,27 @@ describe("seed: shape and determinism", () => {
     expect(seed.members.map((m) => m.role).sort()).toEqual(["accountant", "foreman", "manager", "owner"]);
   });
 
+  it("has the two screen fixtures: a quoted job with no stages, and one whose names are as long as real ones get", () => {
+    const { noStages, longNames, longNamesStage } = seed.meta.fixtures;
+    const job = (id: string) => seed.projects.find((p) => p.id === id)!;
+    const clientOf = (id: string) => seed.clients.find((c) => c.id === job(id).clientId)!;
+    expect(job(noStages).status).toBe("quoted");
+    expect(seed.stages.filter((st) => st.projectId === noStages)).toEqual([]);
+    expect(job(longNames).status).toBe("quoted");
+    const stage = seed.stages.find((st) => st.id === longNamesStage)!;
+    expect(stage.projectId).toBe(longNames);
+    expect(seed.stages.filter((st) => st.projectId === longNames).length).toBeGreaterThan(1);
+    expect(stage.name.length).toBeGreaterThan(80);
+    expect(job(longNames).nickname.length).toBeGreaterThan(80);
+    expect(job(longNames).siteAddress.length).toBeGreaterThan(80);
+    expect(clientOf(longNames).name.length).toBeGreaterThan(60);
+    // Neither fixture is on the foreman's jobs, nor has any logged work, so no other screen's figures move.
+    const foreman = seed.members.find((m) => m.role === "foreman")!;
+    const fixtureIds = [noStages, longNames];
+    expect(seed.projectAssignments.filter((a) => a.memberId === foreman.id && fixtureIds.includes(a.projectId))).toEqual([]);
+    expect(seed.workLogs.filter((l) => fixtureIds.includes(l.projectId))).toEqual([]);
+  });
+
   it("keeps stage status and segments consistent (half-open, ordered, Done closes at completion + 1)", () => {
     for (const st of seed.stages) {
       const segs = seed.stageSegments.filter((g) => g.stageId === st.id);

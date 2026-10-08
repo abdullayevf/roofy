@@ -236,11 +236,10 @@ test.describe("every link resolves", () => {
         await collect();
       }
       expect(hrefs.size).toBeGreaterThan(2);
-      // Home links to detail pages that don't exist yet: stage detail /jobs/<id>/stages/<id> (Task 14 run B; job detail landed in run A),
-      // crew detail /crew/<id> (Task 15), pay run review /pay/<id>[#crew-<id>] (Task 17). Skip exactly those
+      // Home links to detail pages that don't exist yet: crew detail /crew/<id> (Task 15), pay run review /pay/<id>[#crew-<id>] (Task 17).
+      // (Job and stage detail landed in Task 14.) Skip exactly those
       // shapes (not /jobs/new or /crew/new) and drop each pattern as its task lands.
       const notBuiltYet = [
-        /^\/jobs\/[^/?#]+\/stages\/[^/?#]+$/,
         /^\/crew\/(?!new(?:$|[/?#]))[^/?#]+$/,
         /^\/pay\/[^/?#]+(?:#.*)?$/,
       ];

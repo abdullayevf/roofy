@@ -68,6 +68,8 @@ function SheetBody({ title, children, primaryAction }: SheetContentProps) {
         ref={scroller}
         onScroll={measure}
         className="flex-1 overflow-y-auto px-4 pb-4 pt-4 lg:px-6 lg:pt-6"
+        // With no pinned action the last control is the content's own, so it clears the home indicator (real or simulated) itself.
+        style={primaryAction ? undefined : { paddingBottom: "calc(max(var(--sab-sim, 0px), env(safe-area-inset-bottom)) + 16px)" }}
       >
         <h2 className="text-heading text-ink pr-14">{title}</h2>
         <div className="mt-4">{children}</div>
