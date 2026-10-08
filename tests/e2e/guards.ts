@@ -683,9 +683,9 @@ export async function checkDateFields(page: Page): Promise<GuardResult> {
         const { nodes } = (await cdp.send("Accessibility.getFullAXTree")) as {
           nodes: { role?: { value?: string }; name?: { value?: string } }[];
         };
-        const order = nodes
-          .filter((n) => n.role?.value === "spinbutton" && ["Day", "Month", "Year"].includes(n.name?.value ?? ""))
-          .map((n) => n.name!.value!);
+        // Chromium's accessible name repeats the part ("Day Day"), so read the leading word.
+        const part = (n: (typeof nodes)[number]) => /^(Day|Month|Year)\b/.exec(n.name?.value ?? "")?.[1];
+        const order = nodes.filter((n) => n.role?.value === "spinbutton" && part(n)).map((n) => part(n)!);
         // Each date input contributes Day, Month, Year in the order the browser draws them.
         for (let i = 0; i + 2 < order.length; i += 3) {
           const shown = order.slice(i, i + 3).join("/");
