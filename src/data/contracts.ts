@@ -551,6 +551,8 @@ export interface StageDetailManager extends StageDetailBase {
   tape: TapeManager;
   labourBudgetCents: Cents;
   materialsBudgetCents: Cents;
+  /** Cost of the materials expenses put against this stage. */
+  materialsActualCents: Cents;
   lumpSumCents: Cents | null;
   manualPctBp: BasisPoints | null;
   labourActualCents: Cents;

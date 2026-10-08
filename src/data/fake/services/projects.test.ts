@@ -216,6 +216,21 @@ describe("stage detail", () => {
     return data.stages.get(actor, id);
   }
 
+  it("each stage's materials actual is the cost of the materials expenses put against that stage", async () => {
+    const materialsId = seed.expenseCategories.find((c) => c.name === "Materials")!.id;
+    for (const st of seed.stages.filter((x) => x.projectId === meta.projects.smith)) {
+      const s = (await stage(st.id)) as StageDetailManager;
+      const want = sum(
+        seed.expenses
+          .filter((e) => e.stageId === st.id && e.categoryId === materialsId)
+          .map((e) => expenseCost(e.amountExGstCents, e.gstCents, true)),
+      );
+      expect(s.materialsActualCents, st.name).toBe(want);
+    }
+    const foreman = await stage(meta.stages.smithSheetInstall, "foreman");
+    expect("materialsActualCents" in foreman).toBe(false);
+  });
+
   it("shows the arithmetic behind the Smith forecast and its two progress lines (flows: find the losing job)", async () => {
     const s = (await stage(meta.stages.smithSheetInstall)) as StageDetailManager;
     expect(s.forecastWorking).toEqual({ actualCents: 143250, pctBp: 3000, forecastCents: 477500 });

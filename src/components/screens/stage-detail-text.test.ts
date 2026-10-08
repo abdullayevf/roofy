@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SegmentDto, StageActions } from "@/data/contracts";
-import { forecastWorkingText, lostDaysRows, PAUSE_CHOICES, progressRowText, segmentText, stageActionsNow, stageChipFor } from "./stage-detail-text";
+import { forecastWorkingText, lostDaysRows, materialsMeta, NOT_STARTED_TIMELINE, PAUSE_CHOICES, progressRowText, segmentsShown, segmentText, timelineRows, stageActionsNow, stageButtons, stageChipFor } from "./stage-detail-text";
 
 const none: StageActions = { canStart: false, canPause: false, canResume: false, canMarkDone: false, canReopen: false, canSetManualPct: false };
 const TODAY = "2026-09-28";
@@ -92,5 +92,85 @@ describe("progressRowText", () => {
   });
   it("never carries a dollar sign", () => {
     expect(JSON.stringify(progressRowText(row, TODAY))).not.toContain("$");
+  });
+});
+
+describe("segmentsShown (F2: the timeline follows a pause or restart kept on this phone, in the server's shape)", () => {
+  const working: SegmentDto = { start: "2026-09-23", end: null, pauseReason: null, pauseNote: null };
+  const pausedRow: SegmentDto = { start: "2026-09-20", end: "2026-09-24", pauseReason: "weather", pauseNote: null };
+  it("with nothing kept on the phone shows the server's segments as they are", () => {
+    expect(segmentsShown([working], null, TODAY)).toEqual([working]);
+  });
+  it("a pause ends the open worked stretch at today, with the reason", () => {
+    expect(segmentsShown([working], { status: "paused", reason: "weather" }, TODAY)).toEqual([{ ...working, end: TODAY, pauseReason: "weather" }]);
+  });
+  it("a restart opens a worked stretch from today after the pause", () => {
+    expect(segmentsShown([pausedRow], { status: "active", reason: null }, TODAY)).toEqual([
+      pausedRow,
+      { start: TODAY, end: null, pauseReason: null, pauseNote: null },
+    ]);
+  });
+  it("when the server already shows the kept state, nothing changes", () => {
+    expect(segmentsShown([working], { status: "active", reason: null }, TODAY)).toEqual([working]);
+    expect(segmentsShown([pausedRow], { status: "paused", reason: "weather" }, TODAY)).toEqual([pausedRow]);
+  });
+});
+
+describe("timelineRows (F2: a paused stage shows its worked stretch closed and a Paused line)", () => {
+  it("a stretch ended by a pause reads as a closed Working line and an open Paused line", () => {
+    const rows = timelineRows([{ start: "2026-09-01", end: "2026-09-05", pauseReason: "weather", pauseNote: "Rain" }], TODAY, false);
+    expect(rows.map((r) => r.detail)).toEqual(["Working", "Paused: Weather. Rain"]);
+    expect(rows[0]!.title).toMatch(/1 Sep to .*4 Sep/);
+    expect(rows[1]!.title).toMatch(/^From .*5 Sep/);
+  });
+  it("a pause that was restarted ends the day before work began again", () => {
+    const rows = timelineRows(
+      [
+        { start: "2026-09-01", end: "2026-09-05", pauseReason: "materials", pauseNote: null },
+        { start: "2026-09-08", end: null, pauseReason: null, pauseNote: null },
+      ],
+      TODAY,
+      false,
+    );
+    expect(rows.map((r) => r.detail)).toEqual(["Working", "Paused: Waiting on materials", "Working"]);
+    expect(rows[1]!.title).toMatch(/5 Sep to .*7 Sep/);
+  });
+  it("a pause on the start day shows no empty worked stretch; a done stage's last stretch reads Done", () => {
+    expect(timelineRows([{ start: TODAY, end: TODAY, pauseReason: "weather", pauseNote: null }], TODAY, false)).toHaveLength(1);
+    expect(timelineRows([{ start: "2026-09-01", end: "2026-09-05", pauseReason: null, pauseNote: null }], TODAY, true)[0]!.detail).toBe("Done");
+  });
+});
+
+describe("stageButtons (F1, D8, D19: one primary, the same for foreman and manager)", () => {
+  const now = { start: false, pause: false, resume: false, done: false, reopen: false };
+  const shape = (n: typeof now) => stageButtons(n).map((b) => `${b.kind}:${b.variant}`);
+  it("paused: Resume is the one primary and Mark done is secondary, primary last (nearest the thumb)", () => {
+    expect(shape({ ...now, resume: true, done: true })).toEqual(["done:secondary", "resume:primary"]);
+  });
+  it("active: Mark done is primary and Pause secondary", () => {
+    expect(shape({ ...now, pause: true, done: true })).toEqual(["pause:secondary", "done:primary"]);
+  });
+  it("foreman active: Pause stays secondary, as for the manager", () => {
+    expect(shape({ ...now, pause: true })).toEqual(["pause:secondary"]);
+  });
+  it("not started: Start is primary; done: Reopen is secondary; never two primaries", () => {
+    expect(shape({ ...now, start: true })).toEqual(["start:primary"]);
+    expect(shape({ ...now, reopen: true })).toEqual(["reopen:secondary"]);
+    expect(stageButtons({ start: true, pause: true, resume: true, done: true, reopen: true }).filter((b) => b.variant === "primary")).toHaveLength(1);
+  });
+});
+
+describe("timeline and materials words", () => {
+  it("a stage with no stretches yet says so in one sentence (D11)", () => {
+    expect(NOT_STARTED_TIMELINE).toBe("Not started yet. Starts when the first day is logged.");
+  });
+  it("the last stretch of a done stage reads Done, not Working (D18)", () => {
+    const seg: SegmentDto = { start: "2026-09-01", end: "2026-09-05", pauseReason: null, pauseNote: null };
+    expect(segmentText(seg, TODAY, true).detail).toBe("Done");
+    expect(segmentText(seg, TODAY).detail).toBe("Working");
+  });
+  it("materials meta names the budget, or says none is set rather than $0.00 (D7, F8)", () => {
+    expect(materialsMeta(250000)).toBe("Budget $2,500.00");
+    expect(materialsMeta(0)).toBe("No budget set");
   });
 });

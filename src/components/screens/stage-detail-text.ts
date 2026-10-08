@@ -50,11 +50,12 @@ export function stageActionsNow(actions: StageActions, status: StageStatus, loca
 }
 
 /** One stretch of the stage's history. `end` is the first day after it, so the last day worked is the day before. */
-export function segmentText(segment: SegmentDto, today: string): { title: string; detail: string } {
+/** `finished`: the last stretch of a done stage, which reads Done rather than Working. */
+export function segmentText(segment: SegmentDto, today: string, finished = false): { title: string; detail: string } {
   const first = formatDate(segment.start, today);
   const last = segment.end ? addDays(segment.end, -1) : null;
   const title = last === null ? `From ${first}` : last === segment.start ? first : `${first} to ${formatDate(last, today)}`;
-  if (!segment.pauseReason) return { title, detail: "Working" };
+  if (!segment.pauseReason) return { title, detail: finished ? "Done" : "Working" };
   const note = segment.pauseNote ? `. ${segment.pauseNote}` : "";
   return { title, detail: `Paused: ${pauseReasonLabel(segment.pauseReason)}${note}` };
 }
@@ -76,4 +77,61 @@ export function forecastWorkingText(w: { actualCents: number; pctBp: number; for
 /** A progress entry as a row: its date, the quantity with its unit, and who entered it. */
 export function progressRowText(p: { date: string; quantity: number; unit: "m2" | "lm" | "each"; enteredByName: string }, today: string): { primary: string; quantity: string; meta: string } {
   return { primary: formatDate(p.date, today), quantity: formatQuantity(p.quantity, p.unit), meta: `Entered by ${p.enteredByName}` };
+}
+
+/** The timeline's one sentence before the stage has any stretch. */
+export const NOT_STARTED_TIMELINE = "Not started yet. Starts when the first day is logged.";
+
+/** The materials row's meta: the budget, or that none is set (never "$0.00"). */
+export const materialsMeta = (budgetCents: number): string => (budgetCents > 0 ? `Budget ${formatMoney(budgetCents)}` : "No budget set");
+
+/** A pause or restart kept on this phone that the server has not shown yet. */
+export type KeptState = { status: "paused" | "active"; reason: PauseReason | null };
+
+/**
+ * The segments as this phone knows them, in the server's shape (a pause ends the open worked stretch at today with
+ * its reason; a kept restart opens a new stretch from today), so the timeline agrees with the chip before the server
+ * answers. Dates only; no sums.
+ */
+export function segmentsShown(segments: SegmentDto[], kept: KeptState | null, today: string): SegmentDto[] {
+  const last = segments.at(-1);
+  if (!kept || !last) return segments;
+  if (kept.status === "paused") {
+    return last.end === null ? [...segments.slice(0, -1), { ...last, end: today, pauseReason: kept.reason }] : segments;
+  }
+  return last.end !== null && last.pauseReason !== null ? [...segments, { start: today, end: null, pauseReason: null, pauseNote: null }] : segments;
+}
+
+/**
+ * The timeline's lines from the server's segments: each row is a worked stretch [start, end); one ended by a pause
+ * adds a Paused line from its end to the next stretch's start (open while still paused). An empty stretch (paused on
+ * its start day) shows no Working line. A done stage's last stretch reads Done. Dates only; no sums.
+ */
+export function timelineRows(segments: SegmentDto[], today: string, done: boolean): { title: string; detail: string }[] {
+  return segments.flatMap((s, i) => {
+    const rows: { title: string; detail: string }[] = [];
+    const isLast = i === segments.length - 1;
+    if (s.end !== s.start) rows.push(segmentText({ ...s, pauseReason: null, pauseNote: null }, today, done && isLast && !s.pauseReason));
+    if (s.pauseReason && s.end !== null) {
+      rows.push(segmentText({ start: s.end, end: segments[i + 1]?.start ?? null, pauseReason: s.pauseReason, pauseNote: s.pauseNote }, today));
+    }
+    return rows;
+  });
+}
+
+export type StageButtonKind = keyof ActionsNow;
+
+/**
+ * The stage's buttons in the pinned bar, secondaries first and the one primary last (nearest the thumb, rightmost on
+ * a phone on its side). Start, else Resume, else Mark done is the primary; Pause and Reopen are always secondary, for
+ * the foreman and the manager alike.
+ */
+export function stageButtons(now: ActionsNow): { kind: StageButtonKind; variant: "primary" | "secondary" }[] {
+  const order: StageButtonKind[] = ["start", "resume", "done", "pause", "reopen"];
+  const shown = order.filter((k) => now[k]);
+  const primary = (["start", "resume", "done"] as const).find((k) => now[k]) ?? null;
+  return [
+    ...shown.filter((k) => k !== primary).map((kind) => ({ kind, variant: "secondary" as const })),
+    ...(primary ? [{ kind: primary, variant: "primary" as const }] : []),
+  ];
 }

@@ -163,7 +163,8 @@
 @media (orientation: landscape) and (max-height: 500px) {
   :root {
     --tab-bar-height: calc(
-      var(--tab-bar-body) + var(--tab-bar-raise) + 1rem + max(var(--sab-sim, 0px), env(safe-area-inset-bottom))
+      var(--tab-bar-body) + var(--tab-bar-raise) + 1rem +
+        max(var(--sab-sim, 0px), env(safe-area-inset-bottom))
     );
   }
 }
@@ -284,15 +285,15 @@ body {
     justify-content: flex-end;
     gap: 0.75rem;
     /* The button's right edge is the form column's right edge (a 600 px column, centred, 16 px page padding). */
-    padding: 0.5rem max(1rem, env(safe-area-inset-right), calc((100% - 37.5rem) / 2))
-      0.5rem max(1rem, env(safe-area-inset-left), calc((100% - 37.5rem) / 2));
+    padding: 0.5rem max(1rem, env(safe-area-inset-right), calc((100% - 37.5rem) / 2)) 0.5rem
+      max(1rem, env(safe-area-inset-left), calc((100% - 37.5rem) / 2));
     background: var(--galv);
     border-top: 1px solid var(--line);
   }
   .pin-action[data-keyboard="true"] {
     padding-bottom: 0.5rem;
   }
-  .pin-action > :not(button):not(a) {
+  .pin-action > :not(button):not(a):not([data-variant]) {
     /* The message or sentence comes first in the row, on the left of the Log circle, whatever its place in the markup. */
     order: -1;
     flex: 1 1 0;
@@ -300,10 +301,23 @@ body {
     max-width: calc(50% - 2.25rem);
     margin-right: auto;
   }
+  /* A disabled link is a span with a variant: it is a button here too. */
   .pin-action > button,
-  .pin-action > a {
+  .pin-action > a,
+  .pin-action > [data-variant] {
     flex: 0 0 10rem;
     width: 10rem;
+  }
+  /*
+   * A bar with a secondary button too (stage detail: Pause and Mark done): the secondary sits leftmost, on the left
+   * of the Log circle, and the one primary stays on the right; an error between them gets what room is left.
+   */
+  .pin-action > [data-variant="secondary"] {
+    order: -2;
+    margin-right: auto;
+  }
+  .pin-action:has(> [data-variant="secondary"]) > :not(button):not(a):not([data-variant]) {
+    max-width: calc(50% - 13rem);
   }
 }
 /*

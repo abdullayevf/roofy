@@ -2,6 +2,7 @@ import { reversal } from "@/domain/adjustments";
 import { addDays, countWorkingDays } from "@/domain/dates";
 import { lumpSumLines } from "@/domain/piece";
 import { lostWorkingDays, pausePeriods, realWorkingDays } from "@/domain/segments";
+import { sum } from "@/domain/money";
 import { splitWeighted } from "@/domain/split";
 import type { LocalDate } from "@/domain/types";
 import type {
@@ -172,6 +173,12 @@ export function createStageService(c: FakeContext): StageService {
         tape: sf.tape,
         labourBudgetCents: st.labourBudgetCents,
         materialsBudgetCents: st.materialsBudgetCents,
+        materialsActualCents: sum(
+          c.ix
+            .expensesOf(st.projectId)
+            .filter((e) => e.stageId === st.id && c.fig.isMaterials(e))
+            .map((e) => c.fig.expenseCostOf(e)),
+        ),
         lumpSumCents: st.lumpSumCents,
         manualPctBp: st.manualPctBp,
         labourActualCents: sf.actualCents,

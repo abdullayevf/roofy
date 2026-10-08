@@ -591,6 +591,73 @@ export async function checkTextZoom(page: Page): Promise<GuardResult> {
 }
 
 // ---------------------------------------------------------------------------
+// Pinned action bar
+/** At most one primary button or link showing on the screen (design loop jobs-2 F1: no two solid buttons side by side). */
+export async function checkOnePrimary(page: Page): Promise<GuardResult> {
+  const names = await page.locator('[data-variant="primary"]:visible').allInnerTexts();
+  const ok = names.length <= 1;
+  return { name: "one-primary", ok, failures: ok ? [] : [`${names.length} primary buttons: ${names.map((n) => n.trim()).join(", ")}`] };
+}
+
+/** On a phone, the screen's one primary action sits in the bottom third of the viewport, in thumb reach (jobs-2 D1/F7). */
+export async function checkPrimaryInBottomThird(page: Page): Promise<GuardResult> {
+  const viewport = page.viewportSize();
+  const box = await page.locator('[data-variant="primary"]:visible').first().boundingBox();
+  if (!viewport || !box) return { name: "primary-in-thumb-reach", ok: false, failures: ["no visible primary button"] };
+  const centre = box.y + box.height / 2;
+  const ok = centre >= (viewport.height * 2) / 3 && box.y + box.height <= viewport.height;
+  return {
+    name: "primary-in-thumb-reach",
+    ok,
+    failures: ok ? [] : [`primary button centre at ${Math.round(centre)} px; the bottom third starts at ${Math.round((viewport.height * 2) / 3)} px`],
+  };
+}
+
+/**
+ * Scrolled to the bottom, the page's last content ends above the pinned bar: the page pads by the bar's height
+ * (jobs-2 F16: done stage, installed, phone on its side).
+ */
+export async function checkContentClearsPinnedBar(page: Page): Promise<GuardResult> {
+  const name = "content-clears-pinned-bar";
+  const bar = page.locator('[data-slot="primary-action"]:visible').first();
+  if ((await bar.count()) === 0) return { name, ok: true, failures: [] };
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForTimeout(100);
+  const barBox = await bar.boundingBox();
+  const lastBottom = await page.evaluate(() => {
+    const screen = document.querySelector("[data-screen]");
+    if (!screen) return null;
+    let bottom = 0;
+    for (const el of Array.from(screen.querySelectorAll("li, p, h2, section > *"))) {
+      if (el.closest('[data-slot="primary-action"]')) continue;
+      const r = el.getBoundingClientRect();
+      if (r.height > 0) bottom = Math.max(bottom, r.bottom);
+    }
+    return bottom;
+  });
+  if (!barBox || lastBottom === null) return { name, ok: true, failures: [] };
+  const ok = lastBottom <= barBox.y + 1;
+  return { name, ok, failures: ok ? [] : [`last content ends at ${Math.round(lastBottom)} px; the pinned bar starts at ${Math.round(barBox.y)} px`] };
+}
+
+/**
+ * On a phone, no button in the pinned bar sits under the raised Log circle (the circle overhangs the bar; a phone on
+ * its side puts the bar's buttons in one row either side of it). jobs-2 D1/F7.
+ */
+export async function checkBarClearsLogCircle(page: Page): Promise<GuardResult> {
+  const circle = await page.locator("nav .rounded-full.bg-chalk").first().boundingBox();
+  if (!circle) return { name: "bar-clears-log-circle", ok: true, failures: [] };
+  const failures: string[] = [];
+  for (const el of await page.locator(".pin-action > button:visible, .pin-action > a:visible, .pin-action > [data-variant]:visible").all()) {
+    const b = await el.boundingBox();
+    if (!b) continue;
+    const overlaps = b.x < circle.x + circle.width && b.x + b.width > circle.x && b.y < circle.y + circle.height && b.y + b.height > circle.y;
+    if (overlaps) failures.push(`"${(await el.innerText()).trim()}" (x ${Math.round(b.x)} to ${Math.round(b.x + b.width)}) is under the Log circle (x ${Math.round(circle.x)} to ${Math.round(circle.x + circle.width)})`);
+  }
+  return { name: "bar-clears-log-circle", ok: failures.length === 0, failures };
+}
+
+// ---------------------------------------------------------------------------
 // Composition
 // ---------------------------------------------------------------------------
 

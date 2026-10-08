@@ -2,8 +2,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { StageActions } from "@/data/contracts";
-import { StageControls, type StageControlsProps } from "./stage-controls";
+import type { SegmentDto, StageActions } from "@/data/contracts";
+import { StageActionBar, StageLive, StageStatusLine, StageTimeline, type StageLiveProps } from "./stage-controls";
+
+type StageControlsProps = Omit<StageLiveProps, "children" | "className" | "view"> & { segments?: SegmentDto[] };
+/** The screen's live parts as stage detail puts them together: status line, timeline and the pinned bar. */
+function StageControls({ segments = [], ...props }: StageControlsProps) {
+  return (
+    <StageLive {...props} view="manager" className="">
+      <StageStatusLine />
+      <StageTimeline segments={segments} />
+      <StageActionBar />
+    </StageLive>
+  );
+}
 
 const refresh = vi.fn();
 const submit = vi.fn();
@@ -17,6 +29,11 @@ const status = (c: HTMLElement) => c.querySelector("[data-stage-controls]")!.get
 
 // The sheet picks its desktop dialog (not the phone drawer, which needs drag APIs jsdom lacks) from matchMedia.
 beforeEach(() => {
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
     matches: query === "(min-width: 1024px)",
     media: query,
@@ -78,5 +95,44 @@ describe("StageControls keeps the phone's answer only until the server speaks", 
     await user.click(screen.getByRole("button", { name: "Resume stage" }));
     expect(screen.queryByText("Saved on this device. It will send when you have signal.")).not.toBeInTheDocument();
     expect(refresh).toHaveBeenCalled();
+  });
+});
+
+describe("Stage detail's live parts (F1, F2, F4)", () => {
+  const variant = (name: string) => screen.getByRole(name === "Mark stage done" ? "link" : "button", { name }).getAttribute("data-variant");
+
+  it("a pause closes the open Working stretch at today and adds a Paused: Weather line at once (F2)", async () => {
+    const user = userEvent.setup();
+    submit.mockResolvedValue({ status: "retry" });
+    render(<StageControls {...base} segments={[{ start: "2026-09-23", end: null, pauseReason: null, pauseNote: null }]} />);
+    expect(screen.getByText(/^From .*23 Sep/)).toBeInTheDocument();
+    await pauseForWeather(user);
+    expect(screen.queryByText(/^From .*23 Sep/)).toBeNull();
+    expect(screen.getByText(/23 Sep to /)).toBeInTheDocument();
+    expect(screen.getAllByText("Paused: Weather"), "the chip and the timeline line").toHaveLength(2);
+  });
+
+  it("paused: Resume is the one primary and Mark stage done is secondary (F1)", () => {
+    render(<StageControls {...base} status="paused" pauseReason="weather" />);
+    expect(variant("Resume stage")).toBe("primary");
+    expect(variant("Mark stage done")).toBe("secondary");
+  });
+
+  it("active: Mark stage done is primary and Pause is secondary", () => {
+    render(<StageControls {...base} />);
+    expect(variant("Mark stage done")).toBe("primary");
+    expect(variant("Pause stage")).toBe("secondary");
+  });
+
+  it("offline: Mark stage done is disabled on stage detail and the bar says it needs a connection (F4)", () => {
+    render(<StageControls {...base} demoOffline />);
+    expect(screen.getByRole("link", { name: "Mark stage done" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByText(/^Needs connection/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pause stage" })).toBeEnabled();
+  });
+
+  it("a stage with no stretches says it is not started yet (D11)", () => {
+    render(<StageControls {...base} status="not_started" actions={{ ...actions, canStart: true, canPause: false, canResume: false, canMarkDone: false }} />);
+    expect(screen.getByText("Not started yet. Starts when the first day is logged.")).toBeInTheDocument();
   });
 });
