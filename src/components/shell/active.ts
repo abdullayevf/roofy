@@ -53,4 +53,5 @@ export function activeManageKey(pathname: string): string {
 }
 
 /** Admin forms that need a connection to save: New job and Edit job. Everything else queues entries on the device. */
-export const queuesOffline = (pathname: string): boolean => !/^\/jobs\/(new|[^/]+\/edit)\/?$/.test(pathname);
+export const queuesOffline = (pathname: string): boolean =>
+  !/^\/jobs\/(new|[^/]+\/edit)\/?$/.test(pathname) && !/^\/crew\/[^/]+(\/payout)?\/?$/.test(pathname);

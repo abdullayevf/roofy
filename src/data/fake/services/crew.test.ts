@@ -59,6 +59,27 @@ describe("crew", () => {
     );
   });
 
+  it("list: owed people first, largest first, then the rest by name; the total owed is theirs added up", async () => {
+    const m = fake("manager");
+    const list = await m.data.crew.list(m.actor, { includeInactive: true });
+    if (list.view !== "manager") throw new Error("manager view expected");
+    const owed = list.rows.filter((r) => r.balanceCents > 0);
+    const rest = list.rows.filter((r) => r.balanceCents <= 0);
+    expect(owed.length).toBeGreaterThan(0);
+    expect(list.rows.slice(0, owed.length)).toEqual(owed);
+    expect(owed.map((r) => r.balanceCents)).toEqual([...owed.map((r) => r.balanceCents)].sort((a, b) => b - a));
+    expect(rest.map((r) => r.name)).toEqual([...rest.map((r) => r.name)].sort((a, b) => a.localeCompare(b)));
+    expect(list.owedTotalCents).toBe(sum(owed.map((r) => r.balanceCents)));
+  });
+
+  it("detail: how many pay runs are still unpaid (Kev owed for a while, Dima none)", async () => {
+    const { data, actor } = fake("manager");
+    const kev = await data.crew.get(actor, meta.crew.kev);
+    expect(kev.unpaidPayRuns).toBeGreaterThan(0);
+    expect(kev.oldestUnpaidDate).not.toBeNull();
+    expect((await data.crew.get(actor, meta.crew.dima)).unpaidPayRuns).toBe(0);
+  });
+
   it("a foreman can't open crew detail or rates", async () => {
     const { data, actor } = fake("foreman");
     await expect(data.crew.get(actor, meta.crew.sam)).rejects.toMatchObject({ code: "forbidden" });

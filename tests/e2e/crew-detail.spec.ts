@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { collectConsole, expectScreenHealthy } from "./guards";
 import { expectNoMoney } from "./money-scan";
 import { getSeed } from "../../src/data/fake/store";
+import { formatDate } from "../../src/lib/format";
 
 const { meta } = getSeed();
 const isPhone = (name: string) => name !== "desktop";
@@ -26,7 +27,7 @@ test.describe("Crew member detail (manager)", () => {
     // Kev has been owed for longer than a pay period.
     const balance = page.locator('[data-crew-balance="owed"]');
     await expect(balance).toContainText(/^Owed\$[\d,]+\.\d{2}/);
-    await expect(balance).toContainText("You have owed Kev this for a long time.");
+    await expect(balance).toContainText(/Owed since \w{3} \d{1,2} \w{3} \(\d+ pay runs?\)\./);
     for (const title of ["Pay and payments", "Statements", "Rates", "Recent logs"])
       await expect(page.getByRole("heading", { level: 2, name: title })).toBeVisible();
     await expect(page.locator("[data-empty]")).toHaveCount(0);
@@ -54,7 +55,7 @@ test.describe("Crew member detail (manager)", () => {
     await expect(balance).toContainText("You have paid Dima this much more than they have earned so far.");
     const ledger = section(page, "Pay and payments");
     await expect(ledger).toContainText("Advance");
-    await expect(ledger).toContainText("Paid ahead");
+    await expect(ledger).toContainText("Balance after: paid ahead");
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
@@ -101,6 +102,25 @@ test.describe("Crew member detail (manager)", () => {
     await expect(draft).toHaveCount(1);
     await expect(draft.getByRole("button", { name: "Share statement" })).toHaveCount(0);
     await expect(rows.filter({ hasText: ", approved" }).first().getByRole("button", { name: "Share statement" })).toBeVisible();
+    // The latest four only, then "See all statements" opens the rest in place (D1, F2).
+    await expect(rows).toHaveCount(4);
+    await section(page, "Statements").getByRole("button", { name: "See all statements" }).click();
+    expect(await rows.count()).toBeGreaterThan(4);
+    await expect(section(page, "Statements").getByRole("button", { name: "See all statements" })).toHaveCount(0);
+  });
+
+  test("saved: the hero and the top ledger row show the payout just saved (F1, D2)", async ({ page }) => {
+    await signInAs(page, "manager", dima);
+    const before = await page.locator("[data-crew-balance]").innerText();
+    const next = `${dima}?saved=payment`;
+    await page.goto(`/prototype/record-payout?crew=${meta.crew.dima}&cents=148200&kind=payment&approve=1&next=${encodeURIComponent(next)}`);
+    await expect(page.getByText("Payment saved.", { exact: true })).toBeVisible();
+    await expect(page.locator("[data-crew-balance]")).not.toHaveText(before);
+    await expect(page.locator('[data-crew-balance="clear"]')).toContainText(/^Nothing owed\$0\.00/);
+    const top = section(page, "Pay and payments").locator(".divide-y > *").first();
+    await expect(top).toContainText(/^Payment/);
+    await expect(top).toContainText(`${formatDate(meta.today, meta.today)}. Balance after: nothing owed`);
+    await expect(top).toContainText("$1,482.00");
   });
 
   test("a very long name wraps, and with nothing logged, paid or shared every section says so", async ({ page }, testInfo) => {
@@ -125,13 +145,16 @@ test.describe("Crew member detail (manager)", () => {
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
-  test("offline keeps the page, shows the banner, and Share waits for a connection", async ({ page }) => {
+  test("offline keeps the page, and Share and Record payout wait for a connection", async ({ page }) => {
     await signInAs(page, "manager", `${kev}?demo=offline`);
-    await expect(page.getByText(/No signal/).first()).toBeVisible();
     await expect(page.getByRole("heading", { level: 1, name: "Kev" })).toBeVisible();
     const share = section(page, "Statements").getByRole("button", { name: "Share statement" }).first();
     await expect(share).toBeDisabled();
     await expect(section(page, "Statements").getByText("Needs connection").first()).toBeVisible();
+    // Record payout never queues: disabled here, with the needs-connection line (D18, F10).
+    await expect(page.getByRole("button", { name: "Record payout" }).locator("visible=true")).toBeDisabled();
+    await expect(page.getByText("Needs connection. Try again once you're back online.").locator("visible=true").first()).toBeVisible();
+    await expect(page.getByText(/will send automatically/)).toHaveCount(0);
   });
 
   test("an unknown person is a not-found page, and an owner sees the same page as a manager", async ({ page }) => {

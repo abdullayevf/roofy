@@ -638,7 +638,8 @@ export interface CrewRowManager extends CrewRowForeman {
 }
 
 export type CrewList =
-  | { view: "manager"; access: Access; rows: CrewRowManager[] }
+  /** Rows: people owed first (largest first), then the rest by name. `owedTotalCents` adds up what is owed. */
+  | { view: "manager"; access: Access; rows: CrewRowManager[]; owedTotalCents: Cents }
   | { view: "foreman"; access: FieldAccess; rows: CrewRowForeman[] };
 
 export interface RateDto {
@@ -690,6 +691,8 @@ export interface CrewDetail {
   recentLogs: LogRowManager[];
   balanceCents: Cents;
   oldestUnpaidDate: LocalDate | null;
+  /** Pay runs not yet fully paid (0 when nothing is owed). */
+  unpaidPayRuns: number;
   unpaidTooLong: boolean;
   ledger: LedgerRow[];
   statements: StatementRef[];

@@ -55,6 +55,18 @@ export function payoutProblems(v: PayoutFormValues): PayoutProblems {
   return p;
 }
 
+/** The line under a refused Save payout: only what is still missing, as one sentence (undefined when ready). */
+export function missingHint(p: PayoutProblems): string | undefined {
+  const parts: string[] = [];
+  if (p.date) parts.push("add the date paid");
+  if (p.amount) parts.push(p.amount === AMOUNT_MISSING ? "add an amount" : "fix the amount");
+  if (p.kind) parts.push("choose Advance or Payment");
+  if (parts.length === 0) return undefined;
+  const last = parts.pop() as string;
+  const text = parts.length === 0 ? last : `${parts.join(", ")} and ${last}`;
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}.`;
+}
+
 /** The save input, or null while anything is missing. */
 export function payoutInput(crewMemberId: string, v: PayoutFormValues): PayoutInput | null {
   if (!payoutProblems(v).ready || typeof v.amountCents !== "number" || v.kind === "") return null;

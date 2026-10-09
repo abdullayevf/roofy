@@ -48,13 +48,15 @@ test.describe("Record payout (manager)", () => {
     await signInAs(page, "manager", payout);
     await save(page).locator("visible=true").click();
     await expect(page.getByText("Add an amount before saving.")).toBeVisible();
-    await expect(page.getByText("Choose Advance or Payment.")).toBeVisible();
+    await expect(page.getByText("Choose Advance or Payment.", { exact: true })).toBeVisible();
+    // The pinned bar names only what is missing (D17).
+    await expect(page.getByText("Add an amount and choose Advance or Payment.", { exact: true }).locator("visible=true")).toBeVisible();
     await expect(amount(page)).toHaveAttribute("aria-invalid", "true");
     await amount(page).fill("0");
     await page.getByRole("radio", { name: "Payment" }).click();
     await save(page).locator("visible=true").click();
     await expect(page.getByText("Add an amount before saving.")).toBeVisible();
-    await expect(page.getByText("Choose Advance or Payment.")).toHaveCount(0);
+    await expect(page.getByText("Choose Advance or Payment.", { exact: true })).toHaveCount(0);
     await amount(page).fill("12.3.4");
     await save(page).locator("visible=true").click();
     await expect(page.getByText("Enter an amount in dollars and cents, like 1,482.00.")).toBeVisible();
@@ -65,7 +67,7 @@ test.describe("Record payout (manager)", () => {
   test("the refused state from the address shows each missing thing", async ({ page }, testInfo) => {
     await signInAs(page, "manager", `${payout}?amount=0&check=1`);
     await expect(page.getByText("Add an amount before saving.")).toBeVisible();
-    await expect(page.getByText("Choose Advance or Payment.")).toBeVisible();
+    await expect(page.getByText("Choose Advance or Payment.", { exact: true })).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
   });
 
@@ -102,6 +104,8 @@ test.describe("Record payout (manager)", () => {
     await signInAs(page, "manager", `${payout}?demo=offline`);
     await expect(save(page).locator("visible=true")).toBeDisabled();
     await expect(page.getByText("Needs connection. Try again once you're back online.").locator("visible=true")).toBeVisible();
+    // One needs-connection sentence: no "will send automatically" banner on this admin screen (F3).
+    await expect(page.getByText(/will send automatically/)).toHaveCount(0);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
   });
 

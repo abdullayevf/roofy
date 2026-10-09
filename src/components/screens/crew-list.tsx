@@ -5,6 +5,7 @@ import { cx } from "@/lib/cx";
 import { EmptyState } from "@/components/empty-state";
 import { KeepTogether } from "@/components/keep-together";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatMoney } from "@/lib/format";
 import { balanceView, crewLine, lastLoggedText, owedCountText } from "./crew-input";
 import { CrewFilter, type CrewFilterValue } from "./crew-filter";
 import { LoadError } from "./field-entry";
@@ -27,6 +28,13 @@ function Header() {
 /** The balance as a figure with its plain word under it, right-aligned. Manager rows only: a foreman's row never gets one. */
 function Balance({ row }: { row: CrewRowManager }) {
   const b = balanceView(row.balanceCents);
+  // Nothing owed is a plain word, not a bold $0.00 competing with the people who are owed.
+  if (b.kind === "clear")
+    return (
+      <span data-crew-balance={b.kind} className="flex flex-col items-end text-right">
+        <span className="text-meta text-ink">{b.word}</span>
+      </span>
+    );
   return (
     <span data-crew-balance={b.kind} className="flex flex-col items-end text-right">
       <span className="text-figure num text-ink whitespace-nowrap">{b.amount}</span>
@@ -150,7 +158,12 @@ export function CrewListBody({ list, filter, anyCrew, today, demo }: CrewListPro
     <div data-screen="crew" className={CREW_COLUMN}>
       <div className="flex flex-col gap-2">
         <Header />
-        {list.view === "manager" ? <KeyFigure>{owedCountText(list.rows)}</KeyFigure> : null}
+        {list.view === "manager" ? (
+          <div data-crew-owed="" className="flex flex-col gap-1">
+            <KeyFigure>{formatMoney(list.owedTotalCents)}</KeyFigure>
+            <p className="text-meta text-ink">{owedCountText(list.rows)}</p>
+          </div>
+        ) : null}
       </div>
       {manager ? <CrewFilter value={filter} demo={demo} /> : null}
       {list.rows.length === 0 ? (

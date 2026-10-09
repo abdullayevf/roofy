@@ -41,5 +41,5 @@ export function lastLoggedText(date: string | null, today: string): string {
 /** The headline on the list: how many people are owed money right now. */
 export function owedCountText(rows: Pick<CrewRowManager, "balanceCents">[]): string {
   const n = rows.filter((r) => r.balanceCents > 0).length;
-  return n === 0 ? "No one is owed" : n === 1 ? "1 person is owed" : `${n} people are owed`;
+  return n === 0 ? "No one is owed" : n === 1 ? "Owed to 1 person" : `Owed to ${n} people`;
 }

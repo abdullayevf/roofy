@@ -20,7 +20,7 @@ import {
   PAYOUT_KINDS,
   PAYOUT_METHODS,
   payoutInput,
-  payoutProblems,
+  missingHint, payoutProblems,
   type PayoutFormValues,
   type PayoutKind,
 } from "./payout-input";
@@ -176,7 +176,7 @@ export function PayoutForm({
         barProps={barProps}
         error={failed}
         hintOnSide
-        hint={online ? undefined : NEEDS_CONNECTION}
+        hint={online ? missingHint(problems) : NEEDS_CONNECTION}
       >
         <Button
           disabled={!online}

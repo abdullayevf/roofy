@@ -67,25 +67,28 @@ describe("ledgerEntry", () => {
   it("shows a pay run as money added to what they are owed", () => {
     const e = ledgerEntry(row({ kind: "payrun_credit", amountCents: 152000, balanceAfterCents: 152000 }), "2026-09-28");
     expect(e).toMatchObject({ primary: "Pay run", cents: 152000 });
-    expect(e.meta).toBe("Mon 21 Sep. Owed $1,520.00 after");
+    expect(e.meta).toBe("Mon 21 Sep. Balance after: owed $1,520.00");
   });
 
   it("shows an advance and a payment as money taken off, with the method and note", () => {
     const adv = ledgerEntry(row({ note: "Advance for fuel" }), "2026-09-28");
     expect(adv).toMatchObject({ primary: "Advance", cents: -30000 });
-    expect(adv.meta).toBe("Mon 21 Sep, Advance for fuel. Paid ahead $300.00 after");
+    expect(adv.meta).toBe("Mon 21 Sep. Advance for fuel. Balance after: paid ahead $300.00");
+    expect(ledgerEntry(row({ note: "fuel." }), "2026-09-28").meta).toBe("Mon 21 Sep, fuel. Balance after: paid ahead $300.00");
     const pay = ledgerEntry(row({ kind: "payment", method: "bank_transfer", balanceAfterCents: 0 }), "2026-09-28");
     expect(pay.primary).toBe("Payment by bank transfer");
-    expect(pay.meta).toBe("Mon 21 Sep. Nothing owed after");
+    expect(pay.meta).toBe("Mon 21 Sep. Balance after: nothing owed");
   });
 });
 
 describe("balanceSentence", () => {
   it("says who owes whom in plain words", () => {
-    expect(balanceSentence("Dima", 148200, false)).toBe("You owe Dima this much.");
-    expect(balanceSentence("Dima", 148200, true)).toBe("You have owed Dima this for a long time.");
-    expect(balanceSentence("Dima", -30000, false)).toBe("You have paid Dima this much more than they have earned so far.");
-    expect(balanceSentence("Dima", 0, false)).toBe("You and Dima are square.");
+    const t = "2026-09-28";
+    expect(balanceSentence("Dima", 148200, null, t)).toBe("You owe Dima this much.");
+    expect(balanceSentence("Kev Morris", 148200, { since: "2026-09-07", payRuns: 3 }, t)).toBe("Owed since Mon 7 Sep (3 pay runs).");
+    expect(balanceSentence("Kev", 148200, { since: "2026-09-07", payRuns: 1 }, t)).toBe("Owed since Mon 7 Sep (1 pay run).");
+    expect(balanceSentence("Dima Petrov", -30000, null, t)).toBe("You have paid Dima this much more than they have earned so far.");
+    expect(balanceSentence("Bartholomew Fitzwilliam-Smythe", 0, null, t)).toBe("You and Bartholomew are square.");
   });
 });
 

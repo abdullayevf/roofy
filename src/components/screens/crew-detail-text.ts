@@ -47,17 +47,30 @@ export type LedgerEntry = { key: string; primary: string; meta: string; cents: C
  */
 export function ledgerEntry(row: LedgerRow, today: string): LedgerEntry {
   const after = balanceView(row.balanceAfterCents);
-  const afterText = after.kind === "clear" ? "Nothing owed after" : `${after.word} ${after.amount} after`;
-  const date = row.note ? `${formatDate(row.date, today)}, ${row.note}` : formatDate(row.date, today);
+  const afterText = `Balance after: ${after.kind === "clear" ? "nothing owed" : `${after.word.toLowerCase()} ${after.amount}`}`;
+  const note = row.note?.trim().replace(/\.+$/, "") ?? "";
+  // A note that starts a sentence gets its own; one that carries on from the date follows a comma.
+  const date = note ? `${formatDate(row.date, today)}${/^\p{Lu}/u.test(note) ? "." : ","} ${note}` : formatDate(row.date, today);
   const method = row.method ? METHOD_PHRASE[row.method] : "";
   if (row.kind === "payrun_credit") return { key: row.id, primary: "Pay run", meta: `${date}. ${afterText}`, cents: row.amountCents };
   const name = row.kind === "advance" ? "Advance" : "Payment";
   return { key: row.id, primary: `${name}${method}`, meta: `${date}. ${afterText}`, cents: -row.amountCents };
 }
 
-/** The sentence under the balance figure: who owes whom, in words, with no sign to decode. */
-export function balanceSentence(name: string, balanceCents: Cents, owedTooLong: boolean): string {
-  if (balanceCents > 0) return owedTooLong ? `You have owed ${name} this for a long time.` : `You owe ${name} this much.`;
+/**
+ * The sentence under the balance figure: who owes whom, in words, with no sign to decode, using the first name only.
+ * Owed for too long (`unpaid` given), it says since when and over how many pay runs.
+ */
+export function balanceSentence(
+  fullName: string,
+  balanceCents: Cents,
+  unpaid: { since: string; payRuns: number } | null,
+  today: string,
+): string {
+  const name = fullName.trim().split(/\s+/)[0];
+  if (balanceCents > 0 && unpaid)
+    return `Owed since ${formatDate(unpaid.since, today)} (${unpaid.payRuns} pay run${unpaid.payRuns === 1 ? "" : "s"}).`;
+  if (balanceCents > 0) return `You owe ${name} this much.`;
   if (balanceCents < 0) return `You have paid ${name} this much more than they have earned so far.`;
   return `You and ${name} are square.`;
 }

@@ -39,7 +39,7 @@ for (const role of ["manager", "owner"]) {
     await expect(page.locator('[data-crew-balance="clear"]')).toContainText(/^Nothing owed\$0\.00/);
     const top = ledger(page).first();
     await expect(top).toContainText(/^Payment/);
-    await expect(top).toContainText(`${formatDate(today, today)}. Nothing owed after`);
+    await expect(top).toContainText(`${formatDate(today, today)}. Balance after: nothing owed`);
     await expect(top).toContainText("$1,482.00");
     // The saved flag leaves the address once the toast shows; a reload does not show it again.
     await expect(page).toHaveURL(new RegExp(`${dima}$`));

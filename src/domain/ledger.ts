@@ -33,3 +33,14 @@ export function unpaidTooLong(entries: readonly LedgerEntry[], asOf: LocalDate, 
   const oldest = oldestUnpaidCreditDate(entries);
   return oldest !== null && daysBetween(oldest, asOf) > periodDays;
 }
+
+/** How many pay runs are not yet fully paid: debits pay off credits oldest first, as in oldestUnpaidCreditDate. */
+export function unpaidCreditCount(entries: readonly LedgerEntry[]): number {
+  let debits = sum(entries.filter((e) => !isCredit(e)).map((e) => e.amountCents));
+  let count = 0;
+  for (const c of entries.filter(isCredit).sort((a, b) => a.date.localeCompare(b.date))) {
+    if (debits < c.amountCents) count += 1;
+    debits = Math.max(0, debits - c.amountCents);
+  }
+  return count;
+}

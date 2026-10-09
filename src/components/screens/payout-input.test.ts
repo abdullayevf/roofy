@@ -5,6 +5,7 @@ import {
   AMOUNT_UNREADABLE,
   KIND_MISSING,
   emptyPayout,
+  missingHint,
   payoutFromQuery,
   payoutInput,
   payoutProblems,
@@ -133,5 +134,17 @@ describe("savedToastText", () => {
     expect(savedToastText("advance")).toBe("Advance saved.");
     expect(savedToastText(undefined)).toBeNull();
     expect(savedToastText("other")).toBeNull();
+  });
+});
+
+describe("missingHint", () => {
+  it("names only what is missing, in one sentence under Save payout", () => {
+    expect(missingHint({ ready: true })).toBeUndefined();
+    expect(missingHint({ ready: false, amount: AMOUNT_MISSING, kind: KIND_MISSING })).toBe("Add an amount and choose Advance or Payment.");
+    expect(missingHint({ ready: false, amount: AMOUNT_NEGATIVE })).toBe("Fix the amount.");
+    expect(missingHint({ ready: false, kind: KIND_MISSING })).toBe("Choose Advance or Payment.");
+    expect(missingHint({ ready: false, date: "x", amount: AMOUNT_MISSING, kind: KIND_MISSING })).toBe(
+      "Add the date paid, add an amount and choose Advance or Payment.",
+    );
   });
 });

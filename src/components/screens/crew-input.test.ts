@@ -58,7 +58,7 @@ describe("lastLoggedText and owedCountText", () => {
   it("counts the people who are owed money", () => {
     expect(owedCountText([])).toBe("No one is owed");
     expect(owedCountText([manager({ balanceCents: 0 }), manager({ balanceCents: -100 })])).toBe("No one is owed");
-    expect(owedCountText([manager({ balanceCents: 5 })])).toBe("1 person is owed");
-    expect(owedCountText([manager({ balanceCents: 5 }), manager({ balanceCents: 900 }), manager()])).toBe("2 people are owed");
+    expect(owedCountText([manager({ balanceCents: 5 })])).toBe("Owed to 1 person");
+    expect(owedCountText([manager({ balanceCents: 5 }), manager({ balanceCents: 900 }), manager()])).toBe("Owed to 2 people");
   });
 });

@@ -661,10 +661,13 @@ export const SCREENS: ScreenSpec[] = [
     noExtras: true,
   },
   {
-    // Back on the crew member's page after a save: the new balance and the "Payment saved." toast.
+    // Back on the crew member's page after a real save (flows.md E15.1: last week's pay run approved, then $1,482.00
+    // paid to Dima today, in this browser's demo session): nothing owed, the payment on top, the "Payment saved." toast.
     id: "crew-payout-saved",
     group: "crew",
-    route: `/crew/${meta.crew.dima}?saved=payment`,
+    route: `/prototype/role?as=manager&next=${encodeURIComponent(
+      `/prototype/record-payout?crew=${meta.crew.dima}&cents=148200&kind=payment&approve=1&next=${encodeURIComponent(`/crew/${meta.crew.dima}?saved=payment`)}`,
+    )}`,
     states: ["normal"],
     roles: ["manager"],
     viewports: ["iphone", "desktop"],

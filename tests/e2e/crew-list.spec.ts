@@ -18,7 +18,9 @@ test.describe("Crew list (manager)", () => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "manager");
     await expect(page.getByRole("heading", { level: 1, name: "Crew" })).toBeVisible();
-    await expect(page.getByText(/^(\d+ (person is|people are) owed|No one is owed)$/)).toBeVisible();
+    // The hero is the total owed, with who it is owed to under it (D5, F6).
+    const owed = page.locator("[data-crew-owed]");
+    await expect(owed).toContainText(/^\$[\d,]+\.\d{2}(Owed to 1 person|Owed to \d+ people|No one is owed)$/);
     await expect(page.getByRole("radio", { name: "Active", exact: true })).toBeChecked();
     await expect(rows(page)).toHaveCount(11);
     await expect(rows(page).filter({ hasText: "Pete" })).toHaveCount(0);
@@ -27,7 +29,12 @@ test.describe("Crew list (manager)", () => {
     await expect(page.locator(`[data-screen="crew"] a[href="/crew/${meta.crew.dima}"]:visible`)).toHaveCount(1);
     await expect(dima.locator("[data-crew-line]")).toContainText(/^Contractor|^Employee/);
     // A balance is a figure and one of three plain words.
-    for (const b of await page.locator("[data-crew-balance]:visible").all()) await expect(b).toHaveText(/^\$[\d,]+\.\d{2}(Owed|Paid ahead|Nothing owed)$/);
+    // Nothing owed is the word alone, never a bold $0.00.
+    for (const b of await page.locator("[data-crew-balance]:visible").all()) await expect(b).toHaveText(/^(\$[\d,]+\.\d{2}(Owed|Paid ahead)|Nothing owed)$/);
+    // People owed come first: the first row is owed, and no owed row follows one that is not.
+    const kinds = await page.locator("[data-crew-balance]:visible").evaluateAll((els) => els.map((e) => e.getAttribute("data-crew-balance")));
+    expect(kinds[0]).toBe("owed");
+    expect(kinds.lastIndexOf("owed")).toBe(kinds.filter((k) => k === "owed").length - 1);
     // Kev has been owed for longer than a pay period.
     await expect(rows(page).filter({ hasText: "Kev" }).getByText("Owed for a long time")).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });

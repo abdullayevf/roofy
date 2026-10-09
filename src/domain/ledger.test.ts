@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ledgerBalance, oldestUnpaidCreditDate, unpaidTooLong, type LedgerEntry } from "./ledger";
+import { ledgerBalance, oldestUnpaidCreditDate, unpaidCreditCount, unpaidTooLong, type LedgerEntry } from "./ledger";
 
 const advance: LedgerEntry = { date: "2026-09-14", kind: "advance", amountCents: 30_000 };
 const credit: LedgerEntry = { date: "2026-09-20", kind: "payrun_credit", amountCents: 178_200 };
@@ -27,5 +27,16 @@ describe("ledger", () => {
     expect(unpaidTooLong([advance, credit], "2026-09-28", 7)).toBe(true);
     expect(unpaidTooLong([advance, credit], "2026-09-27", 7)).toBe(false);
     expect(unpaidTooLong([advance, credit, payment], "2026-12-01", 7)).toBe(false);
+  });
+});
+
+describe("unpaidCreditCount", () => {
+  const run = (date: string, amountCents: number): LedgerEntry => ({ date, kind: "payrun_credit", amountCents });
+  it("counts the pay runs not yet fully paid, oldest first", () => {
+    expect(unpaidCreditCount([])).toBe(0);
+    expect(unpaidCreditCount([run("2026-09-07", 100_00), run("2026-09-14", 100_00), run("2026-09-21", 100_00)])).toBe(3);
+    const part: LedgerEntry = { date: "2026-09-22", kind: "payment", amountCents: 150_00 };
+    expect(unpaidCreditCount([run("2026-09-07", 100_00), run("2026-09-14", 100_00), run("2026-09-21", 100_00), part])).toBe(2);
+    expect(unpaidCreditCount([run("2026-09-07", 100_00), { ...part, amountCents: 100_00 }])).toBe(0);
   });
 });

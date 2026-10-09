@@ -13,9 +13,9 @@ import { balanceSentence, headerLine, ledgerEntry, phoneHref, rateRows, utilisat
 import { balanceView, payBasisLabel } from "./crew-input";
 import { SeeAll } from "./job-detail";
 import { logQuantityText } from "./job-detail-text";
-import { JobsAddBar } from "./jobs-add-bar";
+import { JobsAddBar, OnlineOnlyHeadButton } from "./jobs-add-bar";
 import { SavedToast } from "./saved-toast";
-import { StatementRow } from "./statement-row";
+import { StatementList } from "./statement-list";
 
 /** How many ledger lines and logs show before the link to the full history. */
 const SHOWN = 6;
@@ -24,7 +24,7 @@ const historyHref = (id: string) => `/history?crew=${id}`;
 const payoutHref = (id: string) => `/crew/${id}/payout`;
 
 /** Back row, the name, who they are, and from 1024 px the Record payout button (on a phone it is pinned at the bottom). */
-function Header({ crew, today }: { crew: CrewDetail; today: string }) {
+function Header({ crew, today, demoOffline }: { crew: CrewDetail; today: string; demoOffline: boolean }) {
   const util = utilisationText(crew.utilisation);
   return (
     <div className="flex flex-col gap-2">
@@ -34,9 +34,7 @@ function Header({ crew, today }: { crew: CrewDetail; today: string }) {
         </Button>
         {crew.access.canApprove ? (
           <div className="jobs-add-head hidden lg:block">
-            <Button variant="primary" href={payoutHref(crew.id)}>
-              Record payout
-            </Button>
+            <OnlineOnlyHeadButton label="Record payout" href={payoutHref(crew.id)} demoOffline={demoOffline} />
           </div>
         ) : null}
       </div>
@@ -63,13 +61,15 @@ function Header({ crew, today }: { crew: CrewDetail; today: string }) {
 }
 
 /** What they are owed (or were paid ahead), as one figure with its plain word and one sentence. */
-function Balance({ crew }: { crew: CrewDetail }) {
+function Balance({ crew, today }: { crew: CrewDetail; today: string }) {
   const b = balanceView(crew.balanceCents);
+  const unpaid =
+    crew.unpaidTooLong && crew.oldestUnpaidDate ? { since: crew.oldestUnpaidDate, payRuns: crew.unpaidPayRuns } : null;
   return (
     <div data-crew-balance={b.kind} className="flex flex-col gap-1">
       <p className="text-meta text-ink">{b.word}</p>
       <KeyFigure>{b.amount}</KeyFigure>
-      <p className="text-body text-ink">{balanceSentence(crew.name, crew.balanceCents, crew.unpaidTooLong)}</p>
+      <p className="text-body text-ink">{balanceSentence(crew.name, crew.balanceCents, unpaid, today)}</p>
     </div>
   );
 }
@@ -103,11 +103,7 @@ function Statements({ crew, today, demoOffline }: { crew: CrewDetail; today: str
       {crew.statements.length === 0 ? (
         <p data-empty="statements" className="text-body text-ink">No statements yet. One appears once a pay run is approved.</p>
       ) : (
-        <div className={cx(GROUP, "divide-y")}>
-          {crew.statements.map((s) => (
-            <StatementRow key={s.payRunId} statement={s} crewMemberId={crew.id} today={today} demoOffline={demoOffline} />
-          ))}
-        </div>
+        <StatementList statements={crew.statements} crewMemberId={crew.id} today={today} demoOffline={demoOffline} />
       )}
     </Section>
   );
@@ -175,13 +171,13 @@ export function CrewDetailBody({
 }) {
   return (
     <div data-screen="crew-detail" className={COLUMN}>
-      <Header crew={crew} today={today} />
-      <Balance crew={crew} />
+      <Header crew={crew} today={today} demoOffline={demoOffline} />
+      <Balance crew={crew} today={today} />
       <Ledger crew={crew} today={today} />
       <Statements crew={crew} today={today} demoOffline={demoOffline} />
       <Rates crew={crew} today={today} />
       <RecentLogs crew={crew} today={today} />
-      {crew.access.canApprove ? <JobsAddBar label="Record payout" href={payoutHref(crew.id)} /> : null}
+      {crew.access.canApprove ? <JobsAddBar label="Record payout" href={payoutHref(crew.id)} needsConnection demoOffline={demoOffline} /> : null}
       {savedToast ? <SavedToast message={savedToast} /> : null}
     </div>
   );

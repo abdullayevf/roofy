@@ -47,6 +47,9 @@ describe("manageNavItems", () => {
 describe("queuesOffline (R7)", () => {
   it("is false on the forms that need a connection to save, true everywhere else", () => {
     expect(queuesOffline("/jobs/new")).toBe(false);
+    expect(queuesOffline("/crew/abc-123")).toBe(false);
+    expect(queuesOffline("/crew/abc-123/payout")).toBe(false);
+    expect(queuesOffline("/crew")).toBe(true);
     expect(queuesOffline("/jobs/abc-123/edit")).toBe(false);
     expect(queuesOffline("/jobs")).toBe(true);
     expect(queuesOffline("/jobs/abc-123")).toBe(true);

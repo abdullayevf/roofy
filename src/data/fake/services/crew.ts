@@ -1,7 +1,9 @@
 import { addDays } from "@/domain/dates";
-import { ledgerBalance } from "@/domain/ledger";
+import { ledgerBalance, unpaidCreditCount } from "@/domain/ledger";
+import { sum } from "@/domain/money";
 import { resolveRate } from "@/domain/rates";
 import type {
+  CrewRowManager,
   Actor,
   CrewDetail,
   CrewInput,
@@ -141,10 +143,7 @@ export function createCrewService(c: FakeContext): CrewService {
         .sort((a, b) => a.name.localeCompare(b.name));
       if (c.isForeman(actor))
         return { view: "foreman", access: FIELD_ACCESS, rows: crew.map((m) => crewRowForeman(m, c.today)) };
-      return {
-        view: "manager",
-        access: c.access(actor),
-        rows: crew.map((m) => {
+      const rows: CrewRowManager[] = crew.map((m) => {
           const level = m.levelId === null ? null : c.ix.levels.get(m.levelId)!;
           const ledger = c.fig.ledger(m.id);
           const logs = c.ix.logsOfCrew(m.id);
@@ -156,8 +155,11 @@ export function createCrewService(c: FakeContext): CrewService {
             unpaidTooLong: ledger.unpaidTooLong,
             lastLogDate: logs.reduce<string | null>((d, l) => (d === null || l.date > d ? l.date : d), null),
           };
-        }),
-      };
+        });
+      // People owed come first, largest first; everyone else stays in name order (the sort is stable).
+      rows.sort((a, b) => Math.max(b.balanceCents, 0) - Math.max(a.balanceCents, 0));
+      const owedTotalCents = sum(rows.map((r) => Math.max(r.balanceCents, 0)));
+      return { view: "manager", access: c.access(actor), rows, owedTotalCents };
     },
 
     async get(actor: Actor, crewMemberId: Id): Promise<CrewDetail> {
@@ -186,6 +188,7 @@ export function createCrewService(c: FakeContext): CrewService {
         recentLogs: recent.map((l) => c.logManager(l)),
         balanceCents: ledger.balanceCents,
         oldestUnpaidDate: ledger.oldestUnpaidDate,
+        unpaidPayRuns: unpaidCreditCount(ledger.entries),
         unpaidTooLong: ledger.unpaidTooLong,
         ledger: ledgerRows(c, m.id),
         statements: statements(m),
