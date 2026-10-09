@@ -86,9 +86,16 @@ test.describe("Record payout (manager)", () => {
     await page.getByRole("radio", { name: "Advance" }).click();
     await page.getByRole("radio", { name: "Cash" }).click();
     await save(page).locator("visible=true").click();
-    await expect(page).toHaveURL(new RegExp(`${dima}\\?saved=advance$`));
     await expect(page.getByText("Advance saved.", { exact: true })).toBeVisible();
     expect(await signedBalance(page)).toBe(before - 30000);
+    // The saved flag leaves the address once the toast shows, so a reload never shows it again.
+    await expect(page).toHaveURL(new RegExp(`${dima}$`));
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1, name: "Dima" })).toBeVisible();
+    await expect(page.getByText("Advance saved.", { exact: true })).toHaveCount(0);
+    // Saving replaced the form in history: Back never lands on the filled-in form.
+    await page.goBack();
+    await expect(page).not.toHaveURL(/\/payout/);
   });
 
   test("offline: Save payout is disabled and says it needs a connection (never queued)", async ({ page }, testInfo) => {

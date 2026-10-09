@@ -9,9 +9,11 @@ export type CrewData =
 /** The crew under one filter, and whether the workspace has anyone at all (for the empty-state wording). */
 export async function loadCrew({ data, actor }: DataContext, includeInactive: boolean): Promise<CrewData> {
   try {
-    const list = await data.crew.list(actor, { includeInactive });
-    const anyCrew = list.rows.length > 0 || (!includeInactive && (await data.crew.list(actor, { includeInactive: true })).rows.length > 0);
-    return { kind: "ok", list, anyCrew };
+    // One read of everyone: the All filter shows it, Active keeps the active rows, and either way
+    // it says whether the workspace has any crew at all.
+    const everyone = await data.crew.list(actor, { includeInactive: true });
+    const list = includeInactive ? everyone : ({ ...everyone, rows: everyone.rows.filter((r) => r.active) } as CrewList);
+    return { kind: "ok", list, anyCrew: everyone.rows.length > 0 };
   } catch (e) {
     if (isDataError(e) && e.code === "forbidden") return { kind: "forbidden" };
     if (isDataError(e) && e.code === "unavailable") return { kind: "unavailable" };

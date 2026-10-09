@@ -20,6 +20,8 @@ export type PayoutFormValues = {
 
 export const AMOUNT_MISSING = "Add an amount before saving.";
 export const AMOUNT_UNREADABLE = "Enter an amount in dollars and cents, like 1,482.00.";
+/** A payout is always money paid to them: a minus sign can't be read as an amount. */
+export const AMOUNT_NEGATIVE = "Leave out the minus sign, like 1,482.00.";
 export const KIND_MISSING = "Choose Advance or Payment.";
 const DATE_MISSING = "Add the date it was paid.";
 
@@ -46,7 +48,8 @@ export function payoutProblems(v: PayoutFormValues): PayoutProblems {
   const p: PayoutProblems = { ready: true };
   if (v.date === "") p.date = DATE_MISSING;
   if (v.amountCents === "unreadable") p.amount = AMOUNT_UNREADABLE;
-  else if (v.amountCents === null || v.amountCents <= 0) p.amount = AMOUNT_MISSING;
+  else if (v.amountCents !== null && v.amountCents < 0) p.amount = AMOUNT_NEGATIVE;
+  else if (v.amountCents === null || v.amountCents === 0) p.amount = AMOUNT_MISSING;
   if (v.kind === "") p.kind = KIND_MISSING;
   p.ready = !p.date && !p.amount && !p.kind;
   return p;

@@ -94,10 +94,12 @@ test.describe("Crew member detail (manager)", () => {
   });
 
   test("a draft pay run shows its total but has no Share button yet", async ({ page }) => {
-    await signInAs(page, "manager", kev);
+    // Dima is in last week's pay run, which is still a draft in the seed.
+    await signInAs(page, "manager", dima);
     const rows = section(page, "Statements").locator("[data-statement-row]");
     const draft = rows.filter({ hasText: "draft, not shared until approved" });
-    if ((await draft.count()) > 0) await expect(draft.first().getByRole("button", { name: "Share statement" })).toHaveCount(0);
+    await expect(draft).toHaveCount(1);
+    await expect(draft.getByRole("button", { name: "Share statement" })).toHaveCount(0);
     await expect(rows.filter({ hasText: ", approved" }).first().getByRole("button", { name: "Share statement" })).toBeVisible();
   });
 

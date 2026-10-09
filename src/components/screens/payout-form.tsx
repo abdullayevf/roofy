@@ -95,7 +95,8 @@ export function PayoutForm({
     try {
       const r = await recordPayout(input);
       if (r.ok) {
-        router.push(`/crew/${crewId}?saved=${input.kind}`);
+        // Replace, not push: Back from the crew page must not reopen a filled-in form.
+        router.replace(`/crew/${crewId}?saved=${input.kind}`);
         return;
       }
       setFailed(r.message);

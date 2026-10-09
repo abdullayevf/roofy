@@ -10,7 +10,7 @@ async function signInAs(page: Page, role: string, next = "/crew") {
   await page.goto(`/prototype/role?as=${role}&next=${encodeURIComponent(next)}`);
 }
 
-// A phone row and a desktop table row are both in the page; only the one for this width shows.
+// Both layouts (phone rows and the desktop table) are in the DOM; keep `:visible` so only this width's rows count.
 const rows = (page: Page) => page.locator('[data-screen="crew"] [data-crew-row]:visible');
 
 test.describe("Crew list (manager)", () => {
@@ -23,7 +23,7 @@ test.describe("Crew list (manager)", () => {
     await expect(rows(page)).toHaveCount(11);
     await expect(rows(page).filter({ hasText: "Pete" })).toHaveCount(0);
     const dima = rows(page).filter({ hasText: "Dima" });
-    await expect(dima.getByRole("link").or(dima)).toBeVisible();
+    await expect(dima).toBeVisible();
     await expect(page.locator(`[data-screen="crew"] a[href="/crew/${meta.crew.dima}"]:visible`)).toHaveCount(1);
     await expect(dima.locator("[data-crew-line]")).toContainText(/^Contractor|^Employee/);
     // A balance is a figure and one of three plain words.
@@ -113,6 +113,8 @@ test.describe("Crew list (foreman and accountant)", () => {
     await expect(page.getByText(/owed/i)).toHaveCount(0);
     await expect(page.getByRole("radio")).toHaveCount(0);
     await expect(page.locator('[data-screen="crew"] a[href^="/crew/"]')).toHaveCount(0);
+    // Reached only by typed URL: the foreman nav (DESIGN.md) has no Crew entry, on any layout.
+    await expect(page.locator('a[href="/crew"]')).toHaveCount(0);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 

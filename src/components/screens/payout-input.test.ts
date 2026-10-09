@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   AMOUNT_MISSING,
+  AMOUNT_NEGATIVE,
   AMOUNT_UNREADABLE,
   KIND_MISSING,
   emptyPayout,
@@ -40,18 +41,17 @@ describe("payoutProblems", () => {
     expect(AMOUNT_MISSING).toBe("Add an amount before saving.");
   });
 
-  it("refuses a negative amount", () => {
-    expect(payoutProblems({ ...filled, amountCents: -100 })).toEqual({
-      ready: false,
-      amount: AMOUNT_MISSING,
-    });
-  });
-
   it("never reads unreadable text as $0.00: it is refused with its own words", () => {
     expect(payoutProblems({ ...filled, amountCents: "unreadable" })).toEqual({
       ready: false,
       amount: AMOUNT_UNREADABLE,
     });
+  });
+
+  it("a negative amount is unreadable, not missing: it asks for no minus sign and never saves", () => {
+    expect(payoutProblems({ ...filled, amountCents: -148200 })).toEqual({ ready: false, amount: AMOUNT_NEGATIVE });
+    expect(AMOUNT_NEGATIVE).toBe("Leave out the minus sign, like 1,482.00.");
+    expect(payoutInput("c1", { ...filled, amountCents: -148200 })).toBeNull();
   });
 
   it("asks for Advance or Payment when neither is chosen", () => {

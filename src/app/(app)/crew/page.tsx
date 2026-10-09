@@ -11,6 +11,10 @@ export const metadata: Metadata = { title: "Crew" };
 /**
  * Crew list: who is on the crew and, for a manager, what each is owed. A foreman sees names, type and how each is
  * paid, no money, and can't open a person's page. An accountant has no crew page.
+ *
+ * Foreman access is kept on purpose (review CR2): the foreman nav (DESIGN.md) has no Crew entry, so they only
+ * reach this by typing the address, and the names-only, money-free list it shows is within the spec.
+ * Checked by `canOpen` in shell/access.test.ts (no nav entry) and tests/e2e/crew-list.spec.ts (foreman tests).
  */
 export default async function Page({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const ctx = await getData({ searchParams });
