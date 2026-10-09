@@ -14,6 +14,7 @@ import { balanceView, payBasisLabel } from "./crew-input";
 import { SeeAll } from "./job-detail";
 import { logQuantityText } from "./job-detail-text";
 import { JobsAddBar } from "./jobs-add-bar";
+import { SavedToast } from "./saved-toast";
 import { StatementRow } from "./statement-row";
 
 /** How many ledger lines and logs show before the link to the full history. */
@@ -160,7 +161,18 @@ function RecentLogs({ crew, today }: { crew: CrewDetail; today: string }) {
  * Crew member detail (flows.md screen 15, manager only): who they are, what they are owed, the pay and payments behind
  * it, their statements (Share), their rates and recent work. Record payout is the one primary button. Props only.
  */
-export function CrewDetailBody({ crew, today, demoOffline = false }: { crew: CrewDetail; today: string; demoOffline?: boolean }) {
+export function CrewDetailBody({
+  crew,
+  today,
+  demoOffline = false,
+  savedToast = null,
+}: {
+  crew: CrewDetail;
+  today: string;
+  demoOffline?: boolean;
+  /** "Payment saved." after Record payout; the balance above already includes it. */
+  savedToast?: string | null;
+}) {
   return (
     <div data-screen="crew-detail" className={COLUMN}>
       <Header crew={crew} today={today} />
@@ -170,6 +182,7 @@ export function CrewDetailBody({ crew, today, demoOffline = false }: { crew: Cre
       <Rates crew={crew} today={today} />
       <RecentLogs crew={crew} today={today} />
       {crew.access.canApprove ? <JobsAddBar label="Record payout" href={payoutHref(crew.id)} /> : null}
+      {savedToast ? <SavedToast message={savedToast} /> : null}
     </div>
   );
 }

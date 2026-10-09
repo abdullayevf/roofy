@@ -635,8 +635,41 @@ export const SCREENS: ScreenSpec[] = [
     id: "crew-payout",
     group: "crew",
     route: "/crew/:crewId/payout",
-    states: ["normal", "loading", "error", "offline"],
+    states: ["normal", "loading", "error", "offline", "noperm"],
     roles: ["owner", "manager"],
+  },
+  {
+    // Filled in: $1,482.00, Payment, bank transfer, a note (flows.md "Record a payout").
+    id: "crew-payout-filled",
+    group: "crew",
+    route: `/crew/${meta.crew.dima}/payout?amount=1482.00&kind=payment&method=bank_transfer&note=Pay%20run%20to%2027%20Sep`,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // Save payout tapped with $0.00 and neither Advance nor Payment: each field says what is missing.
+    id: "crew-payout-refused",
+    group: "crew",
+    route: `/crew/${meta.crew.dima}/payout?amount=0&check=1`,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // Back on the crew member's page after a save: the new balance and the "Payment saved." toast.
+    id: "crew-payout-saved",
+    group: "crew",
+    route: `/crew/${meta.crew.dima}?saved=payment`,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
   },
 
   // --- expenses (Task 16): list (16), add/edit (17) --------------------

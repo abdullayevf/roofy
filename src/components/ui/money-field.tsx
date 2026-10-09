@@ -21,6 +21,8 @@ export type MoneyFieldProps = {
   className?: string;
   /** Spoken name when the visible label is short because the group around it says which ("Labour budget" inside "Stage 2"). */
   ariaLabel?: string;
+  /** An error from the form around it (a refused save, "Add an amount before saving."); the field's own wins. */
+  error?: string;
 };
 
 // The currency mark is drawn as a leading mark inside the field, so the text
@@ -35,7 +37,7 @@ const show = (cents: Cents) => formatMoney(Math.abs(cents)).replace("$", "");
  * blur the text is tidied to `format.ts`'s grouping and cents. Parsing is
  * exact integer cents via `src/domain` — never a float.
  */
-export function MoneyField({ label, hint, defaultCents, defaultText, onCentsChange, className, ariaLabel }: MoneyFieldProps) {
+export function MoneyField({ label, hint, defaultCents, defaultText, onCentsChange, className, ariaLabel, error: formError }: MoneyFieldProps) {
   const [text, setText] = useState(defaultText ?? (defaultCents === undefined ? "" : show(defaultCents)));
   const [negative, setNegative] = useState(defaultText === undefined && (defaultCents ?? 0) < 0);
   const [error, setError] = useState<string | undefined>(defaultText === undefined ? undefined : CANT_READ);
@@ -66,7 +68,7 @@ export function MoneyField({ label, hint, defaultCents, defaultText, onCentsChan
       inputMode="decimal"
       leading={negative ? "\u2212$" : "$"}
       hint={hint}
-      error={error}
+      error={error ?? formError}
       value={text}
       onChange={(e) => setText(e.target.value)}
       onBlur={commit}

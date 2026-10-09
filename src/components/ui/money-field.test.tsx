@@ -5,6 +5,12 @@ import userEvent from "@testing-library/user-event";
 import { MoneyField } from "./money-field";
 
 describe("MoneyField", () => {
+  it("shows an error from the form (a refused save) and marks the field invalid", () => {
+    render(<MoneyField label="Amount" error="Add an amount before saving." />);
+    expect(screen.getByText("Add an amount before saving.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Amount")).toHaveAttribute("aria-invalid", "true");
+  });
+
   it("shows a $ prefix inside the field and asks for a decimal keypad", () => {
     render(<MoneyField label="Amount" />);
     expect(screen.getByLabelText("Amount")).toHaveAttribute("inputmode", "decimal");

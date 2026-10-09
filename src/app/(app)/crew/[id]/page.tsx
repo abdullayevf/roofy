@@ -5,6 +5,7 @@ import { isDataError } from "@/data/contracts";
 import type { SearchParams } from "@/data/session";
 import { NoPermission } from "@/components/page-states";
 import { backLink } from "@/components/shell/access";
+import { savedToastText } from "@/components/screens/payout-input";
 import { CrewDetailBody, CrewDetailError, CrewDetailSkeleton } from "@/components/screens/crew-detail";
 
 export const metadata: Metadata = { title: "Crew member" };
@@ -29,5 +30,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     if (isDataError(e) && e.code === "unavailable") return <CrewDetailError />;
     throw e;
   }
-  return <CrewDetailBody crew={crew} today={ctx.today} demoOffline={demo.state === "offline"} />;
+  const { saved } = await searchParams;
+  const savedToast = savedToastText(typeof saved === "string" ? saved : undefined);
+  return <CrewDetailBody crew={crew} today={ctx.today} demoOffline={demo.state === "offline"} savedToast={savedToast} />;
 }
