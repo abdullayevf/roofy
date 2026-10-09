@@ -4,10 +4,10 @@
 
 - Phase: 2 — Design system and full prototype. Branch `phase/2-design-prototype` (local on the VPS, not pushed, not merged). Plan: `docs/plans/03-design-prototype.md`.
 - Ledger: `.superpowers/sdd/03-design-prototype/progress.md` (per-run lines; read its tail for where a task stands).
-- Done and reviewed: Tasks 1–13 (Task 13 = 565032a..544e9e7, design loop accepted at 75.5 under the 3-iteration cap; open rows in ISSUES.md).
-- **Now: Task 14** (Job detail 11, Stage detail 12, Stage done 13). Brief `.superpowers/sdd/03-design-prototype/task-14-brief.md`; base c201236. Built c8750ff..d0f3e53; reviewed (code closed, spec CLEAN). Design loop jobs-2 iter 1 avg 73.5; iter-1 fixes 43f9190 (stage detail), 8131392 (job detail, stage done; F13 Add expense deferred until /expenses/new exists, P3 D15–D17/F17 not done), guard fix cf7cf5e, e2e fix 60f8f5d. Recapture jobs-2: 0 failures. Task e2e 3 projects: 205 passed, 2 stale tests fixed and re-run 65/65.
-- **Next (STOP, owner decides):** T14 is at 20 runs, 766 of 800 tool uses. Iter-2 critics need near-full slices (472 of 648 images changed since iter 1; iter-1 critics took 165 tool uses), so they would pass 800. Owner: raise the T14 budget by ~250 for iter 2 (+ iter 3 if needed), or accept jobs-2 at iter 1 and go to the plan tick. If raised: design-critic + field-critic (opus) on all jobs-2 slices, then record SCORES/ISSUES as in RUNBOOK §4.
-- Then: Tasks 15–23 in order.
+- Done and reviewed: Tasks 1–14 (Task 14 = c201236..60f8f5d, jobs-2 design loop accepted by the owner at iteration 1, avg 73.5; open rows in ISSUES.md).
+- **Now: Task 15** (Crew list 14, Crew detail 15, Record payout 20). Brief `.superpowers/sdd/03-design-prototype/task-15-brief.md`. Runs A (list, sonnet), B (detail, sonnet), C (payout, opus), then review, then design loop group `crew`.
+- **Next:** run A dispatched (report `task-15-run-a-report.md`). If the ledger shows A DONE, dispatch B; then C; then reviewer + spec-reviewer in parallel.
+- Then: Tasks 16–23 in order.
 - Known flaky (iphone, passed on re-run): flows/no-work-marker.spec.ts:6, log-progress.spec.ts:135, design-page.spec.ts:45 on a cold server.
 - Environment: real WebKit works on the VPS. Never stop the server with `pkill -f "next start"`; kill the PID from `ss -ltnp | grep 3100`.
 
