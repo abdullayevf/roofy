@@ -602,11 +602,34 @@ export const SCREENS: ScreenSpec[] = [
     noExtras: true,
   },
   {
+    // Dima is paid ahead (an advance is more than he is owed): the in-credit state.
     id: "crew-detail",
     group: "crew",
-    route: "/crew/:crewId",
+    route: `/crew/${meta.crew.dima}`,
     states: ["normal", "loading", "error", "offline", "noperm"],
     roles: ["owner", "manager"],
+  },
+  {
+    // Kev is owed, and has been for longer than a pay period.
+    id: "crew-detail-owed",
+    group: "crew",
+    route: `/crew/${meta.crew.kev}`,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // A very long name, and nothing logged, paid or shared yet: every section is empty.
+    id: "crew-detail-long",
+    group: "crew",
+    route: `/crew/${meta.fixtures.longNamesCrew}`,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
   },
   {
     id: "crew-payout",
@@ -729,7 +752,7 @@ export const SCREENS: ScreenSpec[] = [
 export const PLACEHOLDER_IDS: Record<string, string> = {
   jobId: meta.projects.smith,
   stageId: meta.stages.smithSheetInstall,
-  crewId: "dima",
+  crewId: meta.crew.dima,
   expenseId: "screws-receipt",
   runId: "current-week",
   token: "demo-statement-token",

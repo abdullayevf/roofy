@@ -167,7 +167,7 @@ function CrewThisWeek({ job }: { job: ProjectDetail }) {
 }
 
 /** A "See all" row under a short list, for a manager (a foreman has no history to open). */
-function SeeAll({ href, label }: { href: string; label: string }) {
+export function SeeAll({ href, label }: { href: string; label: string }) {
   return (
     <Link href={href} prefetch={false} className={cx("flex min-h-12 items-center justify-between gap-3 px-4 text-body-strong text-ink active:bg-galv", FOCUS)}>
       {label}
