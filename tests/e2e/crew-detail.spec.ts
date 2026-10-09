@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { collectConsole, expectScreenHealthy } from "./guards";
+import { checkBackRow, collectConsole, expectScreenHealthy } from "./guards";
 import { expectNoMoney } from "./money-scan";
 import { getSeed } from "../../src/data/fake/store";
 import { formatDate } from "../../src/lib/format";
@@ -22,7 +22,15 @@ test.describe("Crew member detail (manager)", () => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "manager", kev);
     await expect(page.getByRole("heading", { level: 1, name: "Kev" })).toBeVisible();
-    await expect(page.locator("[data-crew-who]")).toContainText(/^(Employee|Contractor) · /);
+    await expect(page.locator("[data-crew-who]")).toContainText(/^(Employee|Contractor)/);
+    // One fact per line, never joined with a middle dot (D3/F5), and the balance sits directly under the name (D7).
+    await expect(page.locator("body")).not.toContainText("\u00b7");
+    const title = await page.getByRole("heading", { level: 1 }).boundingBox();
+    const hero = await page.locator('[data-crew-balance="owed"]').boundingBox();
+    const who = await page.locator("[data-crew-who]").boundingBox();
+    expect(hero!.y - (title!.y + title!.height)).toBeLessThan(40);
+    expect(who!.y).toBeGreaterThan(hero!.y);
+    if (isPhone(testInfo.project.name)) expect((await checkBackRow(page)).failures).toEqual([]);
     await expect(page.getByRole("link", { name: /^Call 04/ })).toHaveAttribute("href", /^tel:\+?\d+$/);
     // Kev has been owed for longer than a pay period.
     const balance = page.locator('[data-crew-balance="owed"]');
@@ -101,7 +109,7 @@ test.describe("Crew member detail (manager)", () => {
     const draft = rows.filter({ hasText: "draft, not shared until approved" });
     await expect(draft).toHaveCount(1);
     await expect(draft.getByRole("button", { name: "Share statement" })).toHaveCount(0);
-    await expect(rows.filter({ hasText: ", approved" }).first().getByRole("button", { name: "Share statement" })).toBeVisible();
+    await expect(rows.filter({ hasNotText: "not shared until approved" }).first().getByRole("button", { name: "Share statement" })).toBeVisible();
     // The latest four only, then "See all statements" opens the rest in place (D1, F2).
     await expect(rows).toHaveCount(4);
     await section(page, "Statements").getByRole("button", { name: "See all statements" }).click();
@@ -109,12 +117,22 @@ test.describe("Crew member detail (manager)", () => {
     await expect(section(page, "Statements").getByRole("button", { name: "See all statements" })).toHaveCount(0);
   });
 
-  test("saved: the hero and the top ledger row show the payout just saved (F1, D2)", async ({ page }) => {
+  test("saved: the hero and the top ledger row show the payout just saved (F1, D2)", async ({ page }, testInfo) => {
     await signInAs(page, "manager", dima);
     const before = await page.locator("[data-crew-balance]").innerText();
     const next = `${dima}?saved=payment`;
     await page.goto(`/prototype/record-payout?crew=${meta.crew.dima}&cents=148200&kind=payment&approve=1&next=${encodeURIComponent(next)}`);
     await expect(page.getByText("Payment saved.", { exact: true })).toBeVisible();
+    // The toast sits above the pinned bar and the tab bar, not on their labels (D13, F12).
+    if (isPhone(testInfo.project.name)) {
+      await expect
+        .poll(async () => {
+          const toast = await page.getByText("Payment saved.", { exact: true }).boundingBox();
+          const bar = await page.locator(".jobs-add-bar .pin-action").boundingBox();
+          return bar!.y - (toast!.y + toast!.height);
+        })
+        .toBeGreaterThanOrEqual(8);
+    }
     await expect(page.locator("[data-crew-balance]")).not.toHaveText(before);
     await expect(page.locator('[data-crew-balance="clear"]')).toContainText(/^Nothing owed\$0\.00/);
     const top = section(page, "Pay and payments").locator(".divide-y > *").first();
@@ -137,6 +155,12 @@ test.describe("Crew member detail (manager)", () => {
     await signInAs(page, "manager", `${dima}?demo=loading`);
     await expect(page.locator('[data-screen="crew-detail"][aria-busy="true"]')).toBeVisible();
     await expect(page.getByRole("link", { name: "Back to crew" })).toBeVisible();
+    // The pinned bar is already there as a grey block, and the grey rows are as tall as the real ones (D12, F11).
+    if (isPhone(testInfo.project.name)) {
+      await expect(page.locator(".jobs-add-bar .pin-action")).toBeVisible();
+      const grey = await page.locator('[data-screen="crew-detail"][aria-busy="true"] .border-group > div').first().boundingBox();
+      expect(grey!.height).toBeGreaterThanOrEqual(64);
+    }
     const consoleLog = collectConsole(page);
     await page.goto(`${dima}?demo=error`);
     await expect(page.getByText("Couldn't load this. Try again.")).toBeVisible();
@@ -179,5 +203,43 @@ test.describe("Crew member detail (foreman and accountant)", () => {
   test("an accountant has no crew member page either", async ({ page }) => {
     await signInAs(page, "accountant", dima);
     await expect(page.getByText("You don't have access to this. Ask your manager.")).toBeVisible();
+  });
+});
+
+test.describe("Crew member detail layout", () => {
+  test("desktop uses two columns and the action sits in the title row", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop layout");
+    await signInAs(page, "manager", dima);
+    const title = await page.getByRole("heading", { level: 1 }).boundingBox();
+    const payout = await page.getByRole("link", { name: "Record payout" }).locator("visible=true").boundingBox();
+    expect(Math.abs(payout!.y + payout!.height / 2 - (title!.y + title!.height / 2))).toBeLessThan(30);
+    const ledger = await section(page, "Pay and payments").boundingBox();
+    const statements = await section(page, "Statements").boundingBox();
+    expect(statements!.x).toBeGreaterThan(ledger!.x + ledger!.width / 2);
+  });
+
+  test("the ledger's figures end at the same right edge as its rows, with no empty gutter", async ({ page }, testInfo) => {
+    test.skip(!isPhone(testInfo.project.name), "phone rows");
+    await signInAs(page, "manager", dima);
+    const group = await section(page, "Pay and payments").locator("div.border-group").first().boundingBox();
+    const figure = await section(page, "Pay and payments").locator(".num").first().boundingBox();
+    expect(group!.x + group!.width - (figure!.x + figure!.width)).toBeLessThanOrEqual(20);
+  });
+
+  test("on a tablet the pinned Record payout bar has its own surface and top rule", async ({ page }) => {
+    await page.setViewportSize({ width: 820, height: 1180 });
+    await signInAs(page, "manager", dima);
+    const bar = page.locator(".jobs-add-bar .pin-action");
+    const css = await bar.evaluate((el) => {
+      const c = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      return { top: parseFloat(c.borderTopWidth), left: parseFloat(c.paddingLeft), bg: c.backgroundColor, x: r.x, w: r.width };
+    });
+    expect(css.top).toBeGreaterThan(0);
+    expect(css.left).toBeGreaterThanOrEqual(16);
+    expect(css.bg).not.toBe("rgba(0, 0, 0, 0)");
+    // Edge to edge, like the phone's bar: the rule runs the whole width of the screen.
+    expect(css.x).toBeLessThanOrEqual(1);
+    expect(css.w).toBeGreaterThanOrEqual(819);
   });
 });

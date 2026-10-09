@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { LedgerRow, RateDto } from "@/data/contracts";
 import {
   balanceSentence,
-  headerLine,
+  headerLines,
   ledgerEntry,
   phoneHref,
   rateRows,
@@ -93,13 +93,23 @@ describe("balanceSentence", () => {
 });
 
 describe("small lines", () => {
-  it("writes the header line for an employee and a contractor", () => {
-    expect(headerLine({ type: "employee", level: { name: "Roofer" }, abn: null, gstRegistered: false, activeTo: null }, "2026-09-28")).toBe("Employee · Roofer");
-    expect(headerLine({ type: "contractor", level: null, abn: "51 824 753 556", gstRegistered: true, activeTo: null }, "2026-09-28")).toBe(
-      "Contractor · ABN 51 824 753 556 · Charges GST",
-    );
-    expect(headerLine({ type: "contractor", level: null, abn: null, gstRegistered: false, activeTo: "2026-08-14" }, "2026-09-28")).toBe(
-      "Contractor · No ABN yet · Left Fri 14 Aug",
+  it("writes the header lines for an employee and a contractor, one fact per line", () => {
+    expect(headerLines({ type: "employee", level: { name: "Roofer" }, abn: null, gstRegistered: false, activeTo: null }, "2026-09-28")).toEqual(["Employee, Roofer"]);
+    expect(headerLines({ type: "contractor", level: null, abn: "51 824 753 556", gstRegistered: true, activeTo: null }, "2026-09-28")).toEqual([
+      "Contractor",
+      "ABN 51 824 753 556",
+      "Charges GST",
+    ]);
+    expect(headerLines({ type: "contractor", level: null, abn: null, gstRegistered: false, activeTo: "2026-08-14" }, "2026-09-28")).toEqual([
+      "Contractor",
+      "No ABN yet",
+      "Left Fri 14 Aug",
+    ]);
+  });
+
+  it("keeps the number of a level with its word", () => {
+    expect(headerLines({ type: "employee", level: { name: "Apprentice yr 1" }, abn: null, gstRegistered: false, activeTo: null }, "2026-09-28")[0]).toBe(
+      "Employee, Apprentice yr\u00a01",
     );
   });
 

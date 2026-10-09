@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { collectConsole, expectScreenHealthy } from "./guards";
+import { checkTableEdgeGap, collectConsole, expectScreenHealthy } from "./guards";
 import { expectNoMoney } from "./money-scan";
 import { getSeed } from "../../src/data/fake/store";
 
@@ -66,7 +66,7 @@ test.describe("Crew list (manager)", () => {
     await page.getByRole("radio", { name: "Active and inactive" }).click();
     await expect(page).toHaveURL(/show=all/);
     await expect(rows(page)).toHaveCount(13);
-    await expect(rows(page).filter({ hasText: "Pete" }).locator("[data-crew-line]")).toContainText("Inactive");
+    await expect(rows(page).filter({ hasText: "Pete" })).toContainText("Inactive");
     const long = rows(page).filter({ hasText: "Featherstonehaugh" });
     await expect(long.locator("[data-crew-line]")).toContainText("Contractor");
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
@@ -90,6 +90,13 @@ test.describe("Crew list (manager)", () => {
     await signInAs(page, "manager", "/crew?demo=loading");
     await expect(page.locator('[data-screen="crew"][aria-busy="true"]')).toBeVisible();
     await expect(page.getByRole("heading", { level: 1, name: "Crew" })).toBeVisible();
+    // The grey rows are as tall as the real ones (D12, F11): nothing jumps when the list arrives.
+    if (isPhone(testInfo.project.name)) {
+      const grey = await page.locator('[data-screen="crew"][aria-busy="true"] .border-group > div').first().boundingBox();
+      await page.goto("/crew");
+      const real = await page.locator("[data-crew-row]:visible").first().boundingBox();
+      expect(Math.abs(grey!.height - real!.height), `grey row ${grey!.height}px, real row ${real!.height}px`).toBeLessThanOrEqual(24);
+    }
     const consoleLog = collectConsole(page);
     await page.goto("/crew?demo=error");
     await expect(page.getByText("Couldn't load this. Try again.")).toBeVisible();
@@ -115,7 +122,7 @@ test.describe("Crew list (foreman and accountant)", () => {
     await signInAs(page, "foreman");
     await expect(page.getByRole("heading", { level: 1, name: "Crew" })).toBeVisible();
     await expect(rows(page)).toHaveCount(11);
-    await expect(rows(page).filter({ hasText: "Dima" }).locator("[data-crew-line]")).toContainText(/^(Employee|Contractor) · Paid /);
+    await expect(rows(page).filter({ hasText: "Dima" }).locator("[data-crew-line]")).toContainText(/^(Employee|Contractor)(, [^.]+)?\. Paid\s/);
     await expect(page.locator("[data-crew-balance]")).toHaveCount(0);
     await expect(page.getByText(/owed/i)).toHaveCount(0);
     await expect(page.getByRole("radio")).toHaveCount(0);
@@ -139,5 +146,37 @@ test.describe("Crew list (foreman and accountant)", () => {
   test("an accountant has no crew page", async ({ page }) => {
     await signInAs(page, "accountant");
     await expect(page.getByText("You don't have access to this. Ask your manager.")).toBeVisible();
+  });
+});
+
+test.describe("Crew list layout", () => {
+  test("desktop table: text ends 16 px inside the border, Last logged is a date, the warning sits under the balance", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the desktop table");
+    await page.goto(`/prototype/role?as=manager&next=${encodeURIComponent("/crew")}`);
+    await expect(page.locator("table tbody tr").first()).toBeVisible();
+    expect((await checkTableEdgeGap(page, 16)).failures).toEqual([]);
+    const kev = page.locator("table tbody tr", { hasText: "Kev" });
+    await expect(kev.locator("td").nth(1)).not.toContainText("Last logged");
+    await expect(kev.locator("td").nth(2).locator("[data-crew-too-long]")).toHaveCount(1);
+    await expect(kev.locator("td").nth(1).locator("[data-crew-too-long]")).toHaveCount(0);
+    const weights = await page.locator("table th").evaluateAll((ths) => ths.map((t) => getComputedStyle(t).fontWeight));
+    expect(new Set(weights), `header weights ${weights.join(",")}`).toHaveProperty("size", 1);
+  });
+
+  test("no middle dot joins any fact on the list", async ({ page }) => {
+    await page.goto(`/prototype/role?as=manager&next=${encodeURIComponent("/crew?show=all")}`);
+    await expect(page.locator("[data-crew-row]:visible").first()).toBeVisible();
+    await expect(page.locator("main")).not.toContainText("\u00b7");
+  });
+
+  test("a phone on its side shows at least three rows without scrolling", async ({ page }, testInfo) => {
+    test.skip(!isPhone(testInfo.project.name), "phone");
+    await page.setViewportSize({ width: 844, height: 390 });
+    await page.goto(`/prototype/role?as=manager&next=${encodeURIComponent("/crew")}`);
+    await expect(page.locator("[data-crew-row]:visible").first()).toBeVisible();
+    const rows = await page.locator("[data-crew-row]:visible").evaluateAll((els) =>
+      els.filter((e) => e.getBoundingClientRect().bottom <= window.innerHeight).length,
+    );
+    expect(rows).toBeGreaterThanOrEqual(3);
   });
 });

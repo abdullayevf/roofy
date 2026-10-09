@@ -44,6 +44,12 @@ describe("design lint", () => {
     expect(rules("src/a.tsx", "<Button>Next →</Button>")).toContain("arrow-glyph");
     expect(rules("src/a.tsx", "<span>{a} · {b}</span>")).toContain("middot-meta");
   });
+  it("flags middle-dot joins in screen text helpers (.ts under src/components and src/app)", () => {
+    expect(rules("src/components/screens/x.ts", 'return parts.join(" · ");')).toContain("middot-meta");
+    expect(rules("src/app/x/line.ts", "return `${a} · ${b}`;")).toContain("middot-meta");
+    expect(rules("src/components/screens/x.ts", 'return parts.join(". ");')).not.toContain("middot-meta");
+    expect(rules("src/data/fake/seed.ts", "// Ryde · Sheet install")).not.toContain("middot-meta");
+  });
   it("flags lucide imports", () => {
     expect(rules("src/a.tsx", 'import { Check } from "lucide-react";')).toContain("lucide");
   });

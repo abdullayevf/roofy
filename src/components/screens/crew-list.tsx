@@ -5,8 +5,9 @@ import { cx } from "@/lib/cx";
 import { EmptyState } from "@/components/empty-state";
 import { KeepTogether } from "@/components/keep-together";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatusChip } from "@/components/ui/status-chip";
 import { formatMoney } from "@/lib/format";
-import { balanceView, crewLine, lastLoggedText, owedCountText } from "./crew-input";
+import { balanceView, crewLine, lastLoggedDate, lastLoggedText, owedCountText } from "./crew-input";
 import { CrewFilter, type CrewFilterValue } from "./crew-filter";
 import { LoadError } from "./field-entry";
 import { COLUMN, FOCUS, GROUP, KeyFigure, KeyFigureSkeleton } from "./home-parts";
@@ -19,7 +20,7 @@ const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_min(8.5rem,40%)] items-start gap
 
 function Header() {
   return (
-    <div className="flex min-h-12 items-center">
+    <div className="crew-head-title flex min-h-12 items-center">
       <h1 className="text-title text-ink">Crew</h1>
     </div>
   );
@@ -73,6 +74,7 @@ function ManagerPhoneRow({ row, today }: { row: CrewRowManager; today: string })
         <span className="flex flex-col">
           <Name row={row} />
           <span data-crew-line="" className="text-meta text-ink [overflow-wrap:anywhere]">{crewLine(row)}</span>
+          {row.active ? null : <StatusChip status="inactive" plain />}
           <span className="text-meta text-ink">{lastLoggedText(row.lastLogDate, today)}</span>
           {row.unpaidTooLong ? <TooLong /> : null}
         </span>
@@ -89,6 +91,7 @@ function ForemanRow({ row }: { row: CrewRowForeman }) {
     <div data-crew-row="" className="min-h-16 px-4 py-2">
       <Name row={row} />
       <span data-crew-line="" className="block text-meta text-ink [overflow-wrap:anywhere]">{crewLine(row)}</span>
+      {row.active ? null : <StatusChip status="inactive" plain />}
     </div>
   );
 }
@@ -112,13 +115,16 @@ function ManagerTable({ rows, today }: { rows: CrewRowManager[]; today: string }
                 <KeepTogether text={row.name} />
               </Link>
               <span data-crew-line="" className="block text-meta text-ink">{crewLine(row)}</span>
+              {row.active ? null : <StatusChip status="inactive" plain />}
             </td>
-            <td className={cx(TD, "text-body text-ink")}>
-              {lastLoggedText(row.lastLogDate, today)}
-              {row.unpaidTooLong ? <TooLong /> : null}
-            </td>
-            <td className={cx(TD, "text-right")}>
+            <td className={cx(TD, "text-body text-ink")}>{lastLoggedDate(row.lastLogDate, today)}</td>
+            <td className={cx(TD, "pr-4 text-right")}>
               <Balance row={row} />
+              {row.unpaidTooLong ? (
+                <span className="flex justify-end">
+                  <TooLong />
+                </span>
+              ) : null}
             </td>
           </tr>
         ))}
@@ -156,16 +162,18 @@ export function CrewListBody({ list, filter, anyCrew, today, demo }: CrewListPro
   }
   return (
     <div data-screen="crew" className={CREW_COLUMN}>
-      <div className="flex flex-col gap-2">
-        <Header />
-        {list.view === "manager" ? (
-          <div data-crew-owed="" className="flex flex-col gap-1">
-            <KeyFigure>{formatMoney(list.owedTotalCents)}</KeyFigure>
-            <p className="text-meta text-ink">{owedCountText(list.rows)}</p>
-          </div>
-        ) : null}
+      <div className="crew-head flex flex-col gap-8 lg:gap-10">
+        <div className="crew-head-top flex flex-col gap-2">
+          <Header />
+          {list.view === "manager" ? (
+            <div data-crew-owed="" className="flex flex-col gap-1">
+              <KeyFigure>{formatMoney(list.owedTotalCents)}</KeyFigure>
+              <p className="text-meta text-ink">{owedCountText(list.rows)}</p>
+            </div>
+          ) : null}
+        </div>
+        {manager ? <CrewFilter value={filter} demo={demo} /> : null}
       </div>
-      {manager ? <CrewFilter value={filter} demo={demo} /> : null}
       {list.rows.length === 0 ? (
         <p className="text-body text-ink">No one is active right now. Show inactive crew to see who has left.</p>
       ) : list.view === "manager" ? (
@@ -209,7 +217,10 @@ function RowSkeleton({ manager }: { manager: boolean }) {
             <Skeleton width={160} height={20} />
           </div>
           <div className="flex h-5 items-center">
-            <Skeleton width={200} height={14} />
+            <Skeleton width={170} height={14} />
+          </div>
+          <div className="flex h-5 items-center">
+            <Skeleton width={110} height={14} />
           </div>
           {manager ? (
             <div className="flex h-5 items-center">
@@ -236,17 +247,26 @@ function RowSkeleton({ manager }: { manager: boolean }) {
 export function CrewSkeleton({ manager }: { manager: boolean }) {
   return (
     <div data-screen="crew" aria-busy="true" className={CREW_COLUMN}>
-      <div className="flex flex-col gap-2">
-        <Header />
-        {manager ? <KeyFigureSkeleton width={240} /> : null}
-      </div>
-      {manager ? (
-        <div className="flex flex-wrap gap-2">
-          {[84, 168].map((w, i) => (
-            <Skeleton key={i} width={w} height={48} rounded="full" />
-          ))}
+      <div className="crew-head flex flex-col gap-8 lg:gap-10">
+        <div className="crew-head-top flex flex-col gap-2">
+          <Header />
+          {manager ? (
+            <div data-crew-owed="" className="flex flex-col gap-1">
+              <KeyFigureSkeleton width={240} />
+              <div className="flex h-6 items-center">
+                <Skeleton width={150} height={14} />
+              </div>
+            </div>
+          ) : null}
         </div>
-      ) : null}
+        {manager ? (
+          <div className="flex flex-wrap gap-2">
+            {[84, 168].map((w, i) => (
+              <Skeleton key={i} width={w} height={48} rounded="full" />
+            ))}
+          </div>
+        ) : null}
+      </div>
       <div className={cx(GROUP, "overflow-hidden")}>
         {Array.from({ length: 6 }, (_, i) => (
           <RowSkeleton key={i} manager={manager} />

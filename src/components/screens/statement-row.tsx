@@ -3,8 +3,8 @@
 import { useState } from "react";
 import type { StatementRef } from "@/data/contracts";
 import { shareStatement } from "@/app/actions/pay";
-import { formatMoney } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import { MoneyCell } from "@/components/ui/money-cell";
 import { statementPeriodText } from "./crew-detail-text";
 import { NEEDS_CONNECTION, useOnline } from "./use-online";
 
@@ -55,20 +55,19 @@ export function StatementRow({
 
   const draft = statement.status === "draft";
   return (
-    <div data-statement-row="" className="flex min-h-16 flex-col justify-center gap-1 px-4 py-2">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <div className="flex min-w-0 flex-1 basis-40 flex-col">
+    <div data-statement-row="" className="flex min-h-16 flex-col justify-center gap-2 px-4 py-2">
+      <div className="flex items-start justify-between gap-x-4">
+        <div className="flex min-w-0 flex-1 flex-col">
           <span className="text-body-strong text-ink [overflow-wrap:anywhere]">{statementPeriodText(statement.period, today)}</span>
-          <span className="text-meta text-ink-2">
-            {formatMoney(statement.totalCents)}, {draft ? "draft, not shared until approved" : "approved"}
-          </span>
+          <span className="text-meta text-ink-2">{draft ? "Draft, not shared until approved" : "Approved"}</span>
         </div>
-        {statement.shareable ? (
-          <Button variant="secondary" loading={busy} loadingLabel="Making link" disabled={!online} onClick={share}>
-            Share statement
-          </Button>
-        ) : null}
+        <MoneyCell cents={statement.totalCents} />
       </div>
+      {statement.shareable ? (
+        <Button variant="secondary" loading={busy} loadingLabel="Making link" disabled={!online} onClick={share} className="self-end">
+          Share statement
+        </Button>
+      ) : null}
       {statement.shareable && !online ? <p className="text-meta text-ink-2">{NEEDS_CONNECTION}</p> : null}
       <p role="status" className="text-meta text-ink-2 empty:hidden">
         {shared.kind === "copied" ? "Link copied. It works for 90 days." : shared.kind === "failed" ? shared.message : ""}

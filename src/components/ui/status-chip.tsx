@@ -5,6 +5,7 @@ import {
   Clock,
   FileText,
   Lock,
+  MinusCircle,
   PauseCircle,
   UploadSimple,
   WarningCircle,
@@ -28,7 +29,9 @@ export type Status =
   | "waiting"
   | "sending"
   | "sent"
-  | "needs-attention";
+  | "needs-attention"
+  // Crew
+  | "inactive";
 
 // Every status shares the same outline treatment (surface fill, edge
 // border) so "Active" reads no louder than any other status — colour and
@@ -76,6 +79,8 @@ const CONFIG: Record<Status, { word: string; icon: PhosphorIcon; className: stri
     icon: WarningCircle,
     className: "bg-surface text-over border-[1.5px] border-edge",
   },
+
+  inactive: { word: "Inactive", icon: MinusCircle, className: "bg-surface text-ink-2 border-[1.5px] border-edge" },
 };
 
 export type StatusChipProps = {

@@ -28,6 +28,8 @@ type Rule = {
 };
 
 const isUi = (f: string) => f.endsWith(".tsx");
+/** Screen copy lives in .ts helpers as well as .tsx files (crewLine, headerLine), so the text rules read both. */
+const isScreenText = (f: string) => /\.tsx?$/.test(f) && /^src\/(components|app)\//.test(f);
 const any = () => true;
 
 const RULES: Rule[] = [
@@ -69,9 +71,9 @@ const RULES: Rule[] = [
   },
   {
     id: "middot-meta",
-    message: "No '·'-joined meta strings in the UI (DESIGN.md §7).",
-    applies: isUi,
-    test: (l) => /\s·\s/.test(l),
+    message: "No '·'-joined meta strings in the UI (DESIGN.md §7): one fact per meta line, or a plain sentence.",
+    applies: (f) => isUi(f) || isScreenText(f),
+    test: (l) => /\s·\s/.test(l) || /["'`]·["'`]/.test(l),
   },
   {
     id: "lucide",

@@ -143,6 +143,7 @@ export function PayoutForm({
           <p className={LABEL}>Advance or payment</p>
           <Segmented
             legend="Advance or payment"
+            fill
             name="payout-kind"
             options={PAYOUT_KINDS}
             value={v.kind}

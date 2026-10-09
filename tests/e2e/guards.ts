@@ -777,3 +777,40 @@ export async function expectStill(target: Locator, timeout = 5000): Promise<void
     timeout,
   );
 }
+
+// ---------------------------------------------------------------------------
+// Text never touches the edge of the box it sits in; a Back row is a real target
+// ---------------------------------------------------------------------------
+
+/**
+ * In every visible table, the text of each last cell ends at least `minGap` px inside the nearest bordered box around it
+ * (the grouped surface), so a figure never sits against the outline.
+ */
+export async function checkTableEdgeGap(page: Page, minGap = 16): Promise<GuardResult> {
+  await polyfillEsbuildNameHelper(page);
+  const failures = await page.evaluate((min) => {
+    const out: string[] = [];
+    for (const cell of Array.from(document.querySelectorAll("tr > td:last-child"))) {
+      const cellRect = cell.getBoundingClientRect();
+      if (cellRect.width === 0) continue;
+      const range = document.createRange();
+      range.selectNodeContents(cell);
+      let right = 0;
+      for (const r of Array.from(range.getClientRects())) if (r.width > 0) right = Math.max(right, r.right);
+      let box: Element | null = cell.parentElement;
+      while (box && !(parseFloat(getComputedStyle(box).borderRightWidth) > 0 && box.tagName !== "TR" && box.tagName !== "TD")) box = box.parentElement;
+      const edge = box ? box.getBoundingClientRect().right - parseFloat(getComputedStyle(box).borderRightWidth) : cellRect.right;
+      if (right > 0 && edge - right < min - 0.5) out.push(`"${(cell.textContent ?? "").trim().slice(0, 30)}" ends ${(edge - right).toFixed(1)}px from the border (needs >= ${min})`);
+    }
+    return out;
+  }, minGap);
+  return { name: "table-edge-gap", ok: failures.length === 0, failures };
+}
+
+/** The Back row is a 48 px target on a phone (it is a text link, which the general touch-target check skips). */
+export async function checkBackRow(page: Page): Promise<GuardResult> {
+  const back = page.getByRole("link", { name: /^Back to / }).first();
+  const box = await back.boundingBox();
+  const failures = !box ? ["no Back row found"] : box.height < 48 ? [`Back row is ${box.height.toFixed(0)}px tall (needs >= 48)`] : [];
+  return { name: "back-row", ok: failures.length === 0, failures };
+}

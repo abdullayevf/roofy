@@ -330,6 +330,46 @@ body {
     width: min(100%, 45rem);
   }
 }
+/* Crew list on a phone on its side: the title, the total and the chips share the top, so the rows get the screen. */
+@media (max-height: 499px) and (max-width: 1023px) {
+  .crew-head {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 1rem;
+    row-gap: 0.5rem;
+  }
+  .crew-head-top {
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+  }
+  .crew-head-top [data-crew-owed] > p:first-child {
+    font-size: 1.5rem !important;
+    line-height: 2rem;
+  }
+  .crew-head-top [data-crew-owed] > p:last-child {
+    display: none;
+  }
+}
+/*
+ * Tablet: the pinned bar is the phone's bar. Its surface and top rule run edge to edge, and the button keeps the list
+ * column's edges inside it, so it reads as a bar and not as a button floating in the column.
+ */
+@media (min-width: 600px) and (max-width: 1023px) and (min-height: 500px) {
+  .jobs-add-bar .pin-action {
+    left: 0;
+    width: 100%;
+    translate: none;
+    padding-inline: max(1rem, calc((100% - 45rem) / 2));
+  }
+}
+/* A saved toast sits above the pinned bar and the tab bar, not on them. */
+@media (max-width: 1023px) {
+  .toast-above-bar {
+    bottom: calc(var(--tab-bar-body) + var(--tab-bar-raise) + 6rem + max(var(--sab-sim, 0px), env(safe-area-inset-bottom))) !important;
+  }
+}
 @media (max-height: 499px) {
   .jobs-add-bar {
     display: none;

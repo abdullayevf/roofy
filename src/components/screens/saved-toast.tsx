@@ -15,5 +15,5 @@ export function SavedToast({ message }: { message: string }) {
   useEffect(() => {
     window.history.replaceState(null, "", pathname);
   }, [pathname]);
-  return <Toast open={open} onOpenChange={setOpen} message={message} />;
+  return <Toast open={open} onOpenChange={setOpen} message={message} viewportClassName="toast-above-bar" />;
 }

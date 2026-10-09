@@ -52,7 +52,7 @@ function RowBody({ row, reserveChevron, quietLabels }: { row: ListRow; reserveCh
     <>
       <span className="flex min-w-0 flex-1 flex-col justify-center py-2 lg:py-1">
         <span className={cx("[overflow-wrap:anywhere]", quietLabels ? "text-body text-ink-2" : "text-body-strong text-ink")}>{row.primary}</span>
-        {row.meta ? <span className="text-meta text-ink-2 [overflow-wrap:anywhere]">{row.meta}</span> : null}
+        {row.meta ? <span className="whitespace-pre-line text-meta text-ink-2 [overflow-wrap:anywhere]">{row.meta}</span> : null}
       </span>
       {row.figure || interactive ? (
         <span className="flex max-w-[60%] shrink-0 items-center gap-2 py-2 lg:py-1">

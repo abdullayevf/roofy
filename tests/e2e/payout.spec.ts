@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { collectConsole, expectScreenHealthy } from "./guards";
+import { checkBackRow, collectConsole, expectScreenHealthy } from "./guards";
 import { expectNoMoney } from "./money-scan";
 import { getSeed } from "../../src/data/fake/store";
 
@@ -33,6 +33,14 @@ test.describe("Record payout (manager)", () => {
     await signInAs(page, "manager", payout);
     await expect(page.getByRole("heading", { level: 1, name: "Record payout" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Back to Dima" })).toHaveAttribute("href", dima);
+    if (isPhone(testInfo.project.name)) expect((await checkBackRow(page)).failures).toEqual([]);
+    // Advance or Payment fills its column (D10) and the options have a 1 px divider between them when neither is picked.
+    const seg = page.locator('[aria-label="Advance or payment"]').first();
+    const segBox = await seg.boundingBox();
+    const colBox = await seg.locator("xpath=..").boundingBox();
+    expect(colBox!.width - segBox!.width, "segment narrower than its column").toBeLessThanOrEqual(2);
+    const seams = await seg.locator("label").evaluateAll((els) => els.map((e) => parseFloat(getComputedStyle(e).borderLeftWidth)));
+    expect(seams[1], `option dividers ${seams.join(",")}`).toBeGreaterThanOrEqual(1);
     await expect(page.locator("[data-payout-balance]")).toContainText(/^Dima: (owed|paid ahead|nothing owed) \$[\d,]+\.\d{2}$/);
     await expect(page.getByLabel("Date paid")).toHaveValue(TODAY);
     await expect(amount(page)).toHaveValue("");

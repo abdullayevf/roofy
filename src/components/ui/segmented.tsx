@@ -17,6 +17,8 @@ export type SegmentedProps = {
   value?: string;
   onChange?: (value: string) => void;
   disabled?: boolean;
+  /** Full width of its column from 1024 px too (a form whose fields all share one column), not just as wide as its options. */
+  fill?: boolean;
   /** Demo-only: forces the focus ring (on the selected segment) so it shows up in a static screenshot. */
   focusVisible?: boolean;
   className?: string;
@@ -41,6 +43,7 @@ export function Segmented({
   value: controlledValue,
   onChange,
   disabled,
+  fill = false,
   focusVisible,
   className,
 }: SegmentedProps) {
@@ -53,19 +56,23 @@ export function Segmented({
       aria-label={legend}
       aria-disabled={disabled || undefined}
       className={cx(
-        "flex w-full max-w-full flex-wrap rounded-control border-[1.5px] border-edge p-1 lg:w-fit",
+        "flex w-full max-w-full flex-wrap rounded-control border-[1.5px] border-edge p-1",
+        fill ? "" : "lg:w-fit",
         disabled ? "bg-galv" : "bg-surface",
         className,
       )}
     >
-      {options.map((opt) => {
+      {options.map((opt, i) => {
         const checked = opt.value === value;
+        // A 1 px divider between two options that are both unselected; the selected one is its own block.
+        const seam = i > 0 && !checked && options[i - 1]?.value !== value;
         return (
           <label
             key={opt.value}
             className={cx(
               "relative flex min-h-[52px] flex-auto items-center justify-center gap-1.5 rounded-control px-3 py-1 text-center text-body-strong lg:min-h-12",
               disabled ? "cursor-not-allowed" : "cursor-pointer",
+              seam && "border-l border-edge",
               checked
                 ? disabled
                   ? "bg-line text-ink-2"

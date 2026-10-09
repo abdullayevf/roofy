@@ -34,13 +34,15 @@ export type ToastProps = {
   onOpenChange: (open: boolean) => void;
   message: string;
   className?: string;
+  /** Extra classes for the fixed holder, e.g. one that lifts it above a pinned bar. */
+  viewportClassName?: string;
 };
 
 /**
  * DESIGN.md §6 level-3 toast: 180 ms, polite live region (Radix Toast
  * announces via its own aria-live viewport).
  */
-export function Toast({ open, onOpenChange, message, className }: ToastProps) {
+export function Toast({ open, onOpenChange, message, className, viewportClassName }: ToastProps) {
   return (
     <RadixToast.Provider swipeDirection="up" duration={4000}>
       <RadixToast.Root
@@ -56,7 +58,7 @@ export function Toast({ open, onOpenChange, message, className }: ToastProps) {
           )}
         />
       </RadixToast.Root>
-      <RadixToast.Viewport className="fixed inset-x-4 bottom-4 z-50 flex flex-col gap-2" />
+      <RadixToast.Viewport className={cx("fixed inset-x-4 bottom-4 z-50 flex flex-col gap-2", viewportClassName)} />
     </RadixToast.Provider>
   );
 }

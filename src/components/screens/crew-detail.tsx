@@ -9,7 +9,7 @@ import { MoneyCell } from "@/components/ui/money-cell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoadError } from "./field-entry";
 import { COLUMN, GROUP, KeyFigure, KeyFigureSkeleton, Section } from "./home-parts";
-import { balanceSentence, headerLine, ledgerEntry, phoneHref, rateRows, utilisationText } from "./crew-detail-text";
+import { balanceSentence, headerLines, ledgerEntry, phoneHref, rateRows, utilisationText } from "./crew-detail-text";
 import { balanceView, payBasisLabel } from "./crew-input";
 import { SeeAll } from "./job-detail";
 import { logQuantityText } from "./job-detail-text";
@@ -23,31 +23,39 @@ const SHOWN = 6;
 const historyHref = (id: string) => `/history?crew=${id}`;
 const payoutHref = (id: string) => `/crew/${id}/payout`;
 
-/** Back row, the name, who they are, and from 1024 px the Record payout button (on a phone it is pinned at the bottom). */
-function Header({ crew, today, demoOffline }: { crew: CrewDetail; today: string; demoOffline: boolean }) {
-  const util = utilisationText(crew.utilisation);
+/** Back row and the name; from 1024 px the Record payout button sits in the title row (on a phone it is pinned at the bottom). */
+function Header({ crew, demoOffline }: { crew: CrewDetail; demoOffline: boolean }) {
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between gap-3">
-        <Button variant="link" href="/crew">
-          Back to crew
-        </Button>
+      <Button variant="link" href="/crew" className="self-start">
+        Back to crew
+      </Button>
+      <div className="flex items-start justify-between gap-4">
+        <h1 data-crew-title="" className="text-title text-ink [overflow-wrap:anywhere]">
+          <KeepTogether text={crew.name} />
+        </h1>
         {crew.access.canApprove ? (
-          <div className="jobs-add-head hidden lg:block">
+          <div className="jobs-add-head hidden shrink-0 lg:block">
             <OnlineOnlyHeadButton label="Record payout" href={payoutHref(crew.id)} demoOffline={demoOffline} />
           </div>
         ) : null}
       </div>
-      <h1 data-crew-title="" className="text-title text-ink [overflow-wrap:anywhere]">
-        <KeepTogether text={crew.name} />
-      </h1>
-      <p data-crew-who="" className="text-meta text-ink-2 [overflow-wrap:anywhere]">
-        {headerLine(crew, today)}
-      </p>
-      <p className="text-meta text-ink-2">
-        {payBasisLabel(crew.defaultBasis, crew.defaultUnit)}. Active from {formatDate(crew.activeFrom, today)}
-      </p>
-      {util ? <p className="text-meta text-ink-2">{util}</p> : null}
+    </div>
+  );
+}
+
+/** Who they are, one fact per line, then how they are paid, since when, and Call. Under the balance, not above it. */
+function Identity({ crew, today }: { crew: CrewDetail; today: string }) {
+  const util = utilisationText(crew.utilisation);
+  const lines = [...headerLines(crew, today), payBasisLabel(crew.defaultBasis, crew.defaultUnit), `Active from ${formatDate(crew.activeFrom, today)}`];
+  return (
+    <div className="flex flex-col gap-2">
+      <div data-crew-who="" className="flex flex-col text-meta text-ink-2 [overflow-wrap:anywhere]">
+        {lines.map((line) => (
+          <p key={line}>{line}</p>
+        ))}
+        {util ? <p>{util}</p> : null}
+      </div>
       {crew.phone ? (
         <Button variant="secondary" href={phoneHref(crew.phone)} className="self-start">
           <span className="inline-flex items-center gap-2">
@@ -85,7 +93,7 @@ function Ledger({ crew, today }: { crew: CrewDetail; today: string }) {
         <p data-empty="ledger" className="text-body text-ink">No pay or payments yet.</p>
       ) : (
         <>
-          <List rows={rows} reserveChevron />
+          <List rows={rows} />
           {crew.ledger.length > SHOWN ? (
             <div className={GROUP}>
               <SeeAll href={historyHref(crew.id)} label="See all pay and payments" />
@@ -121,7 +129,7 @@ function Rates({ crew, today }: { crew: CrewDetail; today: string }) {
       {rows.length === 0 ? (
         <p data-empty="rates" className="text-body text-ink">No rates yet. Work logged without a rate is paid $0.00 until one is set.</p>
       ) : (
-        <List rows={rows} reserveChevron />
+        <List rows={rows} />
       )}
     </Section>
   );
@@ -130,8 +138,8 @@ function Rates({ crew, today }: { crew: CrewDetail; today: string }) {
 function RecentLogs({ crew, today }: { crew: CrewDetail; today: string }) {
   const rows: ListRow[] = crew.recentLogs.slice(0, SHOWN).map((l) => ({
     key: l.id,
-    primary: `${l.projectName}, ${l.stageName}`,
-    meta: `${formatDate(l.date, today)}, ${logQuantityText(l)}${l.amountCents === 0 ? ", time only" : ""}`,
+    primary: l.projectName,
+    meta: `${l.stageName}\n${formatDate(l.date, today)}, ${logQuantityText(l)}${l.amountCents === 0 ? ", time only" : ""}`,
     ...(l.amountCents === 0 ? {} : { figure: <MoneyCell cents={l.amountCents} /> }),
     href: historyHref(crew.id),
   }));
@@ -170,13 +178,20 @@ export function CrewDetailBody({
   savedToast?: string | null;
 }) {
   return (
-    <div data-screen="crew-detail" className={COLUMN}>
-      <Header crew={crew} today={today} demoOffline={demoOffline} />
-      <Balance crew={crew} today={today} />
-      <Ledger crew={crew} today={today} />
-      <Statements crew={crew} today={today} demoOffline={demoOffline} />
-      <Rates crew={crew} today={today} />
-      <RecentLogs crew={crew} today={today} />
+    <div data-screen="crew-detail" className={cx(COLUMN, "gap-4 lg:max-w-none lg:gap-6")}>
+      <Header crew={crew} demoOffline={demoOffline} />
+      <div className="flex flex-col gap-8 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-10 lg:gap-y-10">
+        <div className="flex min-w-0 flex-col gap-8 lg:gap-10">
+          <Balance crew={crew} today={today} />
+          <Identity crew={crew} today={today} />
+          <Ledger crew={crew} today={today} />
+        </div>
+        <div className="flex min-w-0 flex-col gap-8 lg:gap-10">
+          <Statements crew={crew} today={today} demoOffline={demoOffline} />
+          <Rates crew={crew} today={today} />
+          <RecentLogs crew={crew} today={today} />
+        </div>
+      </div>
       {crew.access.canApprove ? <JobsAddBar label="Record payout" href={payoutHref(crew.id)} needsConnection demoOffline={demoOffline} /> : null}
       {savedToast ? <SavedToast message={savedToast} /> : null}
     </div>
@@ -195,10 +210,25 @@ export function CrewDetailError() {
   );
 }
 
-/** The page while it loads (`?demo=loading`): the same blocks, as grey shapes. */
+/** One list row's shape while it loads: a label, `lines` lines under it, and a figure on the right (the real rows' heights). */
+function RowSkel({ lines }: { lines: number }) {
+  return (
+    <div className="flex min-h-16 items-start justify-between gap-4 px-4 py-2">
+      <div className="flex flex-col gap-1">
+        <Skeleton width={150} height={20} />
+        {Array.from({ length: lines }, (_, i) => (
+          <Skeleton key={i} width={i === lines - 1 ? 150 : 210} height={14} />
+        ))}
+      </div>
+      <Skeleton width={88} height={20} />
+    </div>
+  );
+}
+
+/** The page while it loads (`?demo=loading`): the same blocks as grey shapes, as tall as the real rows, with the pinned bar. */
 export function CrewDetailSkeleton() {
   return (
-    <div data-screen="crew-detail" aria-busy="true" className={COLUMN}>
+    <div data-screen="crew-detail" aria-busy="true" className={cx(COLUMN, "gap-4 lg:max-w-none lg:gap-6")}>
       <div className="flex flex-col gap-2">
         <Button variant="link" href="/crew" className="self-start">
           Back to crew
@@ -206,27 +236,41 @@ export function CrewDetailSkeleton() {
         <div className="flex h-9 items-center">
           <Skeleton width={200} height={28} />
         </div>
-        <Skeleton width={220} height={14} />
-        <Skeleton width={180} height={52} />
       </div>
-      <div className="flex flex-col gap-2">
-        <Skeleton width={96} height={14} />
-        <KeyFigureSkeleton width={160} />
-        <Skeleton width={260} height={20} />
-      </div>
-      {[3, 2].map((n, s) => (
-        <section key={s} className="flex flex-col gap-2">
-          <Skeleton width={120} height={24} />
-          <div className={cx(GROUP, "overflow-hidden")}>
-            {Array.from({ length: n }, (_, i) => (
-              <div key={i} className="flex min-h-16 items-center justify-between gap-4 px-4 py-2">
-                <Skeleton width={150} height={20} />
-                <Skeleton width={96} height={20} />
-              </div>
-            ))}
+      <div className="flex flex-col gap-8 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-10 lg:gap-y-10">
+        <div className="flex min-w-0 flex-col gap-8 lg:gap-10">
+          <div className="flex flex-col gap-1">
+            <Skeleton width={96} height={14} />
+            <KeyFigureSkeleton width={160} />
+            <Skeleton width={260} height={20} />
           </div>
-        </section>
-      ))}
+          <div className="flex flex-col gap-2">
+            <Skeleton width={160} height={14} />
+            <Skeleton width={120} height={14} />
+            <Skeleton width={200} height={14} />
+            <Skeleton width={180} height={52} />
+          </div>
+          <SkeletonSection rows={3} lines={2} />
+        </div>
+        <div className="flex min-w-0 flex-col gap-8 lg:gap-10">
+          <SkeletonSection rows={2} lines={1} />
+          <SkeletonSection rows={2} lines={1} />
+        </div>
+      </div>
+      <JobsAddBar skeleton />
     </div>
+  );
+}
+
+function SkeletonSection({ rows, lines }: { rows: number; lines: number }) {
+  return (
+    <section className="flex flex-col gap-2">
+      <Skeleton width={120} height={24} />
+      <div className={cx(GROUP, "overflow-hidden")}>
+        {Array.from({ length: rows }, (_, i) => (
+          <RowSkel key={i} lines={lines} />
+        ))}
+      </div>
+    </section>
   );
 }

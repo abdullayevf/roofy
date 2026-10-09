@@ -637,6 +637,8 @@ export const SCREENS: ScreenSpec[] = [
     route: "/crew/:crewId/payout",
     states: ["normal", "loading", "error", "offline", "noperm"],
     roles: ["owner", "manager"],
+    // Amount with the keyboard open and Save payout still reachable (the Note box sits below it in the same form).
+    keyboard: { field: "Amount", action: "Save payout" },
   },
   {
     // Filled in: $1,482.00, Payment, bank transfer, a note (flows.md "Record a payout").

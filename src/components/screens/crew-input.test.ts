@@ -17,24 +17,31 @@ describe("typeLabel and payBasisLabel", () => {
   it("names the worker type and how the person is usually paid, never a rate", () => {
     expect(typeLabel("employee")).toBe("Employee");
     expect(typeLabel("contractor")).toBe("Contractor");
-    expect(payBasisLabel("daily", null)).toBe("Paid by the day");
-    expect(payBasisLabel("hourly", null)).toBe("Paid by the hour");
-    expect(payBasisLabel("per_unit", "m2")).toBe("Paid per m²");
-    expect(payBasisLabel("per_unit", "lm")).toBe("Paid per lm");
-    expect(payBasisLabel("per_unit", "each")).toBe("Paid per item");
-    expect(payBasisLabel("per_unit", null)).toBe("Paid per unit");
+    expect(payBasisLabel("daily", null)).toBe("Paid\u00a0by\u00a0the\u00a0day");
+    expect(payBasisLabel("hourly", null)).toBe("Paid\u00a0by\u00a0the\u00a0hour");
+    expect(payBasisLabel("per_unit", "m2")).toBe("Paid\u00a0per\u00a0m²");
+    expect(payBasisLabel("per_unit", "lm")).toBe("Paid\u00a0per\u00a0lm");
+    expect(payBasisLabel("per_unit", "each")).toBe("Paid\u00a0per\u00a0item");
+    expect(payBasisLabel("per_unit", null)).toBe("Paid\u00a0per\u00a0unit");
   });
 });
 
 describe("crewLine", () => {
-  it("manager: type, level, how paid, and Inactive when they have left", () => {
-    expect(crewLine(manager())).toBe("Employee · Roofer · Paid by the day");
-    expect(crewLine(manager({ level: null, type: "contractor", defaultBasis: "per_unit", defaultUnit: "m2" }))).toBe("Contractor · Paid per m²");
-    expect(crewLine(manager({ active: false }))).toBe("Employee · Roofer · Paid by the day · Inactive");
+  const plain = (t: string) => t.replace(/\u00a0/g, " ");
+  it("manager: type and level, then how paid, as plain sentences with no middle dot", () => {
+    expect(plain(crewLine(manager()))).toBe("Employee, Roofer. Paid by the day.");
+    expect(plain(crewLine(manager({ level: null, type: "contractor", defaultBasis: "per_unit", defaultUnit: "m2" })))).toBe("Contractor. Paid per m\u00b2.");
+    expect(crewLine(manager({ level: { id: "l", name: "Apprentice yr 1" }, defaultBasis: "hourly" }))).toBe(
+      "Employee, Apprentice yr\u00a01. Paid\u00a0by\u00a0the\u00a0hour.",
+    );
+    expect(crewLine(manager())).not.toContain("\u00b7");
+  });
+  it("never says Inactive: that is a chip of its own", () => {
+    expect(plain(crewLine(manager({ active: false })))).toBe("Employee, Roofer. Paid by the day.");
+    expect(plain(crewLine({ ...foreman, active: false }))).toBe("Employee. Paid by the day.");
   });
   it("foreman: the same line from the money-free row", () => {
-    expect(crewLine(foreman)).toBe("Employee · Paid by the day");
-    expect(crewLine({ ...foreman, active: false })).toBe("Employee · Paid by the day · Inactive");
+    expect(plain(crewLine(foreman))).toBe("Employee. Paid by the day.");
   });
 });
 

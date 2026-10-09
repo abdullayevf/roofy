@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PinnedAction, usePinnedBar } from "./field-entry";
 import { NEEDS_CONNECTION, useOnline } from "./use-online";
 
@@ -14,12 +15,15 @@ export function JobsAddBar({
   href = "/jobs/new",
   needsConnection = false,
   demoOffline = false,
+  skeleton = false,
 }: {
   label?: string;
   href?: string;
   /** The action can't happen offline (a payout): with no signal the button is disabled with the "Needs connection" line. */
   needsConnection?: boolean;
   demoOffline?: boolean;
+  /** The bar while the page loads: the same pinned bar with a grey block where the button will be. */
+  skeleton?: boolean;
 }) {
   const { style, barProps } = usePinnedBar(null);
   const online = useOnline(demoOffline);
@@ -28,7 +32,9 @@ export function JobsAddBar({
     <div className="jobs-add-bar lg:hidden" style={style}>
       <div aria-hidden="true" style={{ height: "var(--pin-action-height)" }} />
       <PinnedAction barProps={barProps} hint={blocked ? NEEDS_CONNECTION : undefined}>
-        {blocked ? (
+        {skeleton ? (
+          <Skeleton height={52} className="w-full" />
+        ) : blocked ? (
           <Button variant="primary" disabled className="w-full">
             {label}
           </Button>

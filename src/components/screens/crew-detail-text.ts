@@ -1,7 +1,7 @@
 import type { CrewDetail, LedgerRow, PayoutMethod, RateDto, StatementRef } from "@/data/contracts";
 import type { Cents, RateBasis, Unit } from "@/domain/types";
 import { formatDate } from "@/lib/format";
-import { balanceView, typeLabel } from "./crew-input";
+import { balanceView, levelText, typeLabel } from "./crew-input";
 
 /** The words under a rate's amount, in the order a manager reads them: day, hour, then each unit. */
 const BASIS_ORDER: Record<RateBasis, number> = { daily: 0, hourly: 1, per_unit: 2 };
@@ -75,16 +75,16 @@ export function balanceSentence(
   return `You and ${name} are square.`;
 }
 
-/** Type, level or ABN, and whether they have left: the line under the name. */
-export function headerLine(
+/** Who they are, one fact per line: type and level, ABN, whether GST is charged, and whether they have left. */
+export function headerLines(
   d: Pick<CrewDetail, "type" | "abn" | "gstRegistered" | "activeTo"> & { level: { name: string } | null },
   today: string,
-): string {
-  const parts: (string | null)[] = [typeLabel(d.type), d.level?.name ?? null];
-  if (d.type === "contractor") parts.push(d.abn ? `ABN ${d.abn}` : "No ABN yet");
-  if (d.gstRegistered) parts.push("Charges GST");
-  if (d.activeTo) parts.push(`${d.activeTo < today ? "Left" : "Leaves"} ${formatDate(d.activeTo, today)}`);
-  return parts.filter((p): p is string => Boolean(p)).join(" · ");
+): string[] {
+  const lines = [[typeLabel(d.type), d.level ? levelText(d.level.name) : null].filter(Boolean).join(", ")];
+  if (d.type === "contractor") lines.push(d.abn ? `ABN ${d.abn}` : "No ABN yet");
+  if (d.gstRegistered) lines.push("Charges GST");
+  if (d.activeTo) lines.push(`${d.activeTo < today ? "Left" : "Leaves"} ${formatDate(d.activeTo, today)}`);
+  return lines;
 }
 
 /** A phone number as a link a phone can dial: digits and a leading plus only. */
