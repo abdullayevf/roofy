@@ -587,8 +587,19 @@ export const SCREENS: ScreenSpec[] = [
     id: "crew-list",
     group: "crew",
     route: "/crew",
-    states: ["normal", "empty", "loading", "error", "offline"],
+    states: ["normal", "empty", "loading", "error", "offline", "foreman"],
     roles: ["owner", "manager"],
+  },
+  {
+    // Active and inactive together: Pete has left, and a contractor with a very long name has left too (nothing may overflow).
+    id: "crew-list-all",
+    group: "crew",
+    route: "/crew?show=all",
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
   },
   {
     id: "crew-detail",

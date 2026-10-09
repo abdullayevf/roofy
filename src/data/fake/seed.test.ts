@@ -166,13 +166,13 @@ describe("seed: shape and determinism", () => {
     expect(seed.workspace.abn).toMatch(/^\d{2} \d{3} \d{3} \d{3}$/);
   });
 
-  it("has 12 crew: the pay-rules five plus seven, employees and contractors, one inactive", () => {
-    expect(seed.crewMembers).toHaveLength(12);
+  it("has 13 crew: the pay-rules five plus seven and the long-name fixture, employees and contractors, two inactive (Pete and the fixture)", () => {
+    expect(seed.crewMembers).toHaveLength(13);
     const names = seed.crewMembers.map((c) => c.name);
     expect(names).toEqual(expect.arrayContaining(["Sam", "Tom", "Jake", "Dima", "Lee"]));
     expect(seed.crewMembers.filter((c) => c.type === "contractor").length).toBeGreaterThanOrEqual(3);
     expect(seed.crewMembers.filter((c) => c.type === "employee").length).toBeGreaterThanOrEqual(6);
-    expect(seed.crewMembers.filter((c) => c.activeTo !== null && c.activeTo < SEED_TODAY)).toHaveLength(1);
+    expect(seed.crewMembers.filter((c) => c.activeTo !== null && c.activeTo < SEED_TODAY)).toHaveLength(2);
   });
 
   it("has the pay-rules §0 rates and floors in force today", () => {
@@ -257,6 +257,14 @@ describe("seed: shape and determinism", () => {
     const fixtureIds = [noStages, longNames];
     expect(seed.projectAssignments.filter((a) => a.memberId === foreman.id && fixtureIds.includes(a.projectId))).toEqual([]);
     expect(seed.workLogs.filter((l) => fixtureIds.includes(l.projectId))).toEqual([]);
+  });
+
+  it("has a crew fixture: a contractor who has left, with a long name, no logs, no ledger, off every active list", () => {
+    const m = seed.crewMembers.find((c) => c.id === seed.meta.fixtures.longNamesCrew)!;
+    expect(m.name.length).toBeGreaterThan(80);
+    expect(m.activeTo! < seed.meta.today).toBe(true);
+    expect(seed.workLogs.filter((l) => l.crewMemberId === m.id)).toEqual([]);
+    expect(seed.ledgerEntries.filter((e) => e.crewMemberId === m.id)).toEqual([]);
   });
 
   it("keeps stage status and segments consistent (half-open, ordered, Done closes at completion + 1)", () => {

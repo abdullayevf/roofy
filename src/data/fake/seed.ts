@@ -80,7 +80,7 @@ export interface SeedMeta {
     kellyRepairs: Id;
   };
   /** Jobs that exist for the design loop: one with no stages, one with very long names. */
-  fixtures: { noStages: Id; longNames: Id; longNamesStage: Id };
+  fixtures: { noStages: Id; longNames: Id; longNamesStage: Id; longNamesCrew: Id };
   payRuns: { review: Id; current: Id; lastApproved: Id };
   logs: { lateEntry: Id; adjustment: Id; adjustedOriginal: Id };
   expenses: { dimaScrews: Id; smithSheets: Id };
@@ -1389,6 +1389,22 @@ export function buildSeed(): Seed {
     2,
   );
 
+  // A third screen fixture: a contractor who has left, with a name as long as real ones get. Inactive, so no active
+  // crew count, grid chip or pay figure moves; the Crew list shows him under "Active and inactive".
+  const longNamesCrew = b.addCrew({
+    name: "Bartholomew Featherstonehaugh-Montgomery-Wellesley Jr, Heritage Slate and Copper Roofing Specialists",
+    phone: "0412 334 199",
+    type: "contractor",
+    levelId: null,
+    abn: "51 824 753 556",
+    gstRegistered: true,
+    activeFrom: HISTORY_START,
+    activeTo: "2026-08-14",
+    defaultBasis: "per_unit",
+    defaultUnit: "m2",
+  });
+  b.addRate(longNamesCrew.id, "per_unit", "m2", 4500, HISTORY_START);
+
   return {
     ...t,
     meta: {
@@ -1413,7 +1429,7 @@ export function buildSeed(): Seed {
         brownRidge: stageOf("B6").id,
         kellyRepairs: stageOf("K3").id,
       },
-      fixtures: { noStages: noStages.id, longNames: longNames.id, longNamesStage: longStage.id },
+      fixtures: { noStages: noStages.id, longNames: longNames.id, longNamesStage: longStage.id, longNamesCrew: longNamesCrew.id },
       payRuns: { review: review.id, current: current.id, lastApproved: lastApproved.id },
       logs: { lateEntry: lateEntry!.id, adjustment: adjustment.id, adjustedOriginal: original.id },
       expenses: { dimaScrews: dimaScrews.id, smithSheets: smithSheets.id },
