@@ -6,7 +6,7 @@
 - Ledger: `.superpowers/sdd/03-design-prototype/progress.md` (per-run lines; read its tail for where a task stands).
 - Done and reviewed: Tasks 1–14 (Task 14 = c201236..60f8f5d, jobs-2 design loop accepted by the owner at iteration 1, avg 73.5; open rows in ISSUES.md).
 - **Now: Task 15** (Crew list 14, Crew detail 15, Record payout 20). Brief `.superpowers/sdd/03-design-prototype/task-15-brief.md`. Runs A (list, sonnet), B (detail, sonnet), C (payout, opus), then review, then design loop group `crew`.
-- **Next:** run A dispatched (report `task-15-run-a-report.md`). If the ledger shows A DONE, dispatch B; then C; then reviewer + spec-reviewer in parallel.
+- **Next:** built: A e4b9fbf (list), B 80c1392 (detail), C 493736f (payout). Task e2e 3 projects: 106 pass, 1 fail (desktop crew-list.spec.ts:17, the row locator's `.or(link)` matches both the row and its link: test bug, add to the fix list). Dispatch reviewer (sonnet) + spec-reviewer (opus) in parallel on d0e44e0..493736f; merge with that e2e fix and the run reports' open points (`task-15-run-{a,b,c}-report.md`: foreman crew nav, /history?crew= filter, ?saved= toast on reload) into one fix list. Then design loop group `crew`.
 - Then: Tasks 16–23 in order.
 - Known flaky (iphone, passed on re-run): flows/no-work-marker.spec.ts:6, log-progress.spec.ts:135, design-page.spec.ts:45 on a cold server.
 - Environment: real WebKit works on the VPS. Never stop the server with `pkill -f "next start"`; kill the PID from `ss -ltnp | grep 3100`.
