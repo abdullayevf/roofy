@@ -521,3 +521,46 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | jobs-2/i1-D17 | jobs-2 | P3 | stage-done saved | Only spinner; no success state | Capture return to stage with done confirmation |
 | jobs-2/i1-D18 | jobs-2 | P3 | stage-detail normal, done | Warning twice; done stage shows forecast + Working | Once; hide forecast when done; date range + Done |
 | jobs-2/i1-D19 | jobs-2 | P3 | stage-detail/stage-done foreman | Pause primary for foreman, secondary for manager; no-access says Back to Log while Jobs tab selected | One hierarchy; "Back to stage" |
+| crew/i1-F1+D2 | crew | P0 | crew-payout-saved/all | After "Payment saved." balance and ledger unchanged; new payment row missing | Re-read after save; new balance and today's row; guard | fixed (i2) | 1 |
+| crew/i1-D1+F2 | crew | P1 | crew-detail/normal | Statements list unbounded (~100 weeks); rates and logs ~15 screens down | Latest 4 plus "See all statements" | fixed (i2) | 1 |
+| crew/i1-D3+F5 | crew | P1 | crew-list, crew-detail/all | "·"-joined meta lines (§7 tell); mixed separators | One fact per line or a sentence; design-lint guard for "·" | fixed (i2) | 1 |
+| crew/i1-D4 | crew | P2 | crew-list/desktop | Balance column touches table outline | 16 px right padding; guard | carried to i2 row | 1 |
+| crew/i1-D5+F6 | crew | P2 | crew-list/normal | Hero is a count; owed person sorted alphabetically; ten bold $0.00 | Hero = total owed figure-xl; owed first; nothing-owed rows as meta | fixed (i2) | 1 |
+| crew/i1-D6+F13 | crew | P2 | crew-list/phone | "Apprentice yr / 1", "Paid by the / day" wraps | Non-breaking spaces | carried to i2 row | 1 |
+| crew/i1-D7 | crew | P2 | crew-detail/all | Key figure ~330 px down under meta and Call | Balance hero directly under the name | fixed (i2) | 1 |
+| crew/i1-D8+F4 | crew | P2 | crew-detail/ledger | Ledger rows have no tap-through; figures end ~50 px short of the edge | Rows open their pay run/entry with chevron, or drop the gutter | fixed (i2) | 1 |
+| crew/i1-D9 | crew | P2 | crew-detail/desktop | Single 720 px column, Record payout floats by back link | Two columns or action in title row | carried to i2 row | 1 |
+| crew/i1-D10 | crew | P2 | crew-payout/desktop+phone | Segment narrower than fields; no divider between options | Full width; 1 px edge divider | carried to i2 row | 1 |
+| crew/i1-D11 | crew | P2 | crew-detail/tablet | Pinned bar has no top rule on tablet | Same bar treatment 600–1023 px | carried to i2 row | 1 |
+| crew/i1-D12+F11 | crew | P2 | crew-list, crew-detail/loading | Skeletons shorter than real rows; no pinned bar (lessons repeat) | Size from real row components | carried to i2 row | 1 |
+| crew/i1-D13+F12 | crew | P2 | crew-payout-saved/phone | Toast covers tab bar labels | Raise above pinned bar and tab bar | carried to i2 row | 1 |
+| crew/i1-F3 | crew | P2 | crew-payout/offline | Banner says "will send automatically", Save says "Needs connection" (repeat of jobs-1/i1-F9) | One needs-connection sentence on admin screens | fixed (i2) | 1 |
+| crew/i1-F7 | crew | P2 | crew-list/landscape | Header takes 230 of 390 px; one row visible | Chips on title row, smaller key line | fixed (i2) | 1 |
+| crew/i1-F8 | crew | P2 | crew-detail/owed | "for a long time" is vague | "Owed since Mon 7 Sep (3 pay runs)." | carried to i2 row | 1 |
+| crew/i1-F9 | crew | P2 | crew-payout/keyboard | No keyboard capture for Amount and Note | Add `keyboard` to the crew-payout manifest entry | fixed (i2) | 1 |
+| crew/i1-D14 | crew | P3 | crew-list/desktop | Last logged cells repeat header; warning in wrong column; bold Balance header | Date only; warning under balance; same weight | carried to i2 row | 1 |
+| crew/i1-D15+F15 | crew | P3 | crew-detail-long | Full long name repeated in "are square" | First name | fixed (i2) | 1 |
+| crew/i1-D16 | crew | P3 | crew-detail/normal | Statement money in meta; logs titles joined with — and , | Right figure column; stage on its own line | carried to i2 row | 1 |
+| crew/i1-D17 | crew | P3 | crew-payout-refused | No helper line naming what's missing | "Add an amount and choose Advance or Payment." | fixed (i2) | 1 |
+| crew/i1-D18+F10 | crew | P3 | crew-detail/offline | Record payout enabled offline | Disabled with needs-connection line | fixed (i2) | 1 |
+| crew/i1-D19 | crew | P3 | crew-payout/all | flows.md says sheet; built as full page | Open: page kept (spec review passed it) | open | 1 |
+| crew/i1-D20 | crew | P3 | crew-list-all | "Inactive" buried in meta | Status chip treatment | fixed (i2) | 1 |
+| crew/i1-F14 | crew | P3 | crew-detail/ledger | "Paid ahead $300.00 after"; comma before capital | "Balance after: paid ahead $300.00"; full stop | fixed (i2) | 1 |
+| crew/i1-F16 | crew | P3 | crew-list-foreman | No tab highlighted | Open (P3) | open | 1 |
+| crew/i1-F17 | crew | P3 | back rows/phone | Back link may be under 48 px (lessons) | 48 px back row; guard | carried to i2 row | 1 |
+| crew/i2-D4+F23+D14 | crew | P2 | crew-list/desktop | Header cells: Balance touches border, headers off the cell edges, mixed weight | Headers share cell padding and right edge, one weight; guard | fix run 2 | 2 |
+| crew/i2-D21+F25 | crew | P2 | crew-list/landscape | Compact header "Crew $7,225.90" drops its label | Keep "owed" label with the figure | fix run 2 | 2 |
+| crew/i2-F18+D10 | crew | P2 | crew-payout/all | Payment option draws its own rounded inner border | One outer border, straight 1 px edge divider, fill marks selected | fix run 2 | 2 |
+| crew/i2-F19+D25 | crew | P2 | crew-list-offline/all | "will send automatically" banner on read-only admin list (lessons) | One sentence "No signal. Balances as of <time>."; guard banner text | fix run 2 | 2 |
+| crew/i2-F17 | crew | P3 | back rows/all | Back is still a small underlined link | 48 px back row with chevron (lessons 13); guard | fix run 2 | 2 |
+| crew/i2-F27 | crew | P3 | crew-list | Kev row still "Owed for a long time" | "Owed since Mon 7 Sep" | fix run 2 | 2 |
+| crew/i2-D6+D24 | crew | P3 | crew-list, crew-detail | "yr 1" and "paid ahead / $300.00" wrap apart | Non-breaking spaces | fix run 2 | 2 |
+| crew/i2-D23+F20 | crew | P3 | crew-detail | See all statements uses chevron-down, others right | One affordance | fix run 2 | 2 |
+| crew/i2-F26 | crew | P3 | crew-detail-offline | Needs-connection line repeated under every Share | Disable quietly, say it once | fix run 2 | 2 |
+| crew/i2-D12+F11 | crew | P3 | loading/detail, desktop list | Skeletons not shaped like the real rows/table (lessons 5) | Build from real components | fix run 2 | 2 |
+| crew/i2-D16 | crew | P3 | crew-detail/recent logs | Titles joined with "—"; "8 h, time only" unclear | Stage on own line; plain words | fix run 2 | 2 |
+| crew/i2-F22 | crew | P3 | crew-payout-saved/desktop | Toast covers the sidebar | Toast inside content column | fix run 2 | 2 |
+| crew/i2-D9+D11 | crew | P3 | crew-detail/desktop, tablet | Left column ends early; tablet bar rule full width | Rates under ledger; bar = column width | fix run 2 | 2 |
+| crew/i2-D22+F24 | crew | P3 | crew-detail, crew-list/iphone | Share on own line per statement; uneven 2-3 line list meta | Share in right column; fixed meta layout | fix run 2 | 2 |
+| crew/i2-F28 | crew | P3 | fixtures | Pay-type wording disagrees with rates/logs (Dima per m2 vs daily) | Match wording to fixture rates | fix run 2 | 2 |
+| crew/i2-D26+F21 | crew | P3 | crew-payout/desktop | 600 px form, empty right side; tied to D19 | Open with D19 | open | 2 |

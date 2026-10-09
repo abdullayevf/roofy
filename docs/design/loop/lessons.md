@@ -16,3 +16,10 @@
 - Working lines that explain a figure show percents to two places when not whole (30.49%, not 30%), so the line adds up by hand.
 - Date inputs read dd/mm/yyyy on every browser and in every capture (en-AU locale), not just iPhone.
 - Measure or capture a sheet or page only after it has settled (expectStill in guards.ts); on desktop, scope locators to the visible layout, since phone rows stay in the DOM hidden.
+- Meta lines never join facts with "·"; one fact per line or a plain sentence (design lint enforces it).
+- Admin screens that need a connection show one "Needs connection" sentence; never also the "will send automatically" offline banner.
+- Desktop (≥ 1024 px) uses the width: two columns or the action in the title row, not one 720 px column with empty space.
+- Table header cells share the body cells' padding and right edge (≥ 16 px from the border) and one font weight.
+- Keep word + number pairs together with non-breaking spaces ("yr 1", "paid ahead $300.00", "8 hours").
+- Segmented controls: one outer border, straight 1 px dividers, fill marks the selected option; no per-option rounded borders.
+- Compact (landscape) headers keep the label with the key figure ("$7,225.90 owed"), never a bare number.
