@@ -103,6 +103,13 @@ function createPush(c: FakeContext) {
   };
 }
 
+/** The job's latest logged day or expense date ("" when none): the order of the snapshot's job pickers. */
+function latestActivity(c: FakeContext, projectId: string): string {
+  let latest = "";
+  for (const r of [...c.ix.logsOfProject(projectId), ...c.ix.expensesOf(projectId)]) if (r.date > latest) latest = r.date;
+  return latest;
+}
+
 export function createSyncService(c: FakeContext): SyncService {
   const push = createPush(c);
   return {
@@ -122,8 +129,10 @@ export function createSyncService(c: FakeContext): SyncService {
         },
         projects: c.t.projects
           .filter((p) => p.status === "active" && (visible === null || visible.has(p.id)))
-          .sort((a, b) => a.nickname.localeCompare(b.nickname))
-          .map((p) => ({
+          // Most recent activity (a logged day or an expense) first, so the job being worked is at the top of a picker.
+          .map((p) => ({ p, latest: latestActivity(c, p.id) }))
+          .sort((a, b) => b.latest.localeCompare(a.latest) || a.p.nickname.localeCompare(b.p.nickname))
+          .map(({ p }) => ({
             id: p.id,
             name: p.nickname,
             status: p.status,

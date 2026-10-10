@@ -293,7 +293,12 @@ export type ExpenseList =
       view: "manager";
       access: Access;
       rows: ExpenseRowManager[];
-      totals: { exGstCents: Cents; gstCents: Cents };
+      totals: {
+        exGstCents: Cents;
+        gstCents: Cents;
+        /** The listed expenses dated in the current month (workspace timezone): the list's key figure. */
+        thisMonth: { exGstCents: Cents; gstCents: Cents };
+      };
     }
   | { view: "foreman"; access: FieldAccess; rows: ExpenseRowForeman[] };
 

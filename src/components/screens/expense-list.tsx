@@ -211,9 +211,9 @@ export function ExpenseListBody({ list, filter, names, anyExpenses, canAdd, toda
         <Header addHref={addHref} />
         {list.view === "manager" && list.rows.length > 0 ? (
           <div data-expense-totals="" className="flex flex-col gap-1">
-            <KeyFigure>{formatMoney(list.totals.exGstCents)}</KeyFigure>
+            <KeyFigure>{formatMoney(list.totals.thisMonth.exGstCents)}</KeyFigure>
             <p className="text-meta text-ink">
-              ex GST, plus {formatMoney(list.totals.gstCents)}&nbsp;GST
+              spent this month, ex&nbsp;GST, plus {formatMoney(list.totals.thisMonth.gstCents)}&nbsp;GST
             </p>
           </div>
         ) : null}

@@ -63,6 +63,8 @@ export function createExpenseService(c: FakeContext): ExpenseService {
         .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
       if (c.isForeman(actor))
         return { view: "foreman", access: FIELD_ACCESS, rows: rows.map((e) => c.expenseForeman(e)) };
+      const thisMonth = c.today.slice(0, 7);
+      const month = rows.filter((e) => e.date.startsWith(thisMonth));
       return {
         view: "manager",
         access: c.access(actor),
@@ -70,6 +72,10 @@ export function createExpenseService(c: FakeContext): ExpenseService {
         totals: {
           exGstCents: sum(rows.map((e) => e.amountExGstCents)),
           gstCents: sum(rows.map((e) => e.gstCents)),
+          thisMonth: {
+            exGstCents: sum(month.map((e) => e.amountExGstCents)),
+            gstCents: sum(month.map((e) => e.gstCents)),
+          },
         },
       };
     },

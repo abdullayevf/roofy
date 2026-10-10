@@ -550,7 +550,7 @@ const PROJECTS: ScriptedProject[] = [
   {
     key: "rydeHeritage",
     code: "Y",
-    nickname: "Ryde heritage",
+    nickname: "Jones job — Ryde heritage",
     jobType: "restoration",
     status: "active",
     client: { name: "Helen Jones", phone: "0413 555 203", email: "helen.jones@example.com" },

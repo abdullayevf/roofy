@@ -55,5 +55,9 @@ describe("queuesOffline (R7)", () => {
     expect(queuesOffline("/jobs/abc-123")).toBe(true);
     expect(queuesOffline("/log")).toBe(true);
     expect(queuesOffline("/")).toBe(true);
+    // Expense edit is the detail address with ?edit=1: it needs a connection, so no "will send" banner.
+    expect(queuesOffline("/expenses/abc-123", "1")).toBe(false);
+    expect(queuesOffline("/expenses/abc-123")).toBe(true);
+    expect(queuesOffline("/expenses/new", "1")).toBe(true);
   });
 });

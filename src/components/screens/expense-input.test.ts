@@ -183,10 +183,18 @@ describe("Add expense form", () => {
     expect(values).toMatchObject({ projectId: "p1", stageId: "s1", totalCents: 11000, supplier: "Bunnings", categoryId: "c1", paidBy: "crew", crewMemberId: "dima", gst: "none" });
     expect(check).toBe(true);
     expect(saved).toBe(true);
-    const bad = expenseFromQuery({ job: ["zz"], stage: "s9", total: "abc", category: "c9", paid: "bank", crew: "x" }, "2026-09-28", pick);
+    const two = { ...pick, projects: [...pick.projects, { id: "p2", stages: [] }] };
+    const bad = expenseFromQuery({ job: ["zz"], stage: "s9", total: "abc", category: "c9", paid: "bank", crew: "x" }, "2026-09-28", two);
     expect(bad.values).toMatchObject({ projectId: "", stageId: null, totalCents: "unreadable", categoryId: "", paidBy: "company_card", crewMemberId: null, gst: "default" });
     expect(bad.check).toBe(false);
     expect(expenseFromQuery({ total: "" }, "2026-09-28", pick).values.totalCents).toBeNull();
+  });
+
+  it("ticks the job when there is only one to pick (F13)", () => {
+    const one = { projects: [{ id: "p1", stages: [] }], categories: [], crew: [] };
+    expect(expenseFromQuery({}, "2026-09-28", one).values.projectId).toBe("p1");
+    const two = { ...one, projects: [{ id: "p1", stages: [] }, { id: "p2", stages: [] }] };
+    expect(expenseFromQuery({}, "2026-09-28", two).values.projectId).toBe("");
   });
 });
 

@@ -30,7 +30,7 @@ describe("crew", () => {
       [32000, "2026-09-15", null, true],
       [30000, "2026-07-01", null, false],
       [28000, "2024-09-02", null, false],
-      [36000, "2026-09-01", "Ryde heritage", true],
+      [36000, "2026-09-01", "Jones job — Ryde heritage", true],
     ]);
     expect(sam.level).toEqual(expect.objectContaining({ name: "Roofer", floorRateCents: 3200 }));
     expect(sam.balanceCents).toBe(0);
@@ -94,6 +94,13 @@ describe("expenses", () => {
     if (list.view !== "manager") throw new Error("manager view expected");
     expect(list.totals.exGstCents).toBe(sum(list.rows.map((r) => r.amountExGstCents)));
     expect(list.totals.gstCents).toBe(sum(list.rows.map((r) => r.gstCents)));
+    const month = list.rows.filter((r) => r.date.startsWith("2026-09"));
+    expect(month.length).toBeGreaterThan(0);
+    expect(month.length).toBeLessThan(list.rows.length + 1);
+    expect(list.totals.thisMonth).toEqual({
+      exGstCents: sum(month.map((r) => r.amountExGstCents)),
+      gstCents: sum(month.map((r) => r.gstCents)),
+    });
     const ranged = await data.expenses.list(actor, { range: { from: "2026-09-21", to: "2026-09-27" } });
     expect(ranged.rows.every((r) => r.date >= "2026-09-21" && r.date <= "2026-09-27")).toBe(true);
   });
@@ -193,5 +200,18 @@ describe("record history, workspace export and the snapshot", () => {
       "Smith job — Ryde re-roof",
     ]);
     expect(s.crew).toHaveLength(11);
+  });
+
+  it("snapshot jobs come most recent activity first (flows: Add a receipt, job picker)", async () => {
+    const { data, actor } = fake("manager");
+    const s = await data.sync.snapshot(actor);
+    const latest = (id: string) =>
+      [...seed.workLogs.filter((l) => l.projectId === id), ...seed.expenses.filter((e) => e.projectId === id)]
+        .map((r) => r.date)
+        .sort()
+        .at(-1) ?? "";
+    const dates = s.projects.map((p) => latest(p.id));
+    expect(dates).toEqual([...dates].sort().reverse());
+    expect(new Set(dates).size).toBeGreaterThan(1);
   });
 });

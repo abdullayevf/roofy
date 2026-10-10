@@ -224,7 +224,8 @@ type Picks = { projects: { id: string; stages: { id: string }[] }[]; categories:
  * Anything that isn't on the pick lists is ignored.
  */
 export function expenseFromQuery(q: Query, today: string, picks: Picks): { values: ExpenseFormValues; check: boolean; saved: boolean } {
-  const job = picks.projects.find((p) => p.id === one(q.job));
+  // Only one job to pick (a foreman on one site): it starts ticked (F13).
+  const job = picks.projects.find((p) => p.id === one(q.job)) ?? (picks.projects.length === 1 ? picks.projects[0] : undefined);
   const v = emptyExpense(today, job?.id ?? "");
   const stage = one(q.stage);
   if (job && job.stages.some((s) => s.id === stage)) v.stageId = stage;

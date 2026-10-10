@@ -700,6 +700,28 @@ export async function checkDateFields(page: Page): Promise<GuardResult> {
   return { name: "dateFields", ok: failures.length === 0, failures };
 }
 
+/**
+ * Lesson 20: a screen that needs a connection says "Needs connection" once; it never also shows the offline banner
+ * promising entries "will send automatically". Both visible on one screen is a contradiction.
+ */
+export async function checkOfflineAgrees(page: Page): Promise<GuardResult> {
+  const both = await page.evaluate(() => {
+    const shown = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      const st = getComputedStyle(el);
+      return r.width > 0 && r.height > 0 && st.visibility !== "hidden" && st.display !== "none";
+    };
+    const texts = [...document.querySelectorAll("body *")].filter(
+      (el) => el.children.length === 0 && el.textContent && shown(el),
+    );
+    const banner = texts.some((el) => /will send automatically/i.test(el.textContent ?? ""));
+    const needs = texts.some((el) => /needs connection/i.test(el.textContent ?? ""));
+    return banner && needs;
+  });
+  const failures = both ? ['offline banner ("will send automatically") and "Needs connection" are both visible'] : [];
+  return { name: "offlineAgrees", ok: failures.length === 0, failures };
+}
+
 export type ScreenHealthOptions = {
   /** Whether target-size (48x48) is enforced; phone viewports only. */
   phone: boolean;
@@ -710,7 +732,16 @@ export type ScreenHealthOptions = {
   /** Skip individual checks (design-capture uses this for states that don't apply, e.g. no need to re-check axe on every scheme). */
   skip?: Partial<
     Record<
-      "overflow" | "touchTargets" | "axe" | "console" | "contrast" | "safeAreas" | "keyboard" | "textZoom" | "dateFields",
+      | "overflow"
+      | "touchTargets"
+      | "axe"
+      | "console"
+      | "contrast"
+      | "safeAreas"
+      | "keyboard"
+      | "textZoom"
+      | "dateFields"
+      | "offlineAgrees",
       boolean
     >
   >;
@@ -729,6 +760,7 @@ export async function checkScreenHealthy(page: Page, opts: ScreenHealthOptions):
 
   if (!skip.overflow) results.push(await checkNoOverflow(page));
   if (!skip.dateFields) results.push(await checkDateFields(page));
+  if (!skip.offlineAgrees) results.push(await checkOfflineAgrees(page));
   if (!skip.touchTargets) results.push(await checkTouchTargets(page, { phone: opts.phone }));
   if (!skip.axe) results.push(await checkAxe(page));
   if (!skip.console && opts.console) {

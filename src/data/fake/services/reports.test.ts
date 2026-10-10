@@ -19,8 +19,8 @@ describe("reports: every total equals its summed source lines", () => {
     expect(r.rows.map((x) => x.name.split(" — ")[0]).sort()).toEqual([
       "Brown job",
       "Harris job",
+      "Jones job",
       "Patel job",
-      "Ryde heritage",
       "Smith job",
       "Wong job",
     ]);

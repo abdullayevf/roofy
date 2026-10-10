@@ -110,7 +110,7 @@ describe("home (manager)", () => {
   });
 
   it("Ryde heritage's re-bed stage carries its progress, so the job's % done and spend add up", async () => {
-    const row = (await managerHome()).activeJobs.find((j) => j.name === "Ryde heritage")!;
+    const row = (await managerHome()).activeJobs.find((j) => j.name === "Jones job — Ryde heritage")!;
     const spent = row.labourActualCents / row.labourBudgetCents;
     expect(Math.abs(row.pctBp / 10_000 - spent)).toBeLessThan(0.15);
   });

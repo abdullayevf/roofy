@@ -53,8 +53,10 @@ export function activeManageKey(pathname: string): string {
 }
 
 /**
- * Admin screens that need a connection to save: New job, Edit job, and Crew (list, person, payout). Everything else queues
+ * Admin screens that need a connection to save: New job, Edit job, Edit expense (`?edit=1`), and Crew (list, person, payout). Everything else queues
  * entries on the device. The Crew list is read-only; it says "No signal. Balances as of 7:42 am." itself.
  */
-export const queuesOffline = (pathname: string): boolean =>
-  !/^\/jobs\/(new|[^/]+\/edit)\/?$/.test(pathname) && !/^\/crew(\/[^/]+(\/payout)?)?\/?$/.test(pathname);
+export const queuesOffline = (pathname: string, edit: string | null = null): boolean =>
+  !/^\/jobs\/(new|[^/]+\/edit)\/?$/.test(pathname) &&
+  !/^\/crew(\/[^/]+(\/payout)?)?\/?$/.test(pathname) &&
+  !(edit === "1" && /^\/expenses\/(?!new\/?$)[^/]+\/?$/.test(pathname));
