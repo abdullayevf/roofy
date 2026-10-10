@@ -88,7 +88,7 @@ const CONFIG: Record<Status, { word: string; icon: PhosphorIcon; className: stri
 
   inactive: { word: "Inactive", icon: MinusCircle, className: "bg-surface text-ink-2 border-[1.5px] border-edge" },
 
-  draft: { word: "Draft", icon: PencilSimpleLine, className: "bg-surface text-watch border-[1.5px] border-edge" },
+  draft: { word: "Draft", icon: PencilSimpleLine, className: "bg-surface text-ink-2 border-[1.5px] border-edge" },
   approved: { word: "Approved", icon: CheckCircle, className: "bg-surface text-good border-[1.5px] border-edge" },
   exported: { word: "Exported", icon: DownloadSimple, className: "bg-surface text-ink-2 border-[1.5px] border-edge" },
 };

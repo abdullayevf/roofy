@@ -1,6 +1,11 @@
 import type { PayRunReview } from "@/data/contracts";
 
-export type PlanInput = Pick<PayRunReview, "status" | "blockedBy" | "canReopen"> & { canApprove: boolean; canExport: boolean };
+export type PlanInput = Pick<PayRunReview, "status" | "blockedBy" | "canReopen"> & {
+  canApprove: boolean;
+  canExport: boolean;
+  /** The viewer is the owner: only the owner can turn on their own two-factor, so only they get the Settings button. */
+  owner: boolean;
+};
 type State = "enabled" | "disabled";
 
 export type PayActionsPlan = {
@@ -8,7 +13,7 @@ export type PayActionsPlan = {
   approve: State | "none";
   /** "Approve without the rate" (Owner/Manager, audited): only when a missing rate is the one block and there is signal. */
   waive: boolean;
-  /** Owner 2FA is off: the "Go to settings" button. */
+  /** Owner 2FA is off and the viewer is the owner: the "Go to settings" button. */
   settings: boolean;
   /** A missing rate blocks: the sentence and the tap-through to the line. */
   missingRate: boolean;
@@ -18,6 +23,8 @@ export type PayActionsPlan = {
   needsConnection: boolean;
   /** A draft someone can only read (an accountant): a plain line says who approves it. */
   readOnly: boolean;
+  /** The one block the pinned bar names (Owner 2FA off first: nothing gets round it), or none. */
+  blocker: "owner_2fa_off" | "missing_rate" | null;
 };
 
 /** Which pay run actions show, and which are live (flows.md "Review and approve a pay run"; pay rules §9). */
@@ -33,12 +40,13 @@ export function payActionsPlan(r: PlanInput, online: boolean): PayActionsPlan {
   return {
     approve,
     waive: approver && online && missingRate && !twoFactorOff,
-    settings: approver && twoFactorOff,
+    settings: approver && twoFactorOff && r.owner,
     missingRate: approver && missingRate,
     exportCsv,
     reopen,
     needsConnection: !online && (approver || exportCsv !== false || reopen !== false),
     readOnly: draft && !r.canApprove,
+    blocker: !approver ? null : twoFactorOff ? "owner_2fa_off" : missingRate ? "missing_rate" : null,
   };
 }
 

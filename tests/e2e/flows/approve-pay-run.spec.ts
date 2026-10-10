@@ -22,7 +22,7 @@ for (const role of ["manager", "owner"]) {
     await expect(page.getByRole("heading", { level: 1, name: "Pay run" })).toBeVisible();
     const block = page.locator('[data-pay-block="missing_rate"]');
     await expect(block.locator("p")).toHaveText("Fix the missing rate before you approve.");
-    const lineHref = await block.getByRole("link", { name: "Show the line" }).getAttribute("href");
+    const lineHref = await page.locator("[data-pay-actions]").getByRole("link", { name: "Show the line" }).getAttribute("href");
     expect(lineHref).toMatch(/^#line-/);
     await expect(page.locator(lineHref!)).toContainText("Missing rate");
     await expect(page.getByRole("button", { name: "Approve pay run" })).toBeDisabled();
@@ -37,16 +37,19 @@ for (const role of ["manager", "owner"]) {
     await expect(page.getByRole("button", { name: "Export CSV" })).toBeEnabled();
     await expect(page.getByRole("button", { name: "Approve pay run" })).toHaveCount(0);
     await expect(page.locator("[data-pay-block]")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Share statement" }).first()).toBeVisible();
     taps.assertWithin(5);
+    // Below 1024 px people fold to name and total: open the first to see its Share statement (not part of the flow).
+    const toggle = page.locator('[data-person-toggle][aria-expanded="false"]').first();
+    if (await toggle.count()) await toggle.click();
+    await expect(page.getByRole("button", { name: "Share statement" }).first()).toBeVisible();
   });
 }
 
 test("Owner 2FA off blocks Approve with a button to Settings, and no way round it", async ({ page }) => {
   await signInAs(page, "owner", `${PATH}?demo=blocked`);
   const block = page.locator('[data-pay-block="owner_2fa_off"]');
-  await expect(block.locator("p")).toHaveText("Turn on two-factor before you approve a pay run.");
-  await expect(block.getByRole("link", { name: "Go to settings" })).toHaveAttribute("href", /^\/settings/);
+  await expect(block).toHaveText("Turn on two-factor before you approve a pay run.");
+  await expect(page.locator("[data-pay-actions]").getByRole("link", { name: "Go to settings" })).toHaveAttribute("href", /^\/settings/);
   await expect(page.getByRole("button", { name: "Approve pay run" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Approve without the rate" })).toHaveCount(0);
 });

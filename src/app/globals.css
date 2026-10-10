@@ -465,6 +465,27 @@ body {
   }
 }
 
+/*
+ * The pay run review's bar (pay iter1 D3/D4/F5): on a phone or tablet held upright, the fix path (Show the line, Go to
+ * settings, Reopen) and the primary share one row, the secondary first; the sentence, the waiver and the Needs
+ * connection line take the whole width. On a phone on its side the waiver is as wide as its words, after Approve.
+ */
+@media (max-width: 1023px) and (min-height: 500px) {
+  .pin-action.pin-pay:has(> [data-variant="secondary"]) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pin-action.pin-pay > :not([data-variant="secondary"]):not([data-variant="primary"]) {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-height: 499px) and (max-width: 1023px) {
+  .pin-action.pin-pay > [data-variant="link"] {
+    flex: 0 0 auto;
+    width: auto;
+  }
+}
+
 @media (min-width: 1024px) {
   body {
     font-size: 1rem; /* 16px */

@@ -19,6 +19,13 @@ const ALL_STATUSES: Status[] = [
 ];
 
 describe("StatusChip", () => {
+  it("Draft is ink-2, not watch: watch is kept for Paused (pay iter1 D12)", () => {
+    render(<StatusChip status="draft" />);
+    const chip = screen.getByText("Draft").parentElement!;
+    expect(chip.className).toContain("text-ink-2");
+    expect(chip.className).not.toContain("text-watch");
+  });
+
   it.each(ALL_STATUSES)("renders an icon alongside the word for status %s", (status) => {
     render(<StatusChip status={status} />);
     // The word lives in an inner span; its parent is the chip, which also holds the icon svg.

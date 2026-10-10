@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import type { Id, PayRunReview } from "@/data/contracts";
@@ -9,10 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Toast } from "@/components/ui/toast";
 import { payActionsPlan, sheetAllowed, type Sheet } from "./pay-actions-plan";
+import { PinnedAction, usePinnedBar } from "./field-entry";
 import { NEEDS_CONNECTION, useOnline } from "./use-online";
 
 export const MISSING_RATE_BLOCK = "Fix the missing rate before you approve.";
 export const TWO_FACTOR_BLOCK = "Turn on two-factor before you approve a pay run.";
+/** A manager can't turn on the owner's two-factor, so they get no Settings button (pay iter1 F4). */
+export const TWO_FACTOR_BLOCK_MANAGER = "The owner needs to turn on two-factor before this pay run can be approved.";
+const BUTTON = "w-full lg:w-60 lg:self-end";
 
 export type { Sheet };
 
@@ -24,6 +28,8 @@ export type PayRunActionsProps = {
   missingRateHref: string | null;
   /** Where Owner 2FA is turned on. */
   settingsHref: string;
+  /** The viewer is the owner (only they get the Settings button when their two-factor is off). */
+  owner: boolean;
   demoOffline?: boolean;
   /** `?confirm=approve|waive|reopen`: open with that sheet showing (prototype capture of the sheet). */
   initialSheet?: Sheet;
@@ -40,18 +46,6 @@ function download(filename: string, contentType: string, body: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function Block({ text, data, children }: { text: string; data: string; children?: React.ReactNode }) {
-  return (
-    <div data-pay-block={data} className="flex flex-col gap-2">
-      <p className="flex items-start gap-2 text-body-strong text-over">
-        <WarningCircle size={24} aria-hidden="true" className="shrink-0" />
-        <span>{text}</span>
-      </p>
-      {children}
-    </div>
-  );
-}
-
 /**
  * Pay run actions (flows.md screen 19): Approve through a confirmation sheet (it locks the period), blocked by a
  * missing rate (Owner/Manager may approve without it, audited) or Owner 2FA off (button to Settings); once approved,
@@ -62,13 +56,14 @@ export function PayRunActions({
   periodText,
   missingRateHref,
   settingsHref,
+  owner,
   demoOffline = false,
   initialSheet = null,
 }: PayRunActionsProps) {
   const router = useRouter();
   const online = useOnline(demoOffline);
   const plan = payActionsPlan(
-    { ...review, canApprove: review.access.canApprove, canExport: review.access.canExport },
+    { ...review, canApprove: review.access.canApprove, canExport: review.access.canExport, owner },
     online,
   );
   const [requested, setSheet] = useState<Sheet>(initialSheet);
@@ -77,7 +72,13 @@ export function PayRunActions({
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const wide = "w-full sm:w-auto sm:min-w-60 sm:self-start";
+  const { style, barProps } = usePinnedBar(null);
+  const barHeight = (style as Record<string, string>)["--pin-action-height"];
+  // The page pads its bottom by the bar's height (`pin-pad` on the screen); the bar sits in the title row, so it sets
+  // the height on the screen itself.
+  useEffect(() => {
+    barProps.ref.current?.closest<HTMLElement>("[data-screen]")?.style.setProperty("--pin-action-height", barHeight ?? "9rem");
+  }, [barHeight, barProps.ref]);
 
   const run = (id: Id, which: Exclude<Sheet, null>) =>
     start(async () => {
@@ -102,74 +103,60 @@ export function PayRunActions({
       router.refresh();
     });
 
-  const nothing = plan.approve === "none" && !plan.exportCsv && !plan.reopen && !plan.readOnly;
-  if (nothing) return null;
+  const bar = plan.approve !== "none" || plan.exportCsv !== false || plan.reopen !== false;
+  if (!bar && !plan.readOnly) return null;
+  const blockText =
+    plan.blocker === "owner_2fa_off" ? (owner ? TWO_FACTOR_BLOCK : TWO_FACTOR_BLOCK_MANAGER) : plan.blocker === "missing_rate" ? MISSING_RATE_BLOCK : null;
 
   return (
-    <section aria-label="Pay run actions" data-pay-actions="" className="flex flex-col gap-4">
-      {plan.settings ? (
-        <Block text={TWO_FACTOR_BLOCK} data="owner_2fa_off">
-          <Button variant="secondary" href={settingsHref} className={wide}>
-            Go to settings
-          </Button>
-        </Block>
-      ) : null}
-      {plan.missingRate ? (
-        <Block text={MISSING_RATE_BLOCK} data="missing_rate">
-          {missingRateHref ? (
-            <Button variant="link" href={missingRateHref} className="self-start">
+    <section aria-label="Pay run actions" data-pay-actions="" className="contents">
+      {plan.readOnly ? <p className="text-body text-ink">An owner or manager approves this pay run.</p> : null}
+      {bar ? (
+        // Below 1024 px a bar pinned above the tab bar (one compact row on a phone on its side); from 1024 px in the
+        // title row. The fix path (Show the line, Go to settings) comes first, Approve last, the waiver quieter under it.
+        <PinnedAction barProps={barProps} error={error} className="pin-head pin-pay">
+          {blockText ? (
+            <p data-pay-block={plan.blocker ?? undefined} className="flex items-start gap-2 text-body-strong text-over lg:justify-end">
+              <WarningCircle size={24} aria-hidden="true" className="shrink-0" />
+              <span>{blockText}</span>
+            </p>
+          ) : null}
+          {plan.settings ? (
+            <Button variant="secondary" href={settingsHref} className={BUTTON}>
+              Go to settings
+            </Button>
+          ) : null}
+          {plan.blocker === "missing_rate" && missingRateHref ? (
+            <Button variant="secondary" href={missingRateHref} className={BUTTON}>
               Show the line
             </Button>
           ) : null}
+          {plan.reopen ? (
+            <Button variant="secondary" disabled={plan.reopen === "disabled" || pending} onClick={() => setSheet("reopen")} className={BUTTON}>
+              Reopen pay run
+            </Button>
+          ) : null}
+          {plan.approve !== "none" ? (
+            <Button variant="primary" disabled={plan.approve === "disabled" || pending} onClick={() => setSheet("approve")} className={BUTTON}>
+              Approve pay run
+            </Button>
+          ) : null}
+          {plan.exportCsv ? (
+            <Button variant="primary" disabled={plan.exportCsv === "disabled" || pending} onClick={exportCsv} className={BUTTON}>
+              Export CSV
+            </Button>
+          ) : null}
           {plan.waive ? (
-            <Button variant="secondary" onClick={() => setSheet("waive")} className={wide}>
+            <Button variant="link" onClick={() => setSheet("waive")} className="self-center lg:self-end">
               Approve without the rate
             </Button>
           ) : null}
-        </Block>
-      ) : null}
-      {plan.readOnly ? (
-        <p className="text-body text-ink">An owner or manager approves this pay run.</p>
-      ) : null}
-      {plan.approve !== "none" ? (
-        <Button
-          variant="primary"
-          disabled={plan.approve === "disabled" || pending}
-          onClick={() => setSheet("approve")}
-          className={wide}
-        >
-          Approve pay run
-        </Button>
-      ) : null}
-      {plan.exportCsv ? (
-        <Button
-          variant="primary"
-          disabled={plan.exportCsv === "disabled" || pending}
-          onClick={exportCsv}
-          className={wide}
-        >
-          Export CSV
-        </Button>
-      ) : null}
-      {plan.reopen ? (
-        <Button
-          variant="secondary"
-          disabled={plan.reopen === "disabled" || pending}
-          onClick={() => setSheet("reopen")}
-          className={wide}
-        >
-          Reopen pay run
-        </Button>
-      ) : null}
-      {plan.needsConnection ? (
-        <p data-pay-needs-connection="" className="text-meta text-ink">
-          {NEEDS_CONNECTION}
-        </p>
-      ) : null}
-      {error ? (
-        <p role="alert" className="text-body-strong text-over">
-          {error}
-        </p>
+          {plan.needsConnection ? (
+            <p data-pay-needs-connection="" className="text-meta text-ink">
+              {NEEDS_CONNECTION}
+            </p>
+          ) : null}
+        </PinnedAction>
       ) : null}
       <Dialog
         open={sheet === "approve" || sheet === "waive"}

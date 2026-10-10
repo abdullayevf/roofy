@@ -683,6 +683,35 @@ export async function checkBarClearsLogCircle(page: Page): Promise<GuardResult> 
   return { name: "bar-clears-log-circle", ok: failures.length === 0, failures };
 }
 
+/**
+ * The screen's primary action is where a hand or eye finds it first (pay iter1 D4/F5). From 1024 px it is inside the
+ * first viewport without scrolling (in the title row). Below that the pinned bar sits on top of the tab bar, never
+ * under it, and is the same at the top of the page as at the bottom.
+ */
+export async function checkPrimaryActionPlacement(page: Page): Promise<GuardResult> {
+  const name = "primary-action-placement";
+  const viewport = page.viewportSize();
+  const primary = page.locator('[data-slot="primary-action"] [data-variant="primary"]:visible').first();
+  if (!viewport || (await primary.count()) === 0) return { name, ok: true, failures: [] };
+  const failures: string[] = [];
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(100);
+  const box = await primary.boundingBox();
+  if (box && (box.y < 0 || box.y + box.height > viewport.height))
+    failures.push(`primary "${(await primary.innerText()).trim()}" spans ${Math.round(box.y)} to ${Math.round(box.y + box.height)} px; the first viewport ends at ${viewport.height} px`);
+  if (viewport.width < 1024) {
+    const tabTop = await page.evaluate(() => {
+      const navs = Array.from(document.querySelectorAll("nav")).filter((n) => getComputedStyle(n).position === "fixed");
+      const tops = navs.map((n) => n.getBoundingClientRect()).filter((r) => r.height > 0 && r.bottom >= window.innerHeight - 2);
+      return tops.length ? Math.min(...tops.map((r) => r.top)) : null;
+    });
+    const bar = await page.locator('[data-slot="primary-action"]:visible').first().boundingBox();
+    if (bar && tabTop !== null && bar.y + bar.height > tabTop + 1)
+      failures.push(`the pinned bar ends at ${Math.round(bar.y + bar.height)} px, under the tab bar (top ${Math.round(tabTop)} px)`);
+  }
+  return { name, ok: failures.length === 0, failures };
+}
+
 // ---------------------------------------------------------------------------
 // Composition
 // ---------------------------------------------------------------------------

@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { payActionsPlan, sheetAllowed, type PlanInput } from "./pay-actions-plan";
 
-const draft: PlanInput = { status: "draft", canApprove: true, canExport: true, blockedBy: [], canReopen: false };
+const draft: PlanInput = { status: "draft", canApprove: true, canExport: true, blockedBy: [], canReopen: false, owner: true };
 
 describe("payActionsPlan", () => {
   it("a clean draft offers Approve for an owner or manager", () => {
     expect(payActionsPlan(draft, true)).toEqual({
-      approve: "enabled", waive: false, settings: false, missingRate: false, exportCsv: false, reopen: false, needsConnection: false, readOnly: false,
+      approve: "enabled", waive: false, settings: false, missingRate: false, exportCsv: false, reopen: false, needsConnection: false, readOnly: false, blocker: null,
     });
   });
 
@@ -17,7 +17,16 @@ describe("payActionsPlan", () => {
 
   it("Owner 2FA off blocks Approve and the waive too, and offers Settings", () => {
     const p = payActionsPlan({ ...draft, blockedBy: ["missing_rate", "owner_2fa_off"] }, true);
-    expect(p).toMatchObject({ approve: "disabled", waive: false, missingRate: true, settings: true });
+    expect(p).toMatchObject({ approve: "disabled", waive: false, missingRate: true, settings: true, blocker: "owner_2fa_off" });
+  });
+
+  it("a missing rate alone is the bar's one blocker", () => {
+    expect(payActionsPlan({ ...draft, blockedBy: ["missing_rate"] }, true).blocker).toBe("missing_rate");
+  });
+
+  it("a manager sees Owner 2FA off without the Settings button: only the owner can turn it on (F4)", () => {
+    const p = payActionsPlan({ ...draft, owner: false, blockedBy: ["owner_2fa_off"] }, true);
+    expect(p).toMatchObject({ approve: "disabled", settings: false, blocker: "owner_2fa_off" });
   });
 
   it("offline disables every action with the one Needs connection line", () => {

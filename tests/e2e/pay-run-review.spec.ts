@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { checkBackRow, checkMoneyFigureFont, collectConsole, expectScreenHealthy } from "./guards";
+import { checkBackRow, checkMoneyFigureFont, checkPrimaryActionPlacement, collectConsole, expectScreenHealthy } from "./guards";
 import { expectNoMoney } from "./money-scan";
 import { getSeed } from "../../src/data/fake/store";
 
@@ -18,6 +18,12 @@ async function signInAs(page: Page, role: string, next = PATH) {
 // whether or not the wiring works. Wait for the page to go quiet before any such negative check.
 async function hydrated(page: Page) {
   await page.waitForLoadState("networkidle");
+}
+
+// Below 1024 px each person folds to name and total (pay iter1 D5): open them all to reach their lines.
+async function openPeople(page: Page) {
+  await hydrated(page);
+  for (const t of await page.locator('[data-person-toggle][aria-expanded="false"]').all()) await t.click();
 }
 
 test.describe("Pay run review (display)", () => {
@@ -139,6 +145,7 @@ test.describe("Pay run review (actions)", () => {
     await expect(page.locator("[data-pay-exported]")).toBeVisible();
     await expect(page.getByRole("button", { name: "Export CSV" })).toBeEnabled();
     await expect(page.getByRole("button", { name: "Reopen pay run" })).toHaveCount(0);
+    await openPeople(page);
     await expect(page.getByRole("button", { name: "Share statement" }).first()).toBeEnabled();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
@@ -203,5 +210,58 @@ test.describe("Pay run review (actions)", () => {
     await expect(page.getByRole("button", { name: "Export CSV" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Reopen pay run" })).toBeDisabled();
     await expect(page.locator("[data-pay-needs-connection]")).toHaveCount(1);
+  });
+});
+
+test.describe("Pay run review (layout, pay iter1 D3-D6, F3-F5)", () => {
+  test("missing rate: Show the line first, Approve last, the waiver quieter under it; Approve in reach", async ({ page }, testInfo) => {
+    await signInAs(page, "manager");
+    const bar = page.locator('[data-slot="primary-action"]');
+    await expect(bar.locator('[data-pay-block="missing_rate"]')).toHaveText("Fix the missing rate before you approve.");
+    const variants = await bar.locator("[data-variant]").evaluateAll((els) => els.map((e) => `${e.getAttribute("data-variant")}:${(e as HTMLElement).innerText.trim()}`));
+    expect(variants).toEqual(["secondary:Show the line", "primary:Approve pay run", "link:Approve without the rate"]);
+    const showLine = await bar.getByRole("link", { name: "Show the line" }).boundingBox();
+    expect(showLine!.height).toBeGreaterThanOrEqual(isPhone(testInfo.project.name) ? 52 : 48);
+    expect((await checkPrimaryActionPlacement(page)).failures).toEqual([]);
+  });
+
+  test("the missing-rate line carries the flag's over icon and word, and Show the line opens its person", async ({ page }) => {
+    await signInAs(page, "manager");
+    await hydrated(page);
+    await page.locator('[data-slot="primary-action"]').getByRole("link", { name: "Show the line" }).click();
+    const word = page.locator("[data-line-missing-rate]").first();
+    await expect(word).toBeVisible();
+    await expect(word).toHaveText("Missing rate");
+    await expect(word.locator("svg")).toHaveCount(1);
+    await expect(word).toHaveClass(/text-over/);
+  });
+
+  test("below 1024 px people fold to name and total; tap to open", async ({ page }, testInfo) => {
+    test.skip(!isPhone(testInfo.project.name), "desktop shows every line");
+    await signInAs(page, "manager");
+    await hydrated(page);
+    const first = page.locator("[data-pay-person]").first();
+    await expect(first.locator("[data-person-total]")).toBeVisible();
+    await expect(first.locator("[data-person-lines]")).toBeHidden();
+    await first.locator("[data-person-toggle]").click();
+    await expect(first.locator("[data-person-lines]")).toBeVisible();
+    await expect(first.locator("[data-person-toggle]")).toHaveAttribute("aria-expanded", "true");
+  });
+
+  test("Owner 2FA off: the owner gets Go to settings; a manager gets the owner sentence and no button (F4)", async ({ page }) => {
+    await signInAs(page, "owner", `${PATH}?demo=blocked`);
+    const bar = page.locator('[data-slot="primary-action"]');
+    await expect(bar.locator('[data-pay-block="owner_2fa_off"]')).toHaveText("Turn on two-factor before you approve a pay run.");
+    await expect(bar.getByRole("link", { name: "Go to settings" })).toHaveAttribute("data-variant", "secondary");
+    await signInAs(page, "manager", `${PATH}?demo=blocked`);
+    await expect(bar.locator('[data-pay-block="owner_2fa_off"]')).toHaveText("The owner needs to turn on two-factor before this pay run can be approved.");
+    await expect(page.getByRole("link", { name: "Go to settings" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Approve pay run" })).toBeDisabled();
+  });
+
+  test("approved: Export CSV in the bar, in reach", async ({ page }) => {
+    await signInAs(page, "owner", APPROVED);
+    await expect(page.locator('[data-slot="primary-action"]').getByRole("button", { name: "Export CSV" })).toBeVisible();
+    expect((await checkPrimaryActionPlacement(page)).failures).toEqual([]);
   });
 });

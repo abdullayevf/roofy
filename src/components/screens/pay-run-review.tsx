@@ -10,6 +10,7 @@ import { LoadError } from "./field-entry";
 import { COLUMN, FOCUS, GROUP, KeyFigure, KeyFigureSkeleton } from "./home-parts";
 import { flagTarget, flagText, foldTimeOnlyLines, lineBasisParts, lineLabelText, personKindLines, personTotalRows } from "./pay-review-text";
 import { PayRunActions, type Sheet } from "./pay-run-actions";
+import { PayPersonFold } from "./pay-person-fold";
 import { ShareStatementButton } from "./share-statement";
 import { payRunPeriodText, peopleCountText } from "./pay-runs-text";
 
@@ -37,12 +38,23 @@ export function MoneyText({ text }: { text: string }) {
 
 type Reader = Exclude<Role, "foreman">;
 
-function Top({ review, today }: { review: Pick<PayRunReview, "period" | "status" | "approvedByName" | "approvedOn" | "exportedOn">; today: string }) {
+function Top({
+  review,
+  today,
+  actions,
+}: {
+  review: Pick<PayRunReview, "period" | "status" | "approvedByName" | "approvedOn" | "exportedOn">;
+  today: string;
+  /** From 1024 px Approve (or Export CSV) sits here, at the right of the title (pay iter1 D4); below that it is pinned. */
+  actions: React.ReactNode;
+}) {
   return (
     <div className="flex flex-col gap-1">
       <Button variant="link" href="/pay" className="self-start">
         Back to pay runs
       </Button>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
+      <div className="flex min-w-0 flex-col gap-1">
       <h1 className="text-title text-ink">Pay run</h1>
       <p data-pay-period="" className="text-body-strong text-ink">{payRunPeriodText(review.period, today)}</p>
       <StatusChip status={review.status} plain />
@@ -57,6 +69,9 @@ function Top({ review, today }: { review: Pick<PayRunReview, "period" | "status"
           Exported to CSV on {formatDate(review.exportedOn, today)}.
         </p>
       ) : null}
+      </div>
+      {actions}
+      </div>
     </div>
   );
 }
@@ -149,7 +164,12 @@ export function LineRow({ line, today, loggedHours = null, foldedIds = [] }: { l
           {basis.tail}
         </span>
         {loggedHours !== null ? <span data-line-logged="" className="text-meta text-ink">{formatHours(loggedHours)}&nbsp;logged</span> : null}
-        {line.missingRate ? <span className="text-body-strong text-ink">Missing rate</span> : null}
+        {line.missingRate ? (
+          <span data-line-missing-rate="" className="flex items-center gap-2 text-body-strong text-over">
+            <WarningDiamond size={24} aria-hidden="true" className="shrink-0" />
+            Missing rate
+          </span>
+        ) : null}
       </span>
       <span data-line-amount="" className={FIGURE}>{formatMoney(line.amountCents)}</span>
     </div>
@@ -174,16 +194,23 @@ type ShareProps = { payRunId: string; demoOffline: boolean } | null;
 function PersonGroup({ person, today, share }: { person: PayPersonGroup; today: string; share: ShareProps }) {
   const headingId = `crew-${person.crewMemberId}-name`;
   return (
-    <section id={`crew-${person.crewMemberId}`} aria-labelledby={headingId} data-pay-person={person.type} className={cx(GROUP, "scroll-mt-24")}>
-      <div className={cx(ROW_GRID, "px-4 py-3")}>
-        <span className="flex min-w-0 flex-col">
-          <h3 id={headingId} className="text-heading text-ink [overflow-wrap:anywhere]">{person.name}</h3>
-          {personKindLines(person).map((t) => (
-            <span key={t} className="text-meta text-ink">{t}</span>
-          ))}
-        </span>
-        <span data-person-total="" className={FIGURE}>{formatMoney(person.totals.totalCents)}</span>
-      </div>
+    <PayPersonFold
+      id={`crew-${person.crewMemberId}`}
+      kind={person.type}
+      labelledBy={headingId}
+      className={cx(GROUP, "scroll-mt-24")}
+      header={
+        <>
+          <span className="flex min-w-0 flex-col">
+            <span id={headingId} className="text-heading text-ink [overflow-wrap:anywhere]">{person.name}</span>
+            {personKindLines(person).map((t) => (
+              <span key={t} className="text-meta text-ink">{t}</span>
+            ))}
+          </span>
+          <span data-person-total="" className={FIGURE}>{formatMoney(person.totals.totalCents)}</span>
+        </>
+      }
+    >
       {foldTimeOnlyLines(person.lines).map((r) => (
         <LineRow key={r.line.logId} line={r.line} today={today} loggedHours={r.loggedHours} foldedIds={r.foldedIds} />
       ))}
@@ -198,7 +225,7 @@ function PersonGroup({ person, today, share }: { person: PayPersonGroup; today: 
       {share ? (
         <ShareStatementButton payRunId={share.payRunId} crewMemberId={person.crewMemberId} demoOffline={share.demoOffline} className="px-4 pb-3" />
       ) : null}
-    </section>
+    </PayPersonFold>
   );
 }
 
@@ -210,12 +237,26 @@ const flagHref = (review: PayRunReview, kind: PayFlag["kind"]) => {
 };
 
 /** Pay run review (flows.md screen 19), display: flags first, then each person's lines and totals, then the run totals. */
-export function PayRunReviewBody({ review, today, demoOffline = false, initialSheet = null }: PayRunReviewProps) {
+export function PayRunReviewBody({ review, role, today, demoOffline = false, initialSheet = null }: PayRunReviewProps) {
   // Share statement once the run is approved, for whoever approves (an accountant exports only).
   const share: ShareProps = review.status !== "draft" && review.access.canApprove ? { payRunId: review.id, demoOffline } : null;
   return (
-    <div data-screen="pay-run-review" className={REVIEW_COLUMN}>
-      <Top review={review} today={today} />
+    <div data-screen="pay-run-review" className={cx(REVIEW_COLUMN, "pin-pad")}>
+      <Top
+        review={review}
+        today={today}
+        actions={
+          <PayRunActions
+            review={review}
+            periodText={payRunPeriodText(review.period, today)}
+            missingRateHref={flagHref(review, "missing_rate") ?? null}
+            settingsHref={flagHref(review, "owner_2fa_off") ?? "/settings/members"}
+            owner={role === "owner"}
+            demoOffline={demoOffline}
+            initialSheet={initialSheet}
+          />
+        }
+      />
       <div className={SPLIT}>
         <div className="flex flex-col gap-8">
           <div className="flex flex-col gap-1">
@@ -224,14 +265,6 @@ export function PayRunReviewBody({ review, today, demoOffline = false, initialSh
           </div>
           <Flags flags={review.flags} today={today} />
           <RunTotals totals={review.totals} />
-          <PayRunActions
-            review={review}
-            periodText={payRunPeriodText(review.period, today)}
-            missingRateHref={flagHref(review, "missing_rate") ?? null}
-            settingsHref={flagHref(review, "owner_2fa_off") ?? "/settings/members"}
-            demoOffline={demoOffline}
-            initialSheet={initialSheet}
-          />
         </div>
         <section aria-labelledby="pay-people-title" className="flex flex-col gap-3">
           <h2 id="pay-people-title" className="text-heading text-ink">People</h2>
