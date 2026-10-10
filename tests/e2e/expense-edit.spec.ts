@@ -48,15 +48,22 @@ test.describe("Expense (owner and manager)", () => {
     await expect(page.locator('[data-screen="expense-edit"]')).toBeVisible();
     await expect(page.getByLabel("Total paid")).toHaveValue(/^[\d,]+\.\d\d$/);
     await expect(page.locator("[data-receipt-kept]")).toHaveText("Receipt attached: Receipt — Harbour Steel.jpg");
+    await expect(page.getByRole("button", { name: "Replace photo" })).toBeVisible();
     await expect(page.locator("[data-job-chosen]")).toBeVisible();
     await expect(page.locator("[data-approved-warning]")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Save changes" })).toBeEnabled();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
-  test("no receipt says so", async ({ page }) => {
+  test("no receipt offers the same photo buttons as Add; Remove takes a kept receipt off", async ({ page }) => {
     await signInAs(page, "manager", `/expenses/${noReceipt}?edit=1`);
-    await expect(page.locator("[data-receipt-kept]")).toHaveText("No receipt attached.");
+    await expect(page.locator("[data-receipt-kept]")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Take photo" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Choose photo" })).toBeVisible();
+    await page.goto(`/expenses/${withReceipt}?edit=1`);
+    await page.getByRole("button", { name: "Remove photo" }).click();
+    await expect(page.locator("[data-receipt-kept]")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Take photo" })).toBeVisible();
   });
 
   test("an expense in an approved pay run shows the warning first", async ({ page }, testInfo) => {

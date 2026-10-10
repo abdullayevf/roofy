@@ -21,7 +21,7 @@ test.describe("Expenses list (manager)", () => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "manager");
     await expect(page.getByRole("heading", { level: 1, name: "Expenses" })).toBeVisible();
-    await expect(page.locator("[data-expense-totals]")).toContainText(/^\$[\d,]+\.\d{2}ex GST, plus \$[\d,]+\.\d{2}\sGST$/);
+    await expect(page.locator("[data-expense-totals]")).toContainText(/^\$[\d,]+\.\d{2}spent\sthis\smonth,\sex\sGST,\splus\s\$[\d,]+\.\d{2}\sGST$/);
     await expect(rows(page).first()).toBeVisible();
     await expect(page.locator("[data-expense-more]")).toContainText(/^Showing the newest 50 of \d+\sexpenses\./);
     // Each row: a total in dollars, a receipt marker, and a plain paid-by line.
@@ -75,6 +75,8 @@ test.describe("Expenses list (manager)", () => {
     await signInAs(page, "manager", `/expenses?job=${meta.fixtures.noStages}`);
     await expect(page.locator("[data-expense-empty]")).toHaveText("No expenses on this job yet.");
     await expect(page.locator('[data-expense-filter="job"]')).toBeVisible();
+    // F10: the chip names the job, even with no expense on it to read the name from.
+    await expect(page.locator('[data-expense-filter="job"]')).not.toContainText("This job");
     await expect(rows(page)).toHaveCount(0);
   });
 

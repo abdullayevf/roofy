@@ -85,7 +85,12 @@ export function createExpenseService(c: FakeContext): ExpenseService {
       if (!e) throw notFound("expense");
       c.requireProject(actor, e.projectId);
       const file = e.receiptFileId === null ? undefined : c.ix.files.get(e.receiptFileId);
-      const receipt = file ? c.fileRef(file) : null;
+      // A receipt id with no file is the prototype's stand-in (uploads arrive in Phase 5): the row shows the marker, so the detail names it too.
+      const receipt = file
+        ? c.fileRef(file)
+        : e.receiptFileId === null
+          ? null
+          : { id: e.receiptFileId, name: "Receipt photo", mime: "image/jpeg", bytes: 0, kind: "photo" as const, uploadedAt: e.createdAt, uploadedOn: e.date };
       if (c.isForeman(actor))
         return { view: "foreman", access: FIELD_ACCESS, expense: c.expenseForeman(e), receipt };
       const run = e.reimbursedInPayRunId === null ? undefined : c.ix.payRuns.get(e.reimbursedInPayRunId);

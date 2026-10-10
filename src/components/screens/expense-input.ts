@@ -1,4 +1,4 @@
-import type { ExpenseInput, ExpenseRowForeman, ExpenseRowManager, PaidBy } from "@/data/contracts";
+import type { ExpenseInput, ExpenseRowForeman, ExpenseRowManager, PaidBy, ProjectPick, StagePick } from "@/data/contracts";
 import type { Cents } from "@/domain/types";
 import { expenseCost } from "@/domain/costing";
 import { gstIncludedIn, splitReceipt } from "@/domain/gst";
@@ -169,10 +169,29 @@ export function expenseInput(v: ExpenseFormValues, receiptFileId: string | null)
   };
 }
 
-/** An edit's save: the same input, with the kept receipt left alone (photos stay on the phone until uploads arrive). */
-export function expensePatch(v: ExpenseFormValues): (Omit<ExpenseInput, "receiptFileId"> & { receiptFileId: undefined }) | null {
+/** What an edit does with the receipt: keep the saved one, take it off (null), or attach a new one (its id). */
+export type ReceiptChange = "keep" | string | null;
+
+/** An edit's save: the same input; "keep" leaves the saved receipt alone (receiptFileId undefined). */
+export function expensePatch(
+  v: ExpenseFormValues,
+  receipt: ReceiptChange = "keep",
+): (Omit<ExpenseInput, "receiptFileId"> & { receiptFileId: string | null | undefined }) | null {
   const input = expenseInput(v, null);
-  return input === null ? null : { ...input, receiptFileId: undefined };
+  return input === null ? null : { ...input, receiptFileId: receipt === "keep" ? undefined : receipt };
+}
+
+/**
+ * The edit form's job list: the saved job (and its stage) always there, so an old or closed job still shows ticked,
+ * first when the recent-jobs list left it out.
+ */
+export function withSavedJob(projects: ProjectPick[], row: ExpenseRowManager): ProjectPick[] {
+  const stage = (id: string, name: string): StagePick => ({ id, name, status: "active", unit: null, lumpSumStage: false });
+  const found = projects.find((p) => p.id === row.projectId);
+  const saved = row.stageId !== null ? stage(row.stageId, row.stageName ?? "") : null;
+  if (!found) return [{ id: row.projectId, name: row.projectName, stages: saved ? [saved] : [] }, ...projects];
+  if (!saved || found.stages.some((s) => s.id === saved.id)) return projects;
+  return projects.map((p) => (p === found ? { ...p, stages: [...p.stages, saved] } : p));
 }
 
 /**

@@ -101,6 +101,7 @@ import {
   reimbursementNote,
   expenseValuesFrom,
   expensePatch,
+  withSavedJob,
   gstEdit,
   jobCostText,
   receiptToSend,
@@ -275,5 +276,24 @@ describe("Task 16 review fixes", () => {
     expect(receiptToSend(true, "fake-receipt")).toBe("fake-receipt");
     expect(receiptToSend(false, "fake-receipt")).toBeNull();
     expect(receiptToSend(true, null)).toBeNull();
+  });
+});
+
+describe("Task 16 design fix 1a finisher", () => {
+  it("expensePatch keeps, removes or replaces the receipt", () => {
+    const v = expenseValuesFrom(managerRow());
+    expect(expensePatch(v, "keep")).toMatchObject({ receiptFileId: undefined });
+    expect(expensePatch(v, null)).toMatchObject({ receiptFileId: null });
+    expect(expensePatch(v, "prototype-receipt")).toMatchObject({ receiptFileId: "prototype-receipt" });
+  });
+  it("withSavedJob puts the saved job first when the picker list doesn't have it", () => {
+    const row = managerRow({ projectId: "old", projectName: "Old job", stageId: "s9", stageName: "Strip" });
+    const listed = [{ id: "p1", name: "Smith", stages: [] }];
+    const out = withSavedJob(listed, row);
+    expect(out.map((p) => p.id)).toEqual(["old", "p1"]);
+    expect(out[0]!.stages.map((s) => s.name)).toEqual(["Strip"]);
+    expect(withSavedJob(listed, managerRow({ projectId: "p1" }))).toBe(listed);
+    const noStage = withSavedJob([{ id: "p1", name: "Smith", stages: [] }], managerRow({ projectId: "p1", stageId: "s2", stageName: "Gutters" }));
+    expect(noStage[0]!.stages.map((s) => s.id)).toEqual(["s2"]);
   });
 });

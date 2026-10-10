@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ledgerBalance } from "@/domain/ledger";
 import { sum } from "@/domain/money";
 import { getSeed } from "../store";
-import { fake } from "./testing";
+import { fake, fakeSession } from "./testing";
 
 const seed = getSeed();
 const { meta } = seed;
@@ -118,6 +118,15 @@ describe("expenses", () => {
     expect("amountExGstCents" in fd.expense).toBe(false);
     const harris = seed.expenses.find((e) => e.projectId === meta.projects.harris)!;
     await expect(f.data.expenses.get(f.actor, harris.id)).rejects.toMatchObject({ code: "forbidden" });
+  });
+
+  it("detail: a prototype stand-in receipt counts as attached (the row shows the marker too)", async () => {
+    const m = fakeSession("manager");
+    await m.data.expenses.update(m.actor, meta.expenses.smithSheets, { receiptFileId: "prototype-receipt" });
+    const d = await m.data.expenses.get(m.actor, meta.expenses.smithSheets);
+    expect(d.receipt?.name).toBe("Receipt photo");
+    await m.data.expenses.update(m.actor, meta.expenses.smithSheets, { receiptFileId: null });
+    expect((await m.data.expenses.get(m.actor, meta.expenses.smithSheets)).receipt).toBeNull();
   });
 });
 

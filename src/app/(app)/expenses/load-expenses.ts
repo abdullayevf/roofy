@@ -35,6 +35,12 @@ export async function loadExpenses({ data, actor }: DataContext, wanted: Expense
       job: filter.projectId ? (find((r) => r.projectId === filter.projectId)?.projectName ?? null) : null,
       stage: filter.stageId ? (find((r) => r.stageId === filter.stageId)?.stageName ?? null) : null,
     };
+    if ((filter.projectId && names.job === null) || (filter.stageId && names.stage === null)) {
+      // No expense on the job yet: the chip still names it, from the jobs list.
+      const job = filter.projectId ? await data.projects.get(actor, filter.projectId).catch(() => null) : null;
+      names.job ??= job?.name ?? null;
+      if (filter.stageId) names.stage ??= job?.stages.find((s) => s.id === filter.stageId)?.name ?? null;
+    }
     return { kind: "ok", list, filter, names, anyExpenses: everyone.rows.length > 0 };
   } catch (e) {
     if (isDataError(e) && e.code === "forbidden") return { kind: "forbidden" };

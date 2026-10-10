@@ -133,7 +133,7 @@ test.describe("Home (manager)", () => {
   test("Last week's total is a row, not a second hero; the paused row reads as one sentence", async ({ page }) => {
     await signInAs(page, "manager");
     await expect(page.locator('[data-screen="home"] p.text-figure-xl')).toHaveCount(1);
-    await expect(page.getByRole("link", { name: "Coat / paint on Jones job — Ryde heritage is paused 11 working days, waiting on materials." })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Coat / paint on Jones job is paused 11 working days, waiting on materials." })).toBeVisible();
   });
 
   test("the pay note names what stops approval; offline it says Review pay run needs signal", async ({ page }) => {

@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getData } from "@/data";
+import { getData, isFakeMode } from "@/data";
 import { isDataError, type ExpenseDetail } from "@/data/contracts";
 import type { SearchParams } from "@/data/session";
 import { NoPermission } from "@/components/page-states";
 import { backLink } from "@/components/shell/access";
 import { ExpenseDetailSkeleton, ExpenseDetailView } from "@/components/screens/expense-detail";
 import { ExpenseForm, ExpenseFormError, ExpenseFormSkeleton } from "@/components/screens/expense-form";
-import { expenseValuesFrom } from "@/components/screens/expense-input";
+import { expenseValuesFrom, withSavedJob } from "@/components/screens/expense-input";
 
 export const metadata: Metadata = { title: "Expense" };
 
@@ -60,7 +60,8 @@ export default async function Page({
     return (
       <ExpenseForm
         foreman={false}
-        projects={snap.projects}
+        projects={withSavedJob(snap.projects, detail.expense)}
+        placeholderReceiptId={isFakeMode() ? "prototype-receipt" : null}
         categories={snap.categories}
         crew={snap.crew}
         today={ctx.today}

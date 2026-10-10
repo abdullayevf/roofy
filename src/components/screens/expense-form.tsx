@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
-import { WarningDiamond } from "@phosphor-icons/react/dist/ssr";
+import { Receipt, WarningDiamond } from "@phosphor-icons/react/dist/ssr";
 import { updateExpense } from "@/app/actions/records";
 import type { CrewRowForeman, ExpenseCategory, PaidBy, ProjectPick } from "@/data/contracts";
 import { submit } from "@/offline/submit";
@@ -53,8 +53,22 @@ function Heading({ backHref, title = "Add expense", back = "Back to expenses" }:
   );
 }
 
-/** The receipt photo: the camera, or a photo already on the phone; a preview once chosen, and a way to take it off. */
-function ReceiptPhoto({ file, onFile }: { file: File | null; onFile: (f: File | null) => void }) {
+/**
+ * The receipt photo: the camera, or a photo already on the phone; once attached (just picked, or kept with a saved
+ * expense) a thumbnail row with Replace and Remove.
+ */
+function ReceiptPhoto({
+  file,
+  onFile,
+  kept = null,
+  onRemoveKept,
+}: {
+  file: File | null;
+  onFile: (f: File | null) => void;
+  /** Edit: the receipt saved with the expense, until it is replaced or removed. */
+  kept?: string | null;
+  onRemoveKept?: () => void;
+}) {
   const camera = useRef<HTMLInputElement>(null);
   const library = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -69,12 +83,13 @@ function ReceiptPhoto({ file, onFile }: { file: File | null; onFile: (f: File | 
   function remove() {
     if (preview) URL.revokeObjectURL(preview);
     setPreview(null);
-    onFile(null);
+    if (file) onFile(null);
+    else onRemoveKept?.();
   }
+  const attached = file !== null || kept !== null;
   return (
     <div data-field="expense-photo" className="flex flex-col gap-1.5">
-      <p className={LABEL}>Receipt photo</p>
-      <span className="text-meta text-ink-2">Optional. You can save without one.</span>
+      <p className={LABEL}>Receipt photo (optional)</p>
       <input
         ref={camera}
         type="file"
@@ -85,9 +100,9 @@ function ReceiptPhoto({ file, onFile }: { file: File | null; onFile: (f: File | 
         data-photo-input="camera"
       />
       <input ref={library} type="file" accept="image/*" hidden onChange={choose} data-photo-input="library" />
-      {file ? (
-        <div className="flex items-center gap-3">
-          {preview ? (
+      {attached ? (
+        <div className="flex flex-wrap items-center gap-3">
+          {file && preview ? (
             // A local photo shown straight from the phone (a blob address), so not through the image optimiser.
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -95,13 +110,28 @@ function ReceiptPhoto({ file, onFile }: { file: File | null; onFile: (f: File | 
               alt="Receipt photo"
               className="size-16 rounded-control border-control object-cover"
             />
-          ) : null}
-          <p data-photo="" className="min-w-0 flex-1 text-body text-ink [overflow-wrap:anywhere]">
-            Photo added
-          </p>
-          <Button variant="link" onClick={remove}>
-            Remove photo
-          </Button>
+          ) : (
+            <span aria-hidden="true" className="flex size-16 shrink-0 items-center justify-center rounded-control border-control bg-surface text-ink-2">
+              <Receipt size={32} />
+            </span>
+          )}
+          {file ? (
+            <p data-photo="" className="min-w-0 flex-1 text-body text-ink [overflow-wrap:anywhere]">
+              Photo added
+            </p>
+          ) : (
+            <p data-receipt-kept="" className="min-w-0 flex-1 text-body text-ink [overflow-wrap:anywhere]">
+              <KeepTogether text={`Receipt attached: ${kept}`} />
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => library.current?.click()}>
+              Replace photo
+            </Button>
+            <Button variant="secondary" onClick={remove}>
+              Remove photo
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
@@ -177,6 +207,7 @@ export function ExpenseForm({
   const fromJob = initial.projectId !== "";
   const [v, setV] = useState(initial);
   const [photo, setPhoto] = useState<File | null>(null);
+  const [kept, setKept] = useState<string | null>(edit?.receiptName ?? null);
   const [checked, setChecked] = useState(initialCheck);
   const [pickJob, setPickJob] = useState(!fromJob || initial.projectId === "");
   const [saving, setSaving] = useState(false);
@@ -211,8 +242,9 @@ export function ExpenseForm({
     setSaving(true);
     setFailed(null);
     if (edit) {
-      // The photo stays on this phone until uploads arrive, so an edit leaves the kept receipt alone.
-      const patch = expensePatch(now);
+      // A new photo sends the stand-in id (fake data; uploads arrive in Phase 5), else the saved receipt is kept or removed.
+      const receipt = photo !== null ? (placeholderReceiptId ?? "keep") : kept === null && edit.receiptName !== null ? null : "keep";
+      const patch = expensePatch(now, receipt);
       if (!patch) return;
       try {
         const r = await updateExpense(edit.expenseId, patch);
@@ -265,12 +297,7 @@ export function ExpenseForm({
             <KeepTogether text={`Saved on this device: ${waiting}.`} />
           </p>
           <p className="text-meta text-ink-2">It will send when you have signal.</p>
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={another}>Add another expense</Button>
-            <Button variant="secondary" href={backHref}>
-              Back to expenses
-            </Button>
-          </div>
+          <Button onClick={another}>Add another expense</Button>
         </div>
       </div>
     );
@@ -290,13 +317,8 @@ export function ExpenseForm({
           <span>{APPROVED_PAY_RUN_WARNING}</span>
         </p>
       ) : null}
-      <div className="flex flex-col gap-4">
-        {edit ? (
-          <p data-receipt-kept="" className="text-body text-ink [overflow-wrap:anywhere]">
-            {edit.receiptName ? `Receipt attached: ${edit.receiptName}` : "No receipt attached."}
-          </p>
-        ) : null}
-        {edit ? null : <ReceiptPhoto file={photo} onFile={setPhoto} />}
+      <div className="flex flex-col gap-6">
+        <ReceiptPhoto file={photo} onFile={setPhoto} kept={kept} onRemoveKept={() => setKept(null)} />
         <div data-field="expense-total">
           <MoneyField
             label="Total paid"
@@ -505,7 +527,7 @@ export function ExpenseFormSkeleton({ edit = false }: { edit?: boolean }) {
         <Skeleton width={160} height={24} className="my-3" />
         <h1 className="text-title text-ink">{edit ? "Edit expense" : "Add expense"}</h1>
       </div>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-6">
         {chips([120, 130])}
         <FieldSkeleton />
         <div className="flex flex-col gap-1.5">
