@@ -28,6 +28,8 @@ const STAGE_DONE = smithStage("Site setup & safety");
 const STAGE_NOT_STARTED = smithStage("Flashings, gutters & downpipes");
 /** Screen 13 on Harris ridge (E5.1: $2,000.00 lump sum, Sam/Tom/Dima). */
 const PAY_RUN_STATUS = new Map(seed.payRuns.map((r) => [r.id, r.status]));
+// An older, exported run: Export CSV again, no Reopen (a later run is approved).
+const PAY_RUN_EXPORTED = seed.payRuns.find((r) => r.status === "exported")!.id;
 /** Expense edit states (Task 16): one already paid back in an approved pay run, one with no receipt. */
 const EXPENSE_APPROVED = seed.expenses.find((e) => e.reimbursedInPayRunId && PAY_RUN_STATUS.get(e.reimbursedInPayRunId) !== "draft")!.id;
 const EXPENSE_NO_RECEIPT = seed.expenses.find(
@@ -63,6 +65,7 @@ export type DemoState =
   | "waiting"
   | "attention"
   | "mixed" // an outbox with one entry in each group
+  | "blocked" // Owner 2FA reads as off: the pay run's Approve is blocked
   | "noperm"
   | "foreman";
 
@@ -872,12 +875,38 @@ export const SCREENS: ScreenSpec[] = [
   },
   {
     // Flags first (missing rate blocks, warnings tap through to their line), then each person: lines with late-entry and
-    // adjustment labels, contractor subtotal, GST and total, reimbursements; then the run totals. `?demo=blocked` (Owner 2FA off) is covered by the spec.
+    // adjustment labels, contractor subtotal, GST and total, reimbursements; then the run totals. The seed's draft has a
+    // missing rate, so normal shows that block with "Approve without the rate"; `blocked` adds Owner 2FA off (Go to
+    // settings); offline disables Approve with "Needs connection"; the accountant reads with no Approve.
     id: "pay-run-review",
     group: "pay",
     route: "/pay/:runId",
-    states: ["normal", "loading", "error", "offline"],
+    states: ["normal", "loading", "error", "offline", "blocked"],
     roles: ["owner", "manager", "accountant"],
+  },
+  {
+    // The confirmation sheet open (approving locks the period), opened by `?confirm=` so it can be captured.
+    id: "pay-run-review-confirm",
+    group: "pay",
+    route: `/pay/${meta.payRuns.review}?confirm=waive`,
+    states: ["normal"],
+    roles: ["manager"],
+  },
+  {
+    // An approved run: Export CSV and Reopen (Owner/Manager); an accountant gets Export CSV only. Offline disables both.
+    id: "pay-run-review-approved",
+    group: "pay",
+    route: `/pay/${meta.payRuns.lastApproved}`,
+    states: ["normal", "offline"],
+    roles: ["owner", "accountant"],
+  },
+  {
+    // An exported run: "Exported to CSV", Export CSV again, Share statement per person; no Reopen once a later run is approved.
+    id: "pay-run-review-exported",
+    group: "pay",
+    route: `/pay/${PAY_RUN_EXPORTED}`,
+    states: ["normal"],
+    roles: ["owner"],
   },
   {
     // A foreman never reaches a pay run: the no-permission page, with no figure in its HTML.

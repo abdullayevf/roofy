@@ -1,14 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import type { StatementRef } from "@/data/contracts";
-import { shareStatement } from "@/app/actions/pay";
-import { Button } from "@/components/ui/button";
 import { MoneyCell } from "@/components/ui/money-cell";
 import { statementPeriodText } from "./crew-detail-text";
-import { NEEDS_CONNECTION, useOnline } from "./use-online";
-
-type Shared = { kind: "idle" } | { kind: "copied" } | { kind: "failed"; message: string };
+import { ShareStatementButton } from "./share-statement";
 
 /**
  * One statement in a person's list: the pay period, what it came to, and Share. Share makes the private 90-day link
@@ -25,34 +20,6 @@ export function StatementRow({
   today: string;
   demoOffline?: boolean;
 }) {
-  const online = useOnline(demoOffline);
-  const [busy, setBusy] = useState(false);
-  const [shared, setShared] = useState<Shared>({ kind: "idle" });
-
-  async function share() {
-    setBusy(true);
-    setShared({ kind: "idle" });
-    try {
-      const result = await shareStatement(statement.payRunId, crewMemberId);
-      if (!result.ok) {
-        setShared({ kind: "failed", message: result.message });
-        return;
-      }
-      const url = `${window.location.origin}${result.share.path}`;
-      if (typeof navigator.share === "function") {
-        await navigator.share({ title: "Pay statement", url }).catch(() => undefined);
-        setShared({ kind: "idle" });
-      } else {
-        await navigator.clipboard.writeText(url);
-        setShared({ kind: "copied" });
-      }
-    } catch {
-      setShared({ kind: "failed", message: "Couldn't make the link. Try again." });
-    } finally {
-      setBusy(false);
-    }
-  }
-
   const draft = statement.status === "draft";
   return (
     <div data-statement-row="" className="flex min-h-16 flex-col justify-center gap-2 px-4 py-2">
@@ -64,14 +31,8 @@ export function StatementRow({
         <MoneyCell cents={statement.totalCents} />
       </div>
       {statement.shareable ? (
-        <Button variant="secondary" loading={busy} loadingLabel="Making link" disabled={!online} onClick={share} className="self-end">
-          Share statement
-        </Button>
+        <ShareStatementButton payRunId={statement.payRunId} crewMemberId={crewMemberId} demoOffline={demoOffline} />
       ) : null}
-      {statement.shareable && !online ? <p className="text-meta text-ink-2">{NEEDS_CONNECTION}</p> : null}
-      <p role="status" className="text-meta text-ink-2 empty:hidden">
-        {shared.kind === "copied" ? "Link copied. It works for 90 days." : shared.kind === "failed" ? shared.message : ""}
-      </p>
     </div>
   );
 }

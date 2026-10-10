@@ -3,7 +3,8 @@ import { checkBackRow, checkMoneyFigureFont, collectConsole, expectScreenHealthy
 import { expectNoMoney } from "./money-scan";
 import { getSeed } from "../../src/data/fake/store";
 
-const { meta } = getSeed();
+const seed = getSeed();
+const { meta } = seed;
 const isPhone = (name: string) => name !== "desktop";
 const MONEY = /^\$[\d,]+\.\d{2}$/;
 const PATH = `/pay/${meta.payRuns.review}`;
@@ -87,5 +88,80 @@ test.describe("Pay run review (display)", () => {
     await signInAs(page, "foreman");
     await expect(page.getByText("You don't have access to this. Ask your manager.")).toBeVisible();
     await expectNoMoney(page, [PATH, `${PATH}?demo=blocked`, `${PATH}?demo=offline`]);
+  });
+});
+
+const APPROVED = `/pay/${meta.payRuns.lastApproved}`;
+
+test.describe("Pay run review (actions)", () => {
+  test("the confirmation sheet opens over the review and Cancel closes it", async ({ page }, testInfo) => {
+    const consoleLog = collectConsole(page);
+    await signInAs(page, "manager", `${PATH}?confirm=approve`);
+    const sheet = page.getByRole("dialog", { name: "Approve this pay run?" });
+    await expect(sheet).toContainText("Approving locks every day logged from Mon 21 Sep to Sun 27 Sep");
+    await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
+    await sheet.getByRole("button", { name: "Cancel" }).click();
+    await expect(sheet).toHaveCount(0);
+    await expect(page.locator("[data-pay-flag]").first()).toBeVisible();
+  });
+
+  test("an approved run offers Export CSV, which downloads a CSV and marks it exported", async ({ page }, testInfo) => {
+    const consoleLog = collectConsole(page);
+    await signInAs(page, "owner", APPROVED);
+    await expect(page.getByRole("button", { name: "Reopen pay run" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Approve pay run" })).toHaveCount(0);
+    // Share statement once per person, inside that person's group.
+    const people = await page.locator("[data-pay-person]").count();
+    expect(people).toBeGreaterThan(0);
+    await expect(page.locator("[data-pay-person] [data-share-statement]")).toHaveCount(people);
+    await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export CSV" }).click();
+    expect((await download).suggestedFilename()).toMatch(/\.csv$/);
+    await expect(page.getByText("Exported to CSV", { exact: true })).toBeVisible();
+  });
+
+  test("an exported run says so, exports again, and can't reopen once a later run is approved", async ({ page }, testInfo) => {
+    const consoleLog = collectConsole(page);
+    const exported = seed.payRuns.find((r) => r.status === "exported")!.id;
+    await signInAs(page, "owner", `/pay/${exported}`);
+    await expect(page.getByText("Exported to CSV", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Export CSV" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Reopen pay run" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Share statement" }).first()).toBeEnabled();
+    await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
+  });
+
+  test("Reopen asks first, then the run is a draft again", async ({ page }) => {
+    await signInAs(page, "manager", APPROVED);
+    await page.getByRole("button", { name: "Reopen pay run" }).click();
+    const sheet = page.getByRole("dialog", { name: "Reopen this pay run?" });
+    await sheet.getByRole("button", { name: "Reopen", exact: true }).click();
+    await expect(page.getByText("Pay run reopened.", { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Export CSV" })).toHaveCount(0);
+    await expect(page.locator("[data-pay-approved]")).toHaveCount(0);
+  });
+
+  test("an accountant exports only: no Approve, no waive, no Reopen", async ({ page }) => {
+    await signInAs(page, "accountant");
+    await expect(page.getByText("An owner or manager approves this pay run.")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Approve/ })).toHaveCount(0);
+    await page.goto(APPROVED);
+    await expect(page.getByRole("button", { name: "Export CSV" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Reopen pay run" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Share statement" })).toHaveCount(0);
+  });
+
+  test("Share statement is absent on a draft", async ({ page }) => {
+    await signInAs(page, "owner");
+    await expect(page.locator("[data-pay-person]").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Share statement" })).toHaveCount(0);
+  });
+
+  test("offline on an approved run: Export and Reopen disabled with one Needs connection line", async ({ page }) => {
+    await signInAs(page, "owner", `${APPROVED}?demo=offline`);
+    await expect(page.getByRole("button", { name: "Export CSV" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Reopen pay run" })).toBeDisabled();
+    await expect(page.locator("[data-pay-needs-connection]")).toHaveCount(1);
   });
 });

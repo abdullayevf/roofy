@@ -9,6 +9,8 @@ import { StatusChip } from "@/components/ui/status-chip";
 import { LoadError } from "./field-entry";
 import { COLUMN, FOCUS, GROUP, KeyFigure, KeyFigureSkeleton } from "./home-parts";
 import { flagTarget, flagText, lineBasisParts, lineLabelText, personKindLines, personTotalRows } from "./pay-review-text";
+import { PayRunActions, type Sheet } from "./pay-run-actions";
+import { ShareStatementButton } from "./share-statement";
 import { payRunPeriodText, peopleCountText } from "./pay-runs-text";
 
 const REVIEW_COLUMN = cx(COLUMN, "lg:max-w-none");
@@ -139,7 +141,9 @@ function ReimbursementRow({ r, today }: { r: ReimbursementDto; today: string }) 
   );
 }
 
-function PersonGroup({ person, today }: { person: PayPersonGroup; today: string }) {
+type ShareProps = { payRunId: string; demoOffline: boolean } | null;
+
+function PersonGroup({ person, today, share }: { person: PayPersonGroup; today: string; share: ShareProps }) {
   const headingId = `crew-${person.crewMemberId}-name`;
   return (
     <section id={`crew-${person.crewMemberId}`} aria-labelledby={headingId} data-pay-person={person.type} className={cx(GROUP, "scroll-mt-24")}>
@@ -163,14 +167,24 @@ function PersonGroup({ person, today }: { person: PayPersonGroup; today: string 
           <FigureRow key={row.label} label={row.label} cents={row.cents} strong={row.label === "Total"} />
         ))}
       </div>
+      {share ? (
+        <ShareStatementButton payRunId={share.payRunId} crewMemberId={person.crewMemberId} demoOffline={share.demoOffline} className="px-4 pb-3" />
+      ) : null}
     </section>
   );
 }
 
-export type PayRunReviewProps = { review: PayRunReview; role: Reader; today: string };
+export type PayRunReviewProps = { review: PayRunReview; role: Reader; today: string; demoOffline?: boolean; initialSheet?: Sheet };
+
+const flagHref = (review: PayRunReview, kind: PayFlag["kind"]) => {
+  const flag = review.flags.find((f) => f.kind === kind);
+  return flag ? flagTarget(flag) : undefined;
+};
 
 /** Pay run review (flows.md screen 19), display: flags first, then each person's lines and totals, then the run totals. */
-export function PayRunReviewBody({ review, today }: PayRunReviewProps) {
+export function PayRunReviewBody({ review, today, demoOffline = false, initialSheet = null }: PayRunReviewProps) {
+  // Share statement once the run is approved, for whoever approves (an accountant exports only).
+  const share: ShareProps = review.status !== "draft" && review.access.canApprove ? { payRunId: review.id, demoOffline } : null;
   return (
     <div data-screen="pay-run-review" className={REVIEW_COLUMN}>
       <Top review={review} today={today} />
@@ -182,14 +196,20 @@ export function PayRunReviewBody({ review, today }: PayRunReviewProps) {
           </div>
           <Flags flags={review.flags} today={today} />
           <RunTotals totals={review.totals} />
-          {/* Approve, Export CSV and Reopen land here (Task 17 run C). */}
-          <div data-pay-actions="" hidden />
+          <PayRunActions
+            review={review}
+            periodText={payRunPeriodText(review.period, today)}
+            missingRateHref={flagHref(review, "missing_rate") ?? null}
+            settingsHref={flagHref(review, "owner_2fa_off") ?? "/settings/members"}
+            demoOffline={demoOffline}
+            initialSheet={initialSheet}
+          />
         </div>
         <section aria-labelledby="pay-people-title" className="flex flex-col gap-3">
           <h2 id="pay-people-title" className="text-heading text-ink">People</h2>
           {review.people.length === 0 ? <p className="text-body text-ink">No one is in this pay run yet.</p> : null}
           {review.people.map((p) => (
-            <PersonGroup key={p.crewMemberId} person={p} today={today} />
+            <PersonGroup key={p.crewMemberId} person={p} today={today} share={share} />
           ))}
         </section>
       </div>

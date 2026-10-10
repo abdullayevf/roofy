@@ -1,0 +1,60 @@
+import { expect, test, type Page } from "@playwright/test";
+import { Taps } from "../taps";
+import { getSeed } from "../../../src/data/fake/store";
+
+const { meta } = getSeed();
+const PATH = `/pay/${meta.payRuns.review}`;
+
+async function signInAs(page: Page, role: string, next: string) {
+  await page.goto(`/prototype/role?as=${role}&next=${encodeURIComponent(next)}`);
+}
+
+/**
+ * flows.md "Review and approve a pay run": from Home, the This pay period card, then Approve through the confirmation
+ * sheet, in ≤ 5 taps. The seed's draft has a missing rate, so the block shows (exact copy, tap-through to the line) and
+ * the manager approves without the rate (audited). Export CSV is offered after, outside the budget.
+ */
+for (const role of ["manager", "owner"]) {
+  test(`${role} approves this week's draft from Home in ≤ 5 taps`, async ({ page }) => {
+    await signInAs(page, role, "/");
+    const taps = new Taps("Review and approve a pay run");
+    await taps.tap(page.locator(`a[href="${PATH}"]`).locator("visible=true").first());
+    await expect(page.getByRole("heading", { level: 1, name: "Pay run" })).toBeVisible();
+    const block = page.locator('[data-pay-block="missing_rate"]');
+    await expect(block.locator("p")).toHaveText("Fix the missing rate before you approve.");
+    const lineHref = await block.getByRole("link", { name: "Show the line" }).getAttribute("href");
+    expect(lineHref).toMatch(/^#line-/);
+    await expect(page.locator(lineHref!)).toContainText("Missing rate");
+    await expect(page.getByRole("button", { name: "Approve pay run" })).toBeDisabled();
+    await taps.tap(page.getByRole("button", { name: "Approve without the rate" }));
+    const sheet = page.getByRole("dialog", { name: "Approve this pay run?" });
+    await expect(sheet).toContainText("Lines with no rate are paid $0.00");
+    await expect(sheet).toContainText("Mon 21 Sep to Sun 27 Sep");
+    await taps.tap(sheet.getByRole("button", { name: "Approve", exact: true }));
+    await expect(sheet).toHaveCount(0);
+    await expect(page.getByText("Pay run approved.", { exact: true }).first()).toBeVisible();
+    await expect(page.locator('[data-pay-approved]')).toBeVisible();
+    await expect(page.getByRole("button", { name: "Export CSV" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Approve pay run" })).toHaveCount(0);
+    await expect(page.locator("[data-pay-block]")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Share statement" }).first()).toBeVisible();
+    taps.assertWithin(5);
+  });
+}
+
+test("Owner 2FA off blocks Approve with a button to Settings, and no way round it", async ({ page }) => {
+  await signInAs(page, "owner", `${PATH}?demo=blocked`);
+  const block = page.locator('[data-pay-block="owner_2fa_off"]');
+  await expect(block.locator("p")).toHaveText("Turn on two-factor before you approve a pay run.");
+  await expect(block.getByRole("link", { name: "Go to settings" })).toHaveAttribute("href", /^\/settings/);
+  await expect(page.getByRole("button", { name: "Approve pay run" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Approve without the rate" })).toHaveCount(0);
+});
+
+test("offline: Approve is disabled with Needs connection and nothing queues", async ({ page }) => {
+  await signInAs(page, "manager", `${PATH}?demo=offline`);
+  await expect(page.getByRole("button", { name: "Approve pay run" })).toBeDisabled();
+  await expect(page.locator("[data-pay-needs-connection]")).toHaveText("Needs connection. Try again once you're back online.");
+  await expect(page.getByRole("button", { name: "Approve without the rate" })).toHaveCount(0);
+  await expect(page.getByText("will send automatically")).toHaveCount(0);
+});

@@ -7,6 +7,9 @@ import { NoPermission } from "@/components/page-states";
 import { backLink } from "@/components/shell/access";
 import { PayRunReviewBody, PayRunReviewError, PayRunReviewSkeleton } from "@/components/screens/pay-run-review";
 
+const SHEETS = ["approve", "waive", "reopen"] as const;
+const sheetParam = (v: unknown) => SHEETS.find((s) => s === v) ?? null;
+
 export const metadata: Metadata = { title: "Pay run" };
 
 /**
@@ -30,5 +33,5 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     if (isDataError(e) && e.code === "unavailable") return <PayRunReviewError />;
     throw e;
   }
-  return <PayRunReviewBody review={review} role={actor.role} today={ctx.today} />;
+  return <PayRunReviewBody review={review} role={actor.role} today={ctx.today} demoOffline={demo.state === "offline"} initialSheet={sheetParam((await searchParams).confirm)} />;
 }
