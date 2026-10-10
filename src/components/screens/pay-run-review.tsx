@@ -49,12 +49,13 @@ function Top({
   actions: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-1">
-      <Button variant="link" href="/pay" className="self-start">
+    // From 1024 px a two-column grid: the back row and the title block on the left, the actions spanning both on the
+    // right, so the figure sits straight under the title block and the actions end at the content edge (pay iter2 D17).
+    <div className="flex flex-col gap-1 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-x-6">
+      <Button variant="link" href="/pay" className="self-start lg:col-start-1 lg:justify-self-start">
         Back to pay runs
       </Button>
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
-      <div className="flex min-w-0 flex-col gap-1">
+      <div className="flex min-w-0 flex-col gap-1 lg:col-start-1">
       <h1 className="text-title text-ink">Pay run</h1>
       <p data-pay-period="" className="text-body-strong text-ink">{payRunPeriodText(review.period, today)}</p>
       <StatusChip status={review.status} plain />
@@ -70,7 +71,8 @@ function Top({
         </p>
       ) : null}
       </div>
-      {actions}
+      <div data-pay-actions-slot="" className="contents lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:block lg:justify-self-end">
+        {actions}
       </div>
     </div>
   );
@@ -204,7 +206,7 @@ function PersonGroup({ person, today, share }: { person: PayPersonGroup; today: 
       id={`crew-${person.crewMemberId}`}
       kind={person.type}
       labelledBy={headingId}
-      className={cx(GROUP, "scroll-mt-24")}
+      className="divide-y divide-line scroll-mt-24"
       header={
         <>
           <span className="flex min-w-0 flex-col">
@@ -277,9 +279,14 @@ export function PayRunReviewBody({ review, role, today, demoOffline = false, ini
         <section aria-labelledby="pay-people-title" className="flex flex-col gap-3">
           <h2 id="pay-people-title" className="text-heading text-ink">People</h2>
           {review.people.length === 0 ? <p className="text-body text-ink">No one is in this pay run yet.</p> : null}
-          {review.people.map((p) => (
-            <PersonGroup key={p.crewMemberId} person={p} today={today} share={share} />
-          ))}
+          {/* One grouped surface, a 1 px divider between people, like To check and the totals (pay iter2 D18). */}
+          {review.people.length > 0 ? (
+            <div data-pay-people-group="" className={GROUP}>
+              {review.people.map((p) => (
+                <PersonGroup key={p.crewMemberId} person={p} today={today} share={share} />
+              ))}
+            </div>
+          ) : null}
         </section>
       </div>
     </div>

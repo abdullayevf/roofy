@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { checkDatesStayWhole, checkMoneyFigureFont, checkTableEdgeGap, checkTableHeaderAlign, checkTableRowHeight, collectConsole, expectScreenHealthy } from "./guards";
+import { checkContentClearsFixedBars, checkDatesStayWhole, checkMoneyFigureFont, checkTableEdgeGap, checkTableHeaderAlign, checkTableRowHeight, collectConsole, expectScreenHealthy } from "./guards";
 import { expectNoMoney } from "./money-scan";
 import { getSeed } from "../../src/data/fake/store";
 
@@ -163,4 +163,11 @@ test.describe("Pay runs list (accountant and foreman)", () => {
     await signInAs(page, "manager", "/pay?demo=noperm");
     await expect(page.getByText("You don't have access to this. Ask your manager.")).toBeVisible();
   });
+});
+
+test("a tablet: at the end of the list nothing sits under the tab bar (pay iter2 D16)", async ({ page }) => {
+  await page.setViewportSize({ width: 820, height: 1180 });
+  await signInAs(page, "manager");
+  const r = await checkContentClearsFixedBars(page);
+  expect(r.failures).toEqual([]);
 });

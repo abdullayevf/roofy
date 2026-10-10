@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Toast } from "@/components/ui/toast";
 import { formatMoney } from "@/lib/format";
+import { focusRing } from "@/components/ui/focus";
 import { payActionsPlan, payNeedsConnectionText, sheetAllowed, type Sheet } from "./pay-actions-plan";
 import { PinnedAction, usePinnedBar } from "./field-entry";
 import { useOnline } from "./use-online";
@@ -17,7 +18,7 @@ export const MISSING_RATE_BLOCK = "Fix the missing rate before you approve.";
 export const TWO_FACTOR_BLOCK = "Turn on two-factor before you approve a pay run.";
 /** A manager can't turn on the owner's two-factor, so they get no Settings button (pay iter1 F4). */
 export const TWO_FACTOR_BLOCK_MANAGER = "The owner needs to turn on two-factor before this pay run can be approved.";
-const BUTTON = "w-full lg:w-60 lg:self-end";
+const BUTTON = "w-full";
 
 export type { Sheet };
 
@@ -117,9 +118,26 @@ export function PayRunActions({
         // title row. The fix path (Show the line, Go to settings) comes first, Approve last, the waiver quieter under it.
         <PinnedAction barProps={barProps} error={error} className="pin-head pin-pay">
           {blockText ? (
-            <p data-pay-block={plan.blocker ?? undefined} className="flex items-start gap-2 text-body-strong text-over lg:justify-end">
-              <WarningCircle size={24} aria-hidden="true" className="shrink-0" />
-              <span>{blockText}</span>
+            // The icon hangs left of the words; the text sits straight in the paragraph so the waiver below is an inline
+            // text link. A phone on its side shows that inline waiver (one compact row, pay iter2 D25/N2) and hides the
+            // standalone one; every other size hides the inline one.
+            <p data-pay-block={plan.blocker ?? undefined} className="relative pl-8 text-body-strong text-over">
+              <WarningCircle size={24} aria-hidden="true" className="absolute left-0 top-0" />
+              {blockText}
+              {plan.waive ? " " : null}
+              {plan.waive ? (
+                <a
+                  href="?confirm=waive"
+                  data-pay-waive-inline=""
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setSheet("waive");
+                  }}
+                  className={`hidden text-chalk-link underline underline-offset-4 ${focusRing(false)}`}
+                >
+                  Approve without the rate
+                </a>
+              ) : null}
             </p>
           ) : null}
           {plan.settings ? (
@@ -148,7 +166,7 @@ export function PayRunActions({
             </Button>
           ) : null}
           {plan.waive ? (
-            <Button variant="link" onClick={() => setSheet("waive")} className="self-center lg:self-end">
+            <Button variant="link" onClick={() => setSheet("waive")} className="pay-waive self-center">
               Approve without the rate
             </Button>
           ) : null}

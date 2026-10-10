@@ -479,10 +479,79 @@ body {
     grid-column: 1 / -1;
   }
 }
+/*
+ * Pay iter2 D25/N2, a phone on its side: one compact row the full width of the screen. The sentence (with the waiver
+ * inline in it, at meta size, at most two lines) on the left of the raised Log circle; Show the line or Go to settings
+ * and Approve, as wide as their words, on the right of it. The standalone waiver is hidden.
+ */
 @media (max-height: 499px) and (max-width: 1023px) {
-  .pin-action.pin-pay > [data-variant="link"] {
+  .pin-action.pin-pay {
+    padding-inline: max(1rem, env(safe-area-inset-left)) max(1rem, env(safe-area-inset-right));
+  }
+  .pin-action.pin-pay > [data-variant="secondary"] {
+    order: 0;
+    margin-right: 0;
+  }
+  .pin-action.pin-pay > button,
+  .pin-action.pin-pay > a,
+  .pin-action.pin-pay > [data-variant] {
     flex: 0 0 auto;
     width: auto;
+    padding-inline: 1rem;
+  }
+  .pin-action.pin-pay > .pay-waive {
+    display: none;
+  }
+  .pin-action.pin-pay [data-pay-waive-inline] {
+    display: inline;
+  }
+  .pin-action.pin-pay > :not(button):not(a):not([data-variant]),
+  .pin-action.pin-pay:has(> [data-variant="secondary"]) > :not(button):not(a):not([data-variant]) {
+    max-width: calc(50% - 2.25rem);
+    font-size: 0.9375rem;
+    line-height: 1.25rem;
+  }
+}
+/* Pay iter2 D16, a tablet held upright: a full-width strip, its content the 45 rem review column. */
+@media (min-width: 600px) and (max-width: 1023px) and (min-height: 500px) {
+  .pin-action.pin-pay {
+    left: 0;
+    width: 100%;
+    translate: none;
+    padding-inline: max(1rem, calc((100% - 45rem) / 2));
+  }
+}
+/*
+ * Pay iter2 D17/D27, from 1024 px: the actions in one row ending at the content edge, equal 12 rem buttons (Reopen
+ * left of Export CSV, the fix path left of Approve); the sentence or Needs connection left-aligned above them; the
+ * waiver, quieter, under the row at the right.
+ */
+@media (min-width: 1024px) {
+  .pin-action.pin-pay {
+    width: auto;
+    max-width: 40rem;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: stretch;
+    gap: 0.75rem;
+    text-align: left;
+  }
+  .pin-action.pin-pay > :not(button):not(a):not([data-variant]) {
+    flex: 0 0 100%;
+    order: -1;
+  }
+  .pin-action.pin-pay > button,
+  .pin-action.pin-pay > a,
+  .pin-action.pin-pay > [data-variant] {
+    flex: 0 0 12rem;
+    width: 12rem;
+    align-self: auto;
+  }
+  .pin-action.pin-pay > [data-variant="link"] {
+    flex: 0 0 100%;
+    width: 100%;
+    justify-content: flex-end;
   }
 }
 

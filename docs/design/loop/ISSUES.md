@@ -628,19 +628,19 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | pay/i1-F13 | pay | P3 | pay-runs-list/foreman noperm | No access centred | Left-align | fixed (iter 2) | 1 |
 | pay/i1-F15 | pay | P3 | pay-runs-list/normal | Empty future draft $0.00 No one yet | Hide drafts with no logs | fixed (iter 2) | 1 |
 | pay/i2-N1 | pay | P1 | pay-run-review/draft, approved, exported/all | Totals rows don't add up (GST, reimbursements sit as sibling rows) | "includes" sub-lines or rows sum to Total; guard | fixed (i2 fix 2a) | 2 |
-| pay/i2-D25+N2 | pay | P1 | pay-run-review/blocked/landscape | Pinned bar breaks: blocker one word per line, FAB and tab bar overlap (lesson 7) | One compact row ≤ 64 px; guard | open | 2 |
-| pay/i2-D16 | pay | P1 | pay-run-review + pay-runs-list/tablet 820 | Pinned bar narrower than column floats over rows; tab bar hides last rows | Column-width bar on a strip; bottom padding; guard | open | 2 |
-| pay/i2-D17 | pay | P2 | pay-run-review/desktop | Actions not at content right edge, unequal widths, sentence right-aligned, figure pushed down | One row at right edge; guard | open | 2 |
-| pay/i2-D18 | pay | P2 | pay-run-review People | Separate cards vs grouped surfaces elsewhere | One grouped surface with dividers | open | 2 |
+| pay/i2-D25+N2 | pay | P1 | pay-run-review/blocked/landscape | Pinned bar breaks: blocker one word per line, FAB and tab bar overlap (lesson 7) | One compact row ≤ 64 px; guard | fixed (i2 fix 2b) | 2 |
+| pay/i2-D16 | pay | P1 | pay-run-review + pay-runs-list/tablet 820 | Pinned bar narrower than column floats over rows; tab bar hides last rows | Column-width bar on a strip; bottom padding; guard | fixed (i2 fix 2b) | 2 |
+| pay/i2-D17 | pay | P2 | pay-run-review/desktop | Actions not at content right edge, unequal widths, sentence right-aligned, figure pushed down | One row at right edge; guard | fixed (i2 fix 2b) | 2 |
+| pay/i2-D18 | pay | P2 | pay-run-review People | Separate cards vs grouped surfaces elsewhere | One grouped surface with dividers | fixed (i2 fix 2b) | 2 |
 | pay/i2-D19+N3 | pay | P2 | pay-run-review/phone | ABN wraps mid-number (lesson 23) | nbsp; guard | fixed (i2 fix 2a) | 2 |
 | pay/i2-N4 | pay | P2 | pay-run-review/2FA off/manager | Flag row has owner copy and a dead-end chevron | Manager copy, no link | fixed (i2 fix 2a) | 2 |
 | pay/i2-N5 | pay | P3 | pay-runs-list/To review | Alert is two sentences | One sentence | fixed (i2 fix 2a) | 2 |
 | pay/i2-N6 | pay | P3 | crew-statement/Paid to you | Payment outside period, no note | Plain label | fixed (i2 fix 2a) | 2 |
 | pay/i2-D20 | pay | P3 | pay-run-review/desktop | Empty left column beside People | Sticky left column | open | 2 |
 | pay/i2-D21 | pay | P3 | approve confirm (override) | $0.00 in body font; plain Approve label | Figure face; "Approve without the rate" | fixed (i2 fix 2a) | 2 |
-| pay/i2-D22 | pay | P3 | crew-statement Balance | No dividers | 1 px dividers | open | 2 |
+| pay/i2-D22 | pay | P3 | crew-statement Balance | No dividers | 1 px dividers | fixed (i2 fix 2b) | 2 |
 | pay/i2-D23 | pay | P3 | crew-statement footer | Dash in copy | Two plain sentences | fixed (i2 fix 2a) | 2 |
-| pay/i2-D24 | pay | P3 | crew-statement/desktop | Balance after Work | Balance under the figure | open | 2 |
+| pay/i2-D24 | pay | P3 | crew-statement/desktop | Balance after Work | Balance under the figure | fixed (i2 fix 2b) | 2 |
 | pay/i2-D26 | pay | P3 | pay-run-review/offline | Dash chain in Needs connection line | "Needs connection to approve." | fixed (i2 fix 2a) | 2 |
-| pay/i2-D27 | pay | P3 | pay-run-review/approved/desktop | Reopen stacked above Export CSV | One row, primary right | open | 2 |
+| pay/i2-D27 | pay | P3 | pay-run-review/approved/desktop | Reopen stacked above Export CSV | One row, primary right | fixed (i2 fix 2b) | 2 |
 | jobs-1/long-name-clamp | jobs-1 | P3 | jobs-list/all/phone + desktop (long-names fixture, 110-character name) | Names wrap and never truncate (DESIGN.md), so the long-name row is 164 to 188 px on a phone and 77 px in the desktop table, above the i1-F5 limits (120/160 and 56); the e2e holds that row to "wrapped name plus the same fixed parts" and a line cap (6 phone, 3 table), not to the ordinary heights | Owner to rule: clamp the name to 2 lines on a phone and 1 in the table (full name on the job page), or keep wrapping in full | open, owner decision | 1 |

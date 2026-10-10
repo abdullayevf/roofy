@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { checkAbnStaysWhole, checkBackRow, checkMoneyFigureFont, checkRunTotalsSum, checkPrimaryActionPlacement, collectConsole, expectScreenHealthy } from "./guards";
+import { checkActionsAtContentEdge, checkContentClearsFixedBars, checkPinnedBarCompact, checkAbnStaysWhole, checkBackRow, checkMoneyFigureFont, checkRunTotalsSum, checkPrimaryActionPlacement, collectConsole, expectScreenHealthy } from "./guards";
 import { expectNoMoney } from "./money-scan";
 import { getSeed } from "../../src/data/fake/store";
 
@@ -286,5 +286,43 @@ test.describe("Pay run review (layout, pay iter1 D3-D6, F3-F5)", () => {
     await signInAs(page, "owner", APPROVED);
     await expect(page.locator('[data-slot="primary-action"]').getByRole("button", { name: "Export CSV" })).toBeVisible();
     expect((await checkPrimaryActionPlacement(page)).failures).toEqual([]);
+  });
+});
+
+test.describe("pay run review layout (pay iter2 D16, D17, D25)", () => {
+  test("a phone on its side: the blocked bar is one compact row clear of the Log circle", async ({ page }) => {
+    await page.setViewportSize({ width: 844, height: 390 });
+    await signInAs(page, "manager");
+    await expect(page.locator("[data-pay-block]")).toBeVisible();
+    await expect(page.locator("[data-pay-waive-inline]")).toBeVisible();
+    await expect(page.locator(".pay-waive")).toBeHidden();
+    const r = await checkPinnedBarCompact(page);
+    expect(r.failures).toEqual([]);
+    const nav = await page.locator('nav[aria-label="Primary"]').boundingBox();
+    expect(Math.round((nav?.y ?? 0) + (nav?.height ?? 0))).toBe(390);
+  });
+
+  test("a tablet: the bar spans the review column on a full-width strip and nothing ends under it", async ({ page }) => {
+    await page.setViewportSize({ width: 820, height: 1180 });
+    await signInAs(page, "manager");
+    const bar = await page.locator('[data-slot="primary-action"]').boundingBox();
+    expect(bar?.x).toBe(0);
+    expect(bar?.width).toBe(820);
+    const r = await checkContentClearsFixedBars(page);
+    expect(r.failures).toEqual([]);
+  });
+
+  test("desktop: the actions are one row at the content edge (draft and approved)", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop layout");
+    await signInAs(page, "manager");
+    expect((await checkActionsAtContentEdge(page, "[data-pay-actions]", SCREEN)).failures).toEqual([]);
+    const sentence = await page.locator("[data-pay-block]").boundingBox();
+    const first = await page.locator("[data-pay-actions] :is(button, a)[data-variant]:visible").first().boundingBox();
+    expect(sentence && first && sentence.y + sentence.height <= first.y).toBe(true);
+    await page.goto(APPROVED);
+    expect((await checkActionsAtContentEdge(page, "[data-pay-actions]", SCREEN)).failures).toEqual([]);
+    const reopen = await page.getByRole("button", { name: "Reopen pay run" }).boundingBox();
+    const exp = await page.getByRole("button", { name: "Export CSV" }).boundingBox();
+    expect(reopen && exp && reopen.x < exp.x).toBe(true);
   });
 });

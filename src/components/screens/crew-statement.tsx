@@ -25,9 +25,9 @@ export function StatementFrame({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+function Section({ id, title, className, children }: { id: string; title: string; className?: string; children: React.ReactNode }) {
   return (
-    <section aria-labelledby={id} className="flex flex-col gap-3 print:break-inside-avoid">
+    <section aria-labelledby={id} className={cx("flex flex-col gap-3 print:break-inside-avoid", className)}>
       <h2 id={id} className="text-heading text-ink">
         {title}
       </h2>
@@ -125,8 +125,9 @@ export function CrewStatement({ statement: s, today }: { statement: Statement; t
           ) : null}
 
           {/* Adds up by hand: owed from earlier + this pay run − paid = what's owed now (pay rules §16). */}
-          <Section id="statement-balance" title="Balance">
-            <div data-statement-balance="">
+          {/* From 1024 px the balance comes first in its column, straight under the figure (pay iter2 D24); 1 px dividers (D22). */}
+          <Section id="statement-balance" title="Balance" className="lg:-order-1">
+            <div data-statement-balance="" className="divide-y divide-line">
               <FigureRow label={earlier.label} cents={earlier.cents} data="earlier" />
               <FigureRow label="This pay run" cents={s.totals.totalCents} data="run" />
               <FigureRow label={paidLabel} cents={paidCents} data="paid" />

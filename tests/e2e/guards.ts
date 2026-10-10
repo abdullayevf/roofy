@@ -1119,3 +1119,74 @@ export async function checkAbnStaysWhole(page: Page, scope: string): Promise<Gua
   }, scope);
   return { name: "abn-stays-whole", ok: failures.length === 0, failures };
 }
+
+/**
+ * Scrolled to the end, nothing on the screen sits under a fixed bar (the pinned action bar or the tab bar): the page
+ * pads its bottom by every fixed bar's height (pay iter2 D16, lesson: fixed bars never cover content).
+ */
+export async function checkContentClearsFixedBars(page: Page): Promise<GuardResult> {
+  const name = "content-clears-fixed-bars";
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForTimeout(150);
+  const failures = await page.evaluate(() => {
+    const bars = Array.from(document.querySelectorAll<HTMLElement>('[data-slot="primary-action"], nav[aria-label="Primary"]')).filter(
+      (el) => getComputedStyle(el).position === "fixed" && el.getBoundingClientRect().height > 0,
+    );
+    if (bars.length === 0) return [];
+    const top = Math.min(...bars.map((b) => b.getBoundingClientRect().top));
+    const screen = document.querySelector("[data-screen]");
+    if (!screen) return [];
+    const out: string[] = [];
+    for (const el of Array.from(screen.querySelectorAll("li, p, h2, button, a, section > *"))) {
+      if (el.closest('[data-slot="primary-action"]')) continue;
+      const r = el.getBoundingClientRect();
+      if (r.height > 0 && r.bottom > top + 1)
+        out.push(`"${(el.textContent ?? "").trim().slice(0, 40)}" ends at ${Math.round(r.bottom)} px, under a fixed bar at ${Math.round(top)} px`);
+    }
+    return out.slice(0, 5);
+  });
+  return { name, ok: failures.length === 0, failures };
+}
+
+/**
+ * A phone on its side: the pinned bar is one compact row (at most `max` px tall), its buttons and its sentence don't
+ * overlap one another or the raised Log circle (pay iter2 D25/N2).
+ */
+export async function checkPinnedBarCompact(page: Page, max = 64): Promise<GuardResult> {
+  const name = "pinned-bar-compact";
+  const bar = page.locator('[data-slot="primary-action"]:visible').first();
+  if ((await bar.count()) === 0) return { name, ok: true, failures: [] };
+  const failures: string[] = [];
+  const box = await bar.boundingBox();
+  if (box && box.height > max + 0.5) failures.push(`pinned bar is ${Math.round(box.height)} px tall (max ${max})`);
+  const circle = await page.locator("nav .rounded-full.bg-chalk").first().boundingBox();
+  const parts: { label: string; b: { x: number; y: number; width: number; height: number } }[] = [];
+  for (const el of await bar.locator(":scope > *:visible").all()) {
+    const b = await el.boundingBox();
+    if (b && b.width > 0) parts.push({ label: (await el.innerText()).trim().slice(0, 30), b });
+  }
+  const hit = (a: (typeof parts)[number]["b"], c: (typeof parts)[number]["b"]) =>
+    a.x < c.x + c.width - 0.5 && a.x + a.width > c.x + 0.5 && a.y < c.y + c.height - 0.5 && a.y + a.height > c.y + 0.5;
+  parts.forEach((p, i) => {
+    for (const q of parts.slice(i + 1)) if (hit(p.b, q.b)) failures.push(`"${p.label}" overlaps "${q.label}"`);
+    if (circle && hit(p.b, circle)) failures.push(`"${p.label}" is under the Log circle`);
+  });
+  return { name, ok: failures.length === 0, failures };
+}
+
+/** From 1024 px the screen's actions end at the content's right edge (pay iter2 D17), and share one height. */
+export async function checkActionsAtContentEdge(page: Page, actions: string, screen = "[data-screen]"): Promise<GuardResult> {
+  const name = "actions-at-content-edge";
+  const s = await page.locator(screen).first().boundingBox();
+  const buttons = await page.locator(`${actions} :is(button, a)[data-variant]:visible:not([data-variant="link"])`).all();
+  const boxes = (await Promise.all(buttons.map((b) => b.boundingBox()))).filter((b) => b !== null);
+  if (!s || boxes.length === 0) return { name, ok: true, failures: [] };
+  const failures: string[] = [];
+  const right = Math.max(...boxes.map((b) => b.x + b.width));
+  if (Math.abs(right - (s.x + s.width)) > 1) failures.push(`actions end at ${Math.round(right)} px; content edge is ${Math.round(s.x + s.width)} px`);
+  const heights = new Set(boxes.map((b) => Math.round(b.height)));
+  if (heights.size > 1) failures.push(`action heights differ: ${[...heights].join(", ")} px`);
+  const tops = new Set(boxes.map((b) => Math.round(b.y)));
+  if (tops.size > 1) failures.push(`actions are not in one row (tops ${[...tops].join(", ")} px)`);
+  return { name, ok: failures.length === 0, failures };
+}
