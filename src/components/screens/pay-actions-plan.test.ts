@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { payActionsPlan, type PlanInput } from "./pay-actions-plan";
+import { payActionsPlan, sheetAllowed, type PlanInput } from "./pay-actions-plan";
 
 const draft: PlanInput = { status: "draft", canApprove: true, canExport: true, blockedBy: [], canReopen: false };
 
@@ -38,5 +38,29 @@ describe("payActionsPlan", () => {
     const accountant = { ...draft, canApprove: false };
     expect(payActionsPlan(accountant, true)).toMatchObject({ approve: "none", waive: false, readOnly: true, needsConnection: false });
     expect(payActionsPlan({ ...accountant, status: "approved", canReopen: false }, true)).toMatchObject({ exportCsv: "enabled", reopen: false });
+  });
+});
+
+describe("sheetAllowed (?confirm= opens a sheet only for a live action)", () => {
+  const approved: PlanInput = { ...draft, status: "approved", canReopen: true };
+  it("opens approve on a clean draft, waive on a missing-rate draft, reopen on an approved run", () => {
+    expect(sheetAllowed(payActionsPlan(draft, true), "approve")).toBe(true);
+    expect(sheetAllowed(payActionsPlan({ ...draft, blockedBy: ["missing_rate"] }, true), "waive")).toBe(true);
+    expect(sheetAllowed(payActionsPlan(approved, true), "reopen")).toBe(true);
+    expect(sheetAllowed(payActionsPlan(draft, true), null)).toBe(false);
+  });
+
+  it("no sheet for an accountant, a blocked draft, offline, or a run that can't reopen", () => {
+    const accountant = { ...draft, canApprove: false };
+    expect(sheetAllowed(payActionsPlan(accountant, true), "approve")).toBe(false);
+    expect(sheetAllowed(payActionsPlan({ ...accountant, blockedBy: ["missing_rate"] }, true), "waive")).toBe(false);
+    expect(sheetAllowed(payActionsPlan({ ...draft, blockedBy: ["missing_rate"] }, true), "approve")).toBe(false);
+    expect(sheetAllowed(payActionsPlan({ ...draft, blockedBy: ["missing_rate", "owner_2fa_off"] }, true), "waive")).toBe(false);
+    expect(sheetAllowed(payActionsPlan(draft, false), "approve")).toBe(false);
+    expect(sheetAllowed(payActionsPlan({ ...draft, blockedBy: ["missing_rate"] }, false), "waive")).toBe(false);
+    expect(sheetAllowed(payActionsPlan(approved, false), "reopen")).toBe(false);
+    expect(sheetAllowed(payActionsPlan({ ...approved, canReopen: false }, true), "reopen")).toBe(false);
+    expect(sheetAllowed(payActionsPlan({ ...approved, canApprove: false }, true), "reopen")).toBe(false);
+    expect(sheetAllowed(payActionsPlan(approved, true), "approve")).toBe(false);
   });
 });

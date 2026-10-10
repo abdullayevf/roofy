@@ -92,7 +92,7 @@ test.describe("Pay runs list (owner and manager)", () => {
     await signInAs(page, "manager", "/pay?demo=offline");
     const card = page.locator("[data-pay-review]");
     await expect(card.getByRole("button", { name: "Review pay run" })).toBeDisabled();
-    await expect(page.getByText("Needs connection. Try again once you're back online.")).toHaveCount(1);
+    await expect(page.getByText("Needs connection — try again once you're back online.")).toHaveCount(1);
     await expect(page.getByText(/send automatically/)).toHaveCount(0);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
   });

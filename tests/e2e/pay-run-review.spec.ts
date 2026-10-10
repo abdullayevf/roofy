@@ -78,6 +78,8 @@ test.describe("Pay run review (display)", () => {
       if (state === "error") await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
       if (state === "offline") {
         await expect(page.locator("[data-pay-person]").first()).toBeVisible();
+        await expect(page.getByRole("button", { name: "Approve pay run" })).toBeDisabled();
+        await expect(page.locator("[data-pay-needs-connection]")).toBeVisible();
         await expect(page.getByText(/send automatically/)).toHaveCount(0);
       }
       await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
@@ -96,7 +98,8 @@ const APPROVED = `/pay/${meta.payRuns.lastApproved}`;
 test.describe("Pay run review (actions)", () => {
   test("the confirmation sheet opens over the review and Cancel closes it", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
-    await signInAs(page, "manager", `${PATH}?confirm=approve`);
+    // Last week's draft has a missing rate, so the live sheet is "Approve without the rate".
+    await signInAs(page, "manager", `${PATH}?confirm=waive`);
     const sheet = page.getByRole("dialog", { name: "Approve this pay run?" });
     await expect(sheet).toContainText("Approving locks every day logged from Mon 21 Sep to Sun 27 Sep");
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
@@ -145,11 +148,35 @@ test.describe("Pay run review (actions)", () => {
   test("an accountant exports only: no Approve, no waive, no Reopen", async ({ page }) => {
     await signInAs(page, "accountant");
     await expect(page.getByText("An owner or manager approves this pay run.")).toBeVisible();
+    await expect(page.locator("[data-pay-actions]")).toBeVisible();
     await expect(page.getByRole("button", { name: /Approve/ })).toHaveCount(0);
     await page.goto(APPROVED);
     await expect(page.getByRole("button", { name: "Export CSV" })).toBeEnabled();
     await expect(page.getByRole("button", { name: "Reopen pay run" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Share statement" })).toHaveCount(0);
+  });
+
+  test("?confirm= opens no sheet when that action isn't live", async ({ page }) => {
+    const dialog = page.getByRole("dialog");
+    // An accountant on a draft: only the "who approves" line.
+    await signInAs(page, "accountant", `${PATH}?confirm=approve`);
+    await expect(page.getByText("An owner or manager approves this pay run.")).toBeVisible();
+    await expect(dialog).toHaveCount(0);
+    await page.goto(`${PATH}?confirm=waive`);
+    await expect(page.getByText("An owner or manager approves this pay run.")).toBeVisible();
+    await expect(dialog).toHaveCount(0);
+    // A manager on a draft blocked by a missing rate: Approve is disabled, so no approve sheet.
+    await signInAs(page, "manager", `${PATH}?confirm=approve`);
+    await expect(page.getByRole("button", { name: "Approve pay run" })).toBeDisabled();
+    await expect(dialog).toHaveCount(0);
+    // Offline: every action is disabled and nothing may send, so no sheet either.
+    await page.goto(`${PATH}?demo=offline&confirm=waive`);
+    await expect(page.locator("[data-pay-needs-connection]")).toBeVisible();
+    await expect(dialog).toHaveCount(0);
+    // An approved run can't be approved again.
+    await page.goto(`${APPROVED}?confirm=approve`);
+    await expect(page.getByRole("button", { name: "Reopen pay run" })).toBeEnabled();
+    await expect(dialog).toHaveCount(0);
   });
 
   test("Share statement is absent on a draft", async ({ page }) => {

@@ -459,11 +459,15 @@ export const EXPIRED_LINK = "This statement link has expired or been turned off.
 
 export function createStatementLinkService(c: FakeContext): StatementLinkService {
   return {
-    /** The token is the permission (architecture §6): sha256 match, not revoked, not expired. */
+    /**
+     * The token is the permission (architecture §6): sha256 match, not revoked, not expired, and the run still
+     * approved. A reopened run's credits are gone (pay rules §9), so its links stop until it is approved again.
+     */
     async open(token: string): Promise<Statement> {
       const hash = createHash("sha256").update(token).digest("hex");
       const link = c.t.statementLinks.find((l) => l.tokenHash === hash);
-      if (!link || link.revokedAt !== null || link.expiresAt <= c.now().toISOString()) {
+      const run = link ? c.t.payRuns.find((r) => r.id === link.payRunId) : undefined;
+      if (!link || link.revokedAt !== null || link.expiresAt <= c.now().toISOString() || !run || run.status === "draft") {
         throw new DataError("not_found", EXPIRED_LINK);
       }
       return statementOf(c, link.payRunId, link.crewMemberId);

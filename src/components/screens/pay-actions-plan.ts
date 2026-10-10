@@ -41,3 +41,13 @@ export function payActionsPlan(r: PlanInput, online: boolean): PayActionsPlan {
     readOnly: draft && !r.canApprove,
   };
 }
+
+export type Sheet = "approve" | "waive" | "reopen" | null;
+
+/** A confirmation sheet shows only while its action is live in the plan, so `?confirm=` can't open one that isn't. */
+export function sheetAllowed(plan: PayActionsPlan, sheet: Sheet): boolean {
+  if (sheet === "approve") return plan.approve === "enabled";
+  if (sheet === "waive") return plan.waive;
+  if (sheet === "reopen") return plan.reopen === "enabled";
+  return false;
+}

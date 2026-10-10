@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { shareOrCopy } from "./share-link";
+import { COPY_FAILED, shareThisPage } from "./share-link";
 import { LINK_COPIED } from "./statement-text";
 
 /**
@@ -10,12 +10,11 @@ import { LINK_COPIED } from "./statement-text";
  * isn't one (desktop browsers). The link already exists, so nothing is made and no connection is asked for.
  */
 export function StatementShareButton() {
-  const [copied, setCopied] = useState(false);
+  const [outcome, setOutcome] = useState<"shared" | "copied" | "failed" | null>(null);
 
   async function share() {
-    setCopied(false);
-    const outcome = await shareOrCopy(window.location.href.split("?")[0]!, navigator).catch(() => null);
-    setCopied(outcome === "copied");
+    setOutcome(null);
+    setOutcome(await shareThisPage(window.location.href.split("?")[0]!, navigator));
   }
 
   return (
@@ -23,8 +22,12 @@ export function StatementShareButton() {
       <Button variant="secondary" onClick={share}>
         Share
       </Button>
-      <p role="status" className="text-meta text-ink-2 empty:hidden">
-        {copied ? LINK_COPIED : ""}
+      <p
+        role="status"
+        data-statement-share-outcome={outcome ?? ""}
+        className={`empty:hidden ${outcome === "failed" ? "text-body-strong text-over" : "text-meta text-ink-2"}`}
+      >
+        {outcome === "copied" ? LINK_COPIED : outcome === "failed" ? COPY_FAILED : ""}
       </p>
     </div>
   );

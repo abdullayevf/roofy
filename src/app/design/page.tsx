@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Check } from "@phosphor-icons/react/dist/ssr";
+import { NEEDS_CONNECTION } from "@/components/screens/needs-connection";
 import { Group, Section, Swatch } from "./section";
 import { ThemePair } from "./theme-pair";
 import { IconOnlyButtonDemo, PauseStageSheetDemo } from "./interactive-demos";
@@ -182,7 +183,7 @@ export default function DesignPage() {
             </div>
           </Swatch>
           <Swatch label="Disabled, with a reason">
-            <Button disabled reason="Needs connection — try again once you're back online.">
+            <Button disabled reason={NEEDS_CONNECTION}>
               Approve pay run
             </Button>
           </Swatch>
@@ -780,7 +781,7 @@ export default function DesignPage() {
             </div>
           </Group>
           <Group title="Needs connection">
-            <Button disabled reason="Needs connection — try again once you're back online.">
+            <Button disabled reason={NEEDS_CONNECTION}>
               Approve pay run
             </Button>
           </Group>

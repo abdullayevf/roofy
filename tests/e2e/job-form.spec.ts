@@ -191,7 +191,7 @@ test.describe("New job", () => {
     await expect(page.getByRole("status").filter({ hasText: "No signal" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Quick-add client" })).toBeDisabled();
     await expect(createJob(page)).toBeDisabled();
-    await expect(page.getByText("Needs connection. Try again once you're back online.")).toBeVisible();
+    await expect(page.getByText("Needs connection — try again once you're back online.")).toBeVisible();
   });
 
   test("losing signal on the page turns Create job off, and getting it back turns it on", async ({ page, context }) => {
@@ -199,7 +199,7 @@ test.describe("New job", () => {
     await expect(createJob(page)).toBeEnabled();
     await context.setOffline(true);
     await expect(createJob(page)).toBeDisabled();
-    await expect(page.getByText("Needs connection. Try again once you're back online.")).toBeVisible();
+    await expect(page.getByText("Needs connection — try again once you're back online.")).toBeVisible();
     await context.setOffline(false);
     await expect(createJob(page)).toBeEnabled();
   });
@@ -321,7 +321,7 @@ test.describe("New job: measured guards", () => {
     const cases = [
       { size: { width: 844, height: 390 }, path: "/jobs/new", hint: "Choose a client." },
       { size: { width: 844, height: 390 }, path: `/jobs/${meta.projects.smith}/edit`, hint: "Change something to save." },
-      { size: { width: 844, height: 390 }, path: "/jobs/new?demo=offline", hint: "Needs connection. Try again once you're back online." },
+      { size: { width: 844, height: 390 }, path: "/jobs/new?demo=offline", hint: "Needs connection — try again once you're back online." },
       { size: { width: 568, height: 320 }, path: "/jobs/new", hint: "Choose a client." },
     ];
     for (const c of cases) {
@@ -416,14 +416,14 @@ test.describe("New job: measured guards", () => {
     await signInAs(page, "manager", prefill());
     await page.route("**/*", (route) => (route.request().headers()["next-action"] ? route.abort() : route.continue()));
     await createJob(page).click();
-    await expect(page.locator('[data-slot="primary-action"]')).toContainText("Couldn't save this. Needs connection.");
+    await expect(page.locator('[data-slot="primary-action"]')).toContainText("Couldn't save this. Needs connection — try again once you're back online.");
     await expect(page.getByRole("heading", { level: 1, name: "New job" })).toBeVisible();
     await expect(createJob(page)).toBeEnabled();
     await page.getByRole("button", { name: "Quick-add client" }).click();
     const sheet = page.getByRole("dialog");
     await sheet.getByLabel("Client name").fill("Dunn Roofing");
     await sheet.getByRole("button", { name: "Save client" }).click();
-    await expect(sheet).toContainText("Couldn't save the client. Needs connection.");
+    await expect(sheet).toContainText("Couldn't save the client. Needs connection — try again once you're back online.");
   });
 
   test("a foreman who opens New job is told they have no access, not shown a form (F10)", async ({ page }) => {

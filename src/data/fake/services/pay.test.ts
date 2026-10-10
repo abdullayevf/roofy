@@ -5,7 +5,9 @@ import { buildPayRun, type PayPerson } from "@/domain/payrun";
 import { receiptTotal } from "@/domain/gst";
 import { getSeed } from "../store";
 import { toPayLog } from "../seed-builder";
-import { fake } from "./testing";
+import { createHash } from "node:crypto";
+import { EXPIRED_LINK } from "./pay";
+import { fake, fakeSession, TEST_NOW } from "./testing";
 
 const seed = getSeed();
 const { meta } = seed;
@@ -185,6 +187,24 @@ describe("statements and the ledger", () => {
     await expect(data.statements.open("0".repeat(64))).rejects.toMatchObject({ code: "not_found" });
     const late = fake("manager", { now: new Date("2027-01-01T00:00:00Z") });
     await expect(late.data.statements.open(token)).rejects.toMatchObject({ code: "not_found" });
+  });
+
+  it("a turned-off (revoked) link gives the same not_found as an unknown one", async () => {
+    const { data, store } = fakeSession("manager");
+    const { token } = meta.statementTokens[0]!;
+    const hash = createHash("sha256").update(token).digest("hex");
+    const link = store.tables.statementLinks.find((l) => l.tokenHash === hash)!;
+    link.revokedAt = TEST_NOW.toISOString();
+    await expect(data.statements.open(token)).rejects.toMatchObject({ code: "not_found", message: EXPIRED_LINK });
+  });
+
+  it("reopening a run stops its shared links; approving it again brings them back", async () => {
+    const { data, actor } = fakeSession("owner");
+    const { token, payRunId } = meta.statementTokens[0]!;
+    await data.payRuns.reopen(actor, payRunId);
+    await expect(data.statements.open(token)).rejects.toMatchObject({ code: "not_found", message: EXPIRED_LINK });
+    await data.payRuns.approve(actor, payRunId, { waiveMissingRate: true });
+    await expect(data.statements.open(token)).resolves.toMatchObject({ payRunId });
   });
 
   it("balances: Kev unpaid too long, Dima −$300.00; entries carry the running balance", async () => {

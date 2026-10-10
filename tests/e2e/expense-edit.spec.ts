@@ -19,7 +19,7 @@ const noReceipt = seed.expenses.find(
 )!.id;
 const WARNING =
   "This expense is in an approved pay run. Saving will adjust next week's pay run, not this one.";
-const NEEDS_CONNECTION = "Needs connection. Try again once you're back online.";
+const NEEDS_CONNECTION = "Needs connection — try again once you're back online.";
 
 async function signInAs(page: Page, role: string, next: string) {
   await page.goto(`/prototype/role?as=${role}&next=${encodeURIComponent(next)}`);

@@ -120,7 +120,7 @@ test.describe("Record payout (manager)", () => {
   test("offline: Save payout is disabled and says it needs a connection (never queued)", async ({ page }, testInfo) => {
     await signInAs(page, "manager", `${payout}?demo=offline`);
     await expect(save(page).locator("visible=true")).toBeDisabled();
-    await expect(page.getByText("Needs connection. Try again once you're back online.").locator("visible=true")).toBeVisible();
+    await expect(page.getByText("Needs connection — try again once you're back online.").locator("visible=true")).toBeVisible();
     // One needs-connection sentence: no "will send automatically" banner on this admin screen (F3).
     await expect(page.getByText(/will send automatically/)).toHaveCount(0);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });

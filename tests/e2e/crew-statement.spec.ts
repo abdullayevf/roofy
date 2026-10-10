@@ -47,7 +47,7 @@ test.describe("crew statement (21)", () => {
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
   });
 
-  test("an unknown or expired link gets one plain sentence and nothing about anyone", async ({ page }, testInfo) => {
+  test("an unknown link gets one plain sentence and nothing about anyone (expired, turned off and reopened-run links: pay.test.ts)", async ({ page }, testInfo) => {
     await page.goto(`/s/${"0".repeat(64)}`);
     await expect(page.locator("[data-statement-gone]")).toHaveText("This statement link has expired or been turned off. Ask for a new one.");
     await expect(page.getByText("Harbour Roofing")).toHaveCount(0);

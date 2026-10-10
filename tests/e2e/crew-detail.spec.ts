@@ -177,7 +177,7 @@ test.describe("Crew member detail (manager)", () => {
     await expect(section(page, "Statements").getByText("Needs connection").first()).toBeVisible();
     // Record payout never queues: disabled here, with the needs-connection line (D18, F10).
     await expect(page.getByRole("button", { name: "Record payout" }).locator("visible=true")).toBeDisabled();
-    await expect(page.getByText("Needs connection. Try again once you're back online.").locator("visible=true").first()).toBeVisible();
+    await expect(page.getByText("Needs connection — try again once you're back online.").locator("visible=true").first()).toBeVisible();
     await expect(page.getByText(/will send automatically/)).toHaveCount(0);
   });
 

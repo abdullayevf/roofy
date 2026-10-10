@@ -8,13 +8,13 @@ import { approvePayRun, exportPayRunCsv, reopenPayRun } from "@/app/actions/pay"
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Toast } from "@/components/ui/toast";
-import { payActionsPlan } from "./pay-actions-plan";
+import { payActionsPlan, sheetAllowed, type Sheet } from "./pay-actions-plan";
 import { NEEDS_CONNECTION, useOnline } from "./use-online";
 
 export const MISSING_RATE_BLOCK = "Fix the missing rate before you approve.";
 export const TWO_FACTOR_BLOCK = "Turn on two-factor before you approve a pay run.";
 
-export type Sheet = "approve" | "waive" | "reopen" | null;
+export type { Sheet };
 
 export type PayRunActionsProps = {
   review: Pick<PayRunReview, "id" | "status" | "blockedBy" | "canReopen" | "access">;
@@ -71,7 +71,9 @@ export function PayRunActions({
     { ...review, canApprove: review.access.canApprove, canExport: review.access.canExport },
     online,
   );
-  const [sheet, setSheet] = useState<Sheet>(initialSheet);
+  const [requested, setSheet] = useState<Sheet>(initialSheet);
+  // Only a live action's sheet shows: `?confirm=` can't open one for an accountant, a blocked draft or offline.
+  const sheet = sheetAllowed(plan, requested) ? requested : null;
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -179,7 +181,7 @@ export function PayRunActions({
             : `Approving locks every day logged from ${periodText} and adds each person's pay to what they're owed.`
         }
         confirmLabel={pending ? "Approving…" : "Approve"}
-        onConfirm={() => sheet && !pending && run(review.id, sheet)}
+        onConfirm={() => sheet && online && !pending && run(review.id, sheet)}
         onCancel={() => setSheet(null)}
       />
       <Dialog
@@ -189,7 +191,7 @@ export function PayRunActions({
         description="Its days unlock and each person's pay comes off what they're owed until you approve it again."
         confirmLabel={pending ? "Reopening…" : "Reopen"}
         tone="danger"
-        onConfirm={() => !pending && run(review.id, "reopen")}
+        onConfirm={() => sheet === "reopen" && online && !pending && run(review.id, "reopen")}
         onCancel={() => setSheet(null)}
       />
       <Toast open={toast !== null} onOpenChange={(open) => !open && setToast(null)} message={toast ?? ""} />
