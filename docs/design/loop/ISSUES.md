@@ -644,3 +644,13 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | pay/i2-D26 | pay | P3 | pay-run-review/offline | Dash chain in Needs connection line | "Needs connection to approve." | fixed (i2 fix 2a) | 2 |
 | pay/i2-D27 | pay | P3 | pay-run-review/approved/desktop | Reopen stacked above Export CSV | One row, primary right | fixed (i2 fix 2b) | 2 |
 | jobs-1/long-name-clamp | jobs-1 | P3 | jobs-list/all/phone + desktop (long-names fixture, 110-character name) | Names wrap and never truncate (DESIGN.md), so the long-name row is 164 to 188 px on a phone and 77 px in the desktop table, above the i1-F5 limits (120/160 and 56); the e2e holds that row to "wrapped name plus the same fixed parts" and a line cap (6 phone, 3 table), not to the ordinary heights | Owner to rule: clamp the name to 2 lines on a phone and 1 in the table (full name on the job page), or keep wrapping in full | open, owner decision | 1 |
+| pay/i3-N1+F5 | pay | P2 | pay-run-review totals Includes rows | Divider touches the Includes sub-line text; sub-row figure off scale | Drop divider above Includes or pad 8 px; figure scale | open (accepted at cap) | 3 |
+| pay/i3-D17 | pay | P3 | pay-run-review blocked/offline desktop | Sentence and waiver stacked in the right button group | Left-align sentence above the button row | open (accepted at cap) | 3 |
+| pay/i3-D20 | pay | P3 | pay-run-review desktop | Empty left column beside People | Sticky left column | open (accepted at cap) | 3 |
+| pay/i3-N2 | pay | P3 | pay-run-review bar tablet/iphone | ~40 px empty below waiver link | Bottom padding 16 px | open (accepted at cap) | 3 |
+| pay/i3-N3 | pay | P3 | statement Work rows | Em dash joins job and site | Two meta lines or comma | open (accepted at cap) | 3 |
+| pay/i3-F1 | pay | P2 | pay-run-review landscape blocked | Waiver link ~20 px tap height | 48 px hit area | fixing (review fix 2) | 3 |
+| pay/i3-F2 | pay | P3 | pay-run-review blocked iphone/tablet | Waiver link centred | Left-align to button row | open (accepted at cap) | 3 |
+| pay/i3-F3 | pay | P3 | pay-run-review confirm sheet | Three sentences | Cut to two | open (accepted at cap) | 3 |
+| pay/i3-F4 | pay | P3 | pay-run-review offline | Not the flows.md Needs connection line | flows.md 24 line | fixing (review fix 2) | 3 |
+| pay/i3-F6 | pay | P3 | pay-run-review draft iphone | Pinned bar + tab bar ~270 of 844 px | Blocker one line, link in button row | open (accepted at cap) | 3 |

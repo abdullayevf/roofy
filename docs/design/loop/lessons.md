@@ -29,3 +29,5 @@
 - Offline, reading stays available (lists, review, detail); only writes show Needs connection.
 - An override (waive, skip) never sits above or outranks the main action; the fix path comes first.
 - On tablet and landscape, fixed bars (pinned action bar, tab bar) never cover content: bar spans the content column, content pads its bottom by every fixed bar's height.
+- Inline links in pinned bars and blocker rows still need a 48x48 px hit area (padding or ::after), and the test measures it; checkTouchTargets exempts inline links.
+- No divider directly on an indented sub-line (Includes, meta): the sub-line belongs to the row above, or it gets 8 px clear above its text.
