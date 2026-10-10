@@ -606,3 +606,24 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | expenses/i3-F26 | expenses | P3 | expenses-list/job filter | Rows show inc-GST total under an ex-GST headline | Label rows "inc GST" or show ex GST | open (accepted at cap) | 3 |
 | expenses/i3-D34 | expenses | P3 | expenses-list/foreman desktop | Total column dropped but widths kept; ~250 px empty | Spread remaining columns | open (accepted at cap) | 3 |
 | expenses/i3-D13+D17 | expenses | P3 | expense-edit GST; tablet pinned bar | GST control → label gap 10–16 px (24 elsewhere); tablet edit bar rule full width vs detail content width | 24 px gap; match rule width | open (accepted at cap) | 3 |
+| pay/i1-D1+F1 | pay | P1 | crew-statement/normal, employee/all | Still owed doesn't reconcile with total and paid; no earlier balance row | Owed from earlier row; check balance maths; guard rows sum | open | 1 |
+| pay/i1-D15+F2 | pay | P1 | pay-runs-list/offline/phones | Review pay run disabled offline; only Approve/Export need connection | Review enabled offline, Needs connection on writes only; guard | open | 1 |
+| pay/i1-D2+F9 | pay | P2 | crew-statement/all | No key figure; owed at bottom, Share leads (lesson 5) | figure-xl owed under person+period; Share below | open | 1 |
+| pay/i1-D3+F3 | pay | P2 | pay-run-review/blocked | Waiver above disabled Approve reads primary; Show the line small link; 2FA block uses different treatment | Show the line 52px secondary first, Approve primary last, waiver quieter; same for both blockers | open | 1 |
+| pay/i1-F4 | pay | P2 | pay-run-review/2FA blocked/manager | Go to settings dead end for a manager | Manager copy: owner needs to turn on two-factor; no settings button | open | 1 |
+| pay/i1-D4+F5 | pay | P2 | pay-run-review/draft/desktop, phone | Approve below fold on desktop, mid-page on phone (lessons 9, 21) | Title-row actions ≥1024; pinned Approve above tab bar on phone/tablet | open | 1 |
+| pay/i1-D5 | pay | P2 | pay-run-review/tablet 820 | ~10,100px single column, every person expanded | Collapse people to name+total <1024 or two-column | open | 1 |
+| pay/i1-D6 | pay | P2 | pay-run-review/normal/iphone | Missing-rate line not visibly flagged | Over icon + word as the flag | open | 1 |
+| pay/i1-D7+F6 | pay | P2 | pay-runs-list/normal/phones | Dates break mid-date (lesson 23) | nbsp inside dates; guard | open | 1 |
+| pay/i1-F7 | pay | P2 | pay-runs-list/normal | History 15 phone screens long | Last 8 runs + Show older pay runs | open | 1 |
+| pay/i1-D8+F8 | pay | P2 | crew-statement/loading | Skeleton single-line rows, no header (lesson 7) | Shape like statement | open | 1 |
+| pay/i1-F10 | pay | P2 | pay-run-review/award floor flag | 'under the $32.00 award floor (short $32.03)' reads like a typo | '…so he's $32.03 short for the week.' | open | 1 |
+| pay/i1-D9 | pay | P3 | pay-run-review lines, flags | Inline rate competes with amount; money in flag sentences body font (lesson 26) | Barlow tabular meta size inline and in flags | open | 1 |
+| pay/i1-D10+F12 | pay | P3 | pay-run-review/missing-rate flag | Two sentences, repeats blocker (lesson 3) | One sentence | open | 1 |
+| pay/i1-D11+F14 | pay | P3 | pay-run-review, crew-statement person totals | Pay = Total repeated; GST $0.00 for unregistered; $0 hour rows look unpaid | Total only when ≠ Pay; drop GST row; fold $0 hour rows | open | 1 |
+| pay/i1-D12 | pay | P3 | Draft chip | Draft uses watch colour (reserved for Paused) | ink-2 | open | 1 |
+| pay/i1-D13 | pay | P3 | approved, exported | Approved/Exported with no date | Add date | open | 1 |
+| pay/i1-D14 | pay | P3 | pay-run-review/adjustment line | Date shown twice | Label + date once | open | 1 |
+| pay/i1-F11 | pay | P3 | pay-run-review/confirm | 'your name is kept with that choice' not plain | 'We'll note that you approved without the rate.' | open | 1 |
+| pay/i1-F13 | pay | P3 | pay-runs-list/foreman noperm | No access centred | Left-align | open | 1 |
+| pay/i1-F15 | pay | P3 | pay-runs-list/normal | Empty future draft $0.00 No one yet | Hide drafts with no logs | open | 1 |

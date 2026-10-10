@@ -25,3 +25,6 @@
 - Compact (landscape) headers keep the label with the key figure ("$7,225.90 owed"), never a bare number.
 - Every money value uses the figure style (key figure, inline "Cost to the job", "plus $x GST", detail rows), never bold body text.
 - One word per concept across list, detail and form ("Card" everywhere, not "Company card" in one place).
+- Balances reconcile on the page: show the earlier balance so earlier + this period − paid = the balance shown.
+- Offline, reading stays available (lists, review, detail); only writes show Needs connection.
+- An override (waive, skip) never sits above or outranks the main action; the fix path comes first.
