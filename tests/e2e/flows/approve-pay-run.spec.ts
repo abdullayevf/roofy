@@ -21,7 +21,8 @@ for (const role of ["manager", "owner"]) {
     await taps.tap(page.locator(`a[href="${PATH}"]`).locator("visible=true").first());
     await expect(page.getByRole("heading", { level: 1, name: "Pay run" })).toBeVisible();
     const block = page.locator('[data-pay-block="missing_rate"]');
-    await expect(block.locator("p")).toHaveText("Fix the missing rate before you approve.");
+    // The block is the <p> itself in the pinned bar (1b): exact flows.md copy.
+    await expect(block).toHaveText("Fix the missing rate before you approve.");
     const lineHref = await page.locator("[data-pay-actions]").getByRole("link", { name: "Show the line" }).getAttribute("href");
     expect(lineHref).toMatch(/^#line-/);
     await expect(page.locator(lineHref!)).toContainText("Missing rate");
@@ -52,6 +53,10 @@ test("Owner 2FA off blocks Approve with a button to Settings, and no way round i
   await expect(page.locator("[data-pay-actions]").getByRole("link", { name: "Go to settings" })).toHaveAttribute("href", /^\/settings/);
   await expect(page.getByRole("button", { name: "Approve pay run" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Approve without the rate" })).toHaveCount(0);
+  // The pinned bar names only the 2FA block (fixed first, safe default); the flags list still shows the missing rate.
+  const blocking = page.locator('[data-pay-flag="blocking"]');
+  await expect(blocking.locator('a[href^="/settings"]')).toHaveCount(1);
+  expect(await blocking.count()).toBeGreaterThanOrEqual(2);
 });
 
 test("offline: Approve is disabled with Needs connection and nothing queues", async ({ page }) => {

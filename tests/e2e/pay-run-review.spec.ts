@@ -23,7 +23,12 @@ async function hydrated(page: Page) {
 // Below 1024 px each person folds to name and total (pay iter1 D5): open them all to reach their lines.
 async function openPeople(page: Page) {
   await hydrated(page);
-  for (const t of await page.locator('[data-person-toggle][aria-expanded="false"]').all()) await t.click();
+  // Snapshot the stable set of toggles: filtering on aria-expanded="false" re-resolves after each click, so its
+  // nth() indexes shift and the later ones never exist.
+  for (const t of await page.locator("[data-person-toggle]").all()) {
+    if ((await t.getAttribute("aria-expanded")) === "false") await t.click();
+  }
+  await expect(page.locator('[data-person-toggle][aria-expanded="false"]')).toHaveCount(0);
 }
 
 test.describe("Pay run review (display)", () => {
