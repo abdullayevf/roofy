@@ -49,12 +49,16 @@ test.describe("crew statement (21)", () => {
     }
   });
 
-  test("an employee's statement has Pay, no GST and no contractor footer", async ({ page }, testInfo) => {
+  test("an employee's statement has its pay in Balance, no Totals (pay only, D11), no GST and no contractor footer", async ({ page }, testInfo) => {
     await page.goto(sam);
     await expect(page.getByText("Sam", { exact: true })).toBeVisible();
     await expect(page.getByText("Employee", { exact: true })).toBeVisible();
-    await expect(totals(page).getByText("Pay", { exact: true })).toBeVisible();
-    await expect(totals(page).getByText("GST", { exact: true })).toHaveCount(0);
+    // Pay only (pay iter2 D11): no Totals block; the pay is Balance's "This pay run" row, a money figure.
+    const run = page.locator('[data-statement-balance] [data-pay-sum="run"]');
+    await expect(run).toContainText("This pay run");
+    await expect(run).toContainText(/\$\d[\d,]*\.\d{2}/);
+    await expect(totals(page)).toHaveCount(0);
+    await expect(page.getByText("GST", { exact: true })).toHaveCount(0);
     await expect(page.locator("[data-statement-footer]")).toHaveCount(0);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
   });

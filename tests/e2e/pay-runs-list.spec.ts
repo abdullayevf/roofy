@@ -25,7 +25,8 @@ test.describe("Pay runs list (owner and manager)", () => {
     await expect(card.getByText("Draft")).toBeVisible();
     await expect(card.locator(".text-figure-xl")).toHaveText(MONEY);
     await expect(card.locator("[data-pay-people]")).toHaveText(/^\d+ (person|people) in this pay run$/);
-    await expect(card.locator("[data-pay-flags]")).toHaveText(/^(Nothing to check|\d+ things? to check) before you approve\./);
+    // One sentence built from the flags (pay iter2 N5): the seed's draft has Jake's missing rate, which stops approval.
+    await expect(card.locator("[data-pay-flags]")).toHaveText(/^\d+ things? to check, and Jake's missing rate stops approval\.$/);
     const review = card.getByRole("link", { name: "Review pay run" });
     await expect(review).toHaveAttribute("href", `/pay/${meta.payRuns.review}`);
     // Past runs follow, newest first, each with its status and total. The seed's current-week draft has no one in it yet, so it is

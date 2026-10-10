@@ -240,7 +240,9 @@ test.describe("Pay run review (layout, pay iter1 D3-D6, F3-F5)", () => {
   test("missing rate: Show the line first, Approve last, the waiver quieter under it; Approve in reach", async ({ page }, testInfo) => {
     await signInAs(page, "manager");
     const bar = page.locator('[data-slot="primary-action"]');
-    await expect(bar.locator('[data-pay-block="missing_rate"]')).toHaveText("Fix the missing rate before you approve.");
+    // Visible text only: the inline waiver inside the sentence is for a phone on its side (2b) and hidden here.
+    await expect(bar.locator('[data-pay-block="missing_rate"]')).toHaveText("Fix the missing rate before you approve.", { useInnerText: true });
+    await expect(bar.locator("[data-pay-waive-inline]")).toBeHidden();
     const variants = await bar.locator("[data-variant]").evaluateAll((els) => els.map((e) => `${e.getAttribute("data-variant")}:${(e as HTMLElement).innerText.trim()}`));
     expect(variants).toEqual(["secondary:Show the line", "primary:Approve pay run", "link:Approve without the rate"]);
     const showLine = await bar.getByRole("link", { name: "Show the line" }).boundingBox();
@@ -298,7 +300,7 @@ test.describe("pay run review layout (pay iter2 D16, D17, D25)", () => {
     await expect(page.locator(".pay-waive")).toBeHidden();
     const r = await checkPinnedBarCompact(page);
     expect(r.failures).toEqual([]);
-    const nav = await page.locator('nav[aria-label="Primary"]').boundingBox();
+    const nav = await page.locator('nav[aria-label="Primary"]:visible').boundingBox();
     expect(Math.round((nav?.y ?? 0) + (nav?.height ?? 0))).toBe(390);
   });
 

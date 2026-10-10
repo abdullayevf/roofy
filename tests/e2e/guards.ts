@@ -1126,8 +1126,18 @@ export async function checkAbnStaysWhole(page: Page, scope: string): Promise<Gua
  */
 export async function checkContentClearsFixedBars(page: Page): Promise<GuardResult> {
   const name = "content-clears-fixed-bars";
-  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-  await page.waitForTimeout(150);
+  // Scroll to the end of the settled page: the bar's measured height pads the page after hydration, so scroll again
+  // until the page stops growing (under load a single early scroll can stop short of the real end).
+  let last = -1;
+  for (let i = 0; i < 6; i++) {
+    const h = await page.evaluate(() => {
+      window.scrollTo(0, document.documentElement.scrollHeight);
+      return document.documentElement.scrollHeight;
+    });
+    await page.waitForTimeout(150);
+    if (h === last) break;
+    last = h;
+  }
   const failures = await page.evaluate(() => {
     const bars = Array.from(document.querySelectorAll<HTMLElement>('[data-slot="primary-action"], nav[aria-label="Primary"]')).filter(
       (el) => getComputedStyle(el).position === "fixed" && el.getBoundingClientRect().height > 0,

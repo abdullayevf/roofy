@@ -21,8 +21,10 @@ for (const role of ["manager", "owner"]) {
     await taps.tap(page.locator(`a[href="${PATH}"]`).locator("visible=true").first());
     await expect(page.getByRole("heading", { level: 1, name: "Pay run" })).toBeVisible();
     const block = page.locator('[data-pay-block="missing_rate"]');
-    // The block is the <p> itself in the pinned bar (1b): exact flows.md copy.
-    await expect(block).toHaveText("Fix the missing rate before you approve.");
+    // The block is the <p> itself in the pinned bar (1b): exact flows.md copy as read on screen. The inline waiver in it is
+    // only for a phone on its side (2b, D25/N2); here it is hidden, so the visible text is the sentence alone.
+    await expect(block).toHaveText("Fix the missing rate before you approve.", { useInnerText: true });
+    await expect(block.locator("[data-pay-waive-inline]")).toBeHidden();
     const lineHref = await page.locator("[data-pay-actions]").getByRole("link", { name: "Show the line" }).getAttribute("href");
     expect(lineHref).toMatch(/^#line-/);
     await expect(page.locator(lineHref!)).toContainText("Missing rate");

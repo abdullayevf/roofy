@@ -486,6 +486,8 @@ body {
  */
 @media (max-height: 499px) and (max-width: 1023px) {
   .pin-action.pin-pay {
+    /* 1 px border + 7 px + 48 px buttons + 8 px = 64 px (the phone's 52 px buttons would make it 69). */
+    padding-top: calc(0.5rem - 1px);
     padding-inline: max(1rem, env(safe-area-inset-left)) max(1rem, env(safe-area-inset-right));
   }
   .pin-action.pin-pay > [data-variant="secondary"] {
@@ -497,6 +499,7 @@ body {
   .pin-action.pin-pay > [data-variant] {
     flex: 0 0 auto;
     width: auto;
+    min-height: 3rem;
     padding-inline: 1rem;
   }
   .pin-action.pin-pay > .pay-waive {
