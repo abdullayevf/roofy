@@ -871,11 +871,24 @@ export const SCREENS: ScreenSpec[] = [
     noExtras: true,
   },
   {
+    // Flags first (missing rate blocks, warnings tap through to their line), then each person: lines with late-entry and
+    // adjustment labels, contractor subtotal, GST and total, reimbursements; then the run totals. `?demo=blocked` (Owner 2FA off) is covered by the spec.
     id: "pay-run-review",
     group: "pay",
     route: "/pay/:runId",
     states: ["normal", "loading", "error", "offline"],
     roles: ["owner", "manager", "accountant"],
+  },
+  {
+    // A foreman never reaches a pay run: the no-permission page, with no figure in its HTML.
+    id: "pay-run-review-foreman",
+    group: "pay",
+    route: "/pay/:runId",
+    states: ["normal"],
+    roles: ["foreman"],
+    viewports: ["iphone"],
+    lightOnly: true,
+    noExtras: true,
   },
   {
     id: "crew-statement",
