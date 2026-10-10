@@ -587,16 +587,22 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | expenses/i1-D19 | expenses | P3 | expenses-list/foreman/phone | No active tab | Mark tab active | fixed (i2) | 1 |
 | expenses/i1-D20 | expenses | P3 | fixtures | 'Ryde heritage' breaks naming | Rename job | open (i2) | 1 |
 | expenses/i1-Q1 | expenses | P3 | expense-detail | Stand-in receipt: row marker vs 'No receipt attached' (flows 190) | Treat stand-in as attached in prototype or resolve in Phase 5 | fixed (i2) | 1 |
-| expenses/i2-D22+F16 | expenses | P2 | expense-detail/phone | Edit not pinned; under tab bar and Log, must scroll | Pin Edit in a bar above the tab bar | open | 2 |
-| expenses/i2-F17+D28 | expenses | P2 | expenses-list/job filter | Key figure "$0.00 spent this month" above a $1,287.00 job row | Filtered: that job's total with its period | open | 2 |
-| expenses/i2-D21+F19 | expenses | P2 | expense-detail/all | Money rows in bold Atkinson, not Barlow figure; "Company card" vs form "Card" | figure style for every money value; one word for card | open | 2 |
-| expenses/i2-D23 | expenses | P2 | expenses-list/desktop + foreman table | One-line rows ~30 px (want 48), skeleton 48; Job wraps while Paid by has spare width | Rows ≥ 48 px; widen Job, narrow Paid by | open | 2 |
-| expenses/i2-D15+F20 | expenses | P2 | expense-edit/desktop, tablet, phone | Receipt line wraps to 5 lines; "Receipt attached: Receipt — …jpg" repeats | Thumbnail, filename one line, Replace/Remove under; drop the prefix | open | 2 |
-| expenses/i2-F18 | expenses | P3 | expense-new-from-job/iphone | "Back to expenses" after coming from a job | Back to the job | open | 2 |
-| expenses/i2-F21 | expenses | P3 | expense-edit-approved/iphone | "Change job" wraps beside a long job name | One line, 48 px target | open | 2 |
-| expenses/i2-F22+D31 | expenses | P3 | expense-new/edit loading | Skeleton photo buttons pills (want radius 6); desktop title skeleton 384 vs Save 192 | Match real controls | open | 2 |
-| expenses/i2-F23 | expenses | P3 | expense-new/foreman | No capture of foreman from a job with job pre-picked (flows 192) | Add foreman from-job capture | open | 2 |
-| expenses/i2-D24+D25 | expenses | P3 | expense-detail, new/edit desktop | Edit below panels not in title row; uneven panel bottoms; Save right edge 1216 vs Add expense 1424 | Title-row actions on one right edge; equal panels | open | 2 |
-| expenses/i2-D26+D29 | expenses | P3 | expenses-list meta phone + desktop | Pairs split only by a gap; "Dima Reimbursed next pay run" runs on | One fact per line or a sentence; status as own line/tag | open | 2 |
-| expenses/i2-D27 | expenses | P3 | Paid by + GST segmented/all | Selected is inset rounded pill; neighbour divider vanishes (lesson 24) | Fill whole option; straight 1 px dividers | open | 2 |
-| expenses/i2-D30 | expenses | P3 | expense-edit noperm foreman | "Back to Log" but Jobs tab active | Match origin | open | 2 |
+| expenses/i2-D22+F16 | expenses | P2 | expense-detail/phone | Edit not pinned; under tab bar and Log, must scroll | Pin Edit in a bar above the tab bar (fixed i3, 6a538e2) | closed | 2 |
+| expenses/i2-F17+D28 | expenses | P2 | expenses-list/job filter | Key figure "$0.00 spent this month" above a $1,287.00 job row | Filtered: that job's total with its period (fixed i3, 6a538e2) | closed | 2 |
+| expenses/i2-D21+F19 | expenses | P2 | expense-detail/all | Money rows in bold Atkinson, not Barlow figure; "Company card" vs form "Card" | figure style for every money value; one word for card (fixed i3, 6a538e2; desktop list still "Company card" = i3-F24+D33) | closed | 2 |
+| expenses/i2-D23 | expenses | P2 | expenses-list/desktop + foreman table | One-line rows ~30 px (want 48), skeleton 48; Job wraps while Paid by has spare width | Rows ≥ 48 px; widen Job, narrow Paid by (fixed i3, 6a538e2) | closed | 2 |
+| expenses/i2-D15+F20 | expenses | P2 | expense-edit/desktop, tablet, phone | Receipt line wraps to 5 lines; "Receipt attached: Receipt — …jpg" repeats | Thumbnail, filename one line, Replace/Remove under; drop the prefix (fixed i3, 6a538e2) | closed | 2 |
+| expenses/i2-F18 | expenses | P3 | expense-new-from-job/iphone | "Back to expenses" after coming from a job | Back to the job (accepted at cap i3) | open | 2 |
+| expenses/i2-F21 | expenses | P3 | expense-edit-approved/iphone | "Change job" wraps beside a long job name | One line, 48 px target (accepted at cap i3) | open | 2 |
+| expenses/i2-F22+D31 | expenses | P3 | expense-new/edit loading | Skeleton photo buttons pills (want radius 6); desktop title skeleton 384 vs Save 192 | Match real controls (accepted at cap i3) | open | 2 |
+| expenses/i2-F23 | expenses | P3 | expense-new/foreman | No capture of foreman from a job with job pre-picked (flows 192) | Add foreman from-job capture (accepted at cap i3) | open | 2 |
+| expenses/i2-D24+D25 | expenses | P3 | expense-detail, new/edit desktop | Edit below panels not in title row; uneven panel bottoms; Save right edge 1216 vs Add expense 1424 | Title-row actions on one right edge; equal panels (accepted at cap i3) | open | 2 |
+| expenses/i2-D26+D29 | expenses | P3 | expenses-list meta phone + desktop | Pairs split only by a gap; "Dima Reimbursed next pay run" runs on | One fact per line or a sentence; status as own line/tag (D29 fixed i3; D26 open, accepted at cap) | open | 2 |
+| expenses/i2-D27 | expenses | P3 | Paid by + GST segmented/all | Selected is inset rounded pill; neighbour divider vanishes (lesson 24) | Fill whole option; straight 1 px dividers (accepted at cap i3) | open | 2 |
+| expenses/i2-D30 | expenses | P3 | expense-edit noperm foreman | "Back to Log" but Jobs tab active | Match origin (accepted at cap i3) | open | 2 |
+| expenses/i3-D32+F27 | expenses | P2 | expense-detail + expense-edit/phone landscape | Pinned Edit/Save bar + tab bar ≈138 of 375–390 px; landscape bar has no surface | Landscape: action in the title row (as desktop) or a compact bar with surface (lesson 9) | open (accepted at cap) | 3 |
+| expenses/i3-F24+D33 | expenses | P3 | expenses-list desktop; expense-edit title/pinned bar; list header | Desktop list says "Company card" vs "Card"; "Cost to the job" and "plus $x GST" still Atkinson bold, not figure | One word for card; figure style for every money value | open (accepted at cap) | 3 |
+| expenses/i3-F25+D5 | expenses | P3 | expense-detail/phone | Receipt row generic icon, filename wraps 2 lines on iPhone | Reuse edit thumbnail tile; filename one line with ellipsis | open (accepted at cap) | 3 |
+| expenses/i3-F26 | expenses | P3 | expenses-list/job filter | Rows show inc-GST total under an ex-GST headline | Label rows "inc GST" or show ex GST | open (accepted at cap) | 3 |
+| expenses/i3-D34 | expenses | P3 | expenses-list/foreman desktop | Total column dropped but widths kept; ~250 px empty | Spread remaining columns | open (accepted at cap) | 3 |
+| expenses/i3-D13+D17 | expenses | P3 | expense-edit GST; tablet pinned bar | GST control → label gap 10–16 px (24 elsewhere); tablet edit bar rule full width vs detail content width | 24 px gap; match rule width | open (accepted at cap) | 3 |

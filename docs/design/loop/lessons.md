@@ -23,3 +23,5 @@
 - Keep word + number pairs together with non-breaking spaces ("yr 1", "paid ahead $300.00", "8 hours").
 - Segmented controls: one outer border, straight 1 px dividers, fill marks the selected option; no per-option rounded borders.
 - Compact (landscape) headers keep the label with the key figure ("$7,225.90 owed"), never a bare number.
+- Every money value uses the figure style (key figure, inline "Cost to the job", "plus $x GST", detail rows), never bold body text.
+- One word per concept across list, detail and form ("Card" everywhere, not "Company card" in one place).

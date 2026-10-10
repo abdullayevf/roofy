@@ -4,10 +4,9 @@
 
 - Phase: 2 — Design system and full prototype. Branch `phase/2-design-prototype` (local on the VPS, not pushed, not merged). Plan: `docs/plans/03-design-prototype.md`.
 - Ledger: `.superpowers/sdd/03-design-prototype/progress.md` (per-run lines; read its tail for where a task stands).
-- Done and reviewed: Tasks 1–15 (Task 15 = 60f8f5d..063b072, crew design loop accepted by the owner at iteration 2, avg 83.5; open P3 rows in ISSUES.md; task e2e 3 projects at 063b072: 122 pass, 0 fail).
-- **Now: Task 16** (Expenses list 16, add/edit 17), plan line 176. Brief `.superpowers/sdd/03-design-prototype/task-16-brief.md`. Review cycle done (re-review CLEAN). Design loop `expenses`: iter 1 74.5, iter 2 84.0 (design 81, field 87; 0 P0/P1; 5 P2 open). Fixes since iter 1: f681da4 (android test), feafb5d (capture `__name` crash). Budget: 24 runs / ~796 tool uses; assessor allowed a trimmed iter 3 with a hard ceiling of 880 tool uses / 26 runs.
-- **Next:** dispatch implementer (sonnet, cap 30) on `task-16-design-fix-2.md` (5 P2s, 2 guards). Then `scripts/capture-group.sh expenses` (iter 3; on guard failures one ≤ 10-step fix, else STOP), then both critics on `changed.txt` + the i2 rows only, ≤ 25 reads each (they cannot write files: save their tables as `expenses-iter3-*.md`). Then accept at the 3-iteration cap, record SCORES/ISSUES, run task e2e on 3 projects, tick the plan. Do not pass 880 tool uses / 26 runs: STOP instead.
-- Then: Tasks 17–23 in order.
+- Done and reviewed: Tasks 1–16 (Task 16 = b57722b..6a538e2, expenses design loop accepted at the 3-iteration cap, iter 3 avg 88 (design 86, field 90), 0 P0/P1; open P2 i3-D32+F27 landscape pinned bar and P3 rows in ISSUES.md; task e2e 3 projects at 6a538e2: 321 pass, 48 skip, 0 fail). T16 spend: 27 runs, ~881 tool uses (budget 800, assessor ceiling 880).
+- **Next: Task 17** (Pay: pay runs list 18, pay run review 19, crew statement 21), plan line 177. Write brief `.superpowers/sdd/03-design-prototype/task-17-brief.md` (≤ 60 lines, state checklist, lessons pointer; money/pay → implementer opus), split into runs ≤ 30 steps, then review cycle, then design loop `pay`. Carry the open landscape pinned-bar finding (lesson 9) into the brief.
+- Then: Tasks 18–23 in order.
 - Known flaky (iphone, passed on re-run): flows/no-work-marker.spec.ts:6, log-progress.spec.ts:135, design-page.spec.ts:45 on a cold server.
 - Environment: real WebKit works on the VPS. Never stop the server with `pkill -f "next start"`; kill the PID from `ss -ltnp | grep 3100`.
 
