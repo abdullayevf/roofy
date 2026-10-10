@@ -1160,16 +1160,18 @@ export async function checkContentClearsFixedBars(page: Page): Promise<GuardResu
 
 /**
  * A phone on its side: the pinned bar is one compact row (at most `max` px tall), its buttons and its sentence don't
- * overlap one another or the raised Log circle (pay iter2 D25/N2).
+ * overlap one another or the raised Log circle (pay iter2 D25/N2). No bar, or no Log circle to measure against, fails.
  */
 export async function checkPinnedBarCompact(page: Page, max = 64): Promise<GuardResult> {
   const name = "pinned-bar-compact";
   const bar = page.locator('[data-slot="primary-action"]:visible').first();
-  if ((await bar.count()) === 0) return { name, ok: true, failures: [] };
+  if ((await bar.count()) === 0) return { name, ok: false, failures: ["no pinned bar on the screen"] };
   const failures: string[] = [];
   const box = await bar.boundingBox();
-  if (box && box.height > max + 0.5) failures.push(`pinned bar is ${Math.round(box.height)} px tall (max ${max})`);
-  const circle = await page.locator("nav .rounded-full.bg-chalk").first().boundingBox();
+  if (!box) failures.push("the pinned bar has no box");
+  else if (box.height > max + 0.5) failures.push(`pinned bar is ${Math.round(box.height)} px tall (max ${max})`);
+  const circle = await page.locator("nav .rounded-full.bg-chalk:visible").first().boundingBox();
+  if (!circle) failures.push("no Log circle in the tab bar to measure against");
   const parts: { label: string; b: { x: number; y: number; width: number; height: number } }[] = [];
   for (const el of await bar.locator(":scope > *:visible").all()) {
     const b = await el.boundingBox();

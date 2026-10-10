@@ -3,7 +3,7 @@ import { checkAbnStaysWhole, collectConsole, expectScreenHealthy } from "./guard
 import { STATEMENT_CONTRACTOR, STATEMENT_EMPLOYEE } from "./screens";
 
 const isPhone = (name: string) => name !== "desktop";
-const FOOTER = "This is a statement. It is not a tax invoice. Please send your invoice as usual.";
+const FOOTER = "Statement only — not a tax invoice. Please send your invoice as usual.";
 const dima = `/s/${STATEMENT_CONTRACTOR}`;
 const sam = `/s/${STATEMENT_EMPLOYEE}`;
 const totals = (page: Page) => page.locator("section", { has: page.getByRole("heading", { level: 2, name: "Totals" }) });

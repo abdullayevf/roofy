@@ -4,7 +4,7 @@ import { formatDate } from "@/lib/format";
 import { METHOD_PHRASE } from "./crew-detail-text";
 
 /** Pay rules §16: a contractor's statement is not their invoice. */
-export const CONTRACTOR_FOOTER = "This is a statement. It is not a tax invoice. Please send your invoice as usual.";
+export const CONTRACTOR_FOOTER = "Statement only — not a tax invoice. Please send your invoice as usual.";
 
 export function statementFooter(s: Pick<Statement, "contractorFooter">): string | null {
   return s.contractorFooter ? CONTRACTOR_FOOTER : null;

@@ -9,6 +9,7 @@ const isPhone = (name: string) => name !== "desktop";
 const MONEY = /^\$[\d,]+\.\d{2}$/;
 const PATH = `/pay/${meta.payRuns.review}`;
 const SCREEN = '[data-screen="pay-run-review"]';
+const NEEDS_CONNECTION = "Needs connection — try again once you're back online.";
 
 async function signInAs(page: Page, role: string, next = PATH) {
   await page.goto(`/prototype/role?as=${role}&next=${encodeURIComponent(next)}`);
@@ -77,7 +78,7 @@ test.describe("Pay run review (display)", () => {
 
   test("a manager is told the owner turns on two-factor, with no link (N4)", async ({ page }) => {
     await signInAs(page, "manager", `${PATH}?demo=blocked`);
-    const twoFactor = page.locator('[data-pay-flag="blocking"]').filter({ hasText: "The owner needs to turn on two-factor first." });
+    const twoFactor = page.locator('[data-pay-flag="blocking"]').filter({ hasText: "The owner needs to turn on two-factor before this pay run can be approved." });
     await expect(twoFactor).toHaveCount(1);
     await expect(twoFactor.locator("a")).toHaveCount(0);
   });
@@ -302,6 +303,42 @@ test.describe("pay run review layout (pay iter2 D16, D17, D25)", () => {
     expect(r.failures).toEqual([]);
     const nav = await page.locator('nav[aria-label="Primary"]:visible').boundingBox();
     expect(Math.round((nav?.y ?? 0) + (nav?.height ?? 0))).toBe(390);
+    // The inline waiver is a text link with a 48 x 48 px hit area (F1/P2-2): its ::after is 48 px tall, the link at
+    // least 48 px wide, and a tap 3 px under its words or 43 px above that still lands on it, not on the tab bar.
+    const hit = await page.locator("[data-pay-waive-inline]").evaluate((a) => {
+      const r = a.getBoundingClientRect();
+      const x = r.left + r.width / 2;
+      const on = (y: number) => {
+        const e = document.elementFromPoint(x, y);
+        return e !== null && (e === a || a.contains(e));
+      };
+      return { width: r.width >= 48, height: parseFloat(getComputedStyle(a, "::after").height) >= 48, below: on(r.bottom + 3), above: on(r.bottom - 43) };
+    });
+    expect(hit).toEqual({ width: true, height: true, below: true, above: true });
+  });
+
+  // F3: the longer sentences still fit the compact row clear of the Log circle at 844 x 390.
+  test("a phone on its side: the manager's two-factor sentence keeps the bar compact", async ({ page }) => {
+    await page.setViewportSize({ width: 844, height: 390 });
+    await signInAs(page, "manager", `${PATH}?demo=blocked`);
+    await expect(page.locator('[data-pay-block="owner_2fa_off"]')).toBeVisible();
+    expect((await checkPinnedBarCompact(page)).failures).toEqual([]);
+  });
+
+  test("a phone on its side offline: Needs connection keeps the approved bar compact", async ({ page }) => {
+    await page.setViewportSize({ width: 844, height: 390 });
+    await signInAs(page, "owner", `${APPROVED}?demo=offline`);
+    await expect(page.locator("[data-pay-needs-connection]")).toHaveText(NEEDS_CONNECTION);
+    expect((await checkPinnedBarCompact(page)).failures).toEqual([]);
+  });
+
+  test("a phone on its side offline and blocked: Needs connection is the sentence's second line, clear of the Log circle", async ({ page }) => {
+    await page.setViewportSize({ width: 844, height: 390 });
+    await signInAs(page, "manager", `${PATH}?demo=offline`);
+    await expect(page.locator("[data-pay-needs-connection-inline]")).toHaveText(NEEDS_CONNECTION);
+    await expect(page.locator("[data-pay-needs-connection]")).toBeHidden();
+    // Two sentences in one column can't fit 64 px; the bar grows (recorded in the fix report), still one row.
+    expect((await checkPinnedBarCompact(page, 100)).failures).toEqual([]);
   });
 
   test("a tablet: the bar spans the review column on a full-width strip and nothing ends under it", async ({ page }) => {

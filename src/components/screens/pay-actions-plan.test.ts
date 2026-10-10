@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { payActionsPlan, payNeedsConnectionText, sheetAllowed, type PlanInput } from "./pay-actions-plan";
+import { payActionsPlan, sheetAllowed, type PlanInput } from "./pay-actions-plan";
 
 const draft: PlanInput = { status: "draft", canApprove: true, canExport: true, blockedBy: [], canReopen: false, owner: true };
 
@@ -71,11 +71,5 @@ describe("sheetAllowed (?confirm= opens a sheet only for a live action)", () => 
     expect(sheetAllowed(payActionsPlan({ ...approved, canReopen: false }, true), "reopen")).toBe(false);
     expect(sheetAllowed(payActionsPlan({ ...approved, canApprove: false }, true), "reopen")).toBe(false);
     expect(sheetAllowed(payActionsPlan(approved, true), "approve")).toBe(false);
-  });
-  it("D26: the offline line names what needs signal", () => {
-    expect(payNeedsConnectionText(payActionsPlan(draft, false))).toBe("Needs connection to approve.");
-    const approved = { ...draft, status: "approved" as const, canReopen: true };
-    expect(payNeedsConnectionText(payActionsPlan(approved, false))).toBe("Needs connection to export or reopen.");
-    expect(payNeedsConnectionText(payActionsPlan({ ...approved, canApprove: false }, false))).toBe("Needs connection to export.");
   });
 });

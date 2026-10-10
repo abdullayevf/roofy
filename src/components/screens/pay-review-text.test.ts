@@ -110,7 +110,7 @@ describe("foldTimeOnlyLines", () => {
 describe("pay iter2 fixes", () => {
   const twoFactor = { kind: "owner_2fa_off", blocking: true, crewMemberId: null, crewName: null, logIds: [], dates: [], stageName: null, href: "/settings/members" } as unknown as PayFlag;
   it("N4: a manager is told the owner turns on two-factor, with nowhere to go", () => {
-    expect(flagText(twoFactor, "2026-09-28", "manager")).toBe("The owner needs to turn on two-factor first.");
+    expect(flagText(twoFactor, "2026-09-28", "manager")).toBe("The owner needs to turn on two-factor before this pay run can be approved.");
     expect(flagTarget(twoFactor, "manager")).toBeNull();
     expect(flagText(twoFactor, "2026-09-28", "owner")).toBe("Turn on two-factor before you approve a pay run.");
     expect(flagTarget(twoFactor, "owner")).toBe("/settings/members");

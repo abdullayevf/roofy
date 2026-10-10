@@ -10,14 +10,14 @@ import { Dialog } from "@/components/ui/dialog";
 import { Toast } from "@/components/ui/toast";
 import { formatMoney } from "@/lib/format";
 import { focusRing } from "@/components/ui/focus";
-import { payActionsPlan, payNeedsConnectionText, sheetAllowed, type Sheet } from "./pay-actions-plan";
+import { payActionsPlan, sheetAllowed, type Sheet } from "./pay-actions-plan";
+import { NEEDS_CONNECTION } from "./needs-connection";
+import { TWO_FACTOR_BLOCK, TWO_FACTOR_BLOCK_MANAGER } from "./pay-review-text";
 import { PinnedAction, usePinnedBar } from "./field-entry";
 import { useOnline } from "./use-online";
 
 export const MISSING_RATE_BLOCK = "Fix the missing rate before you approve.";
-export const TWO_FACTOR_BLOCK = "Turn on two-factor before you approve a pay run.";
-/** A manager can't turn on the owner's two-factor, so they get no Settings button (pay iter1 F4). */
-export const TWO_FACTOR_BLOCK_MANAGER = "The owner needs to turn on two-factor before this pay run can be approved.";
+export { TWO_FACTOR_BLOCK, TWO_FACTOR_BLOCK_MANAGER };
 const BUTTON = "w-full";
 
 export type { Sheet };
@@ -120,7 +120,7 @@ export function PayRunActions({
           {blockText ? (
             // The icon hangs left of the words; the text sits straight in the paragraph so the waiver below is an inline
             // text link. A phone on its side shows that inline waiver (one compact row, pay iter2 D25/N2) and hides the
-            // standalone one; every other size hides the inline one.
+            // standalone one; every other size hides the inline one. Its hit area is 48 px tall (globals.css).
             <p data-pay-block={plan.blocker ?? undefined} className="relative pl-8 text-body-strong text-over">
               <WarningCircle size={24} aria-hidden="true" className="absolute left-0 top-0" />
               {blockText}
@@ -137,6 +137,13 @@ export function PayRunActions({
                 >
                   Approve without the rate
                 </a>
+              ) : null}
+              {plan.needsConnection ? (
+                // A phone on its side: Needs connection is a second line of this sentence, so the bar keeps one
+                // sentence column on the left of the Log circle; the standalone line below is hidden there.
+                <span data-pay-needs-connection-inline="" className="hidden text-ink">
+                  {NEEDS_CONNECTION}
+                </span>
               ) : null}
             </p>
           ) : null}
@@ -172,7 +179,7 @@ export function PayRunActions({
           ) : null}
           {plan.needsConnection ? (
             <p data-pay-needs-connection="" className="text-meta text-ink">
-              {payNeedsConnectionText(plan)}
+              {NEEDS_CONNECTION}
             </p>
           ) : null}
         </PinnedAction>

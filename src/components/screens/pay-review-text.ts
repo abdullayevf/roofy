@@ -1,6 +1,11 @@
 import type { PayFlag, PayLineDto, PayPersonGroup, PayRunTotals, Role } from "@/data/contracts";
 import { formatDate, formatDays, formatHours, formatMoney, formatQuantity } from "@/lib/format";
 
+/** The owner's two-factor block, in the flag list and the pinned bar alike (a plain module, so server pages can use it). */
+export const TWO_FACTOR_BLOCK = "Turn on two-factor before you approve a pay run.";
+/** A manager can't turn on the owner's two-factor, so they get no Settings button (pay iter1 F4). */
+export const TWO_FACTOR_BLOCK_MANAGER = "The owner needs to turn on two-factor before this pay run can be approved.";
+
 const UNIT_WORD = { m2: "m²", lm: "lm", each: "each" } as const;
 
 /** "Wed 23 Sep" or "Thu 24 Sep and Fri 25 Sep" (three or more: "Mon 21 Sep, Tue 22 Sep and Wed 23 Sep"). */
@@ -26,7 +31,7 @@ export function flagText(f: PayFlag, today: string, role: Role = "owner"): strin
     }
     case "owner_2fa_off":
       // Only the owner can turn it on: anyone else is told so, with nowhere to go (pay iter2 N4).
-      return role === "owner" ? "Turn on two-factor before you approve a pay run." : "The owner needs to turn on two-factor first.";
+      return role === "owner" ? TWO_FACTOR_BLOCK : TWO_FACTOR_BLOCK_MANAGER;
     case "below_floor":
       return f.floor
         ? `${who} earns ${formatMoney(f.floor.effectiveHourlyCents)} an hour this week, under the ${formatMoney(f.floor.floorRateCents)} award floor, so ${who} is ${formatMoney(f.floor.shortfallCents)} short for the week.`

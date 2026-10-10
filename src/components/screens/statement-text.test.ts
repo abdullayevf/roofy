@@ -3,7 +3,7 @@ import { CONTRACTOR_FOOTER, statementBalance, statementPaidLabel, statementEarli
 
 describe("crew statement text (pay rules §16)", () => {
   it("contractors get the footer, word for word; employees get none", () => {
-    expect(CONTRACTOR_FOOTER).toBe("This is a statement. It is not a tax invoice. Please send your invoice as usual.");
+    expect(CONTRACTOR_FOOTER).toBe("Statement only — not a tax invoice. Please send your invoice as usual.");
     expect(statementFooter({ contractorFooter: true })).toBe(CONTRACTOR_FOOTER);
     expect(statementFooter({ contractorFooter: false })).toBeNull();
   });

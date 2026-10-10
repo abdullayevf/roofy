@@ -64,7 +64,7 @@ test("Owner 2FA off blocks Approve with a button to Settings, and no way round i
 test("offline: Approve is disabled with Needs connection and nothing queues", async ({ page }) => {
   await signInAs(page, "manager", `${PATH}?demo=offline`);
   await expect(page.getByRole("button", { name: "Approve pay run" })).toBeDisabled();
-  await expect(page.locator("[data-pay-needs-connection]")).toHaveText("Needs connection to approve.");
+  await expect(page.locator("[data-pay-needs-connection]")).toHaveText("Needs connection — try again once you're back online.");
   await expect(page.getByRole("button", { name: "Approve without the rate" })).toHaveCount(0);
   await expect(page.getByText("will send automatically")).toHaveCount(0);
 });

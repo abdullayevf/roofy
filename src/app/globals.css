@@ -505,8 +505,27 @@ body {
   .pin-action.pin-pay > .pay-waive {
     display: none;
   }
+  /* The inline waiver keeps to one line and gets a 48 px tall hit area that ends 4 px under its words, inside the bar. */
   .pin-action.pin-pay [data-pay-waive-inline] {
     display: inline;
+    position: relative;
+    white-space: nowrap;
+  }
+  .pin-action.pin-pay [data-pay-waive-inline]::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -0.25rem;
+    height: 3rem;
+  }
+  /* With a blocking sentence, Needs connection is that sentence's second line, not a second column. */
+  .pin-action.pin-pay [data-pay-needs-connection-inline] {
+    display: block;
+    font-weight: 400;
+  }
+  .pin-action.pin-pay:has(> [data-pay-block]) > [data-pay-needs-connection] {
+    display: none;
   }
   .pin-action.pin-pay > :not(button):not(a):not([data-variant]),
   .pin-action.pin-pay:has(> [data-variant="secondary"]) > :not(button):not(a):not([data-variant]) {
