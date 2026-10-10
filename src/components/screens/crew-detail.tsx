@@ -23,19 +23,22 @@ const SHOWN = 6;
 const historyHref = (id: string) => `/history?crew=${id}`;
 const payoutHref = (id: string) => `/crew/${id}/payout`;
 
-/** Back row and the name; from 1024 px the Record payout button sits in the title row (on a phone it is pinned at the bottom). */
+/**
+ * Back row and the name; from 1024 px the Record payout button sits at the right of the title row, out of the flow so a
+ * tall button (or its "Needs connection" line) never pushes the balance away from the name (on a phone it is pinned at the bottom).
+ */
 function Header({ crew, demoOffline }: { crew: CrewDetail; demoOffline: boolean }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="relative flex flex-col gap-2">
       <Button variant="link" href="/crew" className="self-start">
         Back to crew
       </Button>
       <div className="flex items-start justify-between gap-4">
-        <h1 data-crew-title="" className="text-title text-ink [overflow-wrap:anywhere]">
+        <h1 data-crew-title="" className="text-title text-ink [overflow-wrap:anywhere] lg:pr-60">
           <KeepTogether text={crew.name} />
         </h1>
         {crew.access.canApprove ? (
-          <div className="jobs-add-head hidden shrink-0 lg:block">
+          <div className="jobs-add-head hidden shrink-0 lg:absolute lg:bottom-0 lg:right-0 lg:block">
             <OnlineOnlyHeadButton label="Record payout" href={payoutHref(crew.id)} demoOffline={demoOffline} />
           </div>
         ) : null}
@@ -178,7 +181,7 @@ export function CrewDetailBody({
   savedToast?: string | null;
 }) {
   return (
-    <div data-screen="crew-detail" className={cx(COLUMN, "gap-4 lg:max-w-none lg:gap-6")}>
+    <div data-screen="crew-detail" className={"mx-auto flex w-full max-w-180 flex-col gap-8 lg:mx-0 lg:max-w-none lg:gap-6"}>
       <Header crew={crew} demoOffline={demoOffline} />
       <div className="flex flex-col gap-8 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-10 lg:gap-y-10">
         <div className="flex min-w-0 flex-col gap-8 lg:gap-10">
@@ -228,7 +231,7 @@ function RowSkel({ lines }: { lines: number }) {
 /** The page while it loads (`?demo=loading`): the same blocks as grey shapes, as tall as the real rows, with the pinned bar. */
 export function CrewDetailSkeleton() {
   return (
-    <div data-screen="crew-detail" aria-busy="true" className={cx(COLUMN, "gap-4 lg:max-w-none lg:gap-6")}>
+    <div data-screen="crew-detail" aria-busy="true" className={"mx-auto flex w-full max-w-180 flex-col gap-8 lg:mx-0 lg:max-w-none lg:gap-6"}>
       <div className="flex flex-col gap-2">
         <Button variant="link" href="/crew" className="self-start">
           Back to crew
