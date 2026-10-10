@@ -28,3 +28,4 @@
 - Balances reconcile on the page: show the earlier balance so earlier + this period − paid = the balance shown.
 - Offline, reading stays available (lists, review, detail); only writes show Needs connection.
 - An override (waive, skip) never sits above or outranks the main action; the fix path comes first.
+- On tablet and landscape, fixed bars (pinned action bar, tab bar) never cover content: bar spans the content column, content pads its bottom by every fixed bar's height.

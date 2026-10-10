@@ -38,3 +38,4 @@ Score history for every screen group's design loop (`docs/specs/04-design-proces
 | expenses | 2         | 81           | 87          | 84      | 0           | yes (278 captures, 0 fail after capture fix feafb5d)                                                             |
 | expenses | 3         | 86           | 90          | 88      | 0           | yes (278 captures, 0 fail); accepted at the 3-iteration cap                                                      |
 | pay      | 1         | 77           | 78          | 77.5    | 2           | yes (276 captures, 0 fail)                                                                                       |
+| pay      | 2         | 81           | 83          | 82      | 3           | yes (276 captures, 0 fail)                                                                                       |

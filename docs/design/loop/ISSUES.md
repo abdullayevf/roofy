@@ -606,25 +606,41 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | expenses/i3-F26 | expenses | P3 | expenses-list/job filter | Rows show inc-GST total under an ex-GST headline | Label rows "inc GST" or show ex GST | open (accepted at cap) | 3 |
 | expenses/i3-D34 | expenses | P3 | expenses-list/foreman desktop | Total column dropped but widths kept; ~250 px empty | Spread remaining columns | open (accepted at cap) | 3 |
 | expenses/i3-D13+D17 | expenses | P3 | expense-edit GST; tablet pinned bar | GST control → label gap 10–16 px (24 elsewhere); tablet edit bar rule full width vs detail content width | 24 px gap; match rule width | open (accepted at cap) | 3 |
-| pay/i1-D1+F1 | pay | P1 | crew-statement/normal, employee/all | Still owed doesn't reconcile with total and paid; no earlier balance row | Owed from earlier row; check balance maths; guard rows sum | open | 1 |
-| pay/i1-D15+F2 | pay | P1 | pay-runs-list/offline/phones | Review pay run disabled offline; only Approve/Export need connection | Review enabled offline, Needs connection on writes only; guard | open | 1 |
-| pay/i1-D2+F9 | pay | P2 | crew-statement/all | No key figure; owed at bottom, Share leads (lesson 5) | figure-xl owed under person+period; Share below | open | 1 |
-| pay/i1-D3+F3 | pay | P2 | pay-run-review/blocked | Waiver above disabled Approve reads primary; Show the line small link; 2FA block uses different treatment | Show the line 52px secondary first, Approve primary last, waiver quieter; same for both blockers | open | 1 |
-| pay/i1-F4 | pay | P2 | pay-run-review/2FA blocked/manager | Go to settings dead end for a manager | Manager copy: owner needs to turn on two-factor; no settings button | open | 1 |
-| pay/i1-D4+F5 | pay | P2 | pay-run-review/draft/desktop, phone | Approve below fold on desktop, mid-page on phone (lessons 9, 21) | Title-row actions ≥1024; pinned Approve above tab bar on phone/tablet | open | 1 |
-| pay/i1-D5 | pay | P2 | pay-run-review/tablet 820 | ~10,100px single column, every person expanded | Collapse people to name+total <1024 or two-column | open | 1 |
-| pay/i1-D6 | pay | P2 | pay-run-review/normal/iphone | Missing-rate line not visibly flagged | Over icon + word as the flag | open | 1 |
-| pay/i1-D7+F6 | pay | P2 | pay-runs-list/normal/phones | Dates break mid-date (lesson 23) | nbsp inside dates; guard | open | 1 |
-| pay/i1-F7 | pay | P2 | pay-runs-list/normal | History 15 phone screens long | Last 8 runs + Show older pay runs | open | 1 |
-| pay/i1-D8+F8 | pay | P2 | crew-statement/loading | Skeleton single-line rows, no header (lesson 7) | Shape like statement | open | 1 |
-| pay/i1-F10 | pay | P2 | pay-run-review/award floor flag | 'under the $32.00 award floor (short $32.03)' reads like a typo | '…so he's $32.03 short for the week.' | open | 1 |
-| pay/i1-D9 | pay | P3 | pay-run-review lines, flags | Inline rate competes with amount; money in flag sentences body font (lesson 26) | Barlow tabular meta size inline and in flags | open | 1 |
-| pay/i1-D10+F12 | pay | P3 | pay-run-review/missing-rate flag | Two sentences, repeats blocker (lesson 3) | One sentence | open | 1 |
-| pay/i1-D11+F14 | pay | P3 | pay-run-review, crew-statement person totals | Pay = Total repeated; GST $0.00 for unregistered; $0 hour rows look unpaid | Total only when ≠ Pay; drop GST row; fold $0 hour rows | open | 1 |
-| pay/i1-D12 | pay | P3 | Draft chip | Draft uses watch colour (reserved for Paused) | ink-2 | open | 1 |
-| pay/i1-D13 | pay | P3 | approved, exported | Approved/Exported with no date | Add date | open | 1 |
-| pay/i1-D14 | pay | P3 | pay-run-review/adjustment line | Date shown twice | Label + date once | open | 1 |
-| pay/i1-F11 | pay | P3 | pay-run-review/confirm | 'your name is kept with that choice' not plain | 'We'll note that you approved without the rate.' | open | 1 |
-| pay/i1-F13 | pay | P3 | pay-runs-list/foreman noperm | No access centred | Left-align | open | 1 |
-| pay/i1-F15 | pay | P3 | pay-runs-list/normal | Empty future draft $0.00 No one yet | Hide drafts with no logs | open | 1 |
+| pay/i1-D1+F1 | pay | P1 | crew-statement/normal, employee/all | Still owed doesn't reconcile with total and paid; no earlier balance row | Owed from earlier row; check balance maths; guard rows sum | fixed (iter 2) | 1 |
+| pay/i1-D15+F2 | pay | P1 | pay-runs-list/offline/phones | Review pay run disabled offline; only Approve/Export need connection | Review enabled offline, Needs connection on writes only; guard | fixed (iter 2) | 1 |
+| pay/i1-D2+F9 | pay | P2 | crew-statement/all | No key figure; owed at bottom, Share leads (lesson 5) | figure-xl owed under person+period; Share below | fixed (iter 2) | 1 |
+| pay/i1-D3+F3 | pay | P2 | pay-run-review/blocked | Waiver above disabled Approve reads primary; Show the line small link; 2FA block uses different treatment | Show the line 52px secondary first, Approve primary last, waiver quieter; same for both blockers | fixed (iter 2) | 1 |
+| pay/i1-F4 | pay | P2 | pay-run-review/2FA blocked/manager | Go to settings dead end for a manager | Manager copy: owner needs to turn on two-factor; no settings button | fixed (iter 2) | 1 |
+| pay/i1-D4+F5 | pay | P2 | pay-run-review/draft/desktop, phone | Approve below fold on desktop, mid-page on phone (lessons 9, 21) | Title-row actions ≥1024; pinned Approve above tab bar on phone/tablet | fixed (iter 2) | 1 |
+| pay/i1-D5 | pay | P2 | pay-run-review/tablet 820 | ~10,100px single column, every person expanded | Collapse people to name+total <1024 or two-column | fixed (iter 2) | 1 |
+| pay/i1-D6 | pay | P2 | pay-run-review/normal/iphone | Missing-rate line not visibly flagged | Over icon + word as the flag | fixed (iter 2) | 1 |
+| pay/i1-D7+F6 | pay | P2 | pay-runs-list/normal/phones | Dates break mid-date (lesson 23) | nbsp inside dates; guard | fixed (iter 2) | 1 |
+| pay/i1-F7 | pay | P2 | pay-runs-list/normal | History 15 phone screens long | Last 8 runs + Show older pay runs | fixed (iter 2) | 1 |
+| pay/i1-D8+F8 | pay | P2 | crew-statement/loading | Skeleton single-line rows, no header (lesson 7) | Shape like statement | fixed (iter 2) | 1 |
+| pay/i1-F10 | pay | P2 | pay-run-review/award floor flag | 'under the $32.00 award floor (short $32.03)' reads like a typo | '…so he's $32.03 short for the week.' | fixed (iter 2) | 1 |
+| pay/i1-D9 | pay | P3 | pay-run-review lines, flags | Inline rate competes with amount; money in flag sentences body font (lesson 26) | Barlow tabular meta size inline and in flags | fixed (iter 2) | 1 |
+| pay/i1-D10+F12 | pay | P3 | pay-run-review/missing-rate flag | Two sentences, repeats blocker (lesson 3) | One sentence | fixed (iter 2) | 1 |
+| pay/i1-D11+F14 | pay | P3 | pay-run-review, crew-statement person totals | Pay = Total repeated; GST $0.00 for unregistered; $0 hour rows look unpaid | Total only when ≠ Pay; drop GST row; fold $0 hour rows | open (partial, see i2 fix 2a) | 1 |
+| pay/i1-D12 | pay | P3 | Draft chip | Draft uses watch colour (reserved for Paused) | ink-2 | fixed (iter 2) | 1 |
+| pay/i1-D13 | pay | P3 | approved, exported | Approved/Exported with no date | Add date | fixed (iter 2) | 1 |
+| pay/i1-D14 | pay | P3 | pay-run-review/adjustment line | Date shown twice | Label + date once | fixed (iter 2) | 1 |
+| pay/i1-F11 | pay | P3 | pay-run-review/confirm | 'your name is kept with that choice' not plain | 'We'll note that you approved without the rate.' | fixed (iter 2) | 1 |
+| pay/i1-F13 | pay | P3 | pay-runs-list/foreman noperm | No access centred | Left-align | fixed (iter 2) | 1 |
+| pay/i1-F15 | pay | P3 | pay-runs-list/normal | Empty future draft $0.00 No one yet | Hide drafts with no logs | fixed (iter 2) | 1 |
+| pay/i2-N1 | pay | P1 | pay-run-review/draft, approved, exported/all | Totals rows don't add up (GST, reimbursements sit as sibling rows) | "includes" sub-lines or rows sum to Total; guard | open | 2 |
+| pay/i2-D25+N2 | pay | P1 | pay-run-review/blocked/landscape | Pinned bar breaks: blocker one word per line, FAB and tab bar overlap (lesson 7) | One compact row ≤ 64 px; guard | open | 2 |
+| pay/i2-D16 | pay | P1 | pay-run-review + pay-runs-list/tablet 820 | Pinned bar narrower than column floats over rows; tab bar hides last rows | Column-width bar on a strip; bottom padding; guard | open | 2 |
+| pay/i2-D17 | pay | P2 | pay-run-review/desktop | Actions not at content right edge, unequal widths, sentence right-aligned, figure pushed down | One row at right edge; guard | open | 2 |
+| pay/i2-D18 | pay | P2 | pay-run-review People | Separate cards vs grouped surfaces elsewhere | One grouped surface with dividers | open | 2 |
+| pay/i2-D19+N3 | pay | P2 | pay-run-review/phone | ABN wraps mid-number (lesson 23) | nbsp; guard | open | 2 |
+| pay/i2-N4 | pay | P2 | pay-run-review/2FA off/manager | Flag row has owner copy and a dead-end chevron | Manager copy, no link | open | 2 |
+| pay/i2-N5 | pay | P3 | pay-runs-list/To review | Alert is two sentences | One sentence | open | 2 |
+| pay/i2-N6 | pay | P3 | crew-statement/Paid to you | Payment outside period, no note | Plain label | open | 2 |
+| pay/i2-D20 | pay | P3 | pay-run-review/desktop | Empty left column beside People | Sticky left column | open | 2 |
+| pay/i2-D21 | pay | P3 | approve confirm (override) | $0.00 in body font; plain Approve label | Figure face; "Approve without the rate" | open | 2 |
+| pay/i2-D22 | pay | P3 | crew-statement Balance | No dividers | 1 px dividers | open | 2 |
+| pay/i2-D23 | pay | P3 | crew-statement footer | Dash in copy | Two plain sentences | open | 2 |
+| pay/i2-D24 | pay | P3 | crew-statement/desktop | Balance after Work | Balance under the figure | open | 2 |
+| pay/i2-D26 | pay | P3 | pay-run-review/offline | Dash chain in Needs connection line | "Needs connection to approve." | open | 2 |
+| pay/i2-D27 | pay | P3 | pay-run-review/approved/desktop | Reopen stacked above Export CSV | One row, primary right | open | 2 |
 | jobs-1/long-name-clamp | jobs-1 | P3 | jobs-list/all/phone + desktop (long-names fixture, 110-character name) | Names wrap and never truncate (DESIGN.md), so the long-name row is 164 to 188 px on a phone and 77 px in the desktop table, above the i1-F5 limits (120/160 and 56); the e2e holds that row to "wrapped name plus the same fixed parts" and a line cap (6 phone, 3 table), not to the ordinary heights | Owner to rule: clamp the name to 2 lines on a phone and 1 in the table (full name on the job page), or keep wrapping in full | open, owner decision | 1 |
