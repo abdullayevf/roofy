@@ -55,6 +55,9 @@ describe("queuesOffline (R7)", () => {
     expect(queuesOffline("/crew/abc-123/payout")).toBe(false);
     expect(queuesOffline("/crew")).toBe(false);
     expect(queuesOffline("/jobs/abc-123/edit")).toBe(false);
+    // Pay runs never queue (flows.md "Needs connection"): no "will send automatically" banner on the list or a run.
+    expect(queuesOffline("/pay")).toBe(false);
+    expect(queuesOffline("/pay/run-1")).toBe(false);
     expect(queuesOffline("/jobs")).toBe(true);
     expect(queuesOffline("/jobs/abc-123")).toBe(true);
     expect(queuesOffline("/log")).toBe(true);

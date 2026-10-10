@@ -851,11 +851,24 @@ export const SCREENS: ScreenSpec[] = [
 
   // --- pay (Task 17): Pay runs list (18), review (19), statement (21) --
   {
+    // The draft to review first (flags, blocking count, Review pay run), then past runs with Draft/Approved/Exported.
+    // The accountant variant reads "Open pay run"; offline the button is disabled with "Needs connection".
     id: "pay-runs-list",
     group: "pay",
     route: "/pay",
     states: ADMIN_STATES,
     roles: ["owner", "manager", "accountant"],
+  },
+  {
+    // A foreman never reaches pay runs: the no-permission page, with no figure in its HTML.
+    id: "pay-runs-list-foreman",
+    group: "pay",
+    route: "/pay",
+    states: ["normal"],
+    roles: ["foreman"],
+    viewports: ["iphone"],
+    lightOnly: true,
+    noExtras: true,
   },
   {
     id: "pay-run-review",

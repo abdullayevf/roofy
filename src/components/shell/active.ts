@@ -60,4 +60,5 @@ export function activeManageKey(pathname: string): string {
 export const queuesOffline = (pathname: string, edit: string | null = null): boolean =>
   !/^\/jobs\/(new|[^/]+\/edit)\/?$/.test(pathname) &&
   !/^\/crew(\/[^/]+(\/payout)?)?\/?$/.test(pathname) &&
+  !/^\/pay(\/[^/]+)?\/?$/.test(pathname) &&
   !(edit === "1" && /^\/expenses\/(?!new\/?$)[^/]+\/?$/.test(pathname));
