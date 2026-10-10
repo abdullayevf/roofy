@@ -49,6 +49,7 @@ Each iteration:
 - Screen-group task, all agents: ≤ 28 runs and 800 tool uses (Task 13: 26 runs, 757 steps, about $30). Other task: ≤ 12 runs and 300 tool uses.
 - A usage-limit message: finish the ledger line and PROGRESS.md "Next", then stop.
 - Tasks 20–22 (tap-budget suite, foreman leakage sweep, visual baselines/PWA) run as one brief and one review cycle; they share files and have no design loop.
+- **Small stops get assessed, not asked (owner, 2026-10-10).** If a stop condition fires on a small, low-stakes issue — a cosmetic or few-px visual delta, a single failing or flaky check, or a budget overshoot within ~10% — do not write STOP. Dispatch a one-shot assessor agent (opus, short prompt: the STOP-worthy fact, the gates, remaining budget) to pick the optimal action: fix it, accept and move on, or adjust only that check within the existing gates — optimizing token spend while keeping every quality gate intact. Execute the assessor's call, record one ledger line naming the assessor and its decision, and continue. Stop for the owner only for the §6 list, a usage-limit hit, or the phase gate.
 
 ## 6. Ask the owner only for
 
