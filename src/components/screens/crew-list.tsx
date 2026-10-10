@@ -9,9 +9,10 @@ import { StatusChip } from "@/components/ui/status-chip";
 import { formatMoney } from "@/lib/format";
 import { balanceView, crewLine, lastLoggedDate, lastLoggedText, owedCountText } from "./crew-input";
 import { CrewFilter, type CrewFilterValue } from "./crew-filter";
+import { CrewOfflineNote } from "./crew-offline-note";
 import { LoadError } from "./field-entry";
 import { COLUMN, FOCUS, GROUP, KeyFigure, KeyFigureSkeleton } from "./home-parts";
-import { TD, TH } from "./jobs-group";
+import { TD, TH } from "./table-cells";
 
 /** The Crew page column: left-aligned from 1024 px, where the manager's list is a table the width of the content. */
 const CREW_COLUMN = cx(COLUMN, "lg:max-w-none");
@@ -169,11 +170,14 @@ export function CrewListBody({ list, filter, anyCrew, today, demo }: CrewListPro
             <div data-crew-owed="" className="flex flex-col gap-1">
               <KeyFigure>{formatMoney(list.owedTotalCents)}</KeyFigure>
               <p className="text-meta text-ink">{owedCountText(list.rows)}</p>
+              {/* On a phone on its side the sentence above is dropped; this keeps "owed" with the figure. */}
+              <span data-crew-owed-word="" className="hidden text-body text-ink">owed</span>
             </div>
           ) : null}
         </div>
         {manager ? <CrewFilter value={filter} demo={demo} /> : null}
       </div>
+      <CrewOfflineNote asOf={list.asOf} timeZone={list.timeZone} manager={manager} demoOffline={demo === "offline"} />
       {list.rows.length === 0 ? (
         <p className="text-body text-ink">No one is active right now. Show inactive crew to see who has left.</p>
       ) : list.view === "manager" ? (

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { checkTableEdgeGap, collectConsole, expectScreenHealthy } from "./guards";
+import { checkTableEdgeGap, checkTableHeaderAlign, collectConsole, expectScreenHealthy } from "./guards";
 import { expectNoMoney } from "./money-scan";
 import { getSeed } from "../../src/data/fake/store";
 
@@ -20,7 +20,7 @@ test.describe("Crew list (manager)", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Crew" })).toBeVisible();
     // The hero is the total owed, with who it is owed to under it (D5, F6).
     const owed = page.locator("[data-crew-owed]");
-    await expect(owed).toContainText(/^\$[\d,]+\.\d{2}(Owed to 1 person|Owed to \d+ people|No one is owed)$/);
+    await expect(owed).toContainText(/^\$[\d,]+\.\d{2}(Owed to 1 person|Owed to \d+ people|No one is owed)(owed)?$/);
     await expect(page.getByRole("radio", { name: "Active", exact: true })).toBeChecked();
     await expect(rows(page)).toHaveCount(11);
     await expect(rows(page).filter({ hasText: "Pete" })).toHaveCount(0);
@@ -104,9 +104,10 @@ test.describe("Crew list (manager)", () => {
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
-  test("offline keeps the list and shows the shell's banner", async ({ page }) => {
+  test("offline keeps the list and says so in one sentence with the time, not the sending-later banner", async ({ page }) => {
     await signInAs(page, "manager", "/crew?demo=offline");
-    await expect(page.getByText(/No signal/).first()).toBeVisible();
+    await expect(page.getByText(/No signal\. Balances as of \d{1,2}:\d{2}\s(am|pm)\./)).toBeVisible();
+    await expect(page.getByText(/will send automatically|saved on this device/)).toHaveCount(0);
     await expect(rows(page).first()).toBeVisible();
   });
 
@@ -155,6 +156,7 @@ test.describe("Crew list layout", () => {
     await page.goto(`/prototype/role?as=manager&next=${encodeURIComponent("/crew")}`);
     await expect(page.locator("table tbody tr").first()).toBeVisible();
     expect((await checkTableEdgeGap(page, 16)).failures).toEqual([]);
+    expect((await checkTableHeaderAlign(page, 16)).failures).toEqual([]);
     const kev = page.locator("table tbody tr", { hasText: "Kev" });
     await expect(kev.locator("td").nth(1)).not.toContainText("Last logged");
     await expect(kev.locator("td").nth(2).locator("[data-crew-too-long]")).toHaveCount(1);
@@ -178,5 +180,8 @@ test.describe("Crew list layout", () => {
       els.filter((e) => e.getBoundingClientRect().bottom <= window.innerHeight).length,
     );
     expect(rows).toBeGreaterThanOrEqual(3);
+    // D21, F25: the compact header keeps the label with the figure: "$7,225.90 owed", never a bare number.
+    const owed = page.locator("[data-crew-owed]");
+    expect((await owed.innerText()).replace(/\s+/g, " ").trim()).toMatch(/^\$[\d,]+\.\d{2} owed$/);
   });
 });

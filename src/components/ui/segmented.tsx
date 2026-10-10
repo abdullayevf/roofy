@@ -64,7 +64,8 @@ export function Segmented({
     >
       {options.map((opt, i) => {
         const checked = opt.value === value;
-        // A 1 px divider between two options that are both unselected; the selected one is its own block.
+        // A straight 1 px divider (a pseudo-element, not a border, so it never curves with the option's corners) between two
+        // options that are both unselected; the selected one is its own block.
         const seam = i > 0 && !checked && options[i - 1]?.value !== value;
         return (
           <label
@@ -72,7 +73,7 @@ export function Segmented({
             className={cx(
               "relative flex min-h-[52px] flex-auto items-center justify-center gap-1.5 rounded-control px-3 py-1 text-center text-body-strong lg:min-h-12",
               disabled ? "cursor-not-allowed" : "cursor-pointer",
-              seam && "border-l border-edge",
+              seam && "before:absolute before:inset-y-2 before:left-0 before:w-px before:bg-edge",
               checked
                 ? disabled
                   ? "bg-line text-ink-2"

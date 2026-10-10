@@ -39,8 +39,17 @@ test.describe("Record payout (manager)", () => {
     const segBox = await seg.boundingBox();
     const colBox = await seg.locator("xpath=..").boundingBox();
     expect(colBox!.width - segBox!.width, "segment narrower than its column").toBeLessThanOrEqual(2);
-    const seams = await seg.locator("label").evaluateAll((els) => els.map((e) => parseFloat(getComputedStyle(e).borderLeftWidth)));
-    expect(seams[1], `option dividers ${seams.join(",")}`).toBeGreaterThanOrEqual(1);
+    // F18, D10: one outer border on the control; no option draws its own (rounded) border; the divider is a straight 1 px line.
+    const parts = await seg.locator("label").evaluateAll((els) =>
+      els.map((e) => {
+        const s = getComputedStyle(e);
+        const b = getComputedStyle(e, "::before");
+        return { border: s.borderLeftWidth + s.borderTopWidth + s.borderRightWidth + s.borderBottomWidth, dividerWidth: b.width, dividerFill: b.backgroundColor };
+      }),
+    );
+    expect(parts.map((p) => p.border), "options must not draw their own border").toEqual(parts.map(() => "0px0px0px0px"));
+    expect(parts[1]!.dividerWidth, "straight 1 px divider").toBe("1px");
+    expect(parts[1]!.dividerFill, "divider has a colour").not.toBe("rgba(0, 0, 0, 0)");
     await expect(page.locator("[data-payout-balance]")).toContainText(/^Dima: (owed|paid ahead|nothing owed) \$[\d,]+\.\d{2}$/);
     await expect(page.getByLabel("Date paid")).toHaveValue(TODAY);
     await expect(amount(page)).toHaveValue("");

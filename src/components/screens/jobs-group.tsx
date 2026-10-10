@@ -14,6 +14,7 @@ import { FOCUS, GROUP, whole } from "./home-parts";
 import { showMoreText } from "./home-text";
 import { jobLine, lastLogOn, statusEmptyMessage, type JobFilter, type JobLine } from "./job-input";
 import { JobsFilter } from "./jobs-filter";
+import { TD, TH } from "./table-cells";
 
 /** How many jobs show before "Show N more" (a long history is one tap away, not a long scroll). */
 export const JOBS_SHOWN = 20;
@@ -73,9 +74,6 @@ function PhoneRow({ item }: { item: Item }) {
   );
 }
 
-export const TH = "px-4 py-2 text-left text-meta text-ink font-normal";
-// A chip line is 24 px tall (its icon), so with the 24 px name the cell is 48 px; py-0.5 keeps the row at 53 px, under the 56 px cap.
-export const TD = "px-4 py-0.5 align-middle";
 
 /** From 1024 px: a table with the whole row as the link. Job, how far along, labour of budget, margin, last log. */
 function JobsTable({ items, today }: { items: Item[]; today: string }) {

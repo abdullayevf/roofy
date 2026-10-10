@@ -52,6 +52,9 @@ export function activeManageKey(pathname: string): string {
   return MANAGE_PAGES.has(first) ? first : "";
 }
 
-/** Admin forms that need a connection to save: New job and Edit job. Everything else queues entries on the device. */
+/**
+ * Admin screens that need a connection to save: New job, Edit job, and Crew (list, person, payout). Everything else queues
+ * entries on the device. The Crew list is read-only; it says "No signal. Balances as of 7:42 am." itself.
+ */
 export const queuesOffline = (pathname: string): boolean =>
-  !/^\/jobs\/(new|[^/]+\/edit)\/?$/.test(pathname) && !/^\/crew\/[^/]+(\/payout)?\/?$/.test(pathname);
+  !/^\/jobs\/(new|[^/]+\/edit)\/?$/.test(pathname) && !/^\/crew(\/[^/]+(\/payout)?)?\/?$/.test(pathname);

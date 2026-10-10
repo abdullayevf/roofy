@@ -348,8 +348,16 @@ body {
     font-size: 1.5rem !important;
     line-height: 2rem;
   }
-  .crew-head-top [data-crew-owed] > p:last-child {
+  .crew-head-top [data-crew-owed] {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+  .crew-head-top [data-crew-owed] > p:nth-child(2) {
     display: none;
+  }
+  .crew-head-top [data-crew-owed] > [data-crew-owed-word] {
+    display: block;
   }
 }
 /*

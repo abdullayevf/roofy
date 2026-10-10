@@ -807,6 +807,52 @@ export async function checkTableEdgeGap(page: Page, minGap = 16): Promise<GuardR
   return { name: "table-edge-gap", ok: failures.length === 0, failures };
 }
 
+/**
+ * In every visible table, each header cell's text starts and ends where its column's body text does (left-aligned columns
+ * share a left edge, right-aligned ones a right edge), and the last column's text ends at least `minGap` px inside the border.
+ */
+export async function checkTableHeaderAlign(page: Page, minGap = 16): Promise<GuardResult> {
+  await polyfillEsbuildNameHelper(page);
+  const failures = await page.evaluate((min) => {
+    const out: string[] = [];
+    const textBox = (cell: Element) => {
+      const range = document.createRange();
+      range.selectNodeContents(cell);
+      let left = Infinity;
+      let right = 0;
+      for (const r of Array.from(range.getClientRects())) {
+        if (r.width <= 0) continue;
+        left = Math.min(left, r.left);
+        right = Math.max(right, r.right);
+      }
+      return { left, right };
+    };
+    for (const table of Array.from(document.querySelectorAll("table"))) {
+      if (table.getBoundingClientRect().width === 0) continue;
+      const heads = Array.from(table.querySelectorAll("thead th"));
+      const row = table.querySelector("tbody tr");
+      if (!row) continue;
+      const cells = Array.from(row.children);
+      heads.forEach((th, i) => {
+        const td = cells[i];
+        if (!td) return;
+        const h = textBox(th);
+        const b = textBox(td);
+        const rightAligned = getComputedStyle(th).textAlign === "right" || getComputedStyle(th).textAlign === "end";
+        const name = (th.textContent ?? "").trim();
+        if (rightAligned && Math.abs(h.right - b.right) > 1) out.push(`"${name}" header ends ${h.right.toFixed(1)} but its cells end ${b.right.toFixed(1)}`);
+        if (!rightAligned && Math.abs(h.left - b.left) > 1) out.push(`"${name}" header starts ${h.left.toFixed(1)} but its cells start ${b.left.toFixed(1)}`);
+        if (i === heads.length - 1) {
+          const edge = table.getBoundingClientRect().right;
+          if (edge - h.right < min - 0.5) out.push(`"${name}" header ends ${(edge - h.right).toFixed(1)}px from the table edge (needs >= ${min})`);
+        }
+      });
+    }
+    return out;
+  }, minGap);
+  return { name: "table-header-align", ok: failures.length === 0, failures };
+}
+
 /** The Back row is a 48 px target on a phone (it is a text link, which the general touch-target check skips). */
 export async function checkBackRow(page: Page): Promise<GuardResult> {
   const back = page.getByRole("link", { name: /^Back to / }).first();

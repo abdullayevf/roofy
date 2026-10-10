@@ -7,7 +7,8 @@ import { LoadError } from "./field-entry";
 import { COLUMN, GROUP, KeyFigure, KeyFigureSkeleton } from "./home-parts";
 import { overBudgetFigure } from "./home-text";
 import { JobsAddBar } from "./jobs-add-bar";
-import { JobsBrowse, TD, TH } from "./jobs-group";
+import { JobsBrowse } from "./jobs-group";
+import { TD, TH } from "./table-cells";
 import { JobsFilter } from "./jobs-filter";
 import { overBudgetJobs, type JobFilter } from "./job-input";
 

@@ -638,9 +638,9 @@ export interface CrewRowManager extends CrewRowForeman {
 }
 
 export type CrewList =
-  /** Rows: people owed first (largest first), then the rest by name. `owedTotalCents` adds up what is owed. */
-  | { view: "manager"; access: Access; rows: CrewRowManager[]; owedTotalCents: Cents }
-  | { view: "foreman"; access: FieldAccess; rows: CrewRowForeman[] };
+  /** Rows: people owed first (largest first), then the rest by name. `owedTotalCents` adds up what is owed. `asOf` is when the balances were read (offline: the last time they loaded), shown in `timeZone`. */
+  | { view: "manager"; access: Access; rows: CrewRowManager[]; owedTotalCents: Cents; asOf: Instant; timeZone: string }
+  | { view: "foreman"; access: FieldAccess; rows: CrewRowForeman[]; asOf: Instant; timeZone: string };
 
 export interface RateDto {
   id: Id;

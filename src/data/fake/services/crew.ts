@@ -66,6 +66,12 @@ export function ledgerRows(c: FakeContext, crewId: Id): LedgerRow[] {
 export function createCrewService(c: FakeContext): CrewService {
   const isActive = (m: CrewMemberRow) => m.activeTo === null || m.activeTo >= c.today;
 
+  /** When the balances were read: now, or 40 minutes ago offline (the last time the phone loaded them). */
+  function asOf(): string {
+    const now = c.now();
+    return (c.options.demo === "offline" ? new Date(now.getTime() - 40 * 60_000) : now).toISOString();
+  }
+
   function requireCrew(crewId: Id): CrewMemberRow {
     const crew = c.ix.crew.get(crewId);
     if (!crew) throw notFound("crew member");
@@ -142,7 +148,7 @@ export function createCrewService(c: FakeContext): CrewService {
         .filter((m) => filter?.includeInactive || isActive(m))
         .sort((a, b) => a.name.localeCompare(b.name));
       if (c.isForeman(actor))
-        return { view: "foreman", access: FIELD_ACCESS, rows: crew.map((m) => crewRowForeman(m, c.today)) };
+        return { view: "foreman", access: FIELD_ACCESS, rows: crew.map((m) => crewRowForeman(m, c.today)), asOf: asOf(), timeZone: c.t.workspace.timezone };
       const rows: CrewRowManager[] = crew.map((m) => {
           const level = m.levelId === null ? null : c.ix.levels.get(m.levelId)!;
           const ledger = c.fig.ledger(m.id);
@@ -159,7 +165,7 @@ export function createCrewService(c: FakeContext): CrewService {
       // People owed come first, largest first; everyone else stays in name order (the sort is stable).
       rows.sort((a, b) => Math.max(b.balanceCents, 0) - Math.max(a.balanceCents, 0));
       const owedTotalCents = sum(rows.map((r) => Math.max(r.balanceCents, 0)));
-      return { view: "manager", access: c.access(actor), rows, owedTotalCents };
+      return { view: "manager", access: c.access(actor), rows, owedTotalCents, asOf: asOf(), timeZone: c.t.workspace.timezone };
     },
 
     async get(actor: Actor, crewMemberId: Id): Promise<CrewDetail> {
