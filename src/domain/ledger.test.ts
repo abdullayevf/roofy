@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { ledgerBalance, oldestUnpaidCreditDate, unpaidCreditCount, unpaidTooLong, type LedgerEntry } from "./ledger";
+import {
+  ledgerBalance,
+  oldestUnpaidCreditDate,
+  statementBalance,
+  unpaidCreditCount,
+  unpaidTooLong,
+  type LedgerEntry,
+} from "./ledger";
 
 const advance: LedgerEntry = { date: "2026-09-14", kind: "advance", amountCents: 30_000 };
 const credit: LedgerEntry = { date: "2026-09-20", kind: "payrun_credit", amountCents: 178_200 };
@@ -38,5 +45,30 @@ describe("unpaidCreditCount", () => {
     const part: LedgerEntry = { date: "2026-09-22", kind: "payment", amountCents: 150_00 };
     expect(unpaidCreditCount([run("2026-09-07", 100_00), run("2026-09-14", 100_00), run("2026-09-21", 100_00), part])).toBe(2);
     expect(unpaidCreditCount([run("2026-09-07", 100_00), { ...part, amountCents: 100_00 }])).toBe(0);
+  });
+});
+
+describe("statementBalance (pay rules §16)", () => {
+  it("adds up by hand: owed from earlier + this pay run − paid = still owed", () => {
+    const earlier: LedgerEntry[] = [
+      { date: "2026-09-13", kind: "payrun_credit", amountCents: 190000 },
+      { date: "2026-09-16", kind: "advance", amountCents: 10000 },
+      { date: "2026-09-22", kind: "payrun_credit", amountCents: 20000 },
+    ];
+    const paid: LedgerEntry[] = [
+      { date: "2026-09-21", kind: "advance", amountCents: 30000 },
+      { date: "2026-09-23", kind: "payment", amountCents: 200000 },
+    ];
+    expect(statementBalance(earlier, 178200, paid)).toEqual({
+      earlierCents: 200000,
+      runCents: 178200,
+      paidCents: 230000,
+      afterCents: 148200,
+    });
+    expect(statementBalance(earlier, 178200, paid).afterCents).toBe(ledgerBalance([...earlier, ...paid, { date: "2026-09-28", kind: "payrun_credit", amountCents: 178200 }]));
+  });
+
+  it("nothing earlier and nothing paid: the balance is this pay run", () => {
+    expect(statementBalance([], 50000, [])).toEqual({ earlierCents: 0, runCents: 50000, paidCents: 0, afterCents: 50000 });
   });
 });

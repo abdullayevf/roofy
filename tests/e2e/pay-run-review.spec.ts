@@ -29,8 +29,10 @@ test.describe("Pay run review (display)", () => {
     await expect(page.locator(`${SCREEN} .text-figure-xl`)).toHaveText(MONEY);
     const flags = page.locator("[data-pay-flag]");
     await expect(flags.first()).toHaveAttribute("data-pay-flag", "blocking");
-    await expect(flags.first()).toContainText("No lm rate for Jake");
-    await expect(flags.first()).toContainText("Fix the missing rate before you approve.");
+    await expect(flags.first()).toContainText("Jake has no rate per lm for Flashings, gutters & downpipes, so Wed 23 Sep pays $0.00.");
+    await expect(flags.first()).not.toContainText("Fix the missing rate");
+    // Money in a flag sentence is set in the figure face (lesson 26).
+    await expect(flags.first().locator("[data-inline-money]")).toHaveCSS("font-family", /Barlow/i);
     await expect(flags.nth(1)).toHaveAttribute("data-pay-flag", "warning");
     // A flag taps through to its line on this page, and that line is there.
     const href = await flags.first().locator("a").getAttribute("href");
@@ -56,8 +58,8 @@ test.describe("Pay run review (display)", () => {
 
   test("late entries and adjustments carry their own date", async ({ page }) => {
     await signInAs(page, "manager");
-    await expect(page.locator('[data-pay-line="late"] [data-line-label]')).toHaveText("Late entry for Mon 14 Sep");
-    await expect(page.locator('[data-pay-line="adjustment"] [data-line-label]')).toHaveText("Adjustment for Thu 17 Sep");
+    await expect(page.locator('[data-pay-line="late"] [data-line-label]')).toHaveText("Late entry");
+    await expect(page.locator('[data-pay-line="adjustment"] [data-line-label]')).toHaveText("Adjustment");
     await expect(page.locator('[data-pay-line="normal"] [data-line-basis]').first()).toHaveText(/ at \$[\d,]+\.\d{2} (an hour|a day|per .+)$/);
   });
 
@@ -127,14 +129,14 @@ test.describe("Pay run review (actions)", () => {
     const download = page.waitForEvent("download");
     await page.getByRole("button", { name: "Export CSV" }).click();
     expect((await download).suggestedFilename()).toMatch(/\.csv$/);
-    await expect(page.getByText("Exported to CSV", { exact: true })).toBeVisible();
+    await expect(page.locator("[data-pay-exported]")).toBeVisible();
   });
 
   test("an exported run says so, exports again, and can't reopen once a later run is approved", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
     const exported = seed.payRuns.find((r) => r.status === "exported")!.id;
     await signInAs(page, "owner", `/pay/${exported}`);
-    await expect(page.getByText("Exported to CSV", { exact: true })).toBeVisible();
+    await expect(page.locator("[data-pay-exported]")).toBeVisible();
     await expect(page.getByRole("button", { name: "Export CSV" })).toBeEnabled();
     await expect(page.getByRole("button", { name: "Reopen pay run" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Share statement" }).first()).toBeEnabled();

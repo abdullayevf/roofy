@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CONTRACTOR_FOOTER, statementBalance, statementFooter, statementPayoutText } from "./statement-text";
+import { CONTRACTOR_FOOTER, statementBalance, statementEarlier, statementFooter, statementPayoutText } from "./statement-text";
 
 describe("crew statement text (pay rules §16)", () => {
   it("contractors get the footer, word for word; employees get none", () => {
@@ -17,6 +17,9 @@ describe("crew statement text (pay rules §16)", () => {
   it("the balance after reads in words, with no sign to decode", () => {
     expect(statementBalance(12_345)).toEqual({ label: "Still owed to you", cents: 12_345 });
     expect(statementBalance(-30_000)).toEqual({ label: "Paid ahead", cents: 30_000 });
+    expect(statementEarlier(180_000)).toEqual({ label: "Owed from earlier", cents: 180_000 });
+    expect(statementEarlier(0)).toEqual({ label: "Owed from earlier", cents: 0 });
+    expect(statementEarlier(-30_000)).toEqual({ label: "Paid ahead earlier", cents: 30_000 });
     expect(statementBalance(0)).toEqual({ label: "Nothing owed", cents: 0 });
   });
 });

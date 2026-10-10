@@ -161,6 +161,22 @@ describe("approved pay runs", () => {
 });
 
 describe("statements and the ledger", () => {
+  it("every seeded statement adds up on the page: owed from earlier + this pay run − paid = still owed", async () => {
+    const { data, actor } = fake("manager");
+    const runs = await data.payRuns.list(actor);
+    let checked = 0;
+    for (const run of runs) {
+      const r = await data.payRuns.get(actor, run.id);
+      for (const p of r.people) {
+        const s = await data.payRuns.statement(actor, run.id, p.crewMemberId);
+        const paid = sum(s.payouts.map((x) => x.amountCents));
+        expect(s.balanceBeforeCents + s.totals.totalCents - paid, `${run.period.start} ${p.name}`).toBe(s.balanceAfterCents);
+        checked += 1;
+      }
+    }
+    expect(checked).toBeGreaterThan(10);
+  });
+
   it("Dima's draft statement: $1,782.00, payouts in the period, balance then $1,482.00 (E15.1)", async () => {
     const { data, actor } = fake("manager");
     const s = await data.payRuns.statement(actor, meta.payRuns.review, meta.crew.dima);

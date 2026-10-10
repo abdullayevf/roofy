@@ -23,6 +23,11 @@ export function statementBalance(cents: Cents): { label: string; cents: Cents } 
   return { label: "Nothing owed", cents: 0 };
 }
 
+/** The balance carried in from before this pay run, in words: "Owed from earlier" or "Paid ahead earlier". */
+export function statementEarlier(cents: Cents): { label: string; cents: Cents } {
+  return cents < 0 ? { label: "Paid ahead earlier", cents: -cents } : { label: "Owed from earlier", cents };
+}
+
 /** The statement page's own link, copied where there is no share sheet. */
 export const LINK_COPIED = "Link copied.";
 

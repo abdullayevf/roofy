@@ -2,13 +2,13 @@ import Link from "next/link";
 import { CaretRight, WarningDiamond } from "@phosphor-icons/react/dist/ssr";
 import type { PayFlag, PayLineDto, PayPersonGroup, PayRunReview, ReimbursementDto, Role } from "@/data/contracts";
 import { cx } from "@/lib/cx";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatHours, formatMoney } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusChip } from "@/components/ui/status-chip";
 import { LoadError } from "./field-entry";
 import { COLUMN, FOCUS, GROUP, KeyFigure, KeyFigureSkeleton } from "./home-parts";
-import { flagTarget, flagText, lineBasisParts, lineLabelText, personKindLines, personTotalRows } from "./pay-review-text";
+import { flagTarget, flagText, foldTimeOnlyLines, lineBasisParts, lineLabelText, personKindLines, personTotalRows } from "./pay-review-text";
 import { PayRunActions, type Sheet } from "./pay-run-actions";
 import { ShareStatementButton } from "./share-statement";
 import { payRunPeriodText, peopleCountText } from "./pay-runs-text";
@@ -19,10 +19,25 @@ const SPLIT = "flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,
 /** A row's right column for its figure: as wide as the figure (even at 200% text), right-aligned; the words wrap. */
 export const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4";
 export const FIGURE = "block text-right text-figure num text-ink whitespace-nowrap";
+/** Money inside a sentence or a meta line: the figure face at the surrounding size (lesson 26). */
+export const FIGURE_INLINE = "font-display font-semibold num whitespace-nowrap";
+
+/** A sentence with its money set in the figure face ("…so Wed 23 Sep pays $0.00."). */
+export function MoneyText({ text }: { text: string }) {
+  return text.split(/(-?\$[\d,]+\.\d{2})/).map((part, i) =>
+    i % 2 === 1 ? (
+      <span key={i} data-inline-money="" className={FIGURE_INLINE}>
+        {part}
+      </span>
+    ) : (
+      part
+    ),
+  );
+}
 
 type Reader = Exclude<Role, "foreman">;
 
-function Top({ review, today }: { review: Pick<PayRunReview, "period" | "status" | "approvedByName" | "exportedAt">; today: string }) {
+function Top({ review, today }: { review: Pick<PayRunReview, "period" | "status" | "approvedByName" | "approvedOn" | "exportedOn">; today: string }) {
   return (
     <div className="flex flex-col gap-1">
       <Button variant="link" href="/pay" className="self-start">
@@ -32,9 +47,16 @@ function Top({ review, today }: { review: Pick<PayRunReview, "period" | "status"
       <p data-pay-period="" className="text-body-strong text-ink">{payRunPeriodText(review.period, today)}</p>
       <StatusChip status={review.status} plain />
       {review.status !== "draft" && review.approvedByName ? (
-        <p data-pay-approved="" className="text-meta text-ink">Approved by {review.approvedByName}</p>
+        <p data-pay-approved="" className="text-meta text-ink">
+          Approved by {review.approvedByName}
+          {review.approvedOn ? ` on ${formatDate(review.approvedOn, today)}` : ""}.
+        </p>
       ) : null}
-      {review.exportedAt ? <p className="text-meta text-ink">Exported to CSV</p> : null}
+      {review.exportedOn ? (
+        <p data-pay-exported="" className="text-meta text-ink">
+          Exported to CSV on {formatDate(review.exportedOn, today)}.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -45,7 +67,9 @@ function FlagRow({ flag, today }: { flag: PayFlag; today: string }) {
     <>
       <WarningDiamond size={24} aria-hidden="true" className={cx("shrink-0", flag.blocking ? "text-over" : "text-watch")} />
       <span className="flex min-w-0 flex-col">
-        <span className="text-body text-ink">{flagText(flag, today)}</span>
+        <span className="text-body text-ink">
+          <MoneyText text={flagText(flag, today)} />
+        </span>
         <span className="text-meta text-ink">{flag.blocking ? "Stops approval" : "Check before you approve"}</span>
       </span>
     </>
@@ -106,21 +130,25 @@ function RunTotals({ totals }: { totals: PayRunReview["totals"] }) {
   );
 }
 
-export function LineRow({ line, today }: { line: PayLineDto; today: string }) {
-  const label = lineLabelText(line, today);
+export function LineRow({ line, today, loggedHours = null, foldedIds = [] }: { line: PayLineDto; today: string; loggedHours?: number | null; foldedIds?: string[] }) {
+  const label = lineLabelText(line);
   const basis = lineBasisParts(line);
   return (
     <div id={`line-${line.logId}`} data-pay-line={line.label} className={cx(ROW_GRID, "min-h-12 scroll-mt-24 px-4 py-2 target:bg-galv")}>
       <span className="flex min-w-0 flex-col">
+        {foldedIds.map((id) => (
+          <span key={id} id={`line-${id}`} className="scroll-mt-24" aria-hidden="true" />
+        ))}
         <span className="text-body-strong text-ink">{formatDate(line.date, today)}</span>
         {label ? <span data-line-label="" className="text-body-strong text-ink">{label}</span> : null}
         <span className="text-meta text-ink">{line.projectName}</span>
         <span className="text-meta text-ink">{line.stageName}</span>
         <span data-line-basis="" className="text-meta text-ink">
           {basis.lead}
-          {basis.rateCents === null ? null : <span className="text-figure num">{formatMoney(basis.rateCents)}</span>}
+          {basis.rateCents === null ? null : <span className={FIGURE_INLINE}>{formatMoney(basis.rateCents)}</span>}
           {basis.tail}
         </span>
+        {loggedHours !== null ? <span data-line-logged="" className="text-meta text-ink">{formatHours(loggedHours)}&nbsp;logged</span> : null}
         {line.missingRate ? <span className="text-body-strong text-ink">Missing rate</span> : null}
       </span>
       <span data-line-amount="" className={FIGURE}>{formatMoney(line.amountCents)}</span>
@@ -156,15 +184,15 @@ function PersonGroup({ person, today, share }: { person: PayPersonGroup; today: 
         </span>
         <span data-person-total="" className={FIGURE}>{formatMoney(person.totals.totalCents)}</span>
       </div>
-      {person.lines.map((l) => (
-        <LineRow key={l.logId} line={l} today={today} />
+      {foldTimeOnlyLines(person.lines).map((r) => (
+        <LineRow key={r.line.logId} line={r.line} today={today} loggedHours={r.loggedHours} foldedIds={r.foldedIds} />
       ))}
       {person.reimbursements.map((r) => (
         <ReimbursementRow key={r.expenseId} r={r} today={today} />
       ))}
       <div data-person-totals="" className="py-1">
-        {personTotalRows(person).map((row) => (
-          <FigureRow key={row.label} label={row.label} cents={row.cents} strong={row.label === "Total"} />
+        {personTotalRows(person).map((row, i, rows) => (
+          <FigureRow key={row.label} label={row.label} cents={row.cents} strong={i === rows.length - 1} />
         ))}
       </div>
       {share ? (

@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { addDays } from "@/domain/dates";
-import { ledgerBalance } from "@/domain/ledger";
+import { todayIn } from "@/domain/dates";
+import { statementBalance } from "@/domain/ledger";
 import { formatDecimal } from "@/lib/format";
 import {
   DataError,
@@ -75,7 +76,9 @@ export function createPayRunService(c: FakeContext): PayRunService {
       status: run.status,
       approvedAt: run.approvedAt,
       approvedByName: run.approvedBy === null ? null : c.memberName(run.approvedBy),
+      approvedOn: run.approvedAt === null ? null : todayIn(c.t.workspace.timezone, new Date(run.approvedAt)),
       exportedAt: run.exportedAt,
+      exportedOn: run.exportedAt === null ? null : todayIn(c.t.workspace.timezone, new Date(run.exportedAt)),
       flags: f.flags,
       people: f.people.map((p) => personGroup(c, p)),
       totals: f.totals,
@@ -424,16 +427,18 @@ function statementOf(c: FakeContext, payRunId: Id, crewMemberId: Id): Statement 
   if (!p) throw notFound("statement");
   const ledger = c.ix.ledgerOf(crewMemberId);
   const entries = c.fig.ledger(crewMemberId).entries;
-  let balanceAfterCents: number;
-  if (run.status === "draft") {
-    balanceAfterCents = ledgerBalance([
-      ...entries,
-      { date: c.today, kind: "payrun_credit", amountCents: p.totals.totalCents },
-    ]);
-  } else {
-    const at = ledger.findIndex((e) => e.kind === "payrun_credit" && e.payRunId === run.id);
-    balanceAfterCents = ledgerBalance(entries.slice(0, at + 1));
-  }
+  // What the balance counts: every entry so far for a draft; up to this run's credit once approved.
+  const at = ledger.findIndex((e) => e.kind === "payrun_credit" && e.payRunId === run.id);
+  const counted = run.status === "draft" || at < 0 ? ledger.map((e, i) => ({ e, l: entries[i]! })) : ledger.slice(0, at).map((e, i) => ({ e, l: entries[i]! }));
+  const runCents = run.status === "draft" || at < 0 ? p.totals.totalCents : entries[at]!.amountCents;
+  // Advances and payments from the period's first day are shown; everything before (and earlier runs) is "from earlier".
+  const isPaid = (x: (typeof counted)[number]) => x.e.kind !== "payrun_credit" && x.e.date >= f.period.start;
+  const paid = counted.filter(isPaid);
+  const balance = statementBalance(
+    counted.filter((x) => !isPaid(x)).map((x) => x.l),
+    runCents,
+    paid.map((x) => x.l),
+  );
   return {
     payRunId: run.id,
     business: { name: c.t.workspace.name, abn: c.t.workspace.abn },
@@ -442,15 +447,14 @@ function statementOf(c: FakeContext, payRunId: Id, crewMemberId: Id): Statement 
     lines: p.lines.map((l) => lineDto(c, l)),
     reimbursements: reimbursementDtos(c, p),
     totals: p.totals,
-    payouts: ledger
-      .filter((e) => e.kind !== "payrun_credit" && e.date >= f.period.start && e.date <= f.period.end)
-      .map((e) => ({
-        date: e.date,
-        kind: e.kind as "advance" | "payment",
-        amountCents: e.amountCents,
-        method: e.method,
-      })),
-    balanceAfterCents,
+    payouts: paid.map(({ e }) => ({
+      date: e.date,
+      kind: e.kind as "advance" | "payment",
+      amountCents: e.amountCents,
+      method: e.method,
+    })),
+    balanceBeforeCents: balance.earlierCents,
+    balanceAfterCents: balance.afterCents,
     contractorFooter: p.crew.type === "contractor",
   };
 }

@@ -18,15 +18,17 @@ export function flagText(f: PayFlag, today: string): string {
   const who = f.crewName ?? "Someone";
   switch (f.kind) {
     case "missing_rate": {
-      const unit = f.basis === "per_unit" && f.unit ? `${UNIT_WORD[f.unit]} ` : f.basis === "daily" ? "day " : f.basis === "hourly" ? "hourly " : "";
+      const rate =
+        f.basis === "per_unit" && f.unit ? (f.unit === "each" ? "rate each" : `rate per ${UNIT_WORD[f.unit]}`) : f.basis === "daily" ? "day rate" : f.basis === "hourly" ? "hourly rate" : "rate";
       const day = f.dates.length > 0 ? `${datesText(f.dates, today)} pays` : "it pays";
-      return `No ${unit}rate for ${who}${on(f.stageName)}, so ${day} ${formatMoney(0)}. Fix the missing rate before you approve.`;
+      const stage = f.stageName ? ` for ${f.stageName}` : "";
+      return `${who} has no ${rate}${stage}, so ${day} ${formatMoney(0)}.`;
     }
     case "owner_2fa_off":
       return "Turn on two-factor before you approve a pay run.";
     case "below_floor":
       return f.floor
-        ? `${who} earns ${formatMoney(f.floor.effectiveHourlyCents)} an hour this week, under the ${formatMoney(f.floor.floorRateCents)} award floor (short ${formatMoney(f.floor.shortfallCents)}).`
+        ? `${who} earns ${formatMoney(f.floor.effectiveHourlyCents)} an hour this week, under the ${formatMoney(f.floor.floorRateCents)} award floor, so ${who} is ${formatMoney(f.floor.shortfallCents)} short for the week.`
         : `${who} earns under the award floor this week.`;
     case "double_pay":
       return `${who} has time pay and output pay${on(f.stageName)}${onDates(f.dates, today)}.`;
@@ -76,11 +78,32 @@ export function lineBasisText(l: PayLineDto): string {
   return `${p.lead}${p.rateCents === null ? "" : formatMoney(p.rateCents)}${p.tail}`;
 }
 
-/** "Late entry for Mon 14 Sep" / "Adjustment for Thu 17 Sep" (pay rules §8); null for a normal line. */
-export function lineLabelText(l: PayLineDto, today: string): string | null {
-  if (l.label === "late") return `Late entry for ${formatDate(l.date, today)}`;
-  if (l.label === "adjustment") return `Adjustment for ${formatDate(l.date, today)}`;
+/** "Late entry" / "Adjustment" (pay rules §8) under the line's date, which the row already shows; null for a normal line. */
+export function lineLabelText(l: PayLineDto): string | null {
+  if (l.label === "late") return "Late entry";
+  if (l.label === "adjustment") return "Adjustment";
   return null;
+}
+
+/**
+ * A $0.00 "hours logged, paid by output" line folds into the same day's output line on the same stage (its hours
+ * shown there), so no row looks unpaid. One with no output line to fold into keeps its own row.
+ */
+export function foldTimeOnlyLines(lines: readonly PayLineDto[]): { line: PayLineDto; loggedHours: number | null; foldedIds: string[] }[] {
+  const isOutput = (l: PayLineDto) => l.basis === "per_unit" || l.basis === "lump_sum";
+  const host = (t: PayLineDto) => lines.find((l) => isOutput(l) && l.date === t.date && l.stageId === t.stageId && l.label === t.label);
+  const folds = new Map<string, PayLineDto[]>();
+  for (const t of lines) {
+    const h = t.basis === "time_only" && t.amountCents === 0 ? host(t) : undefined;
+    if (h) folds.set(h.logId, [...(folds.get(h.logId) ?? []), t]);
+  }
+  const folded = new Set([...folds.values()].flat().map((t) => t.logId));
+  return lines
+    .filter((l) => !folded.has(l.logId))
+    .map((l) => {
+      const ts = folds.get(l.logId) ?? [];
+      return { line: l, loggedHours: ts.length > 0 ? ts.reduce((a, t) => a + t.hours, 0) : null, foldedIds: ts.map((t) => t.logId) };
+    });
 }
 
 /** Under a person's name: employee, or contractor with ABN and GST registration, one fact per line. */
@@ -89,11 +112,23 @@ export function personKindLines(p: PayPersonGroup): string[] {
   return [p.abn ? `Contractor, ABN ${p.abn}` : "Contractor", p.gstRegistered ? "Registered for GST" : "Not registered for GST"];
 }
 
-/** A person's totals (pay rules §6–7): contractors show subtotal and GST; reimbursements only when there are any. */
-export function personTotalRows(p: Pick<PayPersonGroup, "type" | "totals">): { label: string; cents: number }[] {
-  const rows = [{ label: p.type === "contractor" ? "Subtotal" : "Pay", cents: p.totals.subtotalCents }];
-  if (p.type === "contractor") rows.push({ label: "GST", cents: p.totals.gstCents });
-  if (p.totals.reimbursementsCents !== 0) rows.push({ label: "Reimbursements", cents: p.totals.reimbursementsCents });
-  rows.push({ label: "Total", cents: p.totals.totalCents });
-  return rows;
+/**
+ * A person's totals (pay rules §6–7): GST only for a contractor registered for it (a statement, which doesn't carry
+ * registration, shows it when there is any), reimbursements only when there are any, and Total only when it differs
+ * from Pay.
+ */
+export function personTotalRows(
+  p: Pick<PayPersonGroup, "type" | "totals"> & { gstRegistered?: boolean },
+): { label: string; cents: number }[] {
+  const gst = p.type === "contractor" && (p.gstRegistered ?? p.totals.gstCents !== 0);
+  const extras = [
+    ...(gst ? [{ label: "GST", cents: p.totals.gstCents }] : []),
+    ...(p.totals.reimbursementsCents !== 0 ? [{ label: "Reimbursements", cents: p.totals.reimbursementsCents }] : []),
+  ];
+  if (extras.length === 0) return [{ label: "Pay", cents: p.totals.subtotalCents }];
+  return [
+    { label: p.type === "contractor" ? "Subtotal" : "Pay", cents: p.totals.subtotalCents },
+    ...extras,
+    { label: "Total", cents: p.totals.totalCents },
+  ];
 }

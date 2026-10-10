@@ -4,11 +4,11 @@ import { formatDate, formatMoney } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { statementPeriodText } from "./crew-detail-text";
 import { LoadError } from "./field-entry";
-import { GROUP } from "./home-parts";
-import { personTotalRows } from "./pay-review-text";
+import { GROUP, KeyFigure } from "./home-parts";
+import { foldTimeOnlyLines, personTotalRows } from "./pay-review-text";
 import { FIGURE, FigureRow, LineRow, ROW_GRID, ReimbursementRow } from "./pay-run-review";
 import { StatementShareButton } from "./statement-share-button";
-import { STATEMENT_GONE, statementBalance, statementFooter, statementPayoutText } from "./statement-text";
+import { STATEMENT_GONE, statementBalance, statementEarlier, statementFooter, statementPayoutText } from "./statement-text";
 
 /**
  * The public statement page's frame (flows.md screen 21): no app nav, no tab bar, one readable column; safe-area
@@ -40,6 +40,8 @@ function Section({ id, title, children }: { id: string; title: string; children:
 export function CrewStatement({ statement: s, today }: { statement: Statement; today: string }) {
   const footer = statementFooter(s);
   const balance = statementBalance(s.balanceAfterCents);
+  const earlier = statementEarlier(s.balanceBeforeCents);
+  const paidCents = s.payouts.reduce((a, p) => a + p.amountCents, 0);
   return (
     <StatementFrame>
       <header className="flex flex-col gap-4">
@@ -63,6 +65,10 @@ export function CrewStatement({ statement: s, today }: { statement: Statement; t
             {statementPeriodText(s.period, today)}
           </p>
         </div>
+        <div data-statement-key="" className="flex flex-col">
+          <p className="text-body-strong text-ink">{balance.label}</p>
+          <KeyFigure>{formatMoney(balance.cents)}</KeyFigure>
+        </div>
         <StatementShareButton />
       </header>
 
@@ -73,8 +79,8 @@ export function CrewStatement({ statement: s, today }: { statement: Statement; t
             {s.lines.length === 0 ? (
               <p className="px-4 py-3 text-body text-ink">No work in this pay run.</p>
             ) : null}
-            {s.lines.map((l) => (
-              <LineRow key={l.logId} line={l} today={today} />
+            {foldTimeOnlyLines(s.lines).map((r) => (
+              <LineRow key={r.line.logId} line={r.line} today={today} loggedHours={r.loggedHours} foldedIds={r.foldedIds} />
             ))}
             {s.reimbursements.map((r) => (
               <ReimbursementRow key={r.expenseId} r={r} today={today} />
@@ -84,19 +90,19 @@ export function CrewStatement({ statement: s, today }: { statement: Statement; t
 
         <div data-statement-summary="" className="flex flex-col gap-8 lg:col-start-1 lg:row-start-1">
           <Section id="statement-totals" title="Totals">
-            {personTotalRows({ type: s.person.type, totals: s.totals }).map((row) => (
+            {personTotalRows({ type: s.person.type, totals: s.totals }).map((row, i, rows) => (
               <FigureRow
                 key={row.label}
                 label={row.label}
                 cents={row.cents}
-                strong={row.label === "Total"}
-                data={row.label === "Total" ? "total" : undefined}
+                strong={i === rows.length - 1}
+                data={i === rows.length - 1 ? "total" : undefined}
               />
             ))}
           </Section>
 
           {s.payouts.length > 0 ? (
-            <Section id="statement-payouts" title="Paid in this period">
+            <Section id="statement-payouts" title="Paid to you">
               {s.payouts.map((p, i) => (
                 <div
                   key={`${p.date}-${i}`}
@@ -113,9 +119,15 @@ export function CrewStatement({ statement: s, today }: { statement: Statement; t
             </Section>
           ) : null}
 
-          <div data-statement-balance="" className={cx(GROUP, "print:break-inside-avoid")}>
-            <FigureRow label={balance.label} cents={balance.cents} strong />
-          </div>
+          {/* Adds up by hand: owed from earlier + this pay run − paid = what's owed now (pay rules §16). */}
+          <Section id="statement-balance" title="Balance">
+            <div data-statement-balance="">
+              <FigureRow label={earlier.label} cents={earlier.cents} data="earlier" />
+              <FigureRow label="This pay run" cents={s.totals.totalCents} data="run" />
+              <FigureRow label="Paid to you" cents={paidCents} data="paid" />
+              <FigureRow label={balance.label} cents={balance.cents} strong data="balance" />
+            </div>
+          </Section>
 
           {footer ? (
             <p data-statement-footer="" className="text-body text-ink">
@@ -149,27 +161,44 @@ export function StatementError() {
   );
 }
 
-/** While it loads: the header and two groups as same-size blocks. */
+/** While it loads: shaped like the page: the header with its key figure and Share, then work rows of four lines. */
 export function StatementSkeleton() {
   return (
     <StatementFrame>
-      <div aria-busy="true" className="flex flex-col gap-8">
-        <div className="flex flex-col gap-2">
-          <Skeleton width={160} height={18} />
-          <Skeleton width={220} height={28} />
-          <Skeleton width={120} height={20} />
-          <Skeleton width={180} height={18} />
+      <div aria-busy="true" data-statement-skeleton="" className="flex flex-col gap-8">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <Skeleton width={160} height={20} />
+            <Skeleton width={140} height={16} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Skeleton width={200} height={28} />
+            <Skeleton width={180} height={20} />
+            <Skeleton width={100} height={16} />
+            <Skeleton width={220} height={20} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Skeleton width={150} height={20} />
+            <Skeleton width={200} height={44} />
+          </div>
+          <Skeleton width={120} height={52} />
         </div>
-        {[3, 4].map((n) => (
-          <div key={n} className={GROUP}>
-            {Array.from({ length: n }, (_, i) => (
-              <div key={i} className={cx(ROW_GRID, "min-h-12 items-center px-4 py-2")}>
-                <Skeleton width={150} height={16} />
+        <div className="flex flex-col gap-3">
+          <Skeleton width={80} height={24} />
+          <div className={GROUP}>
+            {[0, 1, 2].map((i) => (
+              <div key={i} data-skeleton-row="" className={cx(ROW_GRID, "min-h-12 px-4 py-2")}>
+                <span className="flex flex-col gap-1">
+                  <Skeleton width={100} height={20} />
+                  <Skeleton width={140} height={16} />
+                  <Skeleton width={160} height={16} />
+                  <Skeleton width={180} height={16} />
+                </span>
                 <Skeleton width={80} height={20} />
               </div>
             ))}
           </div>
-        ))}
+        </div>
       </div>
     </StatementFrame>
   );

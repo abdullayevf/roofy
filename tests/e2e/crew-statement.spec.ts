@@ -22,6 +22,17 @@ test.describe("crew statement (21)", () => {
     await expect(totals(page).getByText("GST", { exact: true })).toBeVisible();
     await expect(totals(page).locator('[data-pay-sum="total"]')).toContainText("$");
     await expect(page.locator("[data-statement-balance]")).toBeVisible();
+    // The balance adds up by hand: owed from earlier + this pay run − paid = still owed (lesson 25).
+    const row = page.locator("[data-statement-balance] [data-pay-sum]");
+    const signed = async (k: string) => {
+      const r = row.and(page.locator(`[data-pay-sum="${k}"]`));
+      const n = Number((await r.locator("span").last().innerText()).replace(/[^\d]/g, ""));
+      return /Paid ahead/.test(await r.innerText()) ? -n : n;
+    };
+    expect((await signed("earlier")) + (await signed("run")) - (await signed("paid"))).toBe(await signed("balance"));
+    // One key figure, under the person and period, saying what it is.
+    await expect(page.locator(".text-figure-xl")).toHaveCount(1);
+    await expect(page.locator("[data-statement-key] .text-figure-xl")).toHaveText(await row.last().locator("span").last().innerText());
     await expect(page.locator("[data-statement-footer]")).toHaveText(FOOTER);
     await expect(page.getByRole("button", { name: "Share" })).toBeVisible();
     // Outside the app shell: no navigation, no tab bar, no sign of the app's sections.

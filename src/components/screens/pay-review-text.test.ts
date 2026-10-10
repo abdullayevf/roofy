@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PayFlag, PayLineDto, PayPersonGroup } from "@/data/contracts";
-import { flagTarget, flagText, lineBasisText, lineLabelText, personKindLines, personTotalRows } from "./pay-review-text";
+import { flagTarget, flagText, foldTimeOnlyLines, lineBasisText, lineLabelText, personKindLines, personTotalRows } from "./pay-review-text";
 
 const today = "2026-09-28";
 const flag = (f: Partial<PayFlag>): PayFlag => ({
@@ -16,11 +16,12 @@ const line = (l: Partial<PayLineDto>): PayLineDto => ({
 describe("flagText", () => {
   it("words each flag as one plain sentence", () => {
     expect(flagText(flag({ kind: "missing_rate", blocking: true, basis: "per_unit", unit: "lm", dates: ["2026-09-23"], stageName: "Flashings" }), today))
-      .toBe("No lm rate for Jake on Flashings, so Wed 23 Sep pays $0.00. Fix the missing rate before you approve.");
+      .toBe("Jake has no rate per lm for Flashings, so Wed 23 Sep pays $0.00.");
+    expect(flagText(flag({ kind: "missing_rate", blocking: true, basis: "daily", dates: [] }), today)).toBe("Jake has no day rate, so it pays $0.00.");
     expect(flagText(flag({ kind: "owner_2fa_off", blocking: true, crewMemberId: null, crewName: null }), today))
       .toBe("Turn on two-factor before you approve a pay run.");
     expect(flagText(flag({ kind: "below_floor", crewName: "Tom", floor: { floorRateCents: 3200, effectiveHourlyCents: 3000, shortfallCents: 3203 } }), today))
-      .toBe("Tom earns $30.00 an hour this week, under the $32.00 award floor (short $32.03).");
+      .toBe("Tom earns $30.00 an hour this week, under the $32.00 award floor, so Tom is $32.03 short for the week.");
     expect(flagText(flag({ kind: "double_pay", crewName: "Lee", dates: ["2026-09-23"], stageName: "Flashings" }), today))
       .toBe("Lee has time pay and output pay on Flashings on Wed 23 Sep.");
     expect(flagText(flag({ kind: "paused_stage", dates: ["2026-09-23"], stageName: "Flashings" }), today))
@@ -56,10 +57,10 @@ describe("lineBasisText", () => {
 });
 
 describe("lineLabelText", () => {
-  it("names late entries and adjustments by their own date", () => {
-    expect(lineLabelText(line({}), today)).toBeNull();
-    expect(lineLabelText(line({ label: "late", date: "2026-09-14" }), today)).toBe("Late entry for Mon 14 Sep");
-    expect(lineLabelText(line({ label: "adjustment", date: "2026-09-17" }), today)).toBe("Adjustment for Thu 17 Sep");
+  it("names late entries and adjustments; the row shows the date once", () => {
+    expect(lineLabelText(line({}))).toBeNull();
+    expect(lineLabelText(line({ label: "late", date: "2026-09-14" }))).toBe("Late entry");
+    expect(lineLabelText(line({ label: "adjustment", date: "2026-09-17" }))).toBe("Adjustment");
   });
 });
 
@@ -81,6 +82,27 @@ describe("person groups", () => {
   });
   it("shows only pay and total for an employee with nothing to reimburse", () => {
     const t = { subtotalCents: 129000, gstCents: 0, reimbursementsCents: 0, totalCents: 129000 };
-    expect(personTotalRows(person({ type: "employee", gstRegistered: false, totals: t }))).toEqual([{ label: "Pay", cents: 129000 }, { label: "Total", cents: 129000 }]);
+    expect(personTotalRows(person({ type: "employee", gstRegistered: false, totals: t }))).toEqual([{ label: "Pay", cents: 129000 }]);
+  });
+  it("drops the GST row for a contractor not registered for GST, and Total when it equals Pay", () => {
+    const t = { subtotalCents: 90000, gstCents: 0, reimbursementsCents: 0, totalCents: 90000 };
+    expect(personTotalRows(person({ gstRegistered: false, totals: t }))).toEqual([{ label: "Pay", cents: 90000 }]);
+    expect(personTotalRows(person({ gstRegistered: false, totals: { ...t, reimbursementsCents: 5000, totalCents: 95000 } }))).toEqual([
+      { label: "Subtotal", cents: 90000 }, { label: "Reimbursements", cents: 5000 }, { label: "Total", cents: 95000 },
+    ]);
+    // A statement doesn't carry GST registration: no GST, no row.
+    expect(personTotalRows({ type: "contractor", totals: t })).toEqual([{ label: "Pay", cents: 90000 }]);
+  });
+});
+
+describe("foldTimeOnlyLines", () => {
+  it("folds $0.00 hours-logged lines into the same day's output line, and keeps one with nothing to fold into", () => {
+    const out = line({ logId: "o", basis: "per_unit", unit: "lm", quantity: 4000, hours: 0, rateCents: 900, amountCents: 36000 });
+    const t = line({ logId: "t", basis: "time_only", quantity: 0, rateCents: null, amountCents: 0 });
+    const lone = line({ logId: "z", date: "2026-09-22", basis: "time_only", quantity: 0, rateCents: null, amountCents: 0 });
+    expect(foldTimeOnlyLines([out, t, lone])).toEqual([
+      { line: out, loggedHours: 800, foldedIds: ["t"] },
+      { line: lone, loggedHours: null, foldedIds: [] },
+    ]);
   });
 });

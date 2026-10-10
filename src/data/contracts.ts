@@ -930,7 +930,10 @@ export interface PayRunReview {
   status: PayRunStatus;
   approvedAt: Instant | null;
   approvedByName: string | null;
+  /** approvedAt / exportedAt as dates in the workspace timezone ("Approved by Dan Holt on Tue 22 Sep."). */
+  approvedOn: LocalDate | null;
   exportedAt: Instant | null;
+  exportedOn: LocalDate | null;
   /** Most severe first; blocking before warnings. */
   flags: PayFlag[];
   people: PayPersonGroup[];
@@ -955,6 +958,8 @@ export interface Statement {
     amountCents: Cents;
     method: PayoutMethod | null;
   }[];
+  /** Owed from earlier (negative = paid ahead): balanceBeforeCents + totals.totalCents − payouts = balanceAfterCents. */
+  balanceBeforeCents: Cents;
   balanceAfterCents: Cents;
   /** Contractors get the footer "Statement only — not a tax invoice. …" (pay rules §16), added by the UI. */
   contractorFooter: boolean;

@@ -177,7 +177,7 @@ export function PayRunActions({
         title="Approve this pay run?"
         description={
           sheet === "waive"
-            ? `Lines with no rate are paid $0.00, and your name is kept with that choice. Approving locks every day logged from ${periodText}.`
+            ? `Lines with no rate are paid $0.00. We'll note that you approved without the rate. Approving locks every day logged from ${periodText}.`
             : `Approving locks every day logged from ${periodText} and adds each person's pay to what they're owed.`
         }
         confirmLabel={pending ? "Approving…" : "Approve"}

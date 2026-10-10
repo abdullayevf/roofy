@@ -44,3 +44,21 @@ export function unpaidCreditCount(entries: readonly LedgerEntry[]): number {
   }
   return count;
 }
+
+export interface StatementBalance {
+  /** What was owed before this statement (positive) or paid ahead (negative). */
+  earlierCents: Cents;
+  runCents: Cents;
+  paidCents: Cents;
+  afterCents: Cents;
+}
+
+/**
+ * Pay rules §16: a statement's balance, split so it adds up by hand on the page:
+ * owed from earlier + this pay run − paid = still owed. `paid` holds the advances and payments shown on the statement.
+ */
+export function statementBalance(earlier: readonly LedgerEntry[], runCents: Cents, paid: readonly LedgerEntry[]): StatementBalance {
+  const earlierCents = ledgerBalance(earlier);
+  const paidCents = 0 - ledgerBalance(paid);
+  return { earlierCents, runCents, paidCents, afterCents: earlierCents + runCents - paidCents };
+}
