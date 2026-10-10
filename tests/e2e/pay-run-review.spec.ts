@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { checkBackRow, checkMoneyFigureFont, checkPrimaryActionPlacement, collectConsole, expectScreenHealthy } from "./guards";
+import { checkAbnStaysWhole, checkBackRow, checkMoneyFigureFont, checkRunTotalsSum, checkPrimaryActionPlacement, collectConsole, expectScreenHealthy } from "./guards";
 import { expectNoMoney } from "./money-scan";
 import { getSeed } from "../../src/data/fake/store";
 
@@ -65,6 +65,21 @@ test.describe("Pay run review (display)", () => {
     // An employee shows pay and total only; every amount sits in the right column as a figure.
     for (const a of await page.locator("[data-line-amount]").all()) await expect(a).toHaveText(MONEY);
     await expect(page.locator("[data-pay-run-totals] [data-pay-sum=total]")).toContainText(/Total\$[\d,]+\.\d{2}/);
+    // N1: Employees + Contractors = Total; GST and reimbursements are "Includes" lines, not added again.
+    await expect(page.locator("[data-pay-run-totals] [data-pay-sum=includes]")).toHaveText([/^Includes GST\$[\d,]+\.\d{2}$/, /^Includes reimbursements\$[\d,]+\.\d{2}$/]);
+    expect(await checkRunTotalsSum(page)).toMatchObject({ ok: true });
+    // N3/D19: the ABN never breaks inside the number.
+    expect(await checkAbnStaysWhole(page, '[data-pay-person="contractor"]')).toMatchObject({ ok: true });
+    // D11: an employee with nothing to reimburse has no footer row repeating the figure beside their name.
+    const employee = page.locator('[data-pay-person="employee"]').filter({ hasNot: page.locator("[data-pay-reimbursement]") }).first();
+    await expect(employee.locator("[data-person-totals]")).toHaveCount(0);
+  });
+
+  test("a manager is told the owner turns on two-factor, with no link (N4)", async ({ page }) => {
+    await signInAs(page, "manager", `${PATH}?demo=blocked`);
+    const twoFactor = page.locator('[data-pay-flag="blocking"]').filter({ hasText: "The owner needs to turn on two-factor first." });
+    await expect(twoFactor).toHaveCount(1);
+    await expect(twoFactor.locator("a")).toHaveCount(0);
   });
 
   test("late entries and adjustments carry their own date", async ({ page }) => {
@@ -121,6 +136,9 @@ test.describe("Pay run review (actions)", () => {
     await signInAs(page, "manager", `${PATH}?confirm=waive`);
     const sheet = page.getByRole("dialog", { name: "Approve this pay run?" });
     await expect(sheet).toContainText("Approving locks every day logged from Mon 21 Sep to Sun 27 Sep");
+    // D21: the override path says what it does, and its $0.00 is in the figure face.
+    await expect(sheet.getByRole("button", { name: "Approve without the rate", exact: true })).toBeVisible();
+    expect(await checkMoneyFigureFont(page, '[role="dialog"]')).toMatchObject({ ok: true });
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
     await sheet.getByRole("button", { name: "Cancel" }).click();
     await expect(sheet).toHaveCount(0);

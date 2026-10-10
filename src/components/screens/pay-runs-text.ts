@@ -1,6 +1,5 @@
 import type { PayFlag, PayPeriod, PayRunListItem } from "@/data/contracts";
 import { formatDate } from "@/lib/format";
-import { payFlagsText } from "./home-text";
 
 /** The latest runs the list shows before "Show older pay runs". */
 export const RUNS_SHOWN = 8;
@@ -23,8 +22,14 @@ export function peopleCountText(count: number): string {
 /** The draft's flag line: how many things to check and what stops approval, worded for who is reading. */
 export function draftFlagsText(flags: PayFlag[], role: "owner" | "manager" | "accountant"): string {
   if (flags.length === 0) return role === "accountant" ? "Nothing to check in this pay run." : "Nothing to check before you approve.";
-  const blockers = flags.filter((f) => f.blocking).map((f) => ({ kind: f.kind as "missing_rate" | "owner_2fa_off", crewName: f.crewName }));
-  return payFlagsText(flags.length, blockers, role);
+  const things = flags.length === 1 ? "1 thing to check" : `${flags.length} things to check`;
+  if (role === "accountant") return `${things} in this pay run.`;
+  // One sentence (lesson 3, pay iter2 N5): "6 things to check, and Jake's missing rate stops approval."
+  const [first, ...rest] = flags.filter((f) => f.blocking);
+  if (!first) return `${things} before you approve.`;
+  const what =
+    first.kind === "owner_2fa_off" ? "two-factor sign-in being off" : first.crewName ? `${first.crewName}'s missing rate` : "a missing rate";
+  return rest.length === 0 ? `${things}, and ${what} stops approval.` : `${things}, and ${what} and ${rest.length} more stop approval.`;
 }
 
 /**

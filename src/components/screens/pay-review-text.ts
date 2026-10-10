@@ -1,4 +1,4 @@
-import type { PayFlag, PayLineDto, PayPersonGroup } from "@/data/contracts";
+import type { PayFlag, PayLineDto, PayPersonGroup, PayRunTotals, Role } from "@/data/contracts";
 import { formatDate, formatDays, formatHours, formatMoney, formatQuantity } from "@/lib/format";
 
 const UNIT_WORD = { m2: "m²", lm: "lm", each: "each" } as const;
@@ -14,7 +14,7 @@ const on = (stage: string | null) => (stage ? ` on ${stage}` : "");
 const onDates = (dates: string[], today: string) => (dates.length > 0 ? ` on ${datesText(dates, today)}` : "");
 
 /** One plain sentence per pay-run flag (flows.md 224 for the two that stop approval). */
-export function flagText(f: PayFlag, today: string): string {
+export function flagText(f: PayFlag, today: string, role: Role = "owner"): string {
   const who = f.crewName ?? "Someone";
   switch (f.kind) {
     case "missing_rate": {
@@ -25,7 +25,8 @@ export function flagText(f: PayFlag, today: string): string {
       return `${who} has no ${rate}${stage}, so ${day} ${formatMoney(0)}.`;
     }
     case "owner_2fa_off":
-      return "Turn on two-factor before you approve a pay run.";
+      // Only the owner can turn it on: anyone else is told so, with nowhere to go (pay iter2 N4).
+      return role === "owner" ? "Turn on two-factor before you approve a pay run." : "The owner needs to turn on two-factor first.";
     case "below_floor":
       return f.floor
         ? `${who} earns ${formatMoney(f.floor.effectiveHourlyCents)} an hour this week, under the ${formatMoney(f.floor.floorRateCents)} award floor, so ${who} is ${formatMoney(f.floor.shortfallCents)} short for the week.`
@@ -44,7 +45,8 @@ export function flagText(f: PayFlag, today: string): string {
 }
 
 /** Where a flag taps through to: its first line on this page, else the person's group, else the place to fix it. */
-export function flagTarget(f: PayFlag): string | null {
+export function flagTarget(f: PayFlag, role: Role = "owner"): string | null {
+  if (f.kind === "owner_2fa_off" && role !== "owner") return null;
   if (f.logIds[0]) return `#line-${f.logIds[0]}`;
   if (f.crewMemberId) return `#crew-${f.crewMemberId}`;
   return f.href;
@@ -106,16 +108,19 @@ export function foldTimeOnlyLines(lines: readonly PayLineDto[]): { line: PayLine
     });
 }
 
+/** "ABN 21 435 133 679" that never breaks inside the number (lesson 23, pay iter2 N3/D19). */
+export const abnText = (abn: string): string => `ABN\u00a0${abn.trim().replace(/\s+/g, "\u00a0")}`;
+
 /** Under a person's name: employee, or contractor with ABN and GST registration, one fact per line. */
 export function personKindLines(p: PayPersonGroup): string[] {
   if (p.type !== "contractor") return ["Employee"];
-  return [p.abn ? `Contractor, ABN ${p.abn}` : "Contractor", p.gstRegistered ? "Registered for GST" : "Not registered for GST"];
+  return [p.abn ? `Contractor, ${abnText(p.abn)}` : "Contractor", p.gstRegistered ? "Registered for GST" : "Not registered for GST"];
 }
 
 /**
  * A person's totals (pay rules §6–7): GST only for a contractor registered for it (a statement, which doesn't carry
- * registration, shows it when there is any), reimbursements only when there are any, and Total only when it differs
- * from Pay.
+ * registration, shows it when there is any), reimbursements only when there are any. With neither, no rows at all:
+ * the pay is the person's total, already shown beside their name (pay iter2 D11).
  */
 export function personTotalRows(
   p: Pick<PayPersonGroup, "type" | "totals"> & { gstRegistered?: boolean },
@@ -125,10 +130,27 @@ export function personTotalRows(
     ...(gst ? [{ label: "GST", cents: p.totals.gstCents }] : []),
     ...(p.totals.reimbursementsCents !== 0 ? [{ label: "Reimbursements", cents: p.totals.reimbursementsCents }] : []),
   ];
-  if (extras.length === 0) return [{ label: "Pay", cents: p.totals.subtotalCents }];
+  if (extras.length === 0) return [];
   return [
     { label: p.type === "contractor" ? "Subtotal" : "Pay", cents: p.totals.subtotalCents },
     ...extras,
     { label: "Total", cents: p.totals.totalCents },
+  ];
+}
+
+export type RunTotalRow = { label: string; cents: number; kind: "row" | "includes" | "total" };
+
+/**
+ * The run totals as a sum (pay iter2 N1): Employees + Contractors = Total, each person's total already holding their GST
+ * and reimbursements (pay rules §6–§7). GST sits under Contractors and reimbursements under Total as "Includes" lines,
+ * each only when there is any.
+ */
+export function runTotalRows(t: PayRunTotals): RunTotalRow[] {
+  return [
+    { label: "Employees", cents: t.employeesCents, kind: "row" },
+    { label: "Contractors", cents: t.contractorsCents, kind: "row" },
+    ...(t.gstCents !== 0 ? [{ label: "Includes GST", cents: t.gstCents, kind: "includes" as const }] : []),
+    { label: "Total", cents: t.totalCents, kind: "total" },
+    ...(t.reimbursementsCents !== 0 ? [{ label: "Includes reimbursements", cents: t.reimbursementsCents, kind: "includes" as const }] : []),
   ];
 }

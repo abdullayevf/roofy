@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 import { Dialog as RadixDialog } from "radix-ui";
 import { Button } from "./button";
 import { useRestoreFocus } from "./restore-focus";
@@ -8,7 +8,8 @@ import { cx } from "@/lib/cx";
 
 export type DialogContentProps = {
   title: string;
-  description?: string;
+  /** Words, or words with money set in the figure face (lesson 26). */
+  description?: ReactNode;
   confirmLabel: string;
   cancelLabel?: string;
   /** Optional so a static preview (no live open/close state) can render DialogPanel with no handlers at all. */

@@ -5,10 +5,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { statementPeriodText } from "./crew-detail-text";
 import { LoadError } from "./field-entry";
 import { GROUP, KeyFigure } from "./home-parts";
-import { foldTimeOnlyLines, personTotalRows } from "./pay-review-text";
+import { abnText, foldTimeOnlyLines, personTotalRows } from "./pay-review-text";
 import { FIGURE, FigureRow, LineRow, ROW_GRID, ReimbursementRow } from "./pay-run-review";
 import { StatementShareButton } from "./statement-share-button";
-import { STATEMENT_GONE, statementBalance, statementEarlier, statementFooter, statementPayoutText } from "./statement-text";
+import { STATEMENT_GONE, statementBalance, statementEarlier, statementFooter, statementPaidLabel, statementPayoutText } from "./statement-text";
 
 /**
  * The public statement page's frame (flows.md screen 21): no app nav, no tab bar, one readable column; safe-area
@@ -42,6 +42,9 @@ export function CrewStatement({ statement: s, today }: { statement: Statement; t
   const balance = statementBalance(s.balanceAfterCents);
   const earlier = statementEarlier(s.balanceBeforeCents);
   const paidCents = s.payouts.reduce((a, p) => a + p.amountCents, 0);
+  const paidLabel = statementPaidLabel(s.period, s.payouts, today);
+  // One pay line (pay iter2 D11): Totals shows only when GST or reimbursements make it more than "This pay run".
+  const totalRows = personTotalRows({ type: s.person.type, totals: s.totals });
   return (
     <StatementFrame>
       <header className="flex flex-col gap-4">
@@ -49,7 +52,7 @@ export function CrewStatement({ statement: s, today }: { statement: Statement; t
           <p data-statement-business="" className="text-body-strong text-ink">
             {s.business.name}
           </p>
-          <p className="text-meta text-ink">ABN {s.business.abn}</p>
+          <p className="text-meta text-ink">{abnText(s.business.abn)}</p>
         </div>
         <div className="flex flex-col gap-1">
           <h1 className="text-title text-ink">Pay statement</h1>
@@ -57,7 +60,7 @@ export function CrewStatement({ statement: s, today }: { statement: Statement; t
           <p className="text-meta text-ink">
             {s.person.type === "contractor"
               ? s.person.abn
-                ? `Contractor, ABN ${s.person.abn}`
+                ? `Contractor, ${abnText(s.person.abn)}`
                 : "Contractor"
               : "Employee"}
           </p>
@@ -89,8 +92,9 @@ export function CrewStatement({ statement: s, today }: { statement: Statement; t
         </div>
 
         <div data-statement-summary="" className="flex flex-col gap-8 lg:col-start-1 lg:row-start-1">
+          {totalRows.length > 0 ? (
           <Section id="statement-totals" title="Totals">
-            {personTotalRows({ type: s.person.type, totals: s.totals }).map((row, i, rows) => (
+            {totalRows.map((row, i, rows) => (
               <FigureRow
                 key={row.label}
                 label={row.label}
@@ -100,9 +104,10 @@ export function CrewStatement({ statement: s, today }: { statement: Statement; t
               />
             ))}
           </Section>
+          ) : null}
 
           {s.payouts.length > 0 ? (
-            <Section id="statement-payouts" title="Paid to you">
+            <Section id="statement-payouts" title={paidLabel}>
               {s.payouts.map((p, i) => (
                 <div
                   key={`${p.date}-${i}`}
@@ -124,7 +129,7 @@ export function CrewStatement({ statement: s, today }: { statement: Statement; t
             <div data-statement-balance="">
               <FigureRow label={earlier.label} cents={earlier.cents} data="earlier" />
               <FigureRow label="This pay run" cents={s.totals.totalCents} data="run" />
-              <FigureRow label="Paid to you" cents={paidCents} data="paid" />
+              <FigureRow label={paidLabel} cents={paidCents} data="paid" />
               <FigureRow label={balance.label} cents={balance.cents} strong data="balance" />
             </div>
           </Section>

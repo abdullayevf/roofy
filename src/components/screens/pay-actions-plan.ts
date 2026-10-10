@@ -59,3 +59,10 @@ export function sheetAllowed(plan: PayActionsPlan, sheet: Sheet): boolean {
   if (sheet === "reopen") return plan.reopen === "enabled";
   return false;
 }
+
+/** The offline line under the pay run actions (pay iter2 D26): what needs signal, in one short sentence. */
+export function payNeedsConnectionText(plan: Pick<PayActionsPlan, "approve" | "exportCsv" | "reopen">): string {
+  if (plan.approve !== "none") return "Needs connection to approve.";
+  if (plan.exportCsv !== false && plan.reopen !== false) return "Needs connection to export or reopen.";
+  return plan.reopen !== false ? "Needs connection to reopen." : "Needs connection to export.";
+}

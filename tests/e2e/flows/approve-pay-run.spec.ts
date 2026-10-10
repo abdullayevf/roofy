@@ -31,7 +31,7 @@ for (const role of ["manager", "owner"]) {
     const sheet = page.getByRole("dialog", { name: "Approve this pay run?" });
     await expect(sheet).toContainText("Lines with no rate are paid $0.00");
     await expect(sheet).toContainText("Mon 21 Sep to Sun 27 Sep");
-    await taps.tap(sheet.getByRole("button", { name: "Approve", exact: true }));
+    await taps.tap(sheet.getByRole("button", { name: "Approve without the rate", exact: true }));
     await expect(sheet).toHaveCount(0);
     await expect(page.getByText("Pay run approved.", { exact: true }).first()).toBeVisible();
     await expect(page.locator('[data-pay-approved]')).toBeVisible();
@@ -62,7 +62,7 @@ test("Owner 2FA off blocks Approve with a button to Settings, and no way round i
 test("offline: Approve is disabled with Needs connection and nothing queues", async ({ page }) => {
   await signInAs(page, "manager", `${PATH}?demo=offline`);
   await expect(page.getByRole("button", { name: "Approve pay run" })).toBeDisabled();
-  await expect(page.locator("[data-pay-needs-connection]")).toHaveText("Needs connection — try again once you're back online.");
+  await expect(page.locator("[data-pay-needs-connection]")).toHaveText("Needs connection to approve.");
   await expect(page.getByRole("button", { name: "Approve without the rate" })).toHaveCount(0);
   await expect(page.getByText("will send automatically")).toHaveCount(0);
 });

@@ -28,8 +28,11 @@ describe("pay runs list text", () => {
 
   it("counts flags and names what stops approval", () => {
     const flags = [flag({ kind: "missing_rate", blocking: true, crewName: "Dima" }), flag({ kind: "owner_2fa_off", blocking: true }), flag({})];
-    expect(draftFlagsText(flags, "manager")).toBe("3 things to check before you approve. Missing rate for Dima stops approval. 1 more also stops it.");
+    expect(draftFlagsText(flags, "manager")).toBe("3 things to check, and Dima's missing rate and 1 more stop approval.");
     expect(draftFlagsText([flag({})], "accountant")).toBe("1 thing to check in this pay run.");
+    expect(draftFlagsText([flag({ kind: "missing_rate", blocking: true, crewName: "Jake" }), flag({}), flag({}), flag({}), flag({}), flag({})], "owner")).toBe("6 things to check, and Jake's missing rate stops approval.");
+    expect(draftFlagsText([flag({ kind: "owner_2fa_off", blocking: true }), flag({})], "manager")).toBe("2 things to check, and two-factor sign-in being off stops approval.");
+    expect(draftFlagsText([flag({ kind: "missing_rate", blocking: true, crewName: null })], "owner")).toBe("1 thing to check, and a missing rate stops approval.");
   });
 
   it("puts the draft to review first and the rest newest first", () => {

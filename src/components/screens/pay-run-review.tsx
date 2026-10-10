@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusChip } from "@/components/ui/status-chip";
 import { LoadError } from "./field-entry";
 import { COLUMN, FOCUS, GROUP, KeyFigure, KeyFigureSkeleton } from "./home-parts";
-import { flagTarget, flagText, foldTimeOnlyLines, lineBasisParts, lineLabelText, personKindLines, personTotalRows } from "./pay-review-text";
+import { flagTarget, flagText, foldTimeOnlyLines, lineBasisParts, lineLabelText, personKindLines, personTotalRows, runTotalRows } from "./pay-review-text";
 import { PayRunActions, type Sheet } from "./pay-run-actions";
 import { PayPersonFold } from "./pay-person-fold";
 import { ShareStatementButton } from "./share-statement";
@@ -76,14 +76,14 @@ function Top({
   );
 }
 
-function FlagRow({ flag, today }: { flag: PayFlag; today: string }) {
-  const href = flagTarget(flag);
+function FlagRow({ flag, today, role }: { flag: PayFlag; today: string; role: Role }) {
+  const href = flagTarget(flag, role);
   const body = (
     <>
       <WarningDiamond size={24} aria-hidden="true" className={cx("shrink-0", flag.blocking ? "text-over" : "text-watch")} />
       <span className="flex min-w-0 flex-col">
         <span className="text-body text-ink">
-          <MoneyText text={flagText(flag, today)} />
+          <MoneyText text={flagText(flag, today, role)} />
         </span>
         <span className="text-meta text-ink">{flag.blocking ? "Stops approval" : "Check before you approve"}</span>
       </span>
@@ -104,7 +104,7 @@ function FlagRow({ flag, today }: { flag: PayFlag; today: string }) {
   );
 }
 
-function Flags({ flags, today }: { flags: PayFlag[]; today: string }) {
+function Flags({ flags, today, role }: { flags: PayFlag[]; today: string; role: Role }) {
   return (
     <section aria-labelledby="pay-flags-title" className="flex flex-col gap-3">
       <h2 id="pay-flags-title" className="text-heading text-ink">To check</h2>
@@ -113,7 +113,7 @@ function Flags({ flags, today }: { flags: PayFlag[]; today: string }) {
       ) : (
         <ul data-pay-flags="" className={GROUP}>
           {flags.map((f, i) => (
-            <FlagRow key={`${f.kind}-${f.crewMemberId ?? "run"}-${i}`} flag={f} today={today} />
+            <FlagRow key={`${f.kind}-${f.crewMemberId ?? "run"}-${i}`} flag={f} today={today} role={role} />
           ))}
         </ul>
       )}
@@ -130,16 +130,22 @@ export function FigureRow({ label, cents, strong = false, data }: { label: strin
   );
 }
 
+/** Employees + Contractors = Total; GST and reimbursements are "Includes" lines, smaller and indented (pay iter2 N1). */
 function RunTotals({ totals }: { totals: PayRunReview["totals"] }) {
   return (
     <section aria-labelledby="pay-totals-title" data-pay-run-totals="" className="flex flex-col gap-3">
       <h2 id="pay-totals-title" className="text-heading text-ink">Pay run totals</h2>
       <div className={GROUP}>
-        <FigureRow label="Employees" cents={totals.employeesCents} />
-        <FigureRow label="Contractors" cents={totals.contractorsCents} />
-        <FigureRow label="GST on contractors" cents={totals.gstCents} />
-        <FigureRow label="Reimbursements" cents={totals.reimbursementsCents} />
-        <FigureRow label="Total" cents={totals.totalCents} strong data="total" />
+        {runTotalRows(totals).map((r) =>
+          r.kind === "includes" ? (
+            <div key={r.label} data-pay-sum="includes" className={cx(ROW_GRID, "-mt-2 items-center pb-2 pl-8 pr-4")}>
+              <span className="text-meta text-ink">{r.label}</span>
+              <span className={cx(FIGURE_INLINE, "text-meta text-right text-ink")}>{formatMoney(r.cents)}</span>
+            </div>
+          ) : (
+            <FigureRow key={r.label} label={r.label} cents={r.cents} strong={r.kind === "total"} data={r.kind} />
+          ),
+        )}
       </div>
     </section>
   );
@@ -217,11 +223,13 @@ function PersonGroup({ person, today, share }: { person: PayPersonGroup; today: 
       {person.reimbursements.map((r) => (
         <ReimbursementRow key={r.expenseId} r={r} today={today} />
       ))}
-      <div data-person-totals="" className="py-1">
-        {personTotalRows(person).map((row, i, rows) => (
-          <FigureRow key={row.label} label={row.label} cents={row.cents} strong={i === rows.length - 1} />
-        ))}
-      </div>
+      {personTotalRows(person).length > 0 ? (
+        <div data-person-totals="" className="py-1">
+          {personTotalRows(person).map((row, i, rows) => (
+            <FigureRow key={row.label} label={row.label} cents={row.cents} strong={i === rows.length - 1} />
+          ))}
+        </div>
+      ) : null}
       {share ? (
         <ShareStatementButton payRunId={share.payRunId} crewMemberId={person.crewMemberId} demoOffline={share.demoOffline} className="px-4 pb-3" />
       ) : null}
@@ -263,7 +271,7 @@ export function PayRunReviewBody({ review, role, today, demoOffline = false, ini
             <KeyFigure>{formatMoney(review.totals.totalCents)}</KeyFigure>
             <p data-pay-people="" className="text-meta text-ink">{peopleCountText(review.people.length)} in this pay run</p>
           </div>
-          <Flags flags={review.flags} today={today} />
+          <Flags flags={review.flags} today={today} role={role} />
           <RunTotals totals={review.totals} />
         </div>
         <section aria-labelledby="pay-people-title" className="flex flex-col gap-3">

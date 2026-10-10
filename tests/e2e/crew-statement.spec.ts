@@ -1,9 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
-import { collectConsole, expectScreenHealthy } from "./guards";
+import { checkAbnStaysWhole, collectConsole, expectScreenHealthy } from "./guards";
 import { STATEMENT_CONTRACTOR, STATEMENT_EMPLOYEE } from "./screens";
 
 const isPhone = (name: string) => name !== "desktop";
-const FOOTER = "Statement only — not a tax invoice. Please send your invoice as usual.";
+const FOOTER = "This is a statement. It is not a tax invoice. Please send your invoice as usual.";
 const dima = `/s/${STATEMENT_CONTRACTOR}`;
 const sam = `/s/${STATEMENT_EMPLOYEE}`;
 const totals = (page: Page) => page.locator("section", { has: page.getByRole("heading", { level: 2, name: "Totals" }) });
@@ -16,7 +16,8 @@ test.describe("crew statement (21)", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Pay statement" })).toBeVisible();
     await expect(page.locator("[data-statement-business]")).toHaveText("Harbour Roofing");
     await expect(page.getByText("Dima", { exact: true })).toBeVisible();
-    await expect(page.getByText(/^Contractor, ABN /)).toBeVisible();
+    await expect(page.getByText(/^Contractor, ABN\u00a0/)).toBeVisible();
+    expect(await checkAbnStaysWhole(page, "body")).toMatchObject({ ok: true });
     await expect(page.locator("[data-statement-period]")).toHaveText("Mon 14 Sep to Sun 20 Sep");
     expect(await page.locator("[data-pay-line]").count()).toBeGreaterThan(0);
     await expect(totals(page).getByText("GST", { exact: true })).toBeVisible();

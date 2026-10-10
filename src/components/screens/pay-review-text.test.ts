@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PayFlag, PayLineDto, PayPersonGroup } from "@/data/contracts";
-import { flagTarget, flagText, foldTimeOnlyLines, lineBasisText, lineLabelText, personKindLines, personTotalRows } from "./pay-review-text";
+import { flagTarget, flagText, foldTimeOnlyLines, lineBasisText, lineLabelText, personKindLines, personTotalRows, runTotalRows } from "./pay-review-text";
 
 const today = "2026-09-28";
 const flag = (f: Partial<PayFlag>): PayFlag => ({
@@ -71,8 +71,8 @@ const person = (p: Partial<PayPersonGroup>): PayPersonGroup => ({
 
 describe("person groups", () => {
   it("says who they are and how they are paid", () => {
-    expect(personKindLines(person({}))).toEqual(["Contractor, ABN 21 435 133 679", "Registered for GST"]);
-    expect(personKindLines(person({ gstRegistered: false }))).toEqual(["Contractor, ABN 21 435 133 679", "Not registered for GST"]);
+    expect(personKindLines(person({}))).toEqual(["Contractor, ABN\u00a021\u00a0435\u00a0133\u00a0679", "Registered for GST"]);
+    expect(personKindLines(person({ gstRegistered: false }))).toEqual(["Contractor, ABN\u00a021\u00a0435\u00a0133\u00a0679", "Not registered for GST"]);
     expect(personKindLines(person({ type: "employee", abn: null, gstRegistered: false }))).toEqual(["Employee"]);
   });
   it("adds up a contractor with GST and reimbursements (E6.1, E7.1)", () => {
@@ -82,16 +82,16 @@ describe("person groups", () => {
   });
   it("shows only pay and total for an employee with nothing to reimburse", () => {
     const t = { subtotalCents: 129000, gstCents: 0, reimbursementsCents: 0, totalCents: 129000 };
-    expect(personTotalRows(person({ type: "employee", gstRegistered: false, totals: t }))).toEqual([{ label: "Pay", cents: 129000 }]);
+    expect(personTotalRows(person({ type: "employee", gstRegistered: false, totals: t }))).toEqual([]);
   });
   it("drops the GST row for a contractor not registered for GST, and Total when it equals Pay", () => {
     const t = { subtotalCents: 90000, gstCents: 0, reimbursementsCents: 0, totalCents: 90000 };
-    expect(personTotalRows(person({ gstRegistered: false, totals: t }))).toEqual([{ label: "Pay", cents: 90000 }]);
+    expect(personTotalRows(person({ gstRegistered: false, totals: t }))).toEqual([]);
     expect(personTotalRows(person({ gstRegistered: false, totals: { ...t, reimbursementsCents: 5000, totalCents: 95000 } }))).toEqual([
       { label: "Subtotal", cents: 90000 }, { label: "Reimbursements", cents: 5000 }, { label: "Total", cents: 95000 },
     ]);
     // A statement doesn't carry GST registration: no GST, no row.
-    expect(personTotalRows({ type: "contractor", totals: t })).toEqual([{ label: "Pay", cents: 90000 }]);
+    expect(personTotalRows({ type: "contractor", totals: t })).toEqual([]);
   });
 });
 
@@ -104,5 +104,34 @@ describe("foldTimeOnlyLines", () => {
       { line: out, loggedHours: 800, foldedIds: ["t"] },
       { line: lone, loggedHours: null, foldedIds: [] },
     ]);
+  });
+});
+
+describe("pay iter2 fixes", () => {
+  const twoFactor = { kind: "owner_2fa_off", blocking: true, crewMemberId: null, crewName: null, logIds: [], dates: [], stageName: null, href: "/settings/members" } as unknown as PayFlag;
+  it("N4: a manager is told the owner turns on two-factor, with nowhere to go", () => {
+    expect(flagText(twoFactor, "2026-09-28", "manager")).toBe("The owner needs to turn on two-factor first.");
+    expect(flagTarget(twoFactor, "manager")).toBeNull();
+    expect(flagText(twoFactor, "2026-09-28", "owner")).toBe("Turn on two-factor before you approve a pay run.");
+    expect(flagTarget(twoFactor, "owner")).toBe("/settings/members");
+  });
+  it("D11: a person whose pay is the whole total has no footer row (the header shows it)", () => {
+    expect(personTotalRows({ type: "employee", totals: { subtotalCents: 500, gstCents: 0, reimbursementsCents: 0, totalCents: 500 } })).toEqual([]);
+  });
+  it("N1: the top-level run totals add up to Total; GST and reimbursements are 'includes' lines", () => {
+    const totals = { employeesCents: 712597, contractorsCents: 711619, gstCents: 33056, reimbursementsCents: 11000, totalCents: 1424216 };
+    const rows = runTotalRows(totals);
+    expect(rows.map((r) => [r.label, r.cents, r.kind])).toEqual([
+      ["Employees", 712597, "row"],
+      ["Contractors", 711619, "row"],
+      ["Includes GST", 33056, "includes"],
+      ["Total", 1424216, "total"],
+      ["Includes reimbursements", 11000, "includes"],
+    ]);
+    expect(rows.filter((r) => r.kind === "row").reduce((a, r) => a + r.cents, 0)).toBe(totals.totalCents);
+  });
+  it("D11: no reimbursements and no GST means no 'includes' lines", () => {
+    const rows = runTotalRows({ employeesCents: 100, contractorsCents: 0, gstCents: 0, reimbursementsCents: 0, totalCents: 100 });
+    expect(rows.map((r) => r.label)).toEqual(["Employees", "Contractors", "Total"]);
   });
 });

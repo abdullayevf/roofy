@@ -1070,3 +1070,52 @@ export async function checkDatesStayWhole(page: Page, scope: string): Promise<Gu
   }, scope);
   return { name: "dates-stay-whole", ok: failures.length === 0, failures };
 }
+
+/**
+ * Pay iter2 N1: the run totals read as a sum. The top-level rows (`[data-pay-sum=row]`) add up to Total, in cents;
+ * GST and reimbursements are "Includes" lines (`[data-pay-sum=includes]`) and are not added again.
+ */
+export async function checkRunTotalsSum(page: Page, scope = "[data-pay-run-totals]"): Promise<GuardResult> {
+  const cents = (t: string) => {
+    const m = t.match(/(-?)\$([\d,]+)\.(\d{2})/);
+    return m ? (m[1] ? -1 : 1) * (Number(m[2]!.replace(/,/g, "")) * 100 + Number(m[3])) : NaN;
+  };
+  const rows = await page.locator(`${scope} [data-pay-sum=row]`).allInnerTexts();
+  const total = await page.locator(`${scope} [data-pay-sum=total]`).allInnerTexts();
+  const failures: string[] = [];
+  if (rows.length === 0) failures.push(`no top-level rows in ${scope}`);
+  if (total.length !== 1) failures.push(`expected one Total in ${scope}, found ${total.length}`);
+  const sum = rows.reduce((a, r) => a + cents(r), 0);
+  if (total.length === 1 && sum !== cents(total[0]!)) failures.push(`rows add to ${sum} cents, Total says ${cents(total[0]!)}`);
+  return { name: "run-totals-sum", ok: failures.length === 0, failures };
+}
+
+/**
+ * Lesson 23 (pay iter2 N3/D19): an ABN never breaks inside the number. Every visible "ABN 30 833 903 811" in `scope`
+ * is joined with non-breaking spaces and sits on one line box.
+ */
+export async function checkAbnStaysWhole(page: Page, scope: string): Promise<GuardResult> {
+  await polyfillEsbuildNameHelper(page);
+  const failures = await page.evaluate((sel) => {
+    const out: string[] = [];
+    let seen = 0;
+    for (const el of Array.from(document.querySelectorAll(sel))) {
+      if (el.getBoundingClientRect().width === 0) continue;
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const text = node.textContent ?? "";
+        for (const m of text.matchAll(/ABN[\s ]\d[\d\s ]*\d/g)) {
+          seen += 1;
+          if (/ /.test(m[0])) out.push(`"${m[0]}" has plain spaces`);
+          const range = document.createRange();
+          range.setStart(node, m.index ?? 0);
+          range.setEnd(node, (m.index ?? 0) + m[0].length);
+          if (range.getClientRects().length > 1) out.push(`"${m[0].replace(/ /g, " ")}" breaks across two lines`);
+        }
+      }
+    }
+    if (seen === 0) out.push(`no ABN found in ${sel}`);
+    return out;
+  }, scope);
+  return { name: "abn-stays-whole", ok: failures.length === 0, failures };
+}

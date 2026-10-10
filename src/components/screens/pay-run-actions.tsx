@@ -8,9 +8,10 @@ import { approvePayRun, exportPayRunCsv, reopenPayRun } from "@/app/actions/pay"
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Toast } from "@/components/ui/toast";
-import { payActionsPlan, sheetAllowed, type Sheet } from "./pay-actions-plan";
+import { formatMoney } from "@/lib/format";
+import { payActionsPlan, payNeedsConnectionText, sheetAllowed, type Sheet } from "./pay-actions-plan";
 import { PinnedAction, usePinnedBar } from "./field-entry";
-import { NEEDS_CONNECTION, useOnline } from "./use-online";
+import { useOnline } from "./use-online";
 
 export const MISSING_RATE_BLOCK = "Fix the missing rate before you approve.";
 export const TWO_FACTOR_BLOCK = "Turn on two-factor before you approve a pay run.";
@@ -153,7 +154,7 @@ export function PayRunActions({
           ) : null}
           {plan.needsConnection ? (
             <p data-pay-needs-connection="" className="text-meta text-ink">
-              {NEEDS_CONNECTION}
+              {payNeedsConnectionText(plan)}
             </p>
           ) : null}
         </PinnedAction>
@@ -164,10 +165,17 @@ export function PayRunActions({
         title="Approve this pay run?"
         description={
           sheet === "waive"
-            ? `Lines with no rate are paid $0.00. We'll note that you approved without the rate. Approving locks every day logged from ${periodText}.`
+            ? (
+                <>
+                  Lines with no rate are paid{" "}
+                  {/* Money in the figure face, as in every pay sentence (lesson 26, pay iter2 D21). */}
+                  <span data-inline-money="" className="font-display font-semibold num whitespace-nowrap">{formatMoney(0)}</span>. We&apos;ll
+                  note that you approved without the rate. Approving locks every day logged from {periodText}.
+                </>
+              )
             : `Approving locks every day logged from ${periodText} and adds each person's pay to what they're owed.`
         }
-        confirmLabel={pending ? "Approving…" : "Approve"}
+        confirmLabel={pending ? "Approving…" : sheet === "waive" ? "Approve without the rate" : "Approve"}
         onConfirm={() => sheet && online && !pending && run(review.id, sheet)}
         onCancel={() => setSheet(null)}
       />
