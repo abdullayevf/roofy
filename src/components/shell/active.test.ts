@@ -30,8 +30,12 @@ describe("activeNavKey", () => {
     expect(activeNavKey("/", "foreman", "phone")).toBe("home");
     expect(activeNavKey("/", "foreman", "desktop")).toBe("home");
   });
-  it("gives the foreman no active tab on pages outside their four", () => {
-    expect(activeNavKey("/expenses/new", "foreman", "phone")).toBe("");
+  it("keeps the foreman's receipts under Jobs, and gives no active tab on pages outside their four", () => {
+    for (const layout of ["phone", "desktop"] as const) {
+      expect(activeNavKey("/expenses", "foreman", layout)).toBe("jobs");
+      expect(activeNavKey("/expenses/new", "foreman", layout)).toBe("jobs");
+    }
+    expect(activeNavKey("/install", "foreman", "phone")).toBe("");
     expect(activeNavKey("/log", "foreman", "phone")).toBe("log");
   });
 });

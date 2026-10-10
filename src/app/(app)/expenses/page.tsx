@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Expenses" };
 export default async function Page({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const ctx = await getData({ searchParams });
   const { actor, demo } = ctx;
-  if (demo.loading) return <ExpensesSkeleton manager={actor.role !== "foreman"} />;
+  if (demo.loading) return <ExpensesSkeleton manager={actor.role !== "foreman"} canAdd={actor.role !== "accountant"} />;
   const back = backLink(actor.role);
   if (!canOpen(actor.role, "expenses")) return <NoPermission backHref={back.href} backLabel={back.label} />;
   const result = await loadExpenses(ctx, parseExpenseFilter(await searchParams));

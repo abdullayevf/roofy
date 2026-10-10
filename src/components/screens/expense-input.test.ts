@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ExpenseRowForeman, ExpenseRowManager } from "@/data/contracts";
-import { categoryLine, supplierText, emptyFilterText, expenseHref, paidByText, parseExpenseFilter, receiptText } from "./expense-input";
+import { paidByCrew, paidByShort, supplierText, emptyFilterText, expenseHref, paidByText, parseExpenseFilter, receiptText } from "./expense-input";
 
 const foremanRow = (over: Partial<ExpenseRowForeman> = {}): ExpenseRowForeman => ({
   id: "e1",
@@ -84,10 +84,19 @@ describe("emptyFilterText", () => {
   });
 });
 
-describe("categoryLine", () => {
-  it("names the stage when the expense was for one", () => {
-    expect(categoryLine(foremanRow())).toBe("Materials");
-    expect(categoryLine(foremanRow({ stageId: "s1", stageName: "Sheet install" }))).toBe("Materials for Sheet install");
+describe("paidByShort", () => {
+  it("is short enough for a table cell: card, cash, or the crew member's name with where the reimbursement stands", () => {
+    expect(paidByShort(managerRow())).toEqual({ label: "Company card", note: null });
+    expect(paidByShort(managerRow({ paidBy: "cash" }))).toEqual({ label: "Cash", note: null });
+    const crew = { paidBy: "crew" as const, crewMemberId: "k1", crewName: "Dima" };
+    expect(paidByShort(managerRow({ ...crew, reimbursement: { payRunId: null, status: "waiting" } }))).toEqual({ label: "Dima", note: "Reimbursed next pay run" });
+    expect(paidByShort(managerRow({ ...crew, reimbursement: { payRunId: "r0", status: "reimbursed" } }))).toEqual({ label: "Dima", note: "Reimbursed" });
+  });
+  it("gives a foreman the name alone, and a phone row spends a line on who paid only when a crew member did", () => {
+    const crew = { paidBy: "crew" as const, crewMemberId: "k1", crewName: "Dima" };
+    expect(paidByShort(foremanRow(crew))).toEqual({ label: "Dima", note: null });
+    expect(paidByCrew(foremanRow(crew))).toBe(true);
+    expect(paidByCrew(managerRow({ paidBy: "cash" }))).toBe(false);
   });
 });
 

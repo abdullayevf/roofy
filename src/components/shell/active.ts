@@ -24,7 +24,8 @@ export function activeNavKey(pathname: string, role: NavRole, layout: NavLayout)
   const own = FIRST_SEGMENT_KEY[first];
   if (own === "outbox") return role === "foreman" ? own : "more";
   if (own) return own;
-  if (role === "foreman") return "";
+  // A foreman reaches Expenses from a job, so the receipts sit under Jobs.
+  if (role === "foreman") return first === "expenses" ? "jobs" : "";
   if (role === "accountant" && (first === "pay" || first === "reports")) return first;
   if (layout === "desktop" && role === "manager" && MANAGE_PAGES.has(first)) return "";
   return MORE_PAGES.has(first) ? "more" : "";

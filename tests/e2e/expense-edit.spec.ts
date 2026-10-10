@@ -29,6 +29,22 @@ test.describe("Expense (owner and manager)", () => {
     await expect(screen.getByText("Cost to the job")).toBeVisible();
     await expect(screen.getByText("Receipt — Harbour Steel.jpg")).toBeVisible();
     await expect(page.getByRole("link", { name: "Record history" })).toHaveAttribute("href", `/history?table=expense&rowId=${withReceipt}`);
+    // D3/F6: what it cost the job is the key figure under the title.
+    const cost = page.locator("[data-expense-cost]");
+    await expect(cost).toContainText(/^\$[\d,]+\.\d{2}\s*cost to the job/);
+    expect((await cost.boundingBox())!.y).toBeGreaterThan((await page.locator('[data-screen="expense-detail"] h1').boundingBox())!.y);
+    // F9: Record history is a 48 px row target.
+    expect((await page.getByRole("link", { name: "Record history" }).boundingBox())!.height).toBeGreaterThanOrEqual(48);
+    // D5/F7: the receipt row opens the photo full screen; Close brings the page back.
+    await page.locator("[data-receipt-open]").click();
+    const full = page.locator("[data-receipt-full]");
+    await expect(full).toBeVisible();
+    const vp = page.viewportSize()!;
+    const fb = (await full.boundingBox())!;
+    expect(Math.round(fb.width)).toBe(vp.width);
+    expect(Math.round(fb.height)).toBe(vp.height);
+    await page.getByRole("button", { name: "Close" }).click();
+    await expect(full).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Edit", exact: true })).toHaveAttribute("href", `/expenses/${withReceipt}?edit=1`);
     if (!isPhone(testInfo.project.name)) {
       // Desktop uses the width: the figures and the facts sit side by side, not in one narrow column.

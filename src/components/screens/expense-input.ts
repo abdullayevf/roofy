@@ -44,9 +44,21 @@ export function paidByText(row: ExpenseRowForeman | ExpenseRowManager): string {
 
 export const receiptText = (hasReceipt: boolean): string => (hasReceipt ? "Receipt attached" : "No receipt");
 
-/** The category, and the stage it was for when there is one: "Materials for Sheet install". */
-export const categoryLine = (row: ExpenseRowForeman): string =>
-  row.stageName ? `${row.category.name} for ${row.stageName}` : row.category.name;
+/**
+ * Who paid, short enough for a table cell: "Company card", "Cash", or the crew member's name with a second line that
+ * says where the reimbursement stands (the foreman's row carries no reimbursement, so no second line).
+ */
+export function paidByShort(row: ExpenseRowForeman | ExpenseRowManager): { label: string; note: string | null } {
+  if (row.paidBy === "company_card") return { label: "Company card", note: null };
+  if (row.paidBy === "cash") return { label: "Cash", note: null };
+  const label = row.crewName ?? "A crew member";
+  const r = "reimbursement" in row ? row.reimbursement : null;
+  if (!r) return { label, note: null };
+  return { label, note: r.status === "reimbursed" ? "Reimbursed" : "Reimbursed next pay run" };
+}
+
+/** A crew member paid out of pocket: the one case where a phone row spends a line on who paid. */
+export const paidByCrew = (row: ExpenseRowForeman | ExpenseRowManager): boolean => row.paidBy === "crew";
 
 /** The one sentence when a filter (or nothing at all) leaves no expenses. */
 export function emptyFilterText(filter: ExpenseFilter): string {

@@ -27,8 +27,11 @@ test.describe("Expenses list (manager)", () => {
     // Each row: a total in dollars, a receipt marker, and a plain paid-by line.
     const first = rows(page).first();
     await expect(first.locator("[data-expense-total]")).toHaveText(/^\$[\d,]+\.\d{2}$/);
-    await expect(first.locator("[data-expense-receipt]")).toHaveText(/^(Receipt attached|No receipt)$/);
-    for (const p of await page.locator("[data-expense-paid-by]:visible").all()) await expect(p).toHaveText(/^Paid (by company card|in cash|by [^.]+)/);
+    // F5/D10: the paperclip shows only when a photo is attached; a missing receipt adds no words to the row.
+    for (const r of await page.locator("[data-expense-receipt]:visible").all()) await expect(r).toHaveText("Receipt attached");
+    await expect(page.locator("main")).not.toContainText("No receipt");
+    for (const p of await page.locator("[data-expense-paid-by]:visible").all())
+      await expect(p).toHaveText(isPhone(testInfo.project.name) ? /^Paid by [^.]+/ : /^(Company card|Cash|[A-Z][a-z]+)/);
     await expect(page.getByRole("link", { name: "Add expense" }).first()).toBeVisible();
     await expect(page.locator("[data-expense-filter]")).toHaveCount(0);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
@@ -36,9 +39,8 @@ test.describe("Expenses list (manager)", () => {
 
   test("a crew-paid expense says who paid and when they are reimbursed", async ({ page }) => {
     await signInAs(page, "manager", `/expenses?job=${meta.projects.smith}`);
-    const crewPaid = rows(page).filter({ has: page.locator("[data-expense-paid-by]", { hasText: "Paid by Dima" }) }).first();
-    await expect(crewPaid.locator("[data-expense-paid-by]")).toHaveText(/^Paid by Dima — reimbursed( next pay run)?$/);
-    await expect(crewPaid.locator("[data-expense-paid-by]")).toContainText(" ".length ? "Paid by Dima" : "");
+    const crewPaid = rows(page).filter({ has: page.locator("[data-expense-paid-by]", { hasText: "Dima" }) }).first();
+    await expect(crewPaid.locator("[data-expense-paid-by]")).toHaveText(/^(Paid by )?Dima\s*(— )?[Rr]eimbursed( next pay run)?$/);
   });
 
   test("a job link narrows the list to that job, with a chip that takes the filter off", async ({ page }, testInfo) => {
@@ -151,7 +153,44 @@ test.describe("Expenses list (manager)", () => {
     await expect(page.locator("table tbody tr").first()).toBeVisible();
     expect((await checkTableEdgeGap(page, 16)).failures).toEqual([]);
     expect((await checkTableHeaderAlign(page, 16)).failures).toEqual([]);
-    await expect(page.locator("table th")).toHaveText(["Date", "Supplier", "Job", "Paid by", "Total"]);
+    await expect(page.locator("table th")).toHaveText(["Date", "Supplier", "Job", "Category", "Paid by", "Total"]);
+  });
+
+  // D9 (guard): short paid-by labels and a column per fact, so no cell wraps and every row stays one or two lines tall.
+  test("desktop table rows stay at most 56 px tall, with the category in its own column", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the desktop table");
+    await signInAs(page, "manager");
+    await expect(page.locator("table tbody tr").first()).toBeVisible();
+    const tall = await page.locator("table tbody tr").evaluateAll((trs) =>
+      trs.map((t) => ({
+        h: Math.round(t.getBoundingClientRect().height),
+        t: (t.textContent ?? "").slice(0, 80),
+        // The one stress row has a supplier name of 60 characters; that may wrap, nothing else may.
+        long: (t.querySelector("[data-expense-supplier]")?.textContent ?? "").length > 40,
+      })),
+    );
+    expect(tall.length).toBeGreaterThan(5);
+    expect(tall.filter((r) => !r.long && r.h > 56)).toEqual([]);
+  });
+
+  // F5/D10: a phone row is three lines (supplier and total, date and job, category and stage); only a crew-paid row adds a fourth.
+  test("phone rows have no paid-by line unless a crew member paid, and the text runs to the amount column", async ({ page }, testInfo) => {
+    test.skip(!isPhone(testInfo.project.name), "the phone row");
+    await signInAs(page, "manager");
+    const rowsLoc = rows(page);
+    const n = await rowsLoc.count();
+    expect(n).toBeGreaterThan(5);
+    for (let i = 0; i < Math.min(n, 12); i++) {
+      const row = rowsLoc.nth(i);
+      const paid = row.locator("[data-expense-paid-by]");
+      if (await paid.count()) await expect(paid).toContainText("Paid by");
+      const job = (await row.locator("[data-expense-job]").boundingBox())!;
+      const total = (await row.locator("[data-expense-total]").boundingBox())!;
+      const rowBox = (await row.boundingBox())!;
+      // The job line ends at the row's right padding (past the total's left edge), not 136 px short of it.
+      expect(job.x + job.width).toBeGreaterThan(total.x);
+      expect(rowBox.height).toBeLessThan((await paid.count()) ? 130 : 110);
+    }
   });
 });
 
@@ -165,7 +204,27 @@ test.describe("Expenses list (foreman and accountant)", () => {
     await expect(page.locator("[data-expense-totals]")).toHaveCount(0);
     await expect(page.locator("main")).not.toContainText(/\$|GST|reimburse/i);
     await expect(page.locator('[data-screen="expenses"] a[href^="/expenses/"]:not([href^="/expenses/new"])')).toHaveCount(0);
+    // D7/D19: the foreman's desktop list is a table with no money column, and Jobs is marked as the current place.
+    if (!isPhone(testInfo.project.name)) {
+      await expect(page.locator("table th")).toHaveText(["Date", "Supplier", "Job", "Category", "Paid by"]);
+    }
+    await expect(page.locator('[aria-current="page"]:visible')).toContainText("Jobs");
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
+  });
+
+  // D6/D12/F14 (lesson 7): the loading list already has Add expense (title row on desktop, pinned bar on a phone) and table rows at 48 px.
+  test("loading keeps Add expense where it will be and shapes the rows like the real ones", async ({ page }, testInfo) => {
+    await signInAs(page, "manager", "/expenses?demo=loading");
+    const busy = page.locator('[data-screen="expenses"][aria-busy="true"]');
+    await expect(busy).toBeVisible();
+    if (isPhone(testInfo.project.name)) {
+      await expect(busy.locator(".jobs-add-bar")).toBeVisible();
+    } else {
+      await expect(busy.getByRole("link", { name: "Add expense" }).first()).toBeVisible();
+      const heights = await busy.locator("table tbody tr").evaluateAll((trs) => trs.map((t) => Math.round(t.getBoundingClientRect().height)));
+      expect(heights.length).toBe(6);
+      expect(Math.max(...heights)).toBeLessThanOrEqual(56);
+    }
   });
 
   test("the HTML and the data have no money for a foreman on any state", async ({ page }) => {
