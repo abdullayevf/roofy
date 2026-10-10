@@ -165,9 +165,13 @@ describe("expense payload", () => {
       "Only a crew-paid expense names a crew member.",
     );
   });
-  it("needs a total and a supplier; GST can't exceed the total", () => {
+  it("needs a total; the supplier is optional; GST can't exceed the total", () => {
     expect(rejected(envelope("expense", { ...expense, totalCents: 0 }))).toBe("Add a total before saving.");
-    expect(rejected(envelope("expense", { ...expense, supplier: "  " }))).toBe("Add the supplier.");
+    const blank = parseMutation(envelope("expense", { ...expense, supplier: "  " }));
+    expect(blank.ok ? (blank.envelope.payload as { supplier: string }).supplier : "refused").toBe("");
+    expect(rejected(envelope("expense", { ...expense, supplier: "x".repeat(121) }))).toBe(
+      "Keep the supplier under 120 characters.",
+    );
     expect(rejected(envelope("expense", { ...expense, gstCents: 12000 }))).toBe(
       "GST can't be more than the total.",
     );

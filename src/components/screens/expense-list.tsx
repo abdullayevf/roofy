@@ -11,7 +11,7 @@ import { LoadError } from "./field-entry";
 import { COLUMN, FOCUS, GROUP, KeyFigure, KeyFigureSkeleton } from "./home-parts";
 import { JobsAddBar } from "./jobs-add-bar";
 import { TD, TH } from "./table-cells";
-import { categoryLine, emptyFilterText, expenseHref, paidByText, receiptText, type ExpenseFilter } from "./expense-input";
+import { categoryLine, emptyFilterText, expenseHref, paidByText, receiptText, supplierText, type ExpenseFilter } from "./expense-input";
 
 /** The Expenses page column: left-aligned from 1024 px, where the manager's list is a table the width of the content. */
 const EXPENSES_COLUMN = cx(COLUMN, "lg:max-w-none");
@@ -84,7 +84,7 @@ function Lines({ row, today }: { row: ExpenseRowForeman; today: string }) {
   return (
     <span className="flex flex-col">
       <span data-expense-supplier="" className="block text-body-strong text-ink [overflow-wrap:anywhere]">
-        {row.supplier}
+        {supplierText(row.supplier)}
       </span>
       <span className="text-meta text-ink">{formatDate(row.date, today)}</span>
       <span data-expense-job="" className="text-meta text-ink [overflow-wrap:anywhere]">
@@ -153,7 +153,7 @@ function ManagerTable({ rows, today }: { rows: ExpenseRowManager[]; today: strin
             <td className={cx(TD, "whitespace-nowrap text-body text-ink")}>{formatDate(row.date, today)}</td>
             <td className={TD}>
               <Link href={`/expenses/${row.id}`} prefetch={false} className={cx("block text-body-strong text-ink [overflow-wrap:anywhere] after:absolute after:inset-0", FOCUS)}>
-                {row.supplier}
+                {supplierText(row.supplier)}
               </Link>
               <span className="block text-meta text-ink [overflow-wrap:anywhere]">{categoryLine(row)}</span>
               <Receipt has={row.hasReceipt} />

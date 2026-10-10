@@ -105,7 +105,6 @@ export type ExpenseProblems = {
   ready: boolean;
   total?: string;
   gst?: string;
-  supplier?: string;
   project?: string;
   category?: string;
   crew?: string;
@@ -126,7 +125,6 @@ export function expenseProblems(v: ExpenseFormValues): ExpenseProblems {
     else if (v.gstCents === null) p.gst = GST_MISSING;
     else if (typeof total === "number" && v.gstCents > total) p.gst = "GST can't be more than the total.";
   }
-  if (v.supplier.trim() === "") p.supplier = "Add the supplier.";
   if (v.projectId === "") p.project = "Pick the job.";
   if (v.categoryId === "") p.category = "Pick a category.";
   if (v.paidBy === "crew" && v.crewMemberId === null) p.crew = "Pick who paid.";
@@ -139,7 +137,6 @@ export function expenseMissingHint(p: ExpenseProblems): string | undefined {
   const parts: string[] = [];
   if (p.total) parts.push(p.total === TOTAL_MISSING ? "add a total" : "fix the total");
   if (p.gst) parts.push(p.gst === GST_MISSING ? "add the GST" : "fix the GST");
-  if (p.supplier) parts.push("add the supplier");
   if (p.project) parts.push("pick the job");
   if (p.category) parts.push("pick a category");
   if (p.crew) parts.push("pick who paid");
@@ -203,4 +200,9 @@ export function expenseFromQuery(q: Query, today: string, picks: Picks): { value
   if (v.paidBy === "crew" && picks.crew.some((c) => c.id === crew)) v.crewMemberId = crew;
   if (one(q.gst) === "none") v.gst = "none";
   return { values: v, check: one(q.check) === "1", saved: one(q.saved) === "waiting" };
+}
+
+/** A row's first line: the supplier, or "No supplier" when it was left blank (it is optional). */
+export function supplierText(supplier: string): string {
+  return supplier.trim() === "" ? "No supplier" : supplier;
 }

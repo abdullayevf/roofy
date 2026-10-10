@@ -223,9 +223,8 @@ export const stageResumeSchema = z.object({ stageId: idSchema, date: localDateSc
 export const expenseFields = z.object({
   date: localDateSchema,
   supplier: z
-    .string({ error: "Add the supplier." })
+    .string({ error: "Add the supplier, or leave it blank." })
     .trim()
-    .min(1, { error: "Add the supplier." })
     .max(120, { error: "Keep the supplier under 120 characters." }),
   totalCents: z
     .int({ error: "Add a total before saving." })

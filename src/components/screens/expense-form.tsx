@@ -284,13 +284,12 @@ export function ExpenseForm({
           ) : null}
         </div>
         <Field
-          label="Supplier"
+          label="Supplier (optional)"
           inputMode="text"
           autoComplete="off"
           value={v.supplier}
           maxLength={120}
           onChange={(e) => set({ supplier: e.target.value })}
-          error={problems.supplier}
         />
         <Field
           label="Date"

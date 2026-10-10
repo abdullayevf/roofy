@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ExpenseRowForeman, ExpenseRowManager } from "@/data/contracts";
-import { categoryLine, emptyFilterText, expenseHref, paidByText, parseExpenseFilter, receiptText } from "./expense-input";
+import { categoryLine, supplierText, emptyFilterText, expenseHref, paidByText, parseExpenseFilter, receiptText } from "./expense-input";
 
 const foremanRow = (over: Partial<ExpenseRowForeman> = {}): ExpenseRowForeman => ({
   id: "e1",
@@ -126,8 +126,8 @@ describe("Add expense form", () => {
 
   it("names each missing thing and is ready only when nothing is missing", () => {
     const p = expenseProblems(emptyExpense("2026-09-28"));
-    expect(p).toMatchObject({ ready: false, total: "Add a total before saving.", supplier: "Add the supplier.", project: "Pick the job.", category: "Pick a category." });
-    expect(expenseMissingHint(p)).toBe("Add a total, add the supplier, pick the job and pick a category.");
+    expect(p).toEqual({ ready: false, total: "Add a total before saving.", project: "Pick the job.", category: "Pick a category." });
+    expect(expenseMissingHint(p)).toBe("Add a total, pick the job and pick a category.");
     expect(expenseProblems(filled())).toEqual({ ready: true });
     expect(expenseMissingHint({ ready: true })).toBeUndefined();
   });
@@ -143,6 +143,13 @@ describe("Add expense form", () => {
     expect(expenseMissingHint(crew)).toBe("Pick who paid.");
     expect(expenseMissingHint(expenseProblems(filled({ totalCents: "unreadable" })))).toBe("Fix the total.");
     expect(expenseMissingHint(expenseProblems(filled({ gst: "typed", gstCents: 99999 })))).toBe("Fix the GST.");
+  });
+
+  it("treats the supplier as optional (flows.md has no supplier step)", () => {
+    expect(supplierText("Bunnings")).toBe("Bunnings");
+    expect(supplierText(" ")).toBe("No supplier");
+    expect(expenseProblems(filled({ supplier: "  " }))).toEqual({ ready: true });
+    expect(expenseInput(filled({ supplier: "" }), null)?.supplier).toBe("");
   });
 
   it("builds the save input: GST null for the default, 0 for No GST, a crew member only when crew paid", () => {

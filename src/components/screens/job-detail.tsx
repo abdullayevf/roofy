@@ -16,6 +16,7 @@ import { COLUMN, FOCUS, GROUP, KeyFigure, KeyFigureSkeleton, Section, whole } fr
 import { LoadError } from "./field-entry";
 import { crewWeekText, jobStageStatus, labourAlertSentence, logQuantityText, stageAlertNote, stageProgressText } from "./job-detail-text";
 import { jobTypeLabel } from "./job-input";
+import { supplierText } from "./expense-input";
 
 /** How many recent logs and expenses show before the link to the full list. */
 export const RECENT_SHOWN = 5;
@@ -202,7 +203,7 @@ function Expenses({ job, today }: { job: ProjectDetail; today: string }) {
   const shown = job.expenses.slice(0, RECENT_SHOWN);
   const rows: ListRow[] = shown.map((e) => ({
     key: e.id,
-    primary: e.supplier,
+    primary: supplierText(e.supplier),
     meta: `${formatDate(e.date, today)}, ${e.category.name}`,
     ...(isManagerExpense(e) ? { figure: <MoneyCell cents={e.totalCents} />, href: `/expenses/${e.id}` } : {}),
   }));
