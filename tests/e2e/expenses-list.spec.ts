@@ -184,10 +184,11 @@ test.describe("Expenses list (manager)", () => {
       const row = rowsLoc.nth(i);
       const paid = row.locator("[data-expense-paid-by]");
       if (await paid.count()) await expect(paid).toContainText("Paid by");
-      const job = (await row.locator("[data-expense-job]").boundingBox())!;
+      // The job line's box (the flex row holding date and job), not the job text: a short name ends well before the amount.
+      const job = (await row.locator("[data-expense-job]").locator("xpath=..").boundingBox())!;
       const total = (await row.locator("[data-expense-total]").boundingBox())!;
       const rowBox = (await row.boundingBox())!;
-      // The job line ends at the row's right padding (past the total's left edge), not 136 px short of it.
+      // The job line spans the amount column (its right edge is past the total's left edge), not 136 px short of it.
       expect(job.x + job.width).toBeGreaterThan(total.x);
       expect(rowBox.height).toBeLessThan((await paid.count()) ? 130 : 110);
     }
