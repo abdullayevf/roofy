@@ -1,9 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
-import { checkMoneyFigureFont, checkTableEdgeGap, checkTableHeaderAlign, checkTableRowHeight, collectConsole, expectScreenHealthy } from "./guards";
+import { checkDatesStayWhole, checkMoneyFigureFont, checkTableEdgeGap, checkTableHeaderAlign, checkTableRowHeight, collectConsole, expectScreenHealthy } from "./guards";
 import { expectNoMoney } from "./money-scan";
 import { getSeed } from "../../src/data/fake/store";
 
-const { meta } = getSeed();
+const seed = getSeed();
+const { meta } = seed;
 const isPhone = (name: string) => name !== "desktop";
 const MONEY = /^\$[\d,]+\.\d{2}$/;
 
@@ -35,7 +36,32 @@ test.describe("Pay runs list (owner and manager)", () => {
     for (const t of await page.locator("[data-pay-total]:visible").all()) await expect(t).toHaveText(MONEY);
     for (const r of await rows(page).all()) await expect(r).toContainText(/Draft|Approved|Exported/);
     expect((await checkMoneyFigureFont(page, '[data-screen="pay-runs"]')).failures).toEqual([]);
+    // Every period keeps each date whole and breaks only at "to" (pay/i1-D7+F6, lesson 23), on iphone, android and desktop.
+    expect((await checkDatesStayWhole(page, '[data-screen="pay-runs"] [data-pay-period]')).failures).toEqual([]);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
+  });
+
+  test("shows the latest 8 other runs, then 'Show older pay runs' for the rest", async ({ page }) => {
+    await signInAs(page, "owner");
+    const total = seed.payRuns.length;
+    const older = page.getByRole("button", { name: "Show older pay runs" });
+    await expect(rows(page)).toHaveCount(8);
+    await expect(older).toBeVisible();
+    await older.click();
+    // Every run except the draft to review, and except a draft nobody is in yet (the week still to come).
+    const listed = total - 1 - seed.payRuns.filter((r) => r.status === "draft" && r.id !== meta.payRuns.review).length;
+    expect(listed).toBeGreaterThan(8);
+    await expect(rows(page)).toHaveCount(listed);
+    await expect(page.getByRole("button", { name: "Show fewer pay runs" })).toBeVisible();
+    await page.getByRole("button", { name: "Show fewer pay runs" }).click();
+    await expect(rows(page)).toHaveCount(8);
+  });
+
+  test("a week with no one in it yet is not listed", async ({ page }) => {
+    await signInAs(page, "owner");
+    await expect(page.locator(`[data-screen="pay-runs"] a[href="/pay/${meta.payRuns.current}"]`)).toHaveCount(0);
+    await expect(page.getByText("No one yet")).toHaveCount(0);
+    await expect(page.getByText("$0.00")).toHaveCount(0);
   });
 
   test("totals line up in one right-hand column and never run under the period", async ({ page }, testInfo) => {
@@ -88,11 +114,15 @@ test.describe("Pay runs list (owner and manager)", () => {
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), skip: { console: true } });
   });
 
-  test("offline disables Review pay run with one Needs connection line and no 'will send' banner", async ({ page }, testInfo) => {
+  test("offline, Review pay run stays open to read; the list says nothing about a connection and no 'will send' banner", async ({ page }, testInfo) => {
     await signInAs(page, "manager", "/pay?demo=offline");
     const card = page.locator("[data-pay-review]");
-    await expect(card.getByRole("button", { name: "Review pay run" })).toBeDisabled();
-    await expect(page.getByText("Needs connection — try again once you're back online.")).toHaveCount(1);
+    const review = card.getByRole("link", { name: "Review pay run" });
+    await expect(review).toBeVisible();
+    await expect(review).toBeEnabled();
+    await expect(review).toHaveAttribute("href", `/pay/${meta.payRuns.review}`);
+    await expect(card.getByRole("button", { name: "Review pay run" })).toHaveCount(0);
+    await expect(page.getByText(/Needs connection/)).toHaveCount(0);
     await expect(page.getByText(/send automatically/)).toHaveCount(0);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
   });
@@ -113,6 +143,14 @@ test.describe("Pay runs list (accountant and foreman)", () => {
     await signInAs(page, "foreman");
     await expect(page.getByText("You don't have access to this. Ask your manager.")).toBeVisible();
     await expect(page.locator('[data-screen="pay-runs"]')).toHaveCount(0);
+    // The heading and sentence sit on the left edge like every other screen's title, not centred (pay/i1-F13).
+    const [main, heading, sentence] = await Promise.all([
+      page.locator("main").boundingBox(),
+      page.getByRole("heading", { level: 1, name: "No access" }).boundingBox(),
+      page.getByText("You don't have access to this. Ask your manager.").boundingBox(),
+    ]);
+    expect(heading!.x).toBeLessThanOrEqual(main!.x + 17);
+    expect(sentence!.x).toBeLessThanOrEqual(main!.x + 17);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
     await expectNoMoney(page, ["/pay", "/pay?demo=empty", "/pay?demo=loading", "/pay?demo=error", "/pay?demo=offline", "/pay?demo=noperm"]);
   });

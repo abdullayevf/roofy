@@ -1038,3 +1038,35 @@ export async function checkMoneyFigureFont(page: Page, scope: string): Promise<G
   }, scope);
   return { name: "money-figure-font", ok: failures.length === 0, failures };
 }
+
+/**
+ * Lesson 23 (pay/i1-D7+F6): a date such as "Mon 21 Sep" never breaks across two lines. Every visible `scope` element's
+ * dates are joined with non-breaking spaces (no plain-space date left) and each date sits on one line box.
+ */
+export async function checkDatesStayWhole(page: Page, scope: string): Promise<GuardResult> {
+  await polyfillEsbuildNameHelper(page);
+  const failures = await page.evaluate((sel) => {
+    const out: string[] = [];
+    let seen = 0;
+    const WHOLE = /[A-Z][a-z]{2} \d{1,2} [A-Z][a-z]{2}(?: \d{4})?/g;
+    const SPLIT = /[A-Z][a-z]{2} \d{1,2} [A-Z][a-z]{2}/;
+    for (const el of Array.from(document.querySelectorAll(sel))) {
+      if (el.getBoundingClientRect().width === 0) continue;
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const text = node.textContent ?? "";
+        if (SPLIT.test(text)) out.push(`"${text.trim()}" has a date with plain spaces`);
+        for (const m of text.matchAll(WHOLE)) {
+          seen += 1;
+          const range = document.createRange();
+          range.setStart(node, m.index ?? 0);
+          range.setEnd(node, (m.index ?? 0) + m[0].length);
+          if (range.getClientRects().length > 1) out.push(`"${m[0].replace(/ /g, " ")}" breaks across two lines`);
+        }
+      }
+    }
+    if (seen === 0) out.push(`no date found in ${sel}`);
+    return out;
+  }, scope);
+  return { name: "dates-stay-whole", ok: failures.length === 0, failures };
+}

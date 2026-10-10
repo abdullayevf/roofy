@@ -1,22 +1,22 @@
-import Link from "next/link";
-import { CaretRight, WarningDiamond } from "@phosphor-icons/react/dist/ssr";
+import { WarningDiamond } from "@phosphor-icons/react/dist/ssr";
 import type { PayFlag, PayRunListItem, Role } from "@/data/contracts";
 import { cx } from "@/lib/cx";
 import { formatMoney } from "@/lib/format";
 import { EmptyState } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { StatusChip } from "@/components/ui/status-chip";
 import { LoadError } from "./field-entry";
-import { COLUMN, FOCUS, GROUP, KeyFigure, KeyFigureSkeleton } from "./home-parts";
-import { PayReviewButton } from "./pay-review-button";
+import { COLUMN, GROUP, KeyFigure, KeyFigureSkeleton } from "./home-parts";
+import { PayRunRows } from "./pay-runs-rows";
 import { draftFlagsText, payRunPeriodText, peopleCountText, splitRuns } from "./pay-runs-text";
-import { TD, TH } from "./table-cells";
 
 /** Left-aligned from 1024 px, where the draft and the list sit side by side. */
 const PAY_COLUMN = cx(COLUMN, "lg:max-w-none");
 /** Two columns from 1024 px: the draft to review on the left, every other run on the right. */
 const SPLIT = "flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-10";
-/** A phone row's fixed right column: the total, right-aligned, never squeezed by the period. */
+
+/** A phone row's fixed right column (same as the rows in pay-runs-rows.tsx, a client file, so the value can't be imported). */
 const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_min(8.5rem,40%)] items-start gap-x-4";
 
 type Reader = Exclude<Role, "foreman">;
@@ -30,7 +30,7 @@ function Header() {
 }
 
 /** The draft to review now: period, total, who is in it, what to check, and the one primary action. */
-function ReviewCard({ run, flags, role, today, demoOffline }: { run: PayRunListItem; flags: PayFlag[]; role: Reader; today: string; demoOffline: boolean }) {
+function ReviewCard({ run, flags, role, today }: { run: PayRunListItem; flags: PayFlag[]; role: Reader; today: string }) {
   const blocked = flags.some((f) => f.blocking);
   return (
     <section aria-labelledby="pay-review-title" data-pay-review="" className="flex flex-col gap-4 rounded-group border-group bg-surface p-4">
@@ -47,68 +47,11 @@ function ReviewCard({ run, flags, role, today, demoOffline }: { run: PayRunListI
         {flags.length > 0 ? <WarningDiamond size={24} aria-hidden="true" className={cx("shrink-0", blocked ? "text-over" : "text-watch")} /> : null}
         {draftFlagsText(flags, role)}
       </p>
-      <PayReviewButton label={role === "accountant" ? "Open pay run" : "Review pay run"} href={`/pay/${run.id}`} demoOffline={demoOffline} />
+      {/* Reading stays open offline (lesson 28); Approve, Reopen and Export on the review say "Needs connection". */}
+      <Button variant="primary" href={`/pay/${run.id}`} className="w-full sm:w-auto sm:min-w-60 sm:self-start">
+        {role === "accountant" ? "Open pay run" : "Review pay run"}
+      </Button>
     </section>
-  );
-}
-
-function Total({ run }: { run: PayRunListItem }) {
-  return <span data-pay-total="" className="block text-right text-figure num text-ink whitespace-nowrap">{formatMoney(run.totalCents)}</span>;
-}
-
-/** A phone or tablet row: period, status and people on the left, the total in the right column. */
-function PhoneRow({ run, today }: { run: PayRunListItem; today: string }) {
-  return (
-    <Link
-      href={`/pay/${run.id}`}
-      prefetch={false}
-      data-pay-row=""
-      className={cx("relative block min-h-16 py-2 pl-4 pr-9 first:rounded-t-group last:rounded-b-group active:bg-galv", FOCUS)}
-    >
-      <span className={ROW_GRID}>
-        <span className="flex flex-col">
-          <span data-pay-period="" className="text-body-strong text-ink">{payRunPeriodText(run.period, today)}</span>
-          <StatusChip status={run.status} plain />
-          <span className="text-meta text-ink">{peopleCountText(run.peopleCount)}</span>
-        </span>
-        <Total run={run} />
-      </span>
-      <CaretRight size={24} aria-hidden="true" className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-2" />
-    </Link>
-  );
-}
-
-/** From 1024 px, a table with the whole row as the link: period, status, people, total. */
-function RunsTable({ runs, today }: { runs: PayRunListItem[]; today: string }) {
-  return (
-    <table className="hidden w-full lg:table">
-      <thead>
-        <tr>
-          <th scope="col" className={TH}>Period</th>
-          <th scope="col" className={TH}>Status</th>
-          <th scope="col" className={TH}>People</th>
-          <th scope="col" className={cx(TH, "text-right")}>Total</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-line">
-        {runs.map((run) => (
-          <tr key={run.id} data-pay-row="" className="relative h-14 hover:bg-galv">
-            <td className={TD}>
-              <Link href={`/pay/${run.id}`} prefetch={false} className={cx("block text-body-strong text-ink after:absolute after:inset-0", FOCUS)}>
-                {payRunPeriodText(run.period, today)}
-              </Link>
-            </td>
-            <td className={TD}>
-              <StatusChip status={run.status} plain />
-            </td>
-            <td className={cx(TD, "text-body text-ink")}>{peopleCountText(run.peopleCount)}</td>
-            <td className={cx(TD, "pr-4")}>
-              <Total run={run} />
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
   );
 }
 
@@ -120,11 +63,10 @@ export type PayRunsListProps = {
   role: Reader;
   /** The workspace's local date, for "Mon 21 Sep to Sun 27 Sep". */
   today: string;
-  demoOffline?: boolean;
 };
 
 /** Pay runs list (flows.md screen 18). Props only; the page fetches. */
-export function PayRunsListBody({ runs, reviewId, reviewFlags, role, today, demoOffline = false }: PayRunsListProps) {
+export function PayRunsListBody({ runs, reviewId, reviewFlags, role, today }: PayRunsListProps) {
   if (runs.length === 0) {
     return (
       <div data-screen="pay-runs" className={PAY_COLUMN}>
@@ -145,21 +87,14 @@ export function PayRunsListBody({ runs, reviewId, reviewFlags, role, today, demo
       <Header />
       <div className={SPLIT}>
         {review ? (
-          <ReviewCard run={review} flags={reviewFlags} role={role} today={today} demoOffline={demoOffline} />
+          <ReviewCard run={review} flags={reviewFlags} role={role} today={today} />
         ) : (
           <p className="text-body text-ink">Nothing to review. Every past pay run is approved.</p>
         )}
         {others.length > 0 ? (
           <section aria-labelledby="pay-others-title" className="flex flex-col gap-3">
             <h2 id="pay-others-title" className="text-heading text-ink">{review ? "Other pay runs" : "All pay runs"}</h2>
-            <div className={cx(GROUP, "overflow-hidden")}>
-              <div className="divide-y divide-line lg:hidden">
-                {others.map((run) => (
-                  <PhoneRow key={run.id} run={run} today={today} />
-                ))}
-              </div>
-              <RunsTable runs={others} today={today} />
-            </div>
+            <PayRunRows runs={others} today={today} />
           </section>
         ) : null}
       </div>

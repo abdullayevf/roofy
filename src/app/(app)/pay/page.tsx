@@ -29,7 +29,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
       reviewFlags={result.reviewFlags}
       role={actor.role}
       today={ctx.today}
-      demoOffline={demo.state === "offline"}
     />
   );
 }

@@ -859,7 +859,8 @@ export const SCREENS: ScreenSpec[] = [
   // --- pay (Task 17): Pay runs list (18), review (19), statement (21) --
   {
     // The draft to review first (flags, blocking count, Review pay run), then past runs with Draft/Approved/Exported.
-    // The accountant variant reads "Open pay run"; offline the button is disabled with "Needs connection".
+    // The accountant variant reads "Open pay run". Offline the list and the review stay open to read (Approve, Reopen and
+    // Export on the review say "Needs connection"). The latest 8 other runs show, then "Show older pay runs".
     id: "pay-runs-list",
     group: "pay",
     route: "/pay",

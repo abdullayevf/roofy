@@ -2,9 +2,9 @@ import { Button } from "@/components/ui/button";
 
 type StateProps = { title: string; message: string; className?: string };
 
-function StateBody({ title, message, children }: StateProps & { children: React.ReactNode }) {
+function StateBody({ title, message, left = false, children }: StateProps & { left?: boolean; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-4 px-4 py-12 text-center">
+    <div className={left ? "flex w-full max-w-180 flex-col items-start gap-4 py-8 text-left" : "flex flex-col items-center gap-4 px-4 py-12 text-center"}>
       <h1 className="font-display text-title text-ink">{title}</h1>
       <p className="text-body text-ink-2">{message}</p>
       {children}
@@ -15,7 +15,7 @@ function StateBody({ title, message, children }: StateProps & { children: React.
 /** DESIGN.md §4 no-permission state: one plain sentence, no figures, one way back. */
 export function NoPermission({ backHref = "/", backLabel = "Go to Home" }: { backHref?: string; backLabel?: string }) {
   return (
-    <StateBody title="No access" message="You don't have access to this. Ask your manager.">
+    <StateBody title="No access" message="You don't have access to this. Ask your manager." left>
       <Button variant="primary" href={backHref}>
         {backLabel}
       </Button>
