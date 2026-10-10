@@ -200,8 +200,9 @@ test.describe("demo states in the shell", () => {
   });
 
   test("an error keeps the nav and offers Try again", async ({ page }) => {
-    // Reports still uses the shared error screen; Crew, Jobs, Pay and the other built screens keep their own title and error message.
-    await page.goto("/reports?demo=error");
+    // More is a plain menu page that stays on the shared error screen; Crew, Jobs, Pay and the other built screens keep their own
+    // title and error message (and Reports will when it is built), so this test does not move again.
+    await page.goto("/more?demo=error");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Something went wrong");
     await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();

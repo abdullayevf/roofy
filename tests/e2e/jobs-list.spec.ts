@@ -50,14 +50,22 @@ test.describe("Jobs list (manager)", () => {
       }));
     }, longId);
     // The one fixture whose name runs to ~110 characters wraps as far as its name needs (names wrap, never truncate); it is held to
-    // "the wrapped name plus the same fixed parts" below, not to the ordinary-row heights.
+    // "the wrapped name plus the same fixed parts" below, measured against the ordinary rows on this page, not to their heights.
     const rows = all.filter((r) => !r.long);
-    const long = all.filter((r) => r.long);
-    expect(long).toHaveLength(1);
+    const long = all.filter((r) => r.long)[0]!;
+    expect(all.filter((r) => r.long)).toHaveLength(1);
     expect(rows.length).toBeGreaterThan(5);
+    // Everything on a row that is not its name or its status line (padding, bar, figure): the most any ordinary row spends on it.
+    const chrome = (r: { row: number; name: number; status: number }) => r.row - r.name - r.status;
+    const ordinaryChrome = Math.max(...rows.map(chrome));
+    // Rounded heights of three parts each: allow 2 px, not a whole extra element.
+    const SLACK = 2;
     if (desktop) {
       for (const r of rows) expect(r.row).toBeLessThanOrEqual(56);
-      expect(long[0]!.row - long[0]!.name - long[0]!.status).toBeLessThanOrEqual(16);
+      // One name line is the tallest ordinary name; the long name may take at most three of them.
+      const line = Math.max(...rows.map((r) => r.name));
+      expect(chrome(long)).toBeLessThanOrEqual(ordinaryChrome + SLACK);
+      expect(long.name).toBeLessThanOrEqual(3 * line + SLACK);
       // The table uses the content width, not a phone column (D1).
       const table = (await page.locator('[data-screen="jobs"] table').boundingBox())!;
       expect(table.width).toBeGreaterThan(900);
@@ -67,8 +75,11 @@ test.describe("Jobs list (manager)", () => {
     expect(oneLine.length).toBeGreaterThan(5);
     for (const r of oneLine) expect(r.row).toBeLessThanOrEqual(120);
     for (const r of rows) expect(r.row).toBeLessThanOrEqual(160);
-    // The long name wraps, and nothing else on its row grows: padding, status line, bar and figure stay the size of any row's.
-    expect(long[0]!.row - long[0]!.name - long[0]!.status).toBeLessThanOrEqual(96);
+    // The long name wraps and nothing else on its row grows (padding, bar and figure stay the size of any row's), and the name
+    // column is not squeezed: at most six lines of the one-line name height.
+    const line = Math.max(...oneLine.map((r) => r.name));
+    expect(chrome(long)).toBeLessThanOrEqual(ordinaryChrome + SLACK);
+    expect(long.name).toBeLessThanOrEqual(6 * line + SLACK);
   });
 
   test("on its side the phone shows Add job in the header row, not pinned, and at least one job on the first screen (i2-F4)", async ({ page }, testInfo) => {
@@ -163,10 +174,12 @@ test.describe("Jobs list (manager)", () => {
     await expect(cards(page)).toHaveCount(1);
     await expect(cards(page).first()).toContainText("Kelly");
     await expect(jobRows(page).first().getByText("On hold: client", { exact: true })).toBeVisible();
-    // The two screen fixtures (no stages yet; a very long name) are the quoted jobs.
+    // The two screen fixtures (no stages yet; a very long name) are the quoted jobs, and only they.
     await page.getByRole("radio", { name: "Quoted" }).click();
     await expect(page).toHaveURL(/\/jobs\?status=quoted$/);
     await expect(cards(page)).toHaveCount(2);
+    await expect(cards(page).filter({ hasText: "Nair job" })).toHaveAttribute("href", `/jobs/${meta.fixtures.noStages}`);
+    await expect(cards(page).filter({ hasText: "Featherstonehaugh-Montgomery estate" })).toHaveAttribute("href", `/jobs/${meta.fixtures.longNames}`);
     await page.getByRole("radio", { name: "Complete" }).click();
     // A long history: the first 20 show, the rest open in place.
     await expect(cards(page)).toHaveCount(20);
@@ -179,20 +192,9 @@ test.describe("Jobs list (manager)", () => {
     await expect(cards(page)).toHaveCount(5);
   });
 
-  test("a filter with no jobs says so (the seed has jobs under every filter, so the only job on hold is moved to Active first)", async ({ page }) => {
-    await signInAs(page, "manager", `/jobs/${meta.projects.kelly}/edit`);
-    await page.getByLabel("Status").selectOption("active");
-    await page.getByRole("button", { name: "Save changes", exact: true }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Changes saved" })).toBeVisible();
-    await page.goto("/jobs?status=on_hold");
-    await expect(page.getByRole("radio", { name: "On hold" })).toBeChecked();
-    await expect(page.getByText("No jobs on hold.")).toBeVisible();
-    await expect(cards(page)).toHaveCount(0);
-    // Nothing else changed: the moved job is now among the Active ones.
-    await page.getByRole("radio", { name: "Active" }).click();
-    await expect(cards(page)).toHaveCount(6);
-    await expect(cards(page).filter({ hasText: "Kelly" })).toHaveCount(1);
-  });
+  // The sentence for a filter with no jobs ("No jobs on hold." and the others) is proved in src/components/screens/jobs-list.test.tsx:
+  // the seed has jobs under every filter, and moving one (Kelly is the only job on hold) would leak into the other specs and the
+  // other projects running against the same server.
 
   test("a filter in the address is honoured and keeps a demo state across a pick", async ({ page }) => {
     await signInAs(page, "manager", "/jobs?status=complete&demo=offline");

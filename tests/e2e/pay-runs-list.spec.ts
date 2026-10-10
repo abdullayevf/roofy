@@ -28,8 +28,9 @@ test.describe("Pay runs list (owner and manager)", () => {
     await expect(card.locator("[data-pay-flags]")).toHaveText(/^(Nothing to check|\d+ things? to check) before you approve\./);
     const review = card.getByRole("link", { name: "Review pay run" });
     await expect(review).toHaveAttribute("href", `/pay/${meta.payRuns.review}`);
-    // Past runs follow, newest first, each with its status and total. This week's draft has no one in it yet, so it is not listed
-    // (pay/i1-F15), and last week's draft stays the card above: the newest row is the week before.
+    // Past runs follow, newest first, each with its status and total. The seed's current-week draft has no one in it yet, so it is
+    // not listed (pay/i1-F15: any draft nobody is in is hidden, whatever its dates), and last week's draft stays the card above: the
+    // newest row is the week before.
     await expect(page.getByRole("heading", { level: 2, name: "Other pay runs" })).toBeVisible();
     expect(await rows(page).count()).toBeGreaterThan(1);
     await expect(rows(page).first()).toContainText("Approved");
@@ -51,7 +52,7 @@ test.describe("Pay runs list (owner and manager)", () => {
     await expect(rows(page)).toHaveCount(8);
     await expect(older).toBeVisible();
     await older.click();
-    // Every run except the draft to review, and except a draft nobody is in yet (the week still to come).
+    // Every run except the draft to review, and except a draft nobody is in yet (no one has logged on it).
     const listed = total - 1 - seed.payRuns.filter((r) => r.status === "draft" && r.id !== meta.payRuns.review).length;
     expect(listed).toBeGreaterThan(8);
     await expect(rows(page)).toHaveCount(listed);

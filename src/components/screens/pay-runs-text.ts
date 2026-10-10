@@ -28,8 +28,8 @@ export function draftFlagsText(flags: PayFlag[], role: "owner" | "manager" | "ac
 }
 
 /**
- * The draft to review now on its own, then every other run newest first. A draft with no one in it yet (the week still to
- * come) is left out: there is nothing to open. The draft to review stays whatever it holds.
+ * The draft to review now on its own, then every other run newest first. A draft with no one in it yet (no one has logged
+ * on it) is left out whatever its dates: there is nothing to open. The draft to review stays whatever it holds.
  */
 export function splitRuns(runs: PayRunListItem[], reviewId: string | null): { review: PayRunListItem | null; others: PayRunListItem[] } {
   const review = runs.find((r) => r.id === reviewId) ?? null;
