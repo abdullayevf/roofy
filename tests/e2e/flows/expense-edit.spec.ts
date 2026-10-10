@@ -31,5 +31,6 @@ test("Correct the total on a saved expense in 6 taps", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Record history" })).toHaveAttribute("href", `/history?table=expense&rowId=${target.id}`);
   taps.assertWithin(6);
   await page.goto("/expenses");
-  await expect(page.locator(`a[href="/expenses/${target.id}"]:visible`).first()).toContainText(`$${next}`);
+  // The row is a link on a phone and a table row on a desktop; the id marks it on both.
+  await expect(page.locator(`[data-screen="expenses"] [data-expense-row][data-expense-id="${target.id}"]:visible`).locator("[data-expense-total]")).toHaveText(`$${next}`);
 });

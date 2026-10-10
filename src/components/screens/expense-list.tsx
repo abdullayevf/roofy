@@ -114,6 +114,7 @@ function ManagerPhoneRow({ row, today }: { row: ExpenseRowManager; today: string
       href={`/expenses/${row.id}`}
       prefetch={false}
       data-expense-row=""
+      data-expense-id={row.id}
       className={cx("relative block min-h-16 py-2 pl-4 pr-9 first:rounded-t-group last:rounded-b-group active:bg-galv", FOCUS)}
     >
       <span className={ROW_GRID}>
@@ -149,10 +150,10 @@ function ManagerTable({ rows, today }: { rows: ExpenseRowManager[]; today: strin
       </thead>
       <tbody className="divide-y divide-line">
         {rows.map((row) => (
-          <tr key={row.id} data-expense-row="" className="relative hover:bg-galv">
+          <tr key={row.id} data-expense-row="" data-expense-id={row.id} className="relative hover:bg-galv">
             <td className={cx(TD, "whitespace-nowrap text-body text-ink")}>{formatDate(row.date, today)}</td>
             <td className={TD}>
-              <Link href={`/expenses/${row.id}`} prefetch={false} className={cx("block text-body-strong text-ink [overflow-wrap:anywhere] after:absolute after:inset-0", FOCUS)}>
+              <Link href={`/expenses/${row.id}`} prefetch={false} data-expense-supplier="" className={cx("block text-body-strong text-ink [overflow-wrap:anywhere] after:absolute after:inset-0", FOCUS)}>
                 {supplierText(row.supplier)}
               </Link>
               <span className="block text-meta text-ink [overflow-wrap:anywhere]">{categoryLine(row)}</span>
