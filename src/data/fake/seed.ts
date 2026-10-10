@@ -1405,6 +1405,18 @@ export function buildSeed(): Seed {
   });
   b.addRate(longNamesCrew.id, "per_unit", "m2", 4500, HISTORY_START);
 
+  // A long-named receipt on the long-named job, company card so no crew reimbursement or pay run figure moves (Expenses list).
+  b.expense({
+    date: "2026-08-28",
+    projectId: longNames.id,
+    stageId: longStage.id,
+    category: "Materials",
+    supplier: "Pembrokeshire and Cornwall Heritage Slate, Copper and Lead Importers and Merchants",
+    totalCents: 128_700,
+    paidBy: "company_card",
+    enteredBy: users.manager,
+  });
+
   return {
     ...t,
     meta: {

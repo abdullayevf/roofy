@@ -1595,7 +1595,7 @@ export interface NoWorkService {
 }
 
 export interface ExpenseService {
-  list(actor: Actor, filter?: { projectId?: Id; range?: DateRange }): Promise<ExpenseList>;
+  list(actor: Actor, filter?: { projectId?: Id; stageId?: Id; range?: DateRange }): Promise<ExpenseList>;
   get(actor: Actor, expenseId: Id): Promise<ExpenseDetail>;
   /** Field entry: foreman allowed on assigned projects (the result carries no amounts). */
   create(actor: Actor, input: ExpenseInput, mutationId?: Id): Promise<EntryResult>;

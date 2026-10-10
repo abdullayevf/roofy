@@ -50,13 +50,15 @@ const lateReimbursement = (c: FakeContext, e: ExpenseRow): EntryFlag[] =>
 
 export function createExpenseService(c: FakeContext): ExpenseService {
   return {
-    async list(actor: Actor, filter?: { projectId?: Id; range?: DateRange }): Promise<ExpenseList> {
+    async list(actor: Actor, filter?: { projectId?: Id; stageId?: Id; range?: DateRange }): Promise<ExpenseList> {
       if (filter?.projectId) c.requireProject(actor, filter.projectId);
       const range = filter?.range;
       const rows = (filter?.projectId ? [...c.ix.expensesOf(filter.projectId)] : c.t.expenses)
         .filter(
           (e) =>
-            (!range || (e.date >= range.from && e.date <= range.to)) && c.canSeeProject(actor, e.projectId),
+            (!range || (e.date >= range.from && e.date <= range.to)) &&
+            (!filter?.stageId || e.stageId === filter.stageId) &&
+            c.canSeeProject(actor, e.projectId),
         )
         .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
       if (c.isForeman(actor))

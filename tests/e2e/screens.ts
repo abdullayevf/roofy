@@ -682,8 +682,41 @@ export const SCREENS: ScreenSpec[] = [
     id: "expenses-list",
     group: "expenses",
     route: "/expenses",
-    states: ["normal", "empty", "loading", "error", "offline"],
+    states: ["normal", "empty", "loading", "error", "offline", "foreman"],
     roles: ["owner", "manager"],
+  },
+  {
+    // Narrowed to one job (the link from Job detail): the filter chip shows and takes the filter off.
+    id: "expenses-list-job",
+    group: "expenses",
+    route: `/expenses?job=${meta.projects.smith}`,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // A job with no expenses: the list says so in one sentence and the chip stays so the filter can be cleared.
+    id: "expenses-list-job-empty",
+    group: "expenses",
+    route: `/expenses?job=${meta.fixtures.noStages}`,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // A supplier and a job name that are very long: nothing may overflow or push the total off the row.
+    id: "expenses-list-long-names",
+    group: "expenses",
+    route: `/expenses?job=${meta.fixtures.longNames}`,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
   },
   {
     id: "expense-new",

@@ -38,7 +38,7 @@ function Money({ stage }: { stage: StageDetailManager }) {
       meta: materialsMeta(stage.materialsBudgetCents),
       // Nothing spent and no budget: the meta says so, with no "$0.00" beside it.
       ...(stage.materialsBudgetCents > 0 || stage.materialsActualCents > 0 ? { figure: <MoneyCell cents={stage.materialsActualCents} /> } : {}),
-      href: `/expenses?job=${stage.projectId}`,
+      href: `/expenses?job=${stage.projectId}&stage=${stage.id}`,
     },
     ...(stage.lumpSumCents !== null
       ? [{ key: "lump-sum", primary: "Lump sum", meta: "Split between the crew when the stage is done", figure: <MoneyCell cents={stage.lumpSumCents} />, href: historyHref(stage.projectId) }]
