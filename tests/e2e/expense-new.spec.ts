@@ -58,7 +58,7 @@ test.describe("Add expense (manager)", () => {
   test("paid by a crew member says when they are paid back", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "manager", `/expenses/new?job=${smith}&supplier=Bunnings&total=110.00&paid=crew&crew=${meta.crew.dima}`);
-    await expect(page.locator("[data-reimbursement]")).toHaveText("Dima is paid this back in the next pay run.");
+    await expect(page.locator("[data-reimbursement]")).toHaveText("Paid by Dima — reimbursed next pay run");
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 

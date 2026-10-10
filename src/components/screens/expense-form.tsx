@@ -3,6 +3,8 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
+import { WarningDiamond } from "@phosphor-icons/react/dist/ssr";
+import { updateExpense } from "@/app/actions/records";
 import type { CrewRowForeman, ExpenseCategory, PaidBy, ProjectPick } from "@/data/contracts";
 import { submit } from "@/offline/submit";
 import { formatMoney } from "@/lib/format";
@@ -17,6 +19,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusChip } from "@/components/ui/status-chip";
 import { FORM_WIDTH, FieldSkeleton, LoadError, PinnedAction, usePinnedBar } from "./field-entry";
+import { NEEDS_CONNECTION, useOnline } from "./use-online";
 import {
   PAID_BY,
   emptyExpense,
@@ -26,6 +29,7 @@ import {
   expenseProblems,
   gstShown,
   reimbursementNote,
+  APPROVED_PAY_RUN_WARNING,
   type ExpenseFormValues,
 } from "./expense-input";
 
@@ -35,13 +39,13 @@ const GST_CHOICES = [
   { value: "none", label: "No GST" },
 ];
 
-function Heading({ backHref }: { backHref: string }) {
+function Heading({ backHref, title = "Add expense", back = "Back to expenses" }: { backHref: string; title?: string; back?: string }) {
   return (
     <div className="flex flex-col gap-1">
       <Button variant="link" href={backHref} className="self-start">
-        Back to expenses
+        {back}
       </Button>
-      <h1 className="text-title text-ink">Add expense</h1>
+      <h1 className="text-title text-ink">{title}</h1>
     </div>
   );
 }
@@ -125,7 +129,20 @@ export type ExpenseFormProps = {
   /** Reached from a job: the job is already chosen and its picker stays folded. */
   fromJob?: boolean;
   backHref: string;
+  /** Editing a saved expense (Owner/Manager, online only): the form starts filled in and saves straight away. */
+  edit?: ExpenseEdit;
 };
+
+export type ExpenseEdit = {
+  expenseId: string;
+  values: ExpenseFormValues;
+  /** Saving will adjust a later pay run (flows.md "Expense edit"): the warning shows above the form. */
+  inApprovedPayRun: boolean;
+  /** The receipt already kept with this expense, or null. */
+  receiptName: string | null;
+  demoOffline: boolean;
+};
+
 
 /**
  * Add expense (flows.md screen 17): receipt photo, date, supplier, total, GST (total ÷ 11 unless changed, or No GST),
@@ -140,9 +157,13 @@ export function ExpenseForm({
   today,
   query,
   backHref,
+  edit,
 }: ExpenseFormProps) {
   const router = useRouter();
-  const [start] = useState(() => expenseFromQuery(query, today, { projects, categories, crew }));
+  const online = useOnline(edit?.demoOffline ?? false);
+  const [start] = useState(() =>
+    edit ? { values: edit.values, check: false, saved: false } : expenseFromQuery(query, today, { projects, categories, crew }),
+  );
   const { values: initial, check: initialCheck, saved: initialWaiting } = start;
   const fromJob = initial.projectId !== "";
   const [v, setV] = useState(initial);
@@ -180,6 +201,22 @@ export function ExpenseForm({
     if (!input) return;
     setSaving(true);
     setFailed(null);
+    if (edit) {
+      // The photo stays on this phone until uploads arrive, so an edit leaves the kept receipt alone.
+      const patch = { ...input, receiptFileId: undefined };
+      try {
+        const r = await updateExpense(edit.expenseId, patch);
+        if (r.ok) {
+          router.replace(`/expenses/${edit.expenseId}?saved=1`);
+          return;
+        }
+        setFailed(r.message);
+      } catch {
+        setFailed(`Couldn't save the changes. ${NEEDS_CONNECTION}`);
+      }
+      setSaving(false);
+      return;
+    }
     try {
       const result = await submit("expense", input);
       if (result.status === "rejected") {
@@ -231,13 +268,24 @@ export function ExpenseForm({
 
   return (
     <div
-      data-screen="expense-new"
+      data-screen={edit ? "expense-edit" : "expense-new"}
       data-view={foreman ? "foreman" : "manager"}
       style={style}
       className={cx("flex flex-col gap-6", FORM_WIDTH, "pin-pad")}
     >
-      <Heading backHref={backHref} />
+      {edit ? <Heading backHref={backHref} title="Edit expense" back="Back to this expense" /> : <Heading backHref={backHref} />}
+      {edit?.inApprovedPayRun ? (
+        <p role="note" data-approved-warning="" className="flex items-start gap-2 text-body-strong text-watch">
+          <WarningDiamond size={24} aria-hidden="true" className="shrink-0" />
+          <span>{APPROVED_PAY_RUN_WARNING}</span>
+        </p>
+      ) : null}
       <div className="flex flex-col gap-4">
+        {edit ? (
+          <p data-receipt-kept="" className="text-body text-ink [overflow-wrap:anywhere]">
+            {edit.receiptName ? `Receipt attached: ${edit.receiptName}` : "No receipt attached."}
+          </p>
+        ) : null}
         <ReceiptPhoto file={photo} onFile={setPhoto} />
         <div data-field="expense-total">
           <MoneyField
@@ -385,9 +433,20 @@ export function ExpenseForm({
           <KeepTogether text={`Cost to the job ${formatMoney(v.totalCents - gst)} ex GST.`} />
         </p>
       ) : null}
-      <PinnedAction barProps={barProps} error={failed} hintOnSide hint={expenseMissingHint(problems)}>
-        <Button loading={saving} loadingLabel="Saving expense" onClick={save} className="w-full">
-          Save expense
+      <PinnedAction
+        barProps={barProps}
+        error={failed}
+        hintOnSide
+        hint={edit && !online ? NEEDS_CONNECTION : expenseMissingHint(problems)}
+      >
+        <Button
+          loading={saving}
+          loadingLabel={edit ? "Saving changes" : "Saving expense"}
+          onClick={save}
+          disabled={edit !== undefined && !online}
+          className="w-full"
+        >
+          {edit ? "Save changes" : "Save expense"}
         </Button>
       </PinnedAction>
     </div>
@@ -395,17 +454,25 @@ export function ExpenseForm({
 }
 
 /** A server failure: the back row stays, the body says so and offers Try again as the one primary button. */
-export function ExpenseFormError({ backHref }: { backHref: string }) {
+export function ExpenseFormError({
+  backHref,
+  title,
+  back,
+}: {
+  backHref: string;
+  title?: string;
+  back?: string;
+}) {
   return (
     <div data-screen="expense-new" className={cx("flex flex-col gap-6", FORM_WIDTH)}>
-      <Heading backHref={backHref} />
+      <Heading backHref={backHref} title={title} back={back} />
       <LoadError primary />
     </div>
   );
 }
 
 /** The form while it loads (`?demo=loading`): the title is real; the fields and the pinned bar are blocks shaped like them. */
-export function ExpenseFormSkeleton() {
+export function ExpenseFormSkeleton({ edit = false }: { edit?: boolean }) {
   const { style, barProps } = usePinnedBar(null);
   const chips = (widths: number[]) => (
     <div className="flex flex-col gap-1.5">
@@ -426,7 +493,7 @@ export function ExpenseFormSkeleton() {
     >
       <div className="flex flex-col gap-1">
         <Skeleton width={160} height={24} className="my-3" />
-        <h1 className="text-title text-ink">Add expense</h1>
+        <h1 className="text-title text-ink">{edit ? "Edit expense" : "Add expense"}</h1>
       </div>
       <div className="flex flex-col gap-4">
         {chips([120, 130])}

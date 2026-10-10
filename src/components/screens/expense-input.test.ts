@@ -58,7 +58,7 @@ describe("paidByText", () => {
       "Paid by Dima — reimbursed next pay run",
     );
     expect(paidByText(managerRow({ ...crew, reimbursement: { payRunId: "r1", status: "in_draft" } }))).toBe(
-      "Paid by Dima — reimbursed in the draft pay run",
+      "Paid by Dima — reimbursed next pay run",
     );
     expect(paidByText(managerRow({ ...crew, reimbursement: { payRunId: "r0", status: "reimbursed" } }))).toBe(
       "Paid by Dima — reimbursed",
@@ -99,6 +99,7 @@ import {
   expenseProblems,
   gstShown,
   reimbursementNote,
+  expenseValuesFrom,
   type ExpenseFormValues,
 } from "./expense-input";
 
@@ -165,7 +166,7 @@ describe("Add expense form", () => {
   });
 
   it("explains the payback in plain words", () => {
-    expect(reimbursementNote("Dima")).toBe("Dima is paid this back in the next pay run.");
+    expect(reimbursementNote("Dima")).toBe("Paid by Dima — reimbursed next pay run");
   });
 
   it("fills in from the address for the prototype's states, ignoring what it can't use", () => {
@@ -182,5 +183,31 @@ describe("Add expense form", () => {
     expect(bad.values).toMatchObject({ projectId: "", stageId: null, totalCents: "unreadable", categoryId: "", paidBy: "company_card", crewMemberId: null, gst: "default" });
     expect(bad.check).toBe(false);
     expect(expenseFromQuery({ total: "" }, "2026-09-28", pick).values.totalCents).toBeNull();
+  });
+});
+
+describe("expenseValuesFrom", () => {
+  it("fills the edit form from a saved expense, GST left on the default when it is total ÷ 11", () => {
+    const v = expenseValuesFrom(managerRow({ stageId: "s1", paidBy: "crew", crewMemberId: "k1", crewName: "Dima" }));
+    expect(v).toEqual({
+      date: "2026-09-23",
+      supplier: "Bunnings",
+      totalCents: 11000,
+      gst: "default",
+      gstCents: null,
+      projectId: "p1",
+      stageId: "s1",
+      categoryId: "c1",
+      paidBy: "crew",
+      crewMemberId: "k1",
+    });
+  });
+  it("keeps No GST and a GST typed off the receipt", () => {
+    expect(expenseValuesFrom(managerRow({ gstCents: 0, amountExGstCents: 11000 }))).toMatchObject({ gst: "none", gstCents: null });
+    expect(expenseValuesFrom(managerRow({ gstCents: 900, amountExGstCents: 10100 }))).toMatchObject({
+      gst: "typed",
+      gstCents: 900,
+      totalCents: 11000,
+    });
   });
 });

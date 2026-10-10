@@ -37,7 +37,7 @@ test.describe("Expenses list (manager)", () => {
   test("a crew-paid expense says who paid and when they are reimbursed", async ({ page }) => {
     await signInAs(page, "manager", `/expenses?job=${meta.projects.smith}`);
     const crewPaid = rows(page).filter({ has: page.locator("[data-expense-paid-by]", { hasText: "Paid by Dima" }) }).first();
-    await expect(crewPaid.locator("[data-expense-paid-by]")).toHaveText(/^Paid by Dima — reimbursed( next pay run| in the draft pay run)?$/);
+    await expect(crewPaid.locator("[data-expense-paid-by]")).toHaveText(/^Paid by Dima — reimbursed( next pay run)?$/);
     await expect(crewPaid.locator("[data-expense-paid-by]")).toContainText(" ".length ? "Paid by Dima" : "");
   });
 

@@ -27,6 +27,12 @@ const smithStage = (name: string) => seed.stages.find((st) => st.projectId === m
 const STAGE_DONE = smithStage("Site setup & safety");
 const STAGE_NOT_STARTED = smithStage("Flashings, gutters & downpipes");
 /** Screen 13 on Harris ridge (E5.1: $2,000.00 lump sum, Sam/Tom/Dima). */
+const PAY_RUN_STATUS = new Map(seed.payRuns.map((r) => [r.id, r.status]));
+/** Expense edit states (Task 16): one already paid back in an approved pay run, one with no receipt. */
+const EXPENSE_APPROVED = seed.expenses.find((e) => e.reimbursedInPayRunId && PAY_RUN_STATUS.get(e.reimbursedInPayRunId) !== "draft")!.id;
+const EXPENSE_NO_RECEIPT = seed.expenses.find(
+  (e) => e.receiptFileId === null && e.paidBy === "company_card" && e.projectId === meta.projects.smith,
+)!.id;
 const STAGE_DONE_ROUTE = `/jobs/${meta.projects.harris}/stages/${meta.stages.harrisRidge}/done`;
 /** The address of a stage page. */
 const stageRoute = (jobId: string, stageId: string) => `/jobs/${jobId}/stages/${stageId}`;
@@ -781,11 +787,63 @@ export const SCREENS: ScreenSpec[] = [
     noExtras: true,
   },
   {
+    // One expense: figures, receipt, Edit and Record history (flows.md "Expense edit").
     id: "expense-detail",
     group: "expenses",
     route: "/expenses/:expenseId",
+    states: ["normal", "loading", "error"],
+    roles: ["owner", "manager"],
+  },
+  {
+    // Back after Save changes: one line says the changes are kept.
+    id: "expense-detail-saved",
+    group: "expenses",
+    route: "/expenses/:expenseId?saved=1",
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // Edit (17): the Add expense form filled in, receipt kept; offline = Save changes off with "Needs connection".
+    id: "expense-edit",
+    group: "expenses",
+    route: "/expenses/:expenseId?edit=1",
     states: ["normal", "loading", "error", "offline"],
     roles: ["owner", "manager"],
+  },
+  {
+    id: "expense-edit-no-receipt",
+    group: "expenses",
+    route: `/expenses/${EXPENSE_NO_RECEIPT}?edit=1`,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // Already paid back in an approved pay run: the warning shows above the form.
+    id: "expense-edit-approved",
+    group: "expenses",
+    route: `/expenses/${EXPENSE_APPROVED}?edit=1`,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // Edit is Owner/Manager only: a foreman gets the no-access page, with no amounts in it.
+    id: "expense-edit-noperm",
+    group: "expenses",
+    route: "/expenses/:expenseId?edit=1",
+    states: ["normal"],
+    roles: ["foreman"],
+    viewports: ["iphone"],
+    lightOnly: true,
+    noExtras: true,
   },
 
   // --- pay (Task 17): Pay runs list (18), review (19), statement (21) --
@@ -879,7 +937,7 @@ export const PLACEHOLDER_IDS: Record<string, string> = {
   jobId: meta.projects.smith,
   stageId: meta.stages.smithSheetInstall,
   crewId: meta.crew.dima,
-  expenseId: "screws-receipt",
+  expenseId: meta.expenses.smithSheets,
   runId: "current-week",
   token: "demo-statement-token",
   kind: "job-profitability",

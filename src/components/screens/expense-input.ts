@@ -37,7 +37,7 @@ export function paidByText(row: ExpenseRowForeman | ExpenseRowManager): string {
   const r = "reimbursement" in row ? row.reimbursement : null;
   if (!r) return who;
   if (r.status === "reimbursed") return `${who} — reimbursed`;
-  return `${who} — ${r.status === "in_draft" ? "reimbursed in the draft pay run" : "reimbursed next pay run"}`;
+  return `${who} — reimbursed next pay run`;
 }
 
 export const receiptText = (hasReceipt: boolean): string => (hasReceipt ? "Receipt attached" : "No receipt");
@@ -164,7 +164,7 @@ export function expenseInput(v: ExpenseFormValues, receiptFileId: string | null)
 }
 
 /** Under a crew-paid expense: who gets the money back, and when (pay rules §7). No amount, so foremen see it too. */
-export const reimbursementNote = (name: string): string => `${name} is paid this back in the next pay run.`;
+export const reimbursementNote = (name: string): string => `Paid by ${name} — reimbursed next pay run`;
 
 /** Reads typed dollars and cents as integer cents (`src/domain/money`); blank is null, anything else unreadable. */
 export function readCents(text: string | null): TypedCents {
@@ -206,3 +206,27 @@ export function expenseFromQuery(q: Query, today: string, picks: Picks): { value
 export function supplierText(supplier: string): string {
   return supplier.trim() === "" ? "No supplier" : supplier;
 }
+
+/**
+ * A saved expense as the edit form's values (flows.md "Expense edit"). The GST stays on the default while it is
+ * still total ÷ 11, so a corrected total brings its GST along; No GST and a GST typed off the receipt are kept.
+ */
+export function expenseValuesFrom(row: ExpenseRowManager): ExpenseFormValues {
+  const gst = row.gstCents === 0 ? "none" : row.gstCents === gstIncludedIn(row.totalCents) ? "default" : "typed";
+  return {
+    date: row.date,
+    supplier: row.supplier,
+    totalCents: row.totalCents,
+    gst,
+    gstCents: gst === "typed" ? row.gstCents : null,
+    projectId: row.projectId,
+    stageId: row.stageId,
+    categoryId: row.category.id,
+    paidBy: row.paidBy,
+    crewMemberId: row.crewMemberId,
+  };
+}
+
+/** The warning above an edit of an expense already reimbursed in an approved pay run (flows.md "Expense edit"). */
+export const APPROVED_PAY_RUN_WARNING =
+  "This expense is in an approved pay run. Saving will adjust next week's pay run, not this one.";
