@@ -18,12 +18,12 @@ type ExpenseDetailProps = {
   today: string;
   /** Back here after Save changes: one line says the new figures are kept. */
   saved: boolean;
-  /** Carries `?demo=` onto Edit, so the prototype's states stay on. */
-  editHref: string;
+  /** Carries `?demo=` onto Edit, so the prototype's states stay on. Null for the accountant, who only reads. */
+  editHref: string | null;
 };
 
 /**
- * One saved expense (Owner/Manager): what was paid, the GST, what it cost the job, and who paid. Edit opens the same
+ * One saved expense (Owner/Manager; the accountant reads it without Edit): what was paid, the GST, what it cost the job, and who paid. Edit opens the same
  * form as Add expense, filled in; Record history shows each change, who made it and when (flows.md "Expense edit").
  */
 export function ExpenseDetailView({
@@ -82,7 +82,7 @@ export function ExpenseDetailView({
         <List rows={facts} quietLabels />
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <Button href={editHref}>Edit</Button>
+        {editHref ? <Button href={editHref}>Edit</Button> : null}
         <Button variant="link" href={historyHref}>
           Record history
         </Button>

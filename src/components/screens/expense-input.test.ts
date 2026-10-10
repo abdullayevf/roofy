@@ -100,6 +100,10 @@ import {
   gstShown,
   reimbursementNote,
   expenseValuesFrom,
+  expensePatch,
+  gstEdit,
+  jobCostText,
+  receiptToSend,
   type ExpenseFormValues,
 } from "./expense-input";
 
@@ -209,5 +213,59 @@ describe("expenseValuesFrom", () => {
       gstCents: 900,
       totalCents: 11000,
     });
+  });
+});
+
+describe("Task 16 review fixes", () => {
+  const filled = (over: Partial<ExpenseFormValues> = {}): ExpenseFormValues => ({
+    ...emptyExpense("2026-09-28"),
+    supplier: "Bunnings",
+    totalCents: 11000,
+    projectId: "p1",
+    categoryId: "c1",
+    ...over,
+  });
+
+  it("refuses a typed GST with a minus sign", () => {
+    expect(expenseProblems(filled({ gst: "typed", gstCents: -100 }))).toEqual({ ready: false, gst: "Leave out the minus sign, like 10.00." });
+    expect(expenseMissingHint(expenseProblems(filled({ gst: "typed", gstCents: -100 })))).toBe("Fix the GST.");
+  });
+
+  it("asks for a date when the date is cleared", () => {
+    const p = expenseProblems(filled({ date: "" }));
+    expect(p).toEqual({ ready: false, date: "Pick the date." });
+    expect(expenseMissingHint(p)).toBe("Pick the date.");
+    expect(expenseInput(filled({ date: "" }), null)).toBeNull();
+  });
+
+  it("shows the cost to the job ex GST when registered, incl. GST when not (pay rules 11)", () => {
+    expect(jobCostText(filled(), true)).toBe("Cost to the job $100.00 ex GST.");
+    expect(jobCostText(filled(), false)).toBe("Cost to the job $110.00 incl. GST.");
+    expect(jobCostText(filled({ gst: "typed", gstCents: 900 }), true)).toBe("Cost to the job $101.00 ex GST.");
+    expect(jobCostText(filled({ gst: "none" }), true)).toBe("Cost to the job $110.00 ex GST.");
+    expect(jobCostText(filled({ totalCents: null }), true)).toBeNull();
+    expect(jobCostText(filled({ totalCents: 0 }), true)).toBeNull();
+    expect(jobCostText(filled({ gst: "typed", gstCents: 20000 }), true)).toBeNull();
+  });
+
+  it("leaves the GST on the default when a blur hands back the same figure", () => {
+    expect(gstEdit(filled(), 1000)).toBeNull();
+    expect(gstEdit(filled(), 900)).toEqual({ gst: "typed", gstCents: 900 });
+    expect(gstEdit(filled({ gst: "typed", gstCents: 900 }), 1000)).toEqual({ gst: "typed", gstCents: 1000 });
+    expect(gstEdit(filled(), "unreadable")).toEqual({ gst: "typed", gstCents: "unreadable" });
+  });
+
+  it("saves an edit that keeps No GST as 0 and a typed GST as typed, leaving the receipt alone", () => {
+    const none = expenseValuesFrom(managerRow({ gstCents: 0, amountExGstCents: 11000 }));
+    expect(expensePatch(none)).toMatchObject({ totalCents: 11000, gstCents: 0, receiptFileId: undefined });
+    const typed = expenseValuesFrom(managerRow({ gstCents: 900, amountExGstCents: 10100 }));
+    expect(expensePatch(typed)).toMatchObject({ totalCents: 11000, gstCents: 900, receiptFileId: undefined });
+    expect(expensePatch({ ...typed, totalCents: null })).toBeNull();
+  });
+
+  it("sends the prototype's stand-in receipt only when a photo was picked", () => {
+    expect(receiptToSend(true, "fake-receipt")).toBe("fake-receipt");
+    expect(receiptToSend(false, "fake-receipt")).toBeNull();
+    expect(receiptToSend(true, null)).toBeNull();
   });
 });

@@ -4,14 +4,21 @@ import { getSeed } from "../../../src/data/fake/store";
 
 const seed = getSeed();
 const { meta } = seed;
-/** A company-card expense on the Smith job: no receipt, no pay run, so the edit moves only the job's costs. */
-const target = seed.expenses.find((e) => e.receiptFileId === null && e.paidBy === "company_card" && e.projectId === meta.projects.smith)!;
+/**
+ * Company-card expenses on the Smith job: no receipt, no pay run, so the edit moves only the job's costs. Newest first
+ * (the list shows the newest 50). Each project (iphone, android, desktop) edits its own, since they run in parallel
+ * against one fake server; the first is left to expense-edit.spec.ts.
+ */
+const onSmith = seed.expenses.filter((e) => e.receiptFileId === null && e.paidBy === "company_card" && e.projectId === meta.projects.smith);
+const candidates = onSmith.slice(1).sort((a, b) => b.date.localeCompare(a.date));
+const PROJECT_SLOT: Record<string, number> = { iphone: 0, android: 1, desktop: 2 };
 
 /**
  * flows.md "Expense edit": More, Expenses, the expense, Edit, the total (typing not counted), Save changes is 6 taps.
  * After saving the new figure shows on the expense and in the list, and Record history links to its changes.
  */
-test("Correct the total on a saved expense in 6 taps", async ({ page }) => {
+test("Correct the total on a saved expense in 6 taps", async ({ page }, testInfo) => {
+  const target = candidates[PROJECT_SLOT[testInfo.project.name] ?? 0] ?? candidates[0]!;
   await page.goto(`/prototype/role?as=manager&next=%2F`);
   const taps = new Taps("Expense edit");
   await taps.tap(page.locator('a[href="/more"]').locator("visible=true").first());

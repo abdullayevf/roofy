@@ -96,7 +96,7 @@ test.describe("Expense (owner and manager)", () => {
   });
 });
 
-test.describe("Expense (no access)", () => {
+test.describe("Expense (foreman and accountant)", () => {
   test("a foreman gets no access and no money", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "foreman", `/expenses/${withReceipt}?edit=1`);
@@ -106,8 +106,27 @@ test.describe("Expense (no access)", () => {
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
-  test("an accountant gets no access", async ({ page }) => {
+  test("an accountant reads the expense with no Edit and no Save", async ({ page }, testInfo) => {
+    const consoleLog = collectConsole(page);
     await signInAs(page, "accountant", `/expenses/${withReceipt}`);
-    await expect(page.getByRole("heading", { level: 1, name: "No access" })).toBeVisible();
+    const screen = page.locator('[data-screen="expense-detail"]');
+    await expect(screen.getByText("Total paid")).toBeVisible();
+    await expect(screen.getByRole("link", { name: "Edit" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 1, name: "No access" })).toHaveCount(0);
+    await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
+    // ?edit=1 does not open the form for the accountant: still the read-only detail.
+    await page.goto(`/expenses/${withReceipt}?edit=1`);
+    await expect(screen.getByText("Total paid")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Save/ })).toHaveCount(0);
+    await expect(page.getByLabel("Total paid")).toHaveCount(0);
+  });
+
+  test("an accountant opens an expense from the list", async ({ page }) => {
+    await signInAs(page, "accountant", "/expenses");
+    const row = page.locator('[data-screen="expenses"] [data-expense-row]:visible').first();
+    await row.click();
+    await expect(page).toHaveURL(/\/expenses\/[^/?]+$/);
+    await expect(page.locator('[data-screen="expense-detail"]').getByText("Total paid")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "No access" })).toHaveCount(0);
   });
 });

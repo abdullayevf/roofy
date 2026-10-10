@@ -39,5 +39,7 @@ test("Add a $110.00 receipt paid by Dima in 10 taps", async ({ page }) => {
     .first();
   // flows.md 186: the row reads the same as the form's note.
   await expect(row.locator("[data-expense-paid-by]")).toHaveText("Paid by Dima — reimbursed next pay run");
+  // The picked photo stays with the expense: the row shows the receipt marker (a stand-in id until uploads, Phase 5).
+  await expect(row.locator("[data-expense-receipt]")).toHaveAttribute("data-expense-receipt", "yes");
   taps.assertWithin(10);
 });

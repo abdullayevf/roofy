@@ -67,9 +67,10 @@ test.describe("Job detail (manager)", () => {
     await signInAs(page, "manager");
     const hrefs = await page.locator('[data-screen="job-detail"] a[href^="/history"], [data-screen="job-detail"] a[href^="/expenses"]').evaluateAll((els) => els.map((e) => e.getAttribute("href")));
     expect(hrefs.length).toBeGreaterThan(2);
-    for (const h of hrefs) expect(h, "a job-filtered list or one expense").toMatch(new RegExp(`^/(history\\?job=${meta.projects.smith}|expenses\\?job=${meta.projects.smith}|expenses/[\\w-]+)$`));
+    for (const h of hrefs) expect(h, "a job-filtered list or one expense").toMatch(new RegExp(`^/(history\\?job=${meta.projects.smith}|expenses\\?job=${meta.projects.smith}|expenses/[\\w-]+|expenses/new\\?job=${meta.projects.smith})$`));
     expect(hrefs).toContain(`/history?job=${meta.projects.smith}`);
     expect(hrefs).toContain(`/expenses?job=${meta.projects.smith}`);
+    expect(hrefs, "Add expense from the job").toContain(`/expenses/new?job=${meta.projects.smith}`);
     for (const name of ["Labour", "Materials", "Forecast margin"]) {
       await expect(page.locator('[data-screen="job-detail"] a[href^="/history"], [data-screen="job-detail"] a[href^="/expenses"]').filter({ hasText: name }).first(), `${name} opens its lines`).toBeVisible();
     }
@@ -84,6 +85,7 @@ test.describe("Job detail (foreman)", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Money" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Edit job" })).toHaveCount(0);
     expect(await stageRows(page).count()).toBeGreaterThan(1);
+    await expect(page.locator(`[data-job-add-expense] a[href="/expenses/new?job=${meta.projects.smith}"]`), "a foreman adds an expense from the job").toBeVisible();
     await expectNoMoney(page, [smith]);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });

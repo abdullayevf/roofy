@@ -42,9 +42,14 @@ describe("JobDetailBody with nothing on the job yet", () => {
     expect(html).not.toContain("$");
   });
 
-  it("has a Back row and no empty crew, logs, expenses or files headings", () => {
+  it("has a Back row and no empty crew, logs or files headings", () => {
     expect(html).toContain("Back to jobs");
-    for (const h of ["Crew this week", "Recent logs", "Expenses", "Files"]) expect(html).not.toContain(h);
+    for (const h of ["Crew this week", "Recent logs", "Files"]) expect(html).not.toContain(h);
+  });
+
+  it("keeps Expenses only for its Add expense link when there are none yet (flows.md 193)", () => {
+    expect(html).toContain("data-job-add-expense");
+    expect(html).toContain(`href="/expenses/new?job=${bare.id}"`);
   });
 });
 

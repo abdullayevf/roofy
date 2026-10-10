@@ -7,7 +7,6 @@ import { WarningDiamond } from "@phosphor-icons/react/dist/ssr";
 import { updateExpense } from "@/app/actions/records";
 import type { CrewRowForeman, ExpenseCategory, PaidBy, ProjectPick } from "@/data/contracts";
 import { submit } from "@/offline/submit";
-import { formatMoney } from "@/lib/format";
 import { cx } from "@/lib/cx";
 import { KeepTogether } from "@/components/keep-together";
 import { Button } from "@/components/ui/button";
@@ -25,6 +24,10 @@ import {
   emptyExpense,
   expenseInput,
   expenseMissingHint,
+  expensePatch,
+  gstEdit,
+  jobCostText,
+  receiptToSend,
   expenseFromQuery,
   expenseProblems,
   gstShown,
@@ -131,6 +134,10 @@ export type ExpenseFormProps = {
   backHref: string;
   /** Editing a saved expense (Owner/Manager, online only): the form starts filled in and saves straight away. */
   edit?: ExpenseEdit;
+  /** The workspace is GST registered: the cost to the job is ex GST; when not, GST is a real cost (pay rules §11). Left out for a foreman, so the page's data never names it. */
+  gstRegistered?: boolean;
+  /** Fake data only: the stand-in receipt id sent when a photo was picked (uploads arrive in Phase 5). */
+  placeholderReceiptId?: string | null;
 };
 
 export type ExpenseEdit = {
@@ -158,6 +165,8 @@ export function ExpenseForm({
   query,
   backHref,
   edit,
+  gstRegistered = true,
+  placeholderReceiptId = null,
 }: ExpenseFormProps) {
   const router = useRouter();
   const online = useOnline(edit?.demoOffline ?? false);
@@ -197,13 +206,14 @@ export function ExpenseForm({
     flushSync(() => (document.activeElement as HTMLElement | null)?.blur());
     const now = latest.current;
     setChecked(true);
-    const input = expenseInput(now, null);
+    const input = expenseInput(now, receiptToSend(photo !== null, placeholderReceiptId));
     if (!input) return;
     setSaving(true);
     setFailed(null);
     if (edit) {
       // The photo stays on this phone until uploads arrive, so an edit leaves the kept receipt alone.
-      const patch = { ...input, receiptFileId: undefined };
+      const patch = expensePatch(now);
+      if (!patch) return;
       try {
         const r = await updateExpense(edit.expenseId, patch);
         if (r.ok) {
@@ -286,7 +296,7 @@ export function ExpenseForm({
             {edit.receiptName ? `Receipt attached: ${edit.receiptName}` : "No receipt attached."}
           </p>
         ) : null}
-        <ReceiptPhoto file={photo} onFile={setPhoto} />
+        {edit ? null : <ReceiptPhoto file={photo} onFile={setPhoto} />}
         <div data-field="expense-total">
           <MoneyField
             label="Total paid"
@@ -318,7 +328,10 @@ export function ExpenseForm({
                   : undefined
               }
               defaultCents={gst ?? undefined}
-              onCentsChange={(c) => set({ gst: "typed", gstCents: c })}
+              onCentsChange={(c) => {
+                const change = gstEdit(latest.current, c);
+                if (change) set(change);
+              }}
               error={problems.gst}
             />
           ) : null}
@@ -345,6 +358,7 @@ export function ExpenseForm({
           type="date"
           value={v.date}
           onChange={(e) => set({ date: e.target.value })}
+          error={problems.date}
         />
         <div data-field="expense-job" className="flex flex-col gap-1.5">
           <p className={LABEL}>Job</p>
@@ -424,13 +438,9 @@ export function ExpenseForm({
           </div>
         ) : null}
       </div>
-      {!foreman &&
-      typeof v.totalCents === "number" &&
-      v.totalCents > 0 &&
-      gst !== null &&
-      gst <= v.totalCents ? (
+      {!foreman && jobCostText(v, gstRegistered) !== null ? (
         <p data-expense-cost="" className="text-meta text-ink-2 num">
-          <KeepTogether text={`Cost to the job ${formatMoney(v.totalCents - gst)} ex GST.`} />
+          <KeepTogether text={jobCostText(v, gstRegistered) as string} />
         </p>
       ) : null}
       <PinnedAction

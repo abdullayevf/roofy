@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Expense" };
 
 /**
  * One expense (screen 17, edit): Owner and Manager see it and change it; `?edit=1` opens the filled-in form. Saving
- * an edit needs a connection (flows.md "Expense edit"). A foreman or accountant gets the no-access page.
+ * an edit needs a connection (flows.md "Expense edit"). A foreman gets the no-access page; the accountant reads it with no Edit (product spec: the accountant views expenses).
  */
 export default async function Page({
   params,
@@ -25,22 +25,28 @@ export default async function Page({
   const ctx = await getData({ searchParams });
   const { actor, demo } = ctx;
   const back = backLink(actor.role);
-  if (actor.role !== "owner" && actor.role !== "manager")
+  const readOnly = actor.role === "accountant";
+  if (actor.role !== "owner" && actor.role !== "manager" && !readOnly)
     return <NoPermission backHref={back.href} backLabel={back.label} />;
   const { id } = await params;
   const sp = await searchParams;
-  if (demo.loading) return sp.edit === "1" ? <ExpenseFormSkeleton edit /> : <ExpenseDetailSkeleton />;
+  const editing = sp.edit === "1" && !readOnly;
+  if (demo.loading) return editing ? <ExpenseFormSkeleton edit /> : <ExpenseDetailSkeleton />;
   let detail: ExpenseDetail;
   let snap;
+  // GST registration sets the cost-to-the-job line on the edit form (pay rules §11).
+  let gstRegistered = true;
   try {
     detail = await ctx.data.expenses.get(actor, id);
     snap = await ctx.data.sync.snapshot(actor);
+    const ws = await ctx.data.workspace.settings(actor);
+    if (ws.view === "manager") gstRegistered = ws.settings.gstRegistered;
   } catch (e) {
     if (isDataError(e) && e.code === "not_found") notFound();
     if (isDataError(e) && e.code === "forbidden")
       return <NoPermission backHref={back.href} backLabel={back.label} />;
     if (isDataError(e) && e.code === "unavailable")
-      return sp.edit === "1" ? (
+      return editing ? (
         <ExpenseFormError backHref={`/expenses/${id}`} title="Edit expense" back="Back to this expense" />
       ) : (
         <ExpenseFormError backHref="/expenses" title="Expense" />
@@ -50,7 +56,7 @@ export default async function Page({
   if (detail.view !== "manager") return <NoPermission backHref={back.href} backLabel={back.label} />;
   const receiptName = detail.receipt?.name ?? null;
   const demoParam = typeof sp.demo === "string" ? `&demo=${sp.demo}` : "";
-  if (sp.edit === "1") {
+  if (editing) {
     return (
       <ExpenseForm
         foreman={false}
@@ -60,6 +66,7 @@ export default async function Page({
         today={ctx.today}
         query={{}}
         backHref={`/expenses/${id}`}
+        gstRegistered={gstRegistered}
         edit={{
           expenseId: id,
           values: expenseValuesFrom(detail.expense),
@@ -78,7 +85,7 @@ export default async function Page({
       historyHref={detail.historyHref}
       today={ctx.today}
       saved={sp.saved === "1"}
-      editHref={`/expenses/${id}?edit=1${demoParam}`}
+      editHref={readOnly ? null : `/expenses/${id}?edit=1${demoParam}`}
     />
   );
 }

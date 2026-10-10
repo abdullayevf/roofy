@@ -1,6 +1,8 @@
 import type { ExpenseInput, ExpenseRowForeman, ExpenseRowManager, PaidBy } from "@/data/contracts";
 import type { Cents } from "@/domain/types";
-import { gstIncludedIn } from "@/domain/gst";
+import { expenseCost } from "@/domain/costing";
+import { gstIncludedIn, splitReceipt } from "@/domain/gst";
+import { formatMoney } from "@/lib/format";
 import { toCents } from "@/domain/money";
 
 /** The Expenses list's filter, read from the address: one job, and one stage of it. */
@@ -104,6 +106,7 @@ export function gstShown(v: ExpenseFormValues): Cents | null {
 export type ExpenseProblems = {
   ready: boolean;
   total?: string;
+  date?: string;
   gst?: string;
   project?: string;
   category?: string;
@@ -123,8 +126,10 @@ export function expenseProblems(v: ExpenseFormValues): ExpenseProblems {
   if (v.gst === "typed") {
     if (v.gstCents === "unreadable") p.gst = "Enter GST in dollars and cents, like 10.00.";
     else if (v.gstCents === null) p.gst = GST_MISSING;
+    else if (v.gstCents < 0) p.gst = "Leave out the minus sign, like 10.00.";
     else if (typeof total === "number" && v.gstCents > total) p.gst = "GST can't be more than the total.";
   }
+  if (v.date === "") p.date = "Pick the date.";
   if (v.projectId === "") p.project = "Pick the job.";
   if (v.categoryId === "") p.category = "Pick a category.";
   if (v.paidBy === "crew" && v.crewMemberId === null) p.crew = "Pick who paid.";
@@ -137,6 +142,7 @@ export function expenseMissingHint(p: ExpenseProblems): string | undefined {
   const parts: string[] = [];
   if (p.total) parts.push(p.total === TOTAL_MISSING ? "add a total" : "fix the total");
   if (p.gst) parts.push(p.gst === GST_MISSING ? "add the GST" : "fix the GST");
+  if (p.date) parts.push("pick the date");
   if (p.project) parts.push("pick the job");
   if (p.category) parts.push("pick a category");
   if (p.crew) parts.push("pick who paid");
@@ -161,6 +167,38 @@ export function expenseInput(v: ExpenseFormValues, receiptFileId: string | null)
     crewMemberId: v.paidBy === "crew" ? v.crewMemberId : null,
     receiptFileId,
   };
+}
+
+/** An edit's save: the same input, with the kept receipt left alone (photos stay on the phone until uploads arrive). */
+export function expensePatch(v: ExpenseFormValues): (Omit<ExpenseInput, "receiptFileId"> & { receiptFileId: undefined }) | null {
+  const input = expenseInput(v, null);
+  return input === null ? null : { ...input, receiptFileId: undefined };
+}
+
+/**
+ * Under the amounts (Owner/Manager): what the expense costs the job (pay rules §11): ex GST when the workspace is
+ * GST registered, incl. GST when it is not. Null while the total or GST can't be read.
+ */
+export function jobCostText(v: ExpenseFormValues, gstRegistered: boolean): string | null {
+  const gst = gstShown(v);
+  if (typeof v.totalCents !== "number" || v.totalCents <= 0 || gst === null || gst < 0 || gst > v.totalCents) return null;
+  const split = splitReceipt(v.totalCents, gst);
+  const cost = expenseCost(split.amountExGstCents, split.gstCents, gstRegistered);
+  return `Cost to the job ${formatMoney(cost)} ${gstRegistered ? "ex GST" : "incl. GST"}.`;
+}
+
+/**
+ * The receipt id a new expense carries. Uploads arrive in Phase 5; until then the prototype (fake data) sends a
+ * stand-in id when a photo was picked, so the row shows the receipt marker. Null placeholder = real data: no id yet.
+ */
+export function receiptToSend(hasPhoto: boolean, placeholderId: string | null): string | null {
+  return hasPhoto ? placeholderId : null;
+}
+
+/** A GST field change: a blur that hands back the default's own figure leaves the default on (null = no change). */
+export function gstEdit(v: ExpenseFormValues, cents: TypedCents): Pick<ExpenseFormValues, "gst" | "gstCents"> | null {
+  if (v.gst === "default" && cents === gstShown(v)) return null;
+  return { gst: "typed", gstCents: cents };
 }
 
 /** Under a crew-paid expense: who gets the money back, and when (pay rules §7). No amount, so foremen see it too. */

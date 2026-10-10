@@ -199,7 +199,9 @@ function RecentLogs({ job, today }: { job: ProjectDetail; today: string }) {
 }
 
 function Expenses({ job, today }: { job: ProjectDetail; today: string }) {
-  if (job.expenses.length === 0) return null;
+  // Owner, Manager and Foreman add expenses (flows.md "Add receipt"); the accountant only reads.
+  const canAdd = job.view === "foreman" || job.access.canEdit;
+  if (job.expenses.length === 0 && !canAdd) return null;
   const shown = job.expenses.slice(0, RECENT_SHOWN);
   const rows: ListRow[] = shown.map((e) => ({
     key: e.id,
@@ -209,10 +211,15 @@ function Expenses({ job, today }: { job: ProjectDetail; today: string }) {
   }));
   return (
     <Section title="Expenses">
-      <List rows={rows} />
+      {rows.length > 0 ? <List rows={rows} /> : null}
       {job.view === "manager" && job.expenses.length > RECENT_SHOWN ? (
         <div className={GROUP}>
           <SeeAll href={`/expenses?job=${job.id}`} label="See all expenses" />
+        </div>
+      ) : null}
+      {canAdd ? (
+        <div className={GROUP} data-job-add-expense="">
+          <SeeAll href={`/expenses/new?job=${job.id}`} label="Add expense" />
         </div>
       ) : null}
     </Section>

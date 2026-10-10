@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getData } from "@/data";
+import { getData, isFakeMode } from "@/data";
 import { isDataError } from "@/data/contracts";
 import type { SearchParams } from "@/data/session";
 import { NoPermission } from "@/components/page-states";
@@ -22,8 +22,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
   const sp = await searchParams;
   const job = typeof sp.job === "string" ? sp.job : null;
   let snap;
+  // GST registration sets the cost-to-the-job line (pay rules §11), which a foreman never sees.
+  let gstRegistered = true;
   try {
     snap = await ctx.data.sync.snapshot(actor);
+    if (actor.role !== "foreman") {
+      const ws = await ctx.data.workspace.settings(actor);
+      if (ws.view === "manager") gstRegistered = ws.settings.gstRegistered;
+    }
   } catch (e) {
     if (isDataError(e) && e.code === "forbidden") return <NoPermission backHref={back.href} backLabel={back.label} />;
     if (isDataError(e) && e.code === "unavailable") return <ExpenseFormError backHref="/expenses" />;
@@ -47,6 +53,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
       today={ctx.today}
       query={query}
       backHref={fromJob && job ? `/expenses?job=${job}` : "/expenses"}
+      {...(actor.role === "foreman" ? {} : { gstRegistered })}
+      placeholderReceiptId={isFakeMode() ? "prototype-receipt" : null}
     />
   );
 }
