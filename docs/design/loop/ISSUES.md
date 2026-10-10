@@ -564,26 +564,39 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | crew/i2-D22+F24 | crew | P3 | crew-detail, crew-list/iphone | Share on own line per statement; uneven 2-3 line list meta | Share in right column; fixed meta layout | fix run 2 | 2 |
 | crew/i2-F28 | crew | P3 | fixtures | Pay-type wording disagrees with rates/logs (Dima per m2 vs daily) | Match wording to fixture rates | fix run 2 | 2 |
 | crew/i2-D26+F21 | crew | P3 | crew-payout/desktop | 600 px form, empty right side; tied to D19 | Open with D19 | open | 2 |
-| expenses/i1-D1+F2 | expenses | P1 | expense-new/edit/phone | Paid by segmented wraps 'Crew member' to 2nd row (lesson 24) | One row at 358px or stack all three | fix run 1a | 1 |
-| expenses/i1-D2+F3 | expenses | P1 | expense-edit/offline | Offline banner and Needs connection both shown (lesson 20) | Admin edit: only Needs connection | fix run 1a | 1 |
-| expenses/i1-F1 | expenses | P1 | expense-edit/approved/iphone | Saved (older) job not ticked; job lost on edit | Always show saved job row with Change job | fix run 1a | 1 |
-| expenses/i1-F4+D11 | expenses | P2 | expenses-list/normal | Key figure = all-time total, no scope label | Period total (this month, workspace tz) with label, kept in compact header | fix run 1b | 1 |
-| expenses/i1-F5+D10 | expenses | P2 | expenses-list/phone | Rows 6-7 lines, ~2.5 fit; 'No receipt' on every row | 3-line rows; receipt icon only when attached | fix run 1b | 1 |
-| expenses/i1-F6+D3+D4 | expenses | P2 | expense-detail | No key figure; grey values; two row patterns | Cost to the job key figure; one row pattern; values ink | fix run 1b | 1 |
-| expenses/i1-F7+D5 | expenses | P2 | expense-detail | Receipt filename not viewable | Thumbnail row opening the photo | fix run 1b | 1 |
-| expenses/i1-F8+D15 | expenses | P2 | expense-edit/no-receipt | No way to add/replace/remove receipt on edit | Photo buttons on edit (stand-in id in prototype) | fix run 1a | 1 |
-| expenses/i1-F9 | expenses | P2 guard | expense-detail/phone | Record history link ~20px tall | 48px target | fix run 1b | 1 |
-| expenses/i1-F10 | expenses | P2 | expenses-list-job-empty | Chip says 'This job' | Name the job | fix run 1b | 1 |
-| expenses/i1-F11 | expenses | P2 | expense-new/job picker | Jobs A-Z, flows 180 wants recent first | Sort by recent activity | fix run 1a | 1 |
-| expenses/i1-F12 | expenses | P2 | all expense routes | No keyboard-up capture | Keyboard captures focusing total, iphone+android | fix run 1a | 1 |
-| expenses/i1-D6+D12+F14 | expenses | P2 | expenses-list/loading | Skeleton lacks pinned bar (phone) and table shape (desktop) (lesson 7) | Skeleton matches real layout | fix run 1b | 1 |
-| expenses/i1-D7 | expenses | P2 | expenses-list/foreman/desktop | Phone rows across 1170px; no active nav item (lesson 21) | Desktop table without money columns; active nav | fix run 1b | 1 |
-| expenses/i1-D8+D17 | expenses | P2 | expense-new/edit/desktop,tablet | Pinned Save floats over chips; strip under bar (lesson 21) | Save in title row ≥1024; align bar on tablet | fix run 1a | 1 |
-| expenses/i1-D9 | expenses | P2 guard | expenses-list/desktop | Paid by column wraps; rows ~70px | Short paid-by labels, column widths; guard row height | fix run 1b | 1 |
-| expenses/i1-D13+D14+D18 | expenses | P3 | expense-new/edit | Field gap 16 vs 24; optional shown two ways; Back twice on waiting | 24px gap; '(optional)' label; one Back | fix run 1a | 1 |
-| expenses/i1-F13 | expenses | P3 | expense-new/foreman | Single job chip not ticked | Auto-tick only job | fix run 1a | 1 |
-| expenses/i1-F15 | expenses | P3 | expenses-list | 'Materials for <stage>' reads oddly | Category and stage as two facts | fix run 1b | 1 |
-| expenses/i1-D16 | expenses | P3 | expense-new/edit | Cost to the job line small at bottom | Show in pinned bar | open | 1 |
-| expenses/i1-D19 | expenses | P3 | expenses-list/foreman/phone | No active tab | Mark tab active | fix run 1b | 1 |
-| expenses/i1-D20 | expenses | P3 | fixtures | 'Ryde heritage' breaks naming | Rename job | open | 1 |
-| expenses/i1-Q1 | expenses | P3 | expense-detail | Stand-in receipt: row marker vs 'No receipt attached' (flows 190) | Treat stand-in as attached in prototype or resolve in Phase 5 | fix run 1b | 1 |
+| expenses/i1-D1+F2 | expenses | P1 | expense-new/edit/phone | Paid by segmented wraps 'Crew member' to 2nd row (lesson 24) | One row at 358px or stack all three | fixed (i2) | 1 |
+| expenses/i1-D2+F3 | expenses | P1 | expense-edit/offline | Offline banner and Needs connection both shown (lesson 20) | Admin edit: only Needs connection | fixed (i2) | 1 |
+| expenses/i1-F1 | expenses | P1 | expense-edit/approved/iphone | Saved (older) job not ticked; job lost on edit | Always show saved job row with Change job | fixed (i2) | 1 |
+| expenses/i1-F4+D11 | expenses | P2 | expenses-list/normal | Key figure = all-time total, no scope label | Period total (this month, workspace tz) with label, kept in compact header | fixed (i2) | 1 |
+| expenses/i1-F5+D10 | expenses | P2 | expenses-list/phone | Rows 6-7 lines, ~2.5 fit; 'No receipt' on every row | 3-line rows; receipt icon only when attached | fixed (i2) | 1 |
+| expenses/i1-F6+D3+D4 | expenses | P2 | expense-detail | No key figure; grey values; two row patterns | Cost to the job key figure; one row pattern; values ink | fixed (i2) | 1 |
+| expenses/i1-F7+D5 | expenses | P2 | expense-detail | Receipt filename not viewable | Thumbnail row opening the photo | open (i2 F7, D5 P3) | 1 |
+| expenses/i1-F8+D15 | expenses | P2 | expense-edit/no-receipt | No way to add/replace/remove receipt on edit | Photo buttons on edit (stand-in id in prototype) | open (i2 D15 P2, F20) | 1 |
+| expenses/i1-F9 | expenses | P2 guard | expense-detail/phone | Record history link ~20px tall | 48px target | fixed (i2) | 1 |
+| expenses/i1-F10 | expenses | P2 | expenses-list-job-empty | Chip says 'This job' | Name the job | fixed (i2) | 1 |
+| expenses/i1-F11 | expenses | P2 | expense-new/job picker | Jobs A-Z, flows 180 wants recent first | Sort by recent activity | fixed (i2) | 1 |
+| expenses/i1-F12 | expenses | P2 | all expense routes | No keyboard-up capture | Keyboard captures focusing total, iphone+android | fixed (i2) | 1 |
+| expenses/i1-D6+D12+F14 | expenses | P2 | expenses-list/loading | Skeleton lacks pinned bar (phone) and table shape (desktop) (lesson 7) | Skeleton matches real layout | fixed (i2) | 1 |
+| expenses/i1-D7 | expenses | P2 | expenses-list/foreman/desktop | Phone rows across 1170px; no active nav item (lesson 21) | Desktop table without money columns; active nav | fixed (i2) | 1 |
+| expenses/i1-D8+D17 | expenses | P2 | expense-new/edit/desktop,tablet | Pinned Save floats over chips; strip under bar (lesson 21) | Save in title row ≥1024; align bar on tablet | D8 fixed (i2); D17 open | 1 |
+| expenses/i1-D9 | expenses | P2 guard | expenses-list/desktop | Paid by column wraps; rows ~70px | Short paid-by labels, column widths; guard row height | partly fixed (i2); see D23 | 1 |
+| expenses/i1-D13+D14+D18 | expenses | P3 | expense-new/edit | Field gap 16 vs 24; optional shown two ways; Back twice on waiting | 24px gap; '(optional)' label; one Back | D14, D18 fixed (i2); D13 open | 1 |
+| expenses/i1-F13 | expenses | P3 | expense-new/foreman | Single job chip not ticked | Auto-tick only job | replaced by i2-F23 | 1 |
+| expenses/i1-F15 | expenses | P3 | expenses-list | 'Materials for <stage>' reads oddly | Category and stage as two facts | fixed (i2) | 1 |
+| expenses/i1-D16 | expenses | P3 | expense-new/edit | Cost to the job line small at bottom | Show in pinned bar | fixed (i2) | 1 |
+| expenses/i1-D19 | expenses | P3 | expenses-list/foreman/phone | No active tab | Mark tab active | fixed (i2) | 1 |
+| expenses/i1-D20 | expenses | P3 | fixtures | 'Ryde heritage' breaks naming | Rename job | open (i2) | 1 |
+| expenses/i1-Q1 | expenses | P3 | expense-detail | Stand-in receipt: row marker vs 'No receipt attached' (flows 190) | Treat stand-in as attached in prototype or resolve in Phase 5 | fixed (i2) | 1 |
+| expenses/i2-D22+F16 | expenses | P2 | expense-detail/phone | Edit not pinned; under tab bar and Log, must scroll | Pin Edit in a bar above the tab bar | open | 2 |
+| expenses/i2-F17+D28 | expenses | P2 | expenses-list/job filter | Key figure "$0.00 spent this month" above a $1,287.00 job row | Filtered: that job's total with its period | open | 2 |
+| expenses/i2-D21+F19 | expenses | P2 | expense-detail/all | Money rows in bold Atkinson, not Barlow figure; "Company card" vs form "Card" | figure style for every money value; one word for card | open | 2 |
+| expenses/i2-D23 | expenses | P2 | expenses-list/desktop + foreman table | One-line rows ~30 px (want 48), skeleton 48; Job wraps while Paid by has spare width | Rows ≥ 48 px; widen Job, narrow Paid by | open | 2 |
+| expenses/i2-D15+F20 | expenses | P2 | expense-edit/desktop, tablet, phone | Receipt line wraps to 5 lines; "Receipt attached: Receipt — …jpg" repeats | Thumbnail, filename one line, Replace/Remove under; drop the prefix | open | 2 |
+| expenses/i2-F18 | expenses | P3 | expense-new-from-job/iphone | "Back to expenses" after coming from a job | Back to the job | open | 2 |
+| expenses/i2-F21 | expenses | P3 | expense-edit-approved/iphone | "Change job" wraps beside a long job name | One line, 48 px target | open | 2 |
+| expenses/i2-F22+D31 | expenses | P3 | expense-new/edit loading | Skeleton photo buttons pills (want radius 6); desktop title skeleton 384 vs Save 192 | Match real controls | open | 2 |
+| expenses/i2-F23 | expenses | P3 | expense-new/foreman | No capture of foreman from a job with job pre-picked (flows 192) | Add foreman from-job capture | open | 2 |
+| expenses/i2-D24+D25 | expenses | P3 | expense-detail, new/edit desktop | Edit below panels not in title row; uneven panel bottoms; Save right edge 1216 vs Add expense 1424 | Title-row actions on one right edge; equal panels | open | 2 |
+| expenses/i2-D26+D29 | expenses | P3 | expenses-list meta phone + desktop | Pairs split only by a gap; "Dima Reimbursed next pay run" runs on | One fact per line or a sentence; status as own line/tag | open | 2 |
+| expenses/i2-D27 | expenses | P3 | Paid by + GST segmented/all | Selected is inset rounded pill; neighbour divider vanishes (lesson 24) | Fill whole option; straight 1 px dividers | open | 2 |
+| expenses/i2-D30 | expenses | P3 | expense-edit noperm foreman | "Back to Log" but Jobs tab active | Match origin | open | 2 |
