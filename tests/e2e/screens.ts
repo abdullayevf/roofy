@@ -35,6 +35,10 @@ const EXPENSE_APPROVED = seed.expenses.find((e) => e.reimbursedInPayRunId && PAY
 const EXPENSE_NO_RECEIPT = seed.expenses.find(
   (e) => e.receiptFileId === null && e.paidBy === "company_card" && e.projectId === meta.projects.smith,
 )!.id;
+/** Public statement links (screen 21) from the seed: Dima, a contractor, and Sam, an employee. */
+const statementToken = (crewId: string) => meta.statementTokens.find((x) => x.crewMemberId === crewId)!.token;
+export const STATEMENT_CONTRACTOR = statementToken(meta.crew.dima);
+export const STATEMENT_EMPLOYEE = statementToken(meta.crew.sam);
 const STAGE_DONE_ROUTE = `/jobs/${meta.projects.harris}/stages/${meta.stages.harrisRidge}/done`;
 /** The address of a stage page. */
 const stageRoute = (jobId: string, stageId: string) => `/jobs/${jobId}/stages/${stageId}`;
@@ -920,11 +924,33 @@ export const SCREENS: ScreenSpec[] = [
     noExtras: true,
   },
   {
+    // Screen 21, public (no role cookie, no app nav): Dima's statement for the last approved run — business and ABN,
+    // contractor ABN, period, lines, totals with GST, payouts, balance after and the §16 contractor footer. Share hands
+    // on the page's own link. Print width is checked by `crew-statement.spec.ts` (print media at A4 width).
     id: "crew-statement",
     group: "pay",
     route: "/s/:token",
-    states: ["normal", "error", "noperm"],
+    states: ["normal", "loading", "error"],
     roles: [], // public, unguessable-link page — no role cookie involved
+  },
+  {
+    // An employee's statement (Sam): "Pay" not "Subtotal", no GST, no contractor footer.
+    id: "crew-statement-employee",
+    group: "pay",
+    route: `/s/${STATEMENT_EMPLOYEE}`,
+    states: ["normal"],
+    roles: [],
+    noExtras: true,
+  },
+  {
+    // An expired, turned-off or unknown link: one plain sentence, nothing about the person or the business.
+    id: "crew-statement-gone",
+    group: "pay",
+    route: `/s/${"0".repeat(64)}`,
+    states: ["normal"],
+    roles: [],
+    viewports: ["iphone", "desktop"],
+    noExtras: true,
   },
 
   // --- reports (Task 18): Reports (22), Record history (25), Export (26)
@@ -997,7 +1023,7 @@ export const PLACEHOLDER_IDS: Record<string, string> = {
   crewId: meta.crew.dima,
   expenseId: meta.expenses.smithSheets,
   runId: "current-week",
-  token: "demo-statement-token",
+  token: STATEMENT_CONTRACTOR,
   kind: "job-profitability",
 };
 

@@ -17,8 +17,8 @@ const REVIEW_COLUMN = cx(COLUMN, "lg:max-w-none");
 /** From 1024 px: the total, what to check and the run totals on the left; every person's lines on the right. */
 const SPLIT = "flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-10";
 /** A row's right column for its figure: as wide as the figure (even at 200% text), right-aligned; the words wrap. */
-const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4";
-const FIGURE = "block text-right text-figure num text-ink whitespace-nowrap";
+export const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4";
+export const FIGURE = "block text-right text-figure num text-ink whitespace-nowrap";
 
 type Reader = Exclude<Role, "foreman">;
 
@@ -82,7 +82,7 @@ function Flags({ flags, today }: { flags: PayFlag[]; today: string }) {
   );
 }
 
-function FigureRow({ label, cents, strong = false, data }: { label: string; cents: number; strong?: boolean; data?: string }) {
+export function FigureRow({ label, cents, strong = false, data }: { label: string; cents: number; strong?: boolean; data?: string }) {
   return (
     <div data-pay-sum={data} className={cx(ROW_GRID, "min-h-12 items-center px-4 py-2")}>
       <span className={strong ? "text-body-strong text-ink" : "text-body text-ink"}>{label}</span>
@@ -106,7 +106,7 @@ function RunTotals({ totals }: { totals: PayRunReview["totals"] }) {
   );
 }
 
-function LineRow({ line, today }: { line: PayLineDto; today: string }) {
+export function LineRow({ line, today }: { line: PayLineDto; today: string }) {
   const label = lineLabelText(line, today);
   const basis = lineBasisParts(line);
   return (
@@ -128,7 +128,7 @@ function LineRow({ line, today }: { line: PayLineDto; today: string }) {
   );
 }
 
-function ReimbursementRow({ r, today }: { r: ReimbursementDto; today: string }) {
+export function ReimbursementRow({ r, today }: { r: ReimbursementDto; today: string }) {
   return (
     <div data-pay-reimbursement="" className={cx(ROW_GRID, "min-h-12 px-4 py-2")}>
       <span className="flex min-w-0 flex-col">

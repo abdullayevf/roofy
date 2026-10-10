@@ -44,6 +44,7 @@ import type { Id, JobType, ProjectStatus, Role } from "../contracts";
 import { DEFAULT_FAKE_NOW } from "./clock";
 import type { ProjectRow, SeedTables, StageRow, WorkLogRow } from "./rows";
 import { SeedBuilder, STANDARD_DAY, TIMEZONE, type GridSpec, type TemplateItemDef } from "./seed-builder";
+import { Rng } from "./rng";
 import { generateHistory } from "./seed-history";
 
 export const SEED_TODAY: LocalDate = "2026-09-28";
@@ -1174,6 +1175,24 @@ export function buildSeed(): Seed {
       revokedAt: null,
     });
     statementTokens.push({ payRunId: lastApproved.id, crewMemberId: crew[key], token });
+  }
+  // And one for Sam, an employee (no contractor footer). Its own Rng, so every id drawn after this stays put.
+  {
+    const own = new Rng(2117);
+    const token = own.hex(64);
+    const createdAt = b.at("2026-09-21", "09:30");
+    t.statementLinks.push({
+      id: own.uuid(),
+      workspaceId: t.workspace.id,
+      createdAt,
+      updatedAt: createdAt,
+      payRunId: lastApproved.id,
+      crewMemberId: crew.sam,
+      tokenHash: createHash("sha256").update(token).digest("hex"),
+      expiresAt: b.at(addDays("2026-09-21", 90), "09:30"),
+      revokedAt: null,
+    });
+    statementTokens.push({ payRunId: lastApproved.id, crewMemberId: crew.sam, token });
   }
 
   // Files: a quote and a before photo on each active job; receipts on two Smith expenses.

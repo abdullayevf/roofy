@@ -37,7 +37,7 @@ export function rateRows(rates: RateDto[], today: string): RateRow[] {
     });
 }
 
-const METHOD_PHRASE: Record<PayoutMethod, string> = { bank_transfer: " by bank transfer", cash: " in cash", other: "" };
+export const METHOD_PHRASE: Record<PayoutMethod, string> = { bank_transfer: " by bank transfer", cash: " in cash", other: "" };
 
 export type LedgerEntry = { key: string; primary: string; meta: string; cents: Cents };
 

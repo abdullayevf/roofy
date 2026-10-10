@@ -90,7 +90,7 @@ export function personKindLines(p: PayPersonGroup): string[] {
 }
 
 /** A person's totals (pay rules §6–7): contractors show subtotal and GST; reimbursements only when there are any. */
-export function personTotalRows(p: PayPersonGroup): { label: string; cents: number }[] {
+export function personTotalRows(p: Pick<PayPersonGroup, "type" | "totals">): { label: string; cents: number }[] {
   const rows = [{ label: p.type === "contractor" ? "Subtotal" : "Pay", cents: p.totals.subtotalCents }];
   if (p.type === "contractor") rows.push({ label: "GST", cents: p.totals.gstCents });
   if (p.totals.reimbursementsCents !== 0) rows.push({ label: "Reimbursements", cents: p.totals.reimbursementsCents });
