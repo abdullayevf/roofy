@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { collectConsole, expectScreenHealthy } from "./guards";
+import { checkSegmentedRows, collectConsole, expectScreenHealthy } from "./guards";
 import { expectNoMoney } from "./money-scan";
 import { getSeed } from "../../src/data/fake/store";
 
@@ -27,11 +27,53 @@ test.describe("Add expense (manager)", () => {
     await expect(page.getByLabel("Total paid")).toBeVisible();
     await expect(page.getByRole("radio", { name: "Includes GST" })).toBeChecked();
     await expect(page.getByLabel("Supplier (optional)")).toHaveValue("");
-    await expect(page.getByRole("radio", { name: "Company card" })).toBeChecked();
+    await expect(page.getByRole("radio", { name: "Card", exact: true })).toBeChecked();
     await expect(page.getByRole("radiogroup", { name: "Job" })).toBeVisible();
     for (const chip of await page.locator('[data-field="expense-category"] label:visible').all())
       expect((await chip.boundingBox())!.height).toBeGreaterThanOrEqual(48);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
+    // Paid by and GST: every option on one row (or all stacked), never a partial wrap (lesson 24; iPhone, Android and desktop).
+    expect((await checkSegmentedRows(page)).failures).toEqual([]);
+    const paidBy = await page.locator('[data-field="expense-paid-by"] label').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().width)));
+    expect(Math.max(...paidBy) - Math.min(...paidBy)).toBeLessThanOrEqual(1);
+  });
+
+  test("Cost to the job sits beside Save: in the pinned bar on a phone, in the title row on a desktop with the form in two columns", async ({ page }, testInfo) => {
+    await signInAs(page, "manager", "/expenses/new?total=110.00");
+    const save = (await page.getByRole("button", { name: "Save expense" }).boundingBox())!;
+    const cost = page.locator("[data-expense-cost]");
+    await expect(cost).toContainText("Cost to the job");
+    await expect(cost).toContainText("$100.00 ex GST");
+    const figure = (await cost.boundingBox())!;
+    expect(figure.x + figure.width).toBeLessThanOrEqual(save.x + 1);
+    expect(Math.abs(figure.y + figure.height / 2 - (save.y + save.height / 2))).toBeLessThanOrEqual(8);
+    const position = await page.locator('[data-slot="primary-action"]').evaluate((el) => getComputedStyle(el).position);
+    if (isPhone(testInfo.project.name)) {
+      expect(position).toBe("fixed");
+    } else {
+      // No pinned bar from 1024 px: Save is level with the title, and the job and category column sits beside the amounts.
+      expect(position).toBe("static");
+      const title = (await page.getByRole("heading", { level: 1, name: "Add expense" }).boundingBox())!;
+      expect(save.y).toBeLessThan(title.y + title.height + 8);
+      const left = (await page.locator('[data-field="expense-total"]').boundingBox())!;
+      const right = (await page.locator('[data-field="expense-job"]').boundingBox())!;
+      expect(right.x).toBeGreaterThanOrEqual(left.x + left.width);
+    }
+  });
+
+  test("on a tablet the pinned bar runs edge to edge, flush on the tab bar, with the cost beside Save and nothing under it", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "below 1024 px only");
+    await page.setViewportSize({ width: 820, height: 1180 });
+    await signInAs(page, "manager", "/expenses/new?total=110.00");
+    const bar = (await page.locator('[data-slot="primary-action"]').boundingBox())!;
+    const tabs = (await page.getByRole("navigation", { name: "Primary" }).boundingBox())!;
+    expect(Math.abs(bar.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(bar.width - 820)).toBeLessThanOrEqual(1);
+    expect(Math.abs(bar.y + bar.height - tabs.y)).toBeLessThanOrEqual(1);
+    const cost = (await page.locator("[data-expense-cost]").boundingBox())!;
+    expect(cost.y).toBeGreaterThanOrEqual(bar.y);
+    expect(cost.y + cost.height).toBeLessThanOrEqual(bar.y + bar.height);
+    await expectScreenHealthy(page, { phone: true });
   });
 
   test("Save expense with nothing filled names what is missing; the supplier is not asked for", async ({ page }) => {
@@ -49,10 +91,10 @@ test.describe("Add expense (manager)", () => {
       await page.getByLabel("Total paid").blur();
       await expect(page.getByLabel("GST amount")).toHaveValue("10.00", { timeout: 1000 });
     }).toPass();
-    await expect(page.locator("[data-expense-cost]")).toHaveText("Cost to the job $100.00 ex GST.");
+    await expect(page.locator("[data-expense-cost]")).toContainText("$100.00 ex GST");
     await page.getByRole("radio", { name: "No GST" }).check({ force: true });
     await expect(page.getByLabel("GST amount")).toHaveCount(0);
-    await expect(page.locator("[data-expense-cost]")).toHaveText("Cost to the job $110.00 ex GST.");
+    await expect(page.locator("[data-expense-cost]")).toContainText("$110.00 ex GST");
   });
 
   test("paid by a crew member says when they are paid back", async ({ page }, testInfo) => {

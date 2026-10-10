@@ -103,6 +103,8 @@ import {
   expensePatch,
   withSavedJob,
   gstEdit,
+  jobCostFigure,
+  PAID_BY,
   jobCostText,
   receiptToSend,
   type ExpenseFormValues,
@@ -255,6 +257,16 @@ describe("Task 16 review fixes", () => {
     expect(jobCostText(filled({ totalCents: null }), true)).toBeNull();
     expect(jobCostText(filled({ totalCents: 0 }), true)).toBeNull();
     expect(jobCostText(filled({ gst: "typed", gstCents: 20000 }), true)).toBeNull();
+  });
+
+  it("gives the cost figure alone for the bar beside Save, with what it excludes", () => {
+    expect(jobCostFigure(filled(), true)).toBe("$100.00 ex GST");
+    expect(jobCostFigure(filled(), false)).toBe("$110.00 incl. GST");
+    expect(jobCostFigure(filled({ totalCents: null }), true)).toBeNull();
+  });
+
+  it("names who paid in words short enough for three equal options on a phone", () => {
+    expect(PAID_BY.map((p) => p.label)).toEqual(["Card", "Cash", "Crew"]);
   });
 
   it("leaves the GST on the default when a blur hands back the same figure", () => {

@@ -19,6 +19,8 @@ export type SegmentedProps = {
   disabled?: boolean;
   /** Full width of its column from 1024 px too (a form whose fields all share one column), not just as wide as its options. */
   fill?: boolean;
+  /** One row of equal options that never wraps onto a second row (a label wraps inside its own option): for a few short options on a phone. */
+  equal?: boolean;
   /** Demo-only: forces the focus ring (on the selected segment) so it shows up in a static screenshot. */
   focusVisible?: boolean;
   className?: string;
@@ -33,7 +35,8 @@ export type SegmentedProps = {
  * comes from the browser's own radio-group behaviour rather than a
  * hand-rolled `keydown` handler. The focus ring is drawn on the segment
  * (not the hidden input) so it follows the segment's radius. Segments wrap
- * onto a second row when text is large rather than running off the screen.
+ * onto a second row when text is large rather than running off the screen;
+ * `equal` keeps one row of equal columns instead (the label wraps inside its own option).
  */
 export function Segmented({
   legend,
@@ -44,6 +47,7 @@ export function Segmented({
   onChange,
   disabled,
   fill = false,
+  equal = false,
   focusVisible,
   className,
 }: SegmentedProps) {
@@ -53,10 +57,13 @@ export function Segmented({
   return (
     <div
       role="radiogroup"
+      data-segmented=""
       aria-label={legend}
       aria-disabled={disabled || undefined}
+      style={equal ? { gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` } : undefined}
       className={cx(
-        "flex w-full max-w-full flex-wrap rounded-control border-[1.5px] border-edge p-1",
+        "w-full max-w-full rounded-control border-[1.5px] border-edge p-1",
+        equal ? "grid" : "flex flex-wrap",
         fill ? "" : "lg:w-fit",
         disabled ? "bg-galv" : "bg-surface",
         className,
@@ -71,7 +78,8 @@ export function Segmented({
           <label
             key={opt.value}
             className={cx(
-              "relative flex min-h-[52px] flex-auto items-center justify-center gap-1.5 rounded-control px-3 py-1 text-center text-body-strong lg:min-h-12",
+              "relative flex min-h-[52px] items-center justify-center gap-1.5 rounded-control py-1 text-center text-body-strong lg:min-h-12",
+              equal ? "min-w-0 px-2" : "flex-auto px-3",
               disabled ? "cursor-not-allowed" : "cursor-pointer",
               seam && "before:absolute before:inset-y-2 before:left-0 before:w-px before:bg-edge",
               checked

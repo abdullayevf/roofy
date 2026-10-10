@@ -28,7 +28,7 @@ test("Add a $110.00 receipt paid by Dima in 10 taps", async ({ page }) => {
   await page.getByLabel("Total paid").fill("110.00");
   await taps.tap(page.locator('[data-field="expense-job"]').getByRole("radio", { name: smithName, exact: true }));
   await taps.tap(page.locator('[data-field="expense-category"]').getByRole("radio", { name: "Materials", exact: true }));
-  await taps.tap(page.locator('[data-field="expense-paid-by"]').getByRole("radio", { name: "Crew member", exact: true }));
+  await taps.tap(page.locator('[data-field="expense-paid-by"]').getByRole("radio", { name: "Crew", exact: true }));
   await taps.tap(page.locator('[data-field="expense-crew"]').getByRole("radio", { name: "Dima", exact: true }));
   await expect(page.locator("[data-reimbursement]")).toHaveText("Paid by Dima — reimbursed next pay run");
   await taps.tap(page.getByRole("button", { name: "Save expense" }));

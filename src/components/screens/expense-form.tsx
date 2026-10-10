@@ -26,7 +26,7 @@ import {
   expenseMissingHint,
   expensePatch,
   gstEdit,
-  jobCostText,
+  jobCostFigure,
   receiptToSend,
   expenseFromQuery,
   expenseProblems,
@@ -42,13 +42,30 @@ const GST_CHOICES = [
   { value: "none", label: "No GST" },
 ];
 
-function Heading({ backHref, title = "Add expense", back = "Back to expenses" }: { backHref: string; title?: string; back?: string }) {
+/** From 1024 px the form uses the width: two columns, and Save sits in the title row (the pinned bar passed as children). */
+const FORM_WIDE = cx(FORM_WIDTH, "lg:max-w-240");
+
+/** The back row and the title; the pinned bar goes in the title row, where it is the Save button on a desktop (fixed on a phone). */
+function Heading({
+  backHref,
+  title = "Add expense",
+  back = "Back to expenses",
+  children,
+}: {
+  backHref: string;
+  title?: string;
+  back?: string;
+  children?: React.ReactNode;
+}) {
   return (
     <div className="flex flex-col gap-1">
       <Button variant="link" href={backHref} className="self-start">
         {back}
       </Button>
-      <h1 className="text-title text-ink">{title}</h1>
+      <div className="flex items-start justify-between gap-6">
+        <h1 className="text-title text-ink lg:flex lg:min-h-13 lg:items-center">{title}</h1>
+        {children}
+      </div>
     </div>
   );
 }
@@ -111,7 +128,10 @@ function ReceiptPhoto({
               className="size-16 rounded-control border-control object-cover"
             />
           ) : (
-            <span aria-hidden="true" className="flex size-16 shrink-0 items-center justify-center rounded-control border-control bg-surface text-ink-2">
+            <span
+              aria-hidden="true"
+              className="flex size-16 shrink-0 items-center justify-center rounded-control border-control bg-surface text-ink-2"
+            >
               <Receipt size={32} />
             </span>
           )}
@@ -180,7 +200,6 @@ export type ExpenseEdit = {
   demoOffline: boolean;
 };
 
-
 /**
  * Add expense (flows.md screen 17): receipt photo, date, supplier, total, GST (total ÷ 11 unless changed, or No GST),
  * job, stage, category and who paid. A field entry: it goes through the outbox, so with no signal it is saved on
@@ -201,7 +220,9 @@ export function ExpenseForm({
   const router = useRouter();
   const online = useOnline(edit?.demoOffline ?? false);
   const [start] = useState(() =>
-    edit ? { values: edit.values, check: false, saved: false } : expenseFromQuery(query, today, { projects, categories, crew }),
+    edit
+      ? { values: edit.values, check: false, saved: false }
+      : expenseFromQuery(query, today, { projects, categories, crew }),
   );
   const { values: initial, check: initialCheck, saved: initialWaiting } = start;
   const fromJob = initial.projectId !== "";
@@ -231,6 +252,7 @@ export function ExpenseForm({
   const project = projects.find((p) => p.id === v.projectId) ?? null;
   const payer = crew.find((c) => c.id === v.crewMemberId) ?? null;
   const gst = gstShown(v);
+  const cost = foreman ? null : jobCostFigure(v, gstRegistered);
 
   async function save() {
     // A tap on Save may not blur the amount still being typed (iOS): commit it now, so the check sees what it became.
@@ -243,7 +265,12 @@ export function ExpenseForm({
     setFailed(null);
     if (edit) {
       // A new photo sends the stand-in id (fake data; uploads arrive in Phase 5), else the saved receipt is kept or removed.
-      const receipt = photo !== null ? (placeholderReceiptId ?? "keep") : kept === null && edit.receiptName !== null ? null : "keep";
+      const receipt =
+        photo !== null
+          ? (placeholderReceiptId ?? "keep")
+          : kept === null && edit.receiptName !== null
+            ? null
+            : "keep";
       const patch = expensePatch(now, receipt);
       if (!patch) return;
       try {
@@ -308,179 +335,196 @@ export function ExpenseForm({
       data-screen={edit ? "expense-edit" : "expense-new"}
       data-view={foreman ? "foreman" : "manager"}
       style={style}
-      className={cx("flex flex-col gap-6", FORM_WIDTH, "pin-pad")}
+      className={cx("flex flex-col gap-6", FORM_WIDE, "pin-pad pin-edge")}
     >
-      {edit ? <Heading backHref={backHref} title="Edit expense" back="Back to this expense" /> : <Heading backHref={backHref} />}
+      <Heading backHref={backHref} {...(edit ? { title: "Edit expense", back: "Back to this expense" } : {})}>
+        <PinnedAction
+          barProps={barProps}
+          className="pin-head"
+          error={failed}
+          hintOnSide
+          hint={edit && !online ? NEEDS_CONNECTION : expenseMissingHint(problems)}
+          figure={
+            cost === null ? undefined : (
+              <p data-expense-cost="" className="flex flex-col num">
+                <span className="text-meta text-ink-2">Cost to the job</span>
+                <span className="text-body-strong text-ink">
+                  <KeepTogether text={cost} />
+                </span>
+              </p>
+            )
+          }
+        >
+          <Button
+            loading={saving}
+            loadingLabel={edit ? "Saving changes" : "Saving expense"}
+            onClick={save}
+            disabled={edit !== undefined && !online}
+            className="w-full"
+          >
+            {edit ? "Save changes" : "Save expense"}
+          </Button>
+        </PinnedAction>
+      </Heading>
       {edit?.inApprovedPayRun ? (
-        <p role="note" data-approved-warning="" className="flex items-start gap-2 text-body-strong text-watch">
+        <p
+          role="note"
+          data-approved-warning=""
+          className="flex items-start gap-2 text-body-strong text-watch"
+        >
           <WarningDiamond size={24} aria-hidden="true" className="shrink-0" />
           <span>{APPROVED_PAY_RUN_WARNING}</span>
         </p>
       ) : null}
-      <div className="flex flex-col gap-6">
-        <ReceiptPhoto file={photo} onFile={setPhoto} kept={kept} onRemoveKept={() => setKept(null)} />
-        <div data-field="expense-total">
-          <MoneyField
-            label="Total paid"
-            hint="Including GST"
-            defaultCents={typeof v.totalCents === "number" ? v.totalCents : undefined}
-            onCentsChange={(c) => set({ totalCents: c })}
-            error={problems.total}
-          />
-        </div>
-        <div data-field="expense-gst" className="flex flex-col gap-1.5">
-          <p className={LABEL}>GST</p>
-          <Segmented
-            legend="GST"
-            fill
-            name="expense-gst"
-            options={GST_CHOICES}
-            value={v.gst === "none" ? "none" : "with"}
-            onChange={(g) => set({ gst: g === "none" ? "none" : "default", gstCents: null })}
-          />
-          {v.gst !== "none" && !foreman ? (
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-10">
+        <div className="flex flex-col gap-6">
+          <ReceiptPhoto file={photo} onFile={setPhoto} kept={kept} onRemoveKept={() => setKept(null)} />
+          <div data-field="expense-total">
             <MoneyField
-              // Follows the total (÷ 11) until changed by hand; then it keeps what was typed.
-              key={v.gst === "default" ? `gst-${String(v.totalCents)}` : "gst-typed"}
-              label="GST amount"
-              ariaLabel="GST amount"
-              hint={
-                v.gst === "default"
-                  ? "Worked out as the total ÷ 11. Change it if the receipt differs."
-                  : undefined
-              }
-              defaultCents={gst ?? undefined}
-              onCentsChange={(c) => {
-                const change = gstEdit(latest.current, c);
-                if (change) set(change);
-              }}
-              error={problems.gst}
-            />
-          ) : null}
-          {v.gst === "none" ? (
-            <p data-gst-none="" className="text-meta text-ink-2">
-              No GST on this receipt: the whole total is the cost.
-            </p>
-          ) : null}
-          {foreman && v.gst !== "none" ? (
-            <p className="text-meta text-ink-2">The office works out the GST from the total.</p>
-          ) : null}
-        </div>
-        <Field
-          label="Supplier (optional)"
-          inputMode="text"
-          autoComplete="off"
-          value={v.supplier}
-          maxLength={120}
-          onChange={(e) => set({ supplier: e.target.value })}
-        />
-        <Field
-          label="Date"
-          inputMode="text"
-          type="date"
-          value={v.date}
-          onChange={(e) => set({ date: e.target.value })}
-          error={problems.date}
-        />
-        <div data-field="expense-job" className="flex flex-col gap-1.5">
-          <p className={LABEL}>Job</p>
-          {pickJob || project === null ? (
-            <ChoiceChip
-              legend="Job"
-              name="expense-job"
-              options={projects.map((p) => ({ value: p.id, label: p.name }))}
-              value={v.projectId}
-              onChange={(id) => set({ projectId: id, stageId: null })}
-            />
-          ) : (
-            <div className="flex items-center justify-between gap-3">
-              <p data-job-chosen="" className="min-w-0 text-body text-ink [overflow-wrap:anywhere]">
-                <KeepTogether text={project.name} />
-              </p>
-              <Button variant="link" onClick={() => setPickJob(true)}>
-                Change job
-              </Button>
-            </div>
-          )}
-          {problems.project ? <ErrorMessage>{problems.project}</ErrorMessage> : null}
-        </div>
-        {project && project.stages.length > 0 ? (
-          <div data-field="expense-stage" className="flex flex-col gap-1.5">
-            <p className={LABEL}>Stage (optional)</p>
-            <ChoiceChip
-              legend="Stage (optional)"
-              name="expense-stage"
-              options={[
-                { value: "", label: "Whole job" },
-                ...project.stages.map((s) => ({ value: s.id, label: s.name })),
-              ]}
-              value={v.stageId ?? ""}
-              onChange={(id) => set({ stageId: id === "" ? null : id })}
+              label="Total paid"
+              hint="Including GST"
+              defaultCents={typeof v.totalCents === "number" ? v.totalCents : undefined}
+              onCentsChange={(c) => set({ totalCents: c })}
+              error={problems.total}
             />
           </div>
-        ) : null}
-        <div data-field="expense-category" className="flex flex-col gap-1.5">
-          <p className={LABEL}>Category</p>
-          <ChoiceChip
-            legend="Category"
-            name="expense-category"
-            options={categories.map((c) => ({ value: c.id, label: c.name }))}
-            value={v.categoryId}
-            onChange={(id) => set({ categoryId: id })}
-          />
-          {problems.category ? <ErrorMessage>{problems.category}</ErrorMessage> : null}
-        </div>
-        <div data-field="expense-paid-by" className="flex flex-col gap-1.5">
-          <p className={LABEL}>Paid by</p>
-          <Segmented
-            legend="Paid by"
-            fill
-            name="expense-paid-by"
-            options={PAID_BY}
-            value={v.paidBy}
-            onChange={(p) => set({ paidBy: p as PaidBy, crewMemberId: null })}
-          />
-        </div>
-        {v.paidBy === "crew" ? (
-          <div data-field="expense-crew" className="flex flex-col gap-1.5">
-            <p className={LABEL}>Who paid</p>
-            <ChoiceChip
-              legend="Who paid"
-              name="expense-crew"
-              options={crew.map((c) => ({ value: c.id, label: c.name }))}
-              value={v.crewMemberId ?? ""}
-              onChange={(id) => set({ crewMemberId: id })}
+          <div data-field="expense-gst" className="flex flex-col gap-1.5">
+            <p className={LABEL}>GST</p>
+            <Segmented
+              legend="GST"
+              fill
+              equal
+              name="expense-gst"
+              options={GST_CHOICES}
+              value={v.gst === "none" ? "none" : "with"}
+              onChange={(g) => set({ gst: g === "none" ? "none" : "default", gstCents: null })}
             />
-            {payer ? (
-              <p data-reimbursement="" className="text-body text-ink">
-                {reimbursementNote(payer.name)}
+            {v.gst !== "none" && !foreman ? (
+              <MoneyField
+                // Follows the total (÷ 11) until changed by hand; then it keeps what was typed.
+                key={v.gst === "default" ? `gst-${String(v.totalCents)}` : "gst-typed"}
+                label="GST amount"
+                ariaLabel="GST amount"
+                hint={
+                  v.gst === "default"
+                    ? "Worked out as the total ÷ 11. Change it if the receipt differs."
+                    : undefined
+                }
+                defaultCents={gst ?? undefined}
+                onCentsChange={(c) => {
+                  const change = gstEdit(latest.current, c);
+                  if (change) set(change);
+                }}
+                error={problems.gst}
+              />
+            ) : null}
+            {v.gst === "none" ? (
+              <p data-gst-none="" className="text-meta text-ink-2">
+                No GST on this receipt: the whole total is the cost.
               </p>
             ) : null}
-            {problems.crew ? <ErrorMessage>{problems.crew}</ErrorMessage> : null}
+            {foreman && v.gst !== "none" ? (
+              <p className="text-meta text-ink-2">The office works out the GST from the total.</p>
+            ) : null}
           </div>
-        ) : null}
+          <Field
+            label="Supplier (optional)"
+            inputMode="text"
+            autoComplete="off"
+            value={v.supplier}
+            maxLength={120}
+            onChange={(e) => set({ supplier: e.target.value })}
+          />
+          <Field
+            label="Date"
+            inputMode="text"
+            type="date"
+            value={v.date}
+            onChange={(e) => set({ date: e.target.value })}
+            error={problems.date}
+          />
+        </div>
+        <div className="flex flex-col gap-6">
+          <div data-field="expense-job" className="flex flex-col gap-1.5">
+            <p className={LABEL}>Job</p>
+            {pickJob || project === null ? (
+              <ChoiceChip
+                legend="Job"
+                name="expense-job"
+                options={projects.map((p) => ({ value: p.id, label: p.name }))}
+                value={v.projectId}
+                onChange={(id) => set({ projectId: id, stageId: null })}
+              />
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <p data-job-chosen="" className="min-w-0 text-body text-ink [overflow-wrap:anywhere]">
+                  <KeepTogether text={project.name} />
+                </p>
+                <Button variant="link" onClick={() => setPickJob(true)}>
+                  Change job
+                </Button>
+              </div>
+            )}
+            {problems.project ? <ErrorMessage>{problems.project}</ErrorMessage> : null}
+          </div>
+          {project && project.stages.length > 0 ? (
+            <div data-field="expense-stage" className="flex flex-col gap-1.5">
+              <p className={LABEL}>Stage (optional)</p>
+              <ChoiceChip
+                legend="Stage (optional)"
+                name="expense-stage"
+                options={[
+                  { value: "", label: "Whole job" },
+                  ...project.stages.map((s) => ({ value: s.id, label: s.name })),
+                ]}
+                value={v.stageId ?? ""}
+                onChange={(id) => set({ stageId: id === "" ? null : id })}
+              />
+            </div>
+          ) : null}
+          <div data-field="expense-category" className="flex flex-col gap-1.5">
+            <p className={LABEL}>Category</p>
+            <ChoiceChip
+              legend="Category"
+              name="expense-category"
+              options={categories.map((c) => ({ value: c.id, label: c.name }))}
+              value={v.categoryId}
+              onChange={(id) => set({ categoryId: id })}
+            />
+            {problems.category ? <ErrorMessage>{problems.category}</ErrorMessage> : null}
+          </div>
+          <div data-field="expense-paid-by" className="flex flex-col gap-1.5">
+            <p className={LABEL}>Paid by</p>
+            <Segmented
+              legend="Paid by"
+              fill
+              equal
+              name="expense-paid-by"
+              options={PAID_BY}
+              value={v.paidBy}
+              onChange={(p) => set({ paidBy: p as PaidBy, crewMemberId: null })}
+            />
+          </div>
+          {v.paidBy === "crew" ? (
+            <div data-field="expense-crew" className="flex flex-col gap-1.5">
+              <p className={LABEL}>Who paid</p>
+              <ChoiceChip
+                legend="Who paid"
+                name="expense-crew"
+                options={crew.map((c) => ({ value: c.id, label: c.name }))}
+                value={v.crewMemberId ?? ""}
+                onChange={(id) => set({ crewMemberId: id })}
+              />
+              {payer ? (
+                <p data-reimbursement="" className="text-body text-ink">
+                  {reimbursementNote(payer.name)}
+                </p>
+              ) : null}
+              {problems.crew ? <ErrorMessage>{problems.crew}</ErrorMessage> : null}
+            </div>
+          ) : null}
+        </div>
       </div>
-      {!foreman && jobCostText(v, gstRegistered) !== null ? (
-        <p data-expense-cost="" className="text-meta text-ink-2 num">
-          <KeepTogether text={jobCostText(v, gstRegistered) as string} />
-        </p>
-      ) : null}
-      <PinnedAction
-        barProps={barProps}
-        error={failed}
-        hintOnSide
-        hint={edit && !online ? NEEDS_CONNECTION : expenseMissingHint(problems)}
-      >
-        <Button
-          loading={saving}
-          loadingLabel={edit ? "Saving changes" : "Saving expense"}
-          onClick={save}
-          disabled={edit !== undefined && !online}
-          className="w-full"
-        >
-          {edit ? "Save changes" : "Save expense"}
-        </Button>
-      </PinnedAction>
     </div>
   );
 }
@@ -521,27 +565,39 @@ export function ExpenseFormSkeleton({ edit = false }: { edit?: boolean }) {
       data-screen="expense-new"
       aria-busy="true"
       style={style}
-      className={cx("flex flex-col gap-6", FORM_WIDTH, "pin-pad")}
+      className={cx("flex flex-col gap-6", FORM_WIDE, "pin-pad pin-edge")}
     >
       <div className="flex flex-col gap-1">
         <Skeleton width={160} height={24} className="my-3" />
-        <h1 className="text-title text-ink">{edit ? "Edit expense" : "Add expense"}</h1>
-      </div>
-      <div className="flex flex-col gap-6">
-        {chips([120, 130])}
-        <FieldSkeleton />
-        <div className="flex flex-col gap-1.5">
-          <Skeleton width={60} height={24} />
-          <Skeleton height={56} />
+        <div className="flex items-start justify-between gap-6">
+          <h1 className="text-title text-ink lg:flex lg:min-h-13 lg:items-center">
+            {edit ? "Edit expense" : "Add expense"}
+          </h1>
+          <PinnedAction barProps={barProps} className="pin-head">
+            <Skeleton height={52} className="w-full lg:w-48 lg:self-end" />
+          </PinnedAction>
         </div>
-        <FieldSkeleton />
-        <FieldSkeleton />
-        {chips([140, 120, 160])}
-        {chips([100, 90, 110])}
       </div>
-      <PinnedAction barProps={barProps}>
-        <Skeleton height={52} />
-      </PinnedAction>
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-10">
+        <div className="flex flex-col gap-6">
+          {chips([120, 130])}
+          <FieldSkeleton />
+          <div className="flex flex-col gap-1.5">
+            <Skeleton width={60} height={24} />
+            <Skeleton height={56} />
+          </div>
+          <FieldSkeleton />
+          <FieldSkeleton />
+        </div>
+        <div className="flex flex-col gap-6">
+          {chips([140, 120, 160])}
+          {chips([100, 90, 110])}
+          <div className="flex flex-col gap-1.5">
+            <Skeleton width={80} height={24} />
+            <Skeleton height={60} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

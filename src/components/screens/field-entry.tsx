@@ -204,6 +204,8 @@ export function PinnedAction({
   error,
   hint,
   hintOnSide = false,
+  figure,
+  className,
   children,
 }: {
   barProps: ReturnType<typeof usePinnedBar>["barProps"];
@@ -211,11 +213,16 @@ export function PinnedAction({
   hint?: string;
   /** Keep the sentence on a phone on its side too (left of the Log circle), unless an error already holds that place. */
   hintOnSide?: boolean;
+  /** A key figure beside the button ("Cost to the job"), left of it; the bar is a row of figure and button. */
+  figure?: React.ReactNode;
+  /** `pin-head`: from 1024 px the bar is not pinned but sits in the title row (put it there), the figure left of the button. */
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div {...barProps} data-slot="primary-action" className="pin-action flex flex-col gap-3">
+    <div {...barProps} data-slot="primary-action" className={cx("pin-action flex flex-col gap-3", className)}>
       {error ? <ErrorMessage>{error}</ErrorMessage> : null}
+      {figure ? <div className="pin-figure">{figure}</div> : null}
       {children}
       {hint ? <p className={cx("pin-hint text-body text-ink", hintOnSide && !error && "pin-hint-side")}>{hint}</p> : null}
     </div>

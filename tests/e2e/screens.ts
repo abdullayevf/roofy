@@ -730,6 +730,8 @@ export const SCREENS: ScreenSpec[] = [
     route: "/expenses/new",
     states: ["normal", "loading", "error", "offline", "foreman"],
     roles: ["owner", "manager", "foreman"],
+    // The total with the keyboard open: Save expense (with the cost beside it) stays above the keys.
+    keyboard: { field: "Total paid", action: "Save expense" },
   },
   {
     // Filled in, paid by Dima: the payback note shows under Who paid (flows.md, Add a receipt).
@@ -812,6 +814,7 @@ export const SCREENS: ScreenSpec[] = [
     route: "/expenses/:expenseId?edit=1",
     states: ["normal", "loading", "error", "offline"],
     roles: ["owner", "manager"],
+    keyboard: { field: "Total paid", action: "Save changes" },
   },
   {
     id: "expense-edit-no-receipt",

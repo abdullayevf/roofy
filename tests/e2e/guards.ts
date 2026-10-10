@@ -722,6 +722,26 @@ export async function checkOfflineAgrees(page: Page): Promise<GuardResult> {
   return { name: "offlineAgrees", ok: failures.length === 0, failures };
 }
 
+/**
+ * Lesson 24: the options of a segmented control are one row, or all stacked; never a partial wrap (a lone option on a
+ * second row with a stray divider). Opt-in: the expense form specs call it on iPhone and Android.
+ */
+export async function checkSegmentedRows(page: Page): Promise<GuardResult> {
+  const failures = await page.evaluate(() => {
+    const out: string[] = [];
+    for (const group of document.querySelectorAll("[data-segmented]")) {
+      const rects = [...group.querySelectorAll(":scope > label")].map((l) => l.getBoundingClientRect());
+      const first = rects[0];
+      if (!first || rects.length < 2 || first.width === 0) continue;
+      const oneRow = rects.every((r) => Math.abs(r.top - first.top) <= 1);
+      const stacked = rects.every((r, i) => i === 0 || r.top >= (rects[i - 1]?.bottom ?? 0) - 1);
+      if (!oneRow && !stacked) out.push(`${group.getAttribute("aria-label")}: options wrap onto a partial second row`);
+    }
+    return out;
+  });
+  return { name: "segmentedRows", ok: failures.length === 0, failures };
+}
+
 export type ScreenHealthOptions = {
   /** Whether target-size (48x48) is enforced; phone viewports only. */
   phone: boolean;

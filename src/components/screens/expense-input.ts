@@ -75,9 +75,9 @@ export type ExpenseFormValues = {
 };
 
 export const PAID_BY: { value: PaidBy; label: string }[] = [
-  { value: "company_card", label: "Company card" },
+  { value: "company_card", label: "Card" },
   { value: "cash", label: "Cash" },
-  { value: "crew", label: "Crew member" },
+  { value: "crew", label: "Crew" },
 ];
 
 /** A new expense: dated today (workspace timezone), GST from the total, paid on the company card. */
@@ -199,11 +199,17 @@ export function withSavedJob(projects: ProjectPick[], row: ExpenseRowManager): P
  * GST registered, incl. GST when it is not. Null while the total or GST can't be read.
  */
 export function jobCostText(v: ExpenseFormValues, gstRegistered: boolean): string | null {
+  const figure = jobCostFigure(v, gstRegistered);
+  return figure === null ? null : `Cost to the job ${figure}.`;
+}
+
+/** The same cost as one figure for the bar beside Save ("$100.00 ex GST"), under the label "Cost to the job". */
+export function jobCostFigure(v: ExpenseFormValues, gstRegistered: boolean): string | null {
   const gst = gstShown(v);
   if (typeof v.totalCents !== "number" || v.totalCents <= 0 || gst === null || gst < 0 || gst > v.totalCents) return null;
   const split = splitReceipt(v.totalCents, gst);
   const cost = expenseCost(split.amountExGstCents, split.gstCents, gstRegistered);
-  return `Cost to the job ${formatMoney(cost)} ${gstRegistered ? "ex GST" : "incl. GST"}.`;
+  return `${formatMoney(cost)} ${gstRegistered ? "ex GST" : "incl. GST"}`;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { collectConsole, expectScreenHealthy } from "./guards";
+import { checkSegmentedRows, collectConsole, expectScreenHealthy } from "./guards";
 import { expectNoMoney } from "./money-scan";
 import { getSeed } from "../../src/data/fake/store";
 
@@ -53,6 +53,7 @@ test.describe("Expense (owner and manager)", () => {
     await expect(page.locator("[data-approved-warning]")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Save changes" })).toBeEnabled();
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
+    expect((await checkSegmentedRows(page)).failures).toEqual([]);
   });
 
   test("no receipt offers the same photo buttons as Add; Remove takes a kept receipt off", async ({ page }) => {
