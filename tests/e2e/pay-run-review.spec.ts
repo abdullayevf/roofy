@@ -14,6 +14,12 @@ async function signInAs(page: Page, role: string, next = PATH) {
   await page.goto(`/prototype/role?as=${role}&next=${encodeURIComponent(next)}`);
 }
 
+// The confirm sheet mounts only after hydration, so a "no sheet" check made before then passes
+// whether or not the wiring works. Wait for the page to go quiet before any such negative check.
+async function hydrated(page: Page) {
+  await page.waitForLoadState("networkidle");
+}
+
 test.describe("Pay run review (display)", () => {
   test("shows the period, total and flags first, blocking before warnings", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
@@ -160,21 +166,26 @@ test.describe("Pay run review (actions)", () => {
     const dialog = page.getByRole("dialog");
     // An accountant on a draft: only the "who approves" line.
     await signInAs(page, "accountant", `${PATH}?confirm=approve`);
+    await hydrated(page);
     await expect(page.getByText("An owner or manager approves this pay run.")).toBeVisible();
     await expect(dialog).toHaveCount(0);
     await page.goto(`${PATH}?confirm=waive`);
+    await hydrated(page);
     await expect(page.getByText("An owner or manager approves this pay run.")).toBeVisible();
     await expect(dialog).toHaveCount(0);
     // A manager on a draft blocked by a missing rate: Approve is disabled, so no approve sheet.
     await signInAs(page, "manager", `${PATH}?confirm=approve`);
+    await hydrated(page);
     await expect(page.getByRole("button", { name: "Approve pay run" })).toBeDisabled();
     await expect(dialog).toHaveCount(0);
     // Offline: every action is disabled and nothing may send, so no sheet either.
     await page.goto(`${PATH}?demo=offline&confirm=waive`);
+    await hydrated(page);
     await expect(page.locator("[data-pay-needs-connection]")).toBeVisible();
     await expect(dialog).toHaveCount(0);
     // An approved run can't be approved again.
     await page.goto(`${APPROVED}?confirm=approve`);
+    await hydrated(page);
     await expect(page.getByRole("button", { name: "Reopen pay run" })).toBeEnabled();
     await expect(dialog).toHaveCount(0);
   });
