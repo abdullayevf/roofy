@@ -12,7 +12,15 @@ import { LoadError } from "./field-entry";
 import { COLUMN, FOCUS, GROUP, KeyFigure, KeyFigureSkeleton } from "./home-parts";
 import { JobsAddBar } from "./jobs-add-bar";
 import { TD, TH } from "./table-cells";
-import { emptyFilterText, expenseHref, paidByCrew, paidByShort, paidByText, supplierText, type ExpenseFilter } from "./expense-input";
+import {
+  emptyFilterText,
+  expenseHref,
+  paidByCrew,
+  paidByShort,
+  paidByText,
+  supplierText,
+  type ExpenseFilter,
+} from "./expense-input";
 
 /** The Expenses page column: left-aligned from 1024 px, where the manager's list is a table the width of the content. */
 const EXPENSES_COLUMN = cx(COLUMN, "lg:max-w-none");
@@ -51,7 +59,10 @@ function FilterChip({ label, href, kind }: { label: string; href: string; kind: 
       prefetch={false}
       data-expense-filter={kind}
       aria-label={`Clear filter: ${label}`}
-      className={cx("flex min-h-12 max-w-full items-center gap-1.5 rounded-3xl border-[1.5px] border-edge bg-surface px-4 py-1 text-body-strong text-ink", FOCUS)}
+      className={cx(
+        "flex min-h-12 max-w-full items-center gap-1.5 rounded-3xl border-[1.5px] border-edge bg-surface px-4 py-1 text-body-strong text-ink",
+        FOCUS,
+      )}
     >
       <span className="min-w-0 [overflow-wrap:anywhere]">
         <KeepTogether text={label} />
@@ -66,10 +77,18 @@ function FilterChips({ filter, names, demo }: { filter: ExpenseFilter; names: Ex
   return (
     <div className="flex flex-wrap gap-2">
       {filter.projectId ? (
-        <FilterChip kind="job" label={names.job ?? "This job"} href={expenseHref({ projectId: null, stageId: null }, demo)} />
+        <FilterChip
+          kind="job"
+          label={names.job ?? "This job"}
+          href={expenseHref({ projectId: null, stageId: null }, demo)}
+        />
       ) : null}
       {filter.stageId ? (
-        <FilterChip kind="stage" label={names.stage ?? "This stage"} href={expenseHref({ projectId: filter.projectId, stageId: null }, demo)} />
+        <FilterChip
+          kind="stage"
+          label={names.stage ?? "This stage"}
+          href={expenseHref({ projectId: filter.projectId, stageId: null }, demo)}
+        />
       ) : null}
     </div>
   );
@@ -94,7 +113,10 @@ function Lines({ row, today, total }: { row: ExpenseRowForeman; today: string; t
   const span = total ? "col-span-2" : "";
   return (
     <span className={total ? ROW_GRID : ROW_GRID_FOREMAN}>
-      <span data-expense-supplier="" className="flex min-w-0 items-center gap-x-1.5 text-body-strong text-ink">
+      <span
+        data-expense-supplier=""
+        className="flex min-w-0 items-center gap-x-1.5 text-body-strong text-ink"
+      >
         <span className="min-w-0 [overflow-wrap:anywhere]">{supplierText(row.supplier)}</span>
         <Receipt has={row.hasReceipt} />
       </span>
@@ -106,7 +128,9 @@ function Lines({ row, today, total }: { row: ExpenseRowForeman; today: string; t
         </span>
       </span>
       <span className={cx("flex flex-wrap gap-x-3 text-meta text-ink", span)}>
-        <span data-expense-category="" className="[overflow-wrap:anywhere]">{row.category.name}</span>
+        <span data-expense-category="" className="[overflow-wrap:anywhere]">
+          {row.category.name}
+        </span>
         {row.stageName ? (
           <span data-expense-stage="" className="[overflow-wrap:anywhere]">
             <KeepTogether text={row.stageName} />
@@ -138,10 +162,17 @@ function ManagerPhoneRow({ row, today }: { row: ExpenseRowManager; today: string
       prefetch={false}
       data-expense-row=""
       data-expense-id={row.id}
-      className={cx("relative block min-h-16 py-2 pl-4 pr-9 first:rounded-t-group last:rounded-b-group active:bg-galv", FOCUS)}
+      className={cx(
+        "relative block min-h-16 py-2 pl-4 pr-9 first:rounded-t-group last:rounded-b-group active:bg-galv",
+        FOCUS,
+      )}
     >
       <Lines row={row} today={today} total={<Total row={row} />} />
-      <CaretRight size={24} aria-hidden="true" className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-2" />
+      <CaretRight
+        size={24}
+        aria-hidden="true"
+        className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-2"
+      />
     </Link>
   );
 }
@@ -158,10 +189,10 @@ function ForemanRow({ row, today }: { row: ExpenseRowForeman; today: string }) {
 /** Table column widths: the date and total are as wide as their figures; the rest share what is left, so no cell wraps. */
 const COL = {
   date: "w-28",
-  supplier: "w-[22%]",
-  job: "w-[21%]",
+  supplier: "w-[20%]",
+  job: "w-[26%]",
   category: "w-[13%]",
-  paidBy: "w-[22%]",
+  paidBy: "w-[19%]",
   total: "w-28",
 } as const;
 
@@ -171,7 +202,7 @@ function PaidByCell({ row }: { row: ExpenseRowForeman }) {
   return (
     <td data-expense-paid-by="" className={cx(TD, "text-body text-ink")}>
       <span className="[overflow-wrap:anywhere]">{label}</span>
-      {note ? <span className="ml-2 text-meta text-ink">{note}</span> : null}
+      {note ? <span className="block text-meta text-ink">{note}</span> : null}
     </td>
   );
 }
@@ -180,31 +211,71 @@ function PaidByCell({ row }: { row: ExpenseRowForeman }) {
  * From 1024 px the list is a table, one line a row: date, supplier, job, category (the stage is on the phone row and the detail), who paid and, for a
  * manager, the total, whose row is the link. A foreman's table has no total column and nothing to open.
  */
-function ExpenseTable({ rows, today, manager }: { rows: ExpenseRowForeman[]; today: string; manager: boolean }) {
+function ExpenseTable({
+  rows,
+  today,
+  manager,
+}: {
+  rows: ExpenseRowForeman[];
+  today: string;
+  manager: boolean;
+}) {
   return (
     <table className="hidden w-full table-fixed lg:table" data-expense-table="">
       <thead>
         <tr>
-          <th scope="col" className={cx(TH, COL.date)}>Date</th>
-          <th scope="col" className={cx(TH, COL.supplier)}>Supplier</th>
-          <th scope="col" className={cx(TH, COL.job)}>Job</th>
-          <th scope="col" className={cx(TH, COL.category)}>Category</th>
-          <th scope="col" className={cx(TH, manager ? COL.paidBy : "")}>Paid by</th>
-          {manager ? <th scope="col" className={cx(TH, COL.total, "text-right")}>Total</th> : null}
+          <th scope="col" className={cx(TH, COL.date)}>
+            Date
+          </th>
+          <th scope="col" className={cx(TH, COL.supplier)}>
+            Supplier
+          </th>
+          <th scope="col" className={cx(TH, COL.job)}>
+            Job
+          </th>
+          <th scope="col" className={cx(TH, COL.category)}>
+            Category
+          </th>
+          <th scope="col" className={cx(TH, manager ? COL.paidBy : "")}>
+            Paid by
+          </th>
+          {manager ? (
+            <th scope="col" className={cx(TH, COL.total, "text-right")}>
+              Total
+            </th>
+          ) : null}
         </tr>
       </thead>
       <tbody className="divide-y divide-line">
         {rows.map((row) => (
-          <tr key={row.id} data-expense-row="" data-expense-id={row.id} className={cx("relative", manager && "hover:bg-galv")}>
+          <tr
+            key={row.id}
+            data-expense-row=""
+            data-expense-id={row.id}
+            className={cx("relative h-12", manager && "hover:bg-galv")}
+          >
             <td className={cx(TD, "whitespace-nowrap text-body text-ink")}>{formatDate(row.date, today)}</td>
             <td className={TD}>
               <span className="flex items-center gap-x-1.5">
                 {manager ? (
-                  <Link href={`/expenses/${row.id}`} prefetch={false} data-expense-supplier="" className={cx("min-w-0 text-body-strong text-ink [overflow-wrap:anywhere] after:absolute after:inset-0", FOCUS)}>
+                  <Link
+                    href={`/expenses/${row.id}`}
+                    prefetch={false}
+                    data-expense-supplier=""
+                    className={cx(
+                      "min-w-0 text-body-strong text-ink [overflow-wrap:anywhere] after:absolute after:inset-0",
+                      FOCUS,
+                    )}
+                  >
                     {supplierText(row.supplier)}
                   </Link>
                 ) : (
-                  <span data-expense-supplier="" className="min-w-0 text-body-strong text-ink [overflow-wrap:anywhere]">{supplierText(row.supplier)}</span>
+                  <span
+                    data-expense-supplier=""
+                    className="min-w-0 text-body-strong text-ink [overflow-wrap:anywhere]"
+                  >
+                    {supplierText(row.supplier)}
+                  </span>
                 )}
                 <Receipt has={row.hasReceipt} />
               </span>
@@ -243,14 +314,35 @@ export type ExpenseListProps = {
 /** Expenses list (flows.md screen 16): totals, the filter chips, then one row per expense. Props only; the page fetches. */
 export function ExpenseListBody({ list, filter, names, anyExpenses, canAdd, today, demo }: ExpenseListProps) {
   const count = list.rows.length;
-  const addHref = canAdd ? (filter.projectId ? `/expenses/new?job=${encodeURIComponent(filter.projectId)}` : "/expenses/new") : null;
+  const addHref = canAdd
+    ? filter.projectId
+      ? `/expenses/new?job=${encodeURIComponent(filter.projectId)}`
+      : "/expenses/new"
+    : null;
+  // Narrowed to a job or stage, the key figure is that job's (or stage's) total from the list's own totals, not this month's.
+  const filtered = filter.projectId !== null || filter.stageId !== null;
+  const shown =
+    list.view === "manager"
+      ? filtered
+        ? list.totals
+        : list.totals.thisMonth
+      : { exGstCents: 0, gstCents: 0 };
+  const scope = filter.stageId
+    ? "spent on this stage"
+    : filter.projectId
+      ? "spent on this job"
+      : "spent this month";
   if (list.rows.length === 0 && !anyExpenses) {
     return (
       <div data-screen="expenses" className={EXPENSES_COLUMN}>
         <Header addHref={null} />
         <div className="flex min-h-[50dvh] flex-col justify-center">
           {canAdd ? (
-            <EmptyState message="No expenses yet. Add your first receipt." actionLabel="Add expense" href="/expenses/new" />
+            <EmptyState
+              message="No expenses yet. Add your first receipt."
+              actionLabel="Add expense"
+              href="/expenses/new"
+            />
           ) : (
             <EmptyState message="No expenses yet." actionLabel="Go to Home" href="/" />
           )}
@@ -264,16 +356,18 @@ export function ExpenseListBody({ list, filter, names, anyExpenses, canAdd, toda
         <Header addHref={addHref} />
         {list.view === "manager" && list.rows.length > 0 ? (
           <div data-expense-totals="" className="flex flex-col gap-1">
-            <KeyFigure>{formatMoney(list.totals.thisMonth.exGstCents)}</KeyFigure>
+            <KeyFigure>{formatMoney(shown.exGstCents)}</KeyFigure>
             <p className="text-meta text-ink">
-              spent this month, ex&nbsp;GST, plus {formatMoney(list.totals.thisMonth.gstCents)}&nbsp;GST
+              {scope}, ex&nbsp;GST, plus {formatMoney(shown.gstCents)}&nbsp;GST
             </p>
           </div>
         ) : null}
       </div>
       <FilterChips filter={filter} names={names} demo={demo} />
       {list.rows.length === 0 ? (
-        <p data-expense-empty="" className="text-body text-ink">{emptyFilterText(filter)}</p>
+        <p data-expense-empty="" className="text-body text-ink">
+          {emptyFilterText(filter)}
+        </p>
       ) : list.view === "manager" ? (
         <div className={cx(GROUP, "overflow-hidden")}>
           <div className="divide-y divide-line lg:hidden">
@@ -304,7 +398,15 @@ export function ExpenseListBody({ list, filter, names, anyExpenses, canAdd, toda
 }
 
 /** The list when the server can't answer: the title and filter stay, Try again is the one primary button. */
-export function ExpensesError({ filter, names, demo }: { filter: ExpenseFilter; names: ExpenseNames; demo?: string }) {
+export function ExpensesError({
+  filter,
+  names,
+  demo,
+}: {
+  filter: ExpenseFilter;
+  names: ExpenseNames;
+  demo?: string;
+}) {
   return (
     <div data-screen="expenses" className={EXPENSES_COLUMN}>
       <Header addHref={null} />
@@ -345,12 +447,26 @@ function TableSkeleton({ manager }: { manager: boolean }) {
     <table className="hidden w-full table-fixed lg:table">
       <thead>
         <tr>
-          <th scope="col" className={cx(TH, COL.date)}>Date</th>
-          <th scope="col" className={cx(TH, COL.supplier)}>Supplier</th>
-          <th scope="col" className={cx(TH, COL.job)}>Job</th>
-          <th scope="col" className={cx(TH, COL.category)}>Category</th>
-          <th scope="col" className={cx(TH, manager ? COL.paidBy : "")}>Paid by</th>
-          {manager ? <th scope="col" className={cx(TH, COL.total, "text-right")}>Total</th> : null}
+          <th scope="col" className={cx(TH, COL.date)}>
+            Date
+          </th>
+          <th scope="col" className={cx(TH, COL.supplier)}>
+            Supplier
+          </th>
+          <th scope="col" className={cx(TH, COL.job)}>
+            Job
+          </th>
+          <th scope="col" className={cx(TH, COL.category)}>
+            Category
+          </th>
+          <th scope="col" className={cx(TH, manager ? COL.paidBy : "")}>
+            Paid by
+          </th>
+          {manager ? (
+            <th scope="col" className={cx(TH, COL.total, "text-right")}>
+              Total
+            </th>
+          ) : null}
         </tr>
       </thead>
       <tbody className="divide-y divide-line">

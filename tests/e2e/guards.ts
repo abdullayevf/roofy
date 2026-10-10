@@ -596,20 +596,29 @@ export async function checkTextZoom(page: Page): Promise<GuardResult> {
 export async function checkOnePrimary(page: Page): Promise<GuardResult> {
   const names = await page.locator('[data-variant="primary"]:visible').allInnerTexts();
   const ok = names.length <= 1;
-  return { name: "one-primary", ok, failures: ok ? [] : [`${names.length} primary buttons: ${names.map((n) => n.trim()).join(", ")}`] };
+  return {
+    name: "one-primary",
+    ok,
+    failures: ok ? [] : [`${names.length} primary buttons: ${names.map((n) => n.trim()).join(", ")}`],
+  };
 }
 
 /** On a phone, the screen's one primary action sits in the bottom third of the viewport, in thumb reach (jobs-2 D1/F7). */
 export async function checkPrimaryInBottomThird(page: Page): Promise<GuardResult> {
   const viewport = page.viewportSize();
   const box = await page.locator('[data-variant="primary"]:visible').first().boundingBox();
-  if (!viewport || !box) return { name: "primary-in-thumb-reach", ok: false, failures: ["no visible primary button"] };
+  if (!viewport || !box)
+    return { name: "primary-in-thumb-reach", ok: false, failures: ["no visible primary button"] };
   const centre = box.y + box.height / 2;
   const ok = centre >= (viewport.height * 2) / 3 && box.y + box.height <= viewport.height;
   return {
     name: "primary-in-thumb-reach",
     ok,
-    failures: ok ? [] : [`primary button centre at ${Math.round(centre)} px; the bottom third starts at ${Math.round((viewport.height * 2) / 3)} px`],
+    failures: ok
+      ? []
+      : [
+          `primary button centre at ${Math.round(centre)} px; the bottom third starts at ${Math.round((viewport.height * 2) / 3)} px`,
+        ],
   };
 }
 
@@ -637,7 +646,15 @@ export async function checkContentClearsPinnedBar(page: Page): Promise<GuardResu
   });
   if (!barBox || lastBottom === null) return { name, ok: true, failures: [] };
   const ok = lastBottom <= barBox.y + 1;
-  return { name, ok, failures: ok ? [] : [`last content ends at ${Math.round(lastBottom)} px; the pinned bar starts at ${Math.round(barBox.y)} px`] };
+  return {
+    name,
+    ok,
+    failures: ok
+      ? []
+      : [
+          `last content ends at ${Math.round(lastBottom)} px; the pinned bar starts at ${Math.round(barBox.y)} px`,
+        ],
+  };
 }
 
 /**
@@ -648,11 +665,20 @@ export async function checkBarClearsLogCircle(page: Page): Promise<GuardResult> 
   const circle = await page.locator("nav .rounded-full.bg-chalk").first().boundingBox();
   if (!circle) return { name: "bar-clears-log-circle", ok: true, failures: [] };
   const failures: string[] = [];
-  for (const el of await page.locator(".pin-action > button:visible, .pin-action > a:visible, .pin-action > [data-variant]:visible").all()) {
+  for (const el of await page
+    .locator(".pin-action > button:visible, .pin-action > a:visible, .pin-action > [data-variant]:visible")
+    .all()) {
     const b = await el.boundingBox();
     if (!b) continue;
-    const overlaps = b.x < circle.x + circle.width && b.x + b.width > circle.x && b.y < circle.y + circle.height && b.y + b.height > circle.y;
-    if (overlaps) failures.push(`"${(await el.innerText()).trim()}" (x ${Math.round(b.x)} to ${Math.round(b.x + b.width)}) is under the Log circle (x ${Math.round(circle.x)} to ${Math.round(circle.x + circle.width)})`);
+    const overlaps =
+      b.x < circle.x + circle.width &&
+      b.x + b.width > circle.x &&
+      b.y < circle.y + circle.height &&
+      b.y + b.height > circle.y;
+    if (overlaps)
+      failures.push(
+        `"${(await el.innerText()).trim()}" (x ${Math.round(b.x)} to ${Math.round(b.x + b.width)}) is under the Log circle (x ${Math.round(circle.x)} to ${Math.round(circle.x + circle.width)})`,
+      );
   }
   return { name: "bar-clears-log-circle", ok: failures.length === 0, failures };
 }
@@ -676,7 +702,8 @@ export async function checkDateFields(page: Page): Promise<GuardResult> {
       today: new Date(2026, 8, 28).toLocaleDateString(),
     }));
     if (env.lang !== "en-AU") failures.push(`<html lang> is "${env.lang}", not en-AU`);
-    if (env.today !== "28/09/2026") failures.push(`the browser writes 28 Sep 2026 as ${env.today}, not 28/09/2026`);
+    if (env.today !== "28/09/2026")
+      failures.push(`the browser writes 28 Sep 2026 as ${env.today}, not 28/09/2026`);
     if (page.context().browser()?.browserType().name() === "chromium") {
       const cdp = await page.context().newCDPSession(page);
       try {
@@ -689,7 +716,8 @@ export async function checkDateFields(page: Page): Promise<GuardResult> {
         // Each date input contributes Day, Month, Year in the order the browser draws them.
         for (let i = 0; i + 2 < order.length; i += 3) {
           const shown = order.slice(i, i + 3).join("/");
-          if (shown !== "Day/Month/Year") failures.push(`date input ${i / 3 + 1} is ${shown}, not Day/Month/Year`);
+          if (shown !== "Day/Month/Year")
+            failures.push(`date input ${i / 3 + 1} is ${shown}, not Day/Month/Year`);
         }
         if (order.length === 0) failures.push("no date field parts in the accessibility tree");
       } finally {
@@ -718,7 +746,9 @@ export async function checkOfflineAgrees(page: Page): Promise<GuardResult> {
     const needs = texts.some((el) => /needs connection/i.test(el.textContent ?? ""));
     return banner && needs;
   });
-  const failures = both ? ['offline banner ("will send automatically") and "Needs connection" are both visible'] : [];
+  const failures = both
+    ? ['offline banner ("will send automatically") and "Needs connection" are both visible']
+    : [];
   return { name: "offlineAgrees", ok: failures.length === 0, failures };
 }
 
@@ -735,7 +765,8 @@ export async function checkSegmentedRows(page: Page): Promise<GuardResult> {
       if (!first || rects.length < 2 || first.width === 0) continue;
       const oneRow = rects.every((r) => Math.abs(r.top - first.top) <= 1);
       const stacked = rects.every((r, i) => i === 0 || r.top >= (rects[i - 1]?.bottom ?? 0) - 1);
-      if (!oneRow && !stacked) out.push(`${group.getAttribute("aria-label")}: options wrap onto a partial second row`);
+      if (!oneRow && !stacked)
+        out.push(`${group.getAttribute("aria-label")}: options wrap onto a partial second row`);
     }
     return out;
   });
@@ -821,7 +852,8 @@ export async function expectStill(target: Locator, timeout = 5000): Promise<void
           same = now === last ? same + 1 : 0;
           last = now;
           if (same >= 5) resolve();
-          else if (performance.now() - started > ms) reject(new Error(`still moving after ${ms} ms (${now})`));
+          else if (performance.now() - started > ms)
+            reject(new Error(`still moving after ${ms} ms (${now})`));
           else requestAnimationFrame(frame);
         };
         requestAnimationFrame(frame);
@@ -850,9 +882,22 @@ export async function checkTableEdgeGap(page: Page, minGap = 16): Promise<GuardR
       let right = 0;
       for (const r of Array.from(range.getClientRects())) if (r.width > 0) right = Math.max(right, r.right);
       let box: Element | null = cell.parentElement;
-      while (box && !(parseFloat(getComputedStyle(box).borderRightWidth) > 0 && box.tagName !== "TR" && box.tagName !== "TD")) box = box.parentElement;
-      const edge = box ? box.getBoundingClientRect().right - parseFloat(getComputedStyle(box).borderRightWidth) : cellRect.right;
-      if (right > 0 && edge - right < min - 0.5) out.push(`"${(cell.textContent ?? "").trim().slice(0, 30)}" ends ${(edge - right).toFixed(1)}px from the border (needs >= ${min})`);
+      while (
+        box &&
+        !(
+          parseFloat(getComputedStyle(box).borderRightWidth) > 0 &&
+          box.tagName !== "TR" &&
+          box.tagName !== "TD"
+        )
+      )
+        box = box.parentElement;
+      const edge = box
+        ? box.getBoundingClientRect().right - parseFloat(getComputedStyle(box).borderRightWidth)
+        : cellRect.right;
+      if (right > 0 && edge - right < min - 0.5)
+        out.push(
+          `"${(cell.textContent ?? "").trim().slice(0, 30)}" ends ${(edge - right).toFixed(1)}px from the border (needs >= ${min})`,
+        );
     }
     return out;
   }, minGap);
@@ -890,13 +935,19 @@ export async function checkTableHeaderAlign(page: Page, minGap = 16): Promise<Gu
         if (!td) return;
         const h = textBox(th);
         const b = textBox(td);
-        const rightAligned = getComputedStyle(th).textAlign === "right" || getComputedStyle(th).textAlign === "end";
+        const rightAligned =
+          getComputedStyle(th).textAlign === "right" || getComputedStyle(th).textAlign === "end";
         const name = (th.textContent ?? "").trim();
-        if (rightAligned && Math.abs(h.right - b.right) > 1) out.push(`"${name}" header ends ${h.right.toFixed(1)} but its cells end ${b.right.toFixed(1)}`);
-        if (!rightAligned && Math.abs(h.left - b.left) > 1) out.push(`"${name}" header starts ${h.left.toFixed(1)} but its cells start ${b.left.toFixed(1)}`);
+        if (rightAligned && Math.abs(h.right - b.right) > 1)
+          out.push(`"${name}" header ends ${h.right.toFixed(1)} but its cells end ${b.right.toFixed(1)}`);
+        if (!rightAligned && Math.abs(h.left - b.left) > 1)
+          out.push(`"${name}" header starts ${h.left.toFixed(1)} but its cells start ${b.left.toFixed(1)}`);
         if (i === heads.length - 1) {
           const edge = table.getBoundingClientRect().right;
-          if (edge - h.right < min - 0.5) out.push(`"${name}" header ends ${(edge - h.right).toFixed(1)}px from the table edge (needs >= ${min})`);
+          if (edge - h.right < min - 0.5)
+            out.push(
+              `"${name}" header ends ${(edge - h.right).toFixed(1)}px from the table edge (needs >= ${min})`,
+            );
         }
       });
     }
@@ -909,6 +960,52 @@ export async function checkTableHeaderAlign(page: Page, minGap = 16): Promise<Gu
 export async function checkBackRow(page: Page): Promise<GuardResult> {
   const back = page.getByRole("link", { name: /^Back to / }).first();
   const box = await back.boundingBox();
-  const failures = !box ? ["no Back row found"] : box.height < 48 ? [`Back row is ${box.height.toFixed(0)}px tall (needs >= 48)`] : [];
+  const failures = !box
+    ? ["no Back row found"]
+    : box.height < 48
+      ? [`Back row is ${box.height.toFixed(0)}px tall (needs >= 48)`]
+      : [];
   return { name: "back-row", ok: failures.length === 0, failures };
+}
+
+/** Every body row of every visible table is at least `min` px tall (a 48 px row is a touch target; lesson: rows are not 30 px slivers). */
+export async function checkTableRowHeight(page: Page, min = 48): Promise<GuardResult> {
+  await polyfillEsbuildNameHelper(page);
+  const failures = await page.evaluate((least) => {
+    const out: string[] = [];
+    for (const tr of Array.from(document.querySelectorAll("table tbody tr"))) {
+      const h = tr.getBoundingClientRect().height;
+      if (h > 0 && h < least - 0.5)
+        out.push(
+          `"${(tr.textContent ?? "").trim().slice(0, 30)}" row is ${h.toFixed(1)}px tall (needs >= ${least})`,
+        );
+    }
+    return out;
+  }, min);
+  return { name: "table-row-height", ok: failures.length === 0, failures };
+}
+
+/**
+ * Every money value inside `scope` (a leaf element whose whole text is a dollar amount, or "−$" for a credit) is set in the
+ * figure font (Barlow, DESIGN.md `figure`), never the body font in bold.
+ */
+export async function checkMoneyFigureFont(page: Page, scope: string): Promise<GuardResult> {
+  await polyfillEsbuildNameHelper(page);
+  const failures = await page.evaluate((sel) => {
+    const first = (v: string) => (v.split(",")[0] ?? "").trim().replace(/^["']|["']$/g, "");
+    const barlow = first(getComputedStyle(document.documentElement).getPropertyValue("--font-barlow"));
+    const out: string[] = [];
+    let seen = 0;
+    for (const el of Array.from(document.querySelectorAll(`${sel} *`))) {
+      if (el.children.length > 0 || !/^[−-]?\$[\d,]+\.\d{2}$/.test((el.textContent ?? "").trim())) continue;
+      if (el.getBoundingClientRect().width === 0) continue;
+      seen += 1;
+      const family = first(getComputedStyle(el).fontFamily);
+      if (family !== barlow)
+        out.push(`"${(el.textContent ?? "").trim()}" is set in ${family}, not the figure font ${barlow}`);
+    }
+    if (seen === 0) out.push(`no money value found in ${sel}`);
+    return out;
+  }, scope);
+  return { name: "money-figure-font", ok: failures.length === 0, failures };
 }

@@ -118,32 +118,38 @@ function ReceiptPhoto({
       />
       <input ref={library} type="file" accept="image/*" hidden onChange={choose} data-photo-input="library" />
       {attached ? (
-        <div className="flex flex-wrap items-center gap-3">
-          {file && preview ? (
-            // A local photo shown straight from the phone (a blob address), so not through the image optimiser.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={preview}
-              alt="Receipt photo"
-              className="size-16 rounded-control border-control object-cover"
-            />
-          ) : (
-            <span
-              aria-hidden="true"
-              className="flex size-16 shrink-0 items-center justify-center rounded-control border-control bg-surface text-ink-2"
-            >
-              <Receipt size={32} />
-            </span>
-          )}
-          {file ? (
-            <p data-photo="" className="min-w-0 flex-1 text-body text-ink [overflow-wrap:anywhere]">
-              Photo added
-            </p>
-          ) : (
-            <p data-receipt-kept="" className="min-w-0 flex-1 text-body text-ink [overflow-wrap:anywhere]">
-              <KeepTogether text={`Receipt attached: ${kept}`} />
-            </p>
-          )}
+        <div className="flex flex-col gap-3">
+          <div data-receipt-line="" className="flex items-center gap-3">
+            {file && preview ? (
+              // A local photo shown straight from the phone (a blob address), so not through the image optimiser.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={preview}
+                alt="Receipt photo"
+                className="size-16 rounded-control border-control object-cover"
+              />
+            ) : (
+              <span
+                aria-hidden="true"
+                className="flex size-16 shrink-0 items-center justify-center rounded-control border-control bg-surface text-ink-2"
+              >
+                <Receipt size={32} />
+              </span>
+            )}
+            {file ? (
+              <p data-photo="" className="min-w-0 flex-1 truncate text-body text-ink">
+                Photo added
+              </p>
+            ) : (
+              <p
+                data-receipt-kept=""
+                title={kept ?? undefined}
+                className="min-w-0 flex-1 truncate text-body text-ink"
+              >
+                {kept}
+              </p>
+            )}
+          </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={() => library.current?.click()}>
               Replace photo
