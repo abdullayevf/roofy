@@ -884,7 +884,7 @@ export const SCREENS: ScreenSpec[] = [
     // settings); offline disables Approve with "Needs connection"; the accountant reads with no Approve.
     id: "pay-run-review",
     group: "pay",
-    route: "/pay/:runId",
+    route: `/pay/${meta.payRuns.review}`,
     states: ["normal", "loading", "error", "offline", "blocked"],
     roles: ["owner", "manager", "accountant"],
   },
@@ -916,7 +916,7 @@ export const SCREENS: ScreenSpec[] = [
     // A foreman never reaches a pay run: the no-permission page, with no figure in its HTML.
     id: "pay-run-review-foreman",
     group: "pay",
-    route: "/pay/:runId",
+    route: `/pay/${meta.payRuns.review}`,
     states: ["normal"],
     roles: ["foreman"],
     viewports: ["iphone"],
@@ -1022,10 +1022,14 @@ export const PLACEHOLDER_IDS: Record<string, string> = {
   stageId: meta.stages.smithSheetInstall,
   crewId: meta.crew.dima,
   expenseId: meta.expenses.smithSheets,
-  runId: "current-week",
   token: STATEMENT_CONTRACTOR,
   kind: "job-profitability",
 };
+
+/**
+ * No `runId` here on purpose: a made-up run id 404s (the `/pay/:runId` captures were skipped that way). Pay routes
+ * name a seed run directly, `/pay/${meta.payRuns.review}`, and `resolveRoute` throws on a `:runId`.
+ */
 
 /** Replaces every `:param` segment in `route` using `ids` (default `PLACEHOLDER_IDS`). */
 export function resolveRoute(route: string, ids: Record<string, string> = PLACEHOLDER_IDS): string {

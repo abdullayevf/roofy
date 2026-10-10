@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getSeed } from "../../src/data/fake/store";
 import { PLACEHOLDER_IDS, resolveRoute, SCREENS, type ScreenGroup } from "../e2e/screens";
 
 const KNOWN_GROUPS: ScreenGroup[] = [
@@ -39,6 +40,35 @@ describe("SCREENS manifest", () => {
       for (const param of params) {
         expect(PLACEHOLDER_IDS[param], `no placeholder id for :${param} in ${screen.route}`).toBeDefined();
       }
+    }
+  });
+});
+
+describe("capture routes use real seed ids", () => {
+  const seed = getSeed();
+  const payRunIds = new Set(seed.payRuns.map((r) => r.id));
+
+  it("no pay route holds a :param stand-in, and every /pay/<id> is a seeded pay run", () => {
+    expect("runId" in PLACEHOLDER_IDS).toBe(false);
+    for (const screen of SCREENS) {
+      const raw = /^\/pay\/([^/?]+)/.exec(screen.route)?.[1];
+      if (raw === undefined) continue;
+      expect(raw.startsWith(":"), `${screen.id} still has a placeholder: ${screen.route}`).toBe(false);
+      expect(payRunIds.has(raw), `${screen.id} points at ${raw}, which is not a seeded pay run`).toBe(true);
+    }
+  });
+
+  it("every default stand-in id is a real seed id, so a capture cannot 404 on a made-up one", () => {
+    const known = new Set<string>([
+      ...seed.projects.map((p) => p.id),
+      ...seed.stages.map((s) => s.id),
+      ...seed.crewMembers.map((c) => c.id),
+      ...seed.expenses.map((e) => e.id),
+      ...seed.meta.statementTokens.map((t) => t.token),
+      "job-profitability",
+    ]);
+    for (const [name, value] of Object.entries(PLACEHOLDER_IDS)) {
+      expect(known.has(value), `PLACEHOLDER_IDS.${name} = ${value} is not a seed id`).toBe(true);
     }
   });
 });
