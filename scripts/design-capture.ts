@@ -66,6 +66,20 @@ type Engine = "chromium" | "webkit";
 /** What an Australian phone shows: dd/mm/yyyy dates and the Sydney clock, in every capture context (R8). */
 const AU_PHONE = { locale: "en-AU", timezoneId: "Australia/Sydney" } as const;
 
+/**
+ * tsx (esbuild keepNames) wraps named inner functions in `__name(...)`. Guards pass such callbacks to page.evaluate,
+ * which serialises them into the browser where `__name` does not exist. Playwright's own test transform does not add
+ * it, so the guards pass under e2e and die here. Every context gets this one-line stand-in before any page script runs.
+ */
+export function installNameShim(browser: Browser): void {
+  const original = browser.newContext.bind(browser);
+  browser.newContext = async (options) => {
+    const context = await original(options);
+    await context.addInitScript("globalThis.__name = globalThis.__name || ((fn) => fn);");
+    return context;
+  };
+}
+
 type Viewport = {
   name: "iphone" | "android" | "desktop" | "landscape" | "tablet";
   width: number;
@@ -545,6 +559,7 @@ async function main(): Promise<void> {
     chromium: chromiumBrowser,
     webkit: webkitBrowser ?? chromiumBrowser,
   };
+  for (const browser of new Set(Object.values(browsers))) installNameShim(browser);
 
   const records: CheckRecord[] = [];
   const skipped: string[] = [];

@@ -57,6 +57,14 @@ pnpm design:capture "$group" "$@" >> "$log" 2>&1
 status=$?
 stop_server
 
+# A failed capture leaves a partial hashes.new that would become the next baseline: drop it, keep hashes.prev.
+if [ "$status" != 0 ]; then
+  rm -f "$shots/hashes.new" "$shots/changed.txt"
+  echo "CAPTURE FAILED, exit $status (log: $log); baseline hashes.prev kept"
+  tail -10 "$log"
+  exit 1
+fi
+
 # Hash every PNG so the critics can be given only what changed since the last accepted capture.
 ( cd "$shots" && find . -name '*.png' | sort | xargs sha256sum ) > "$shots/hashes.new"
 comm -13 <(sort "$shots/hashes.prev" 2>/dev/null) <(sort "$shots/hashes.new") \
