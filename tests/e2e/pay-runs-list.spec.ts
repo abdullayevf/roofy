@@ -28,10 +28,13 @@ test.describe("Pay runs list (owner and manager)", () => {
     await expect(card.locator("[data-pay-flags]")).toHaveText(/^(Nothing to check|\d+ things? to check) before you approve\./);
     const review = card.getByRole("link", { name: "Review pay run" });
     await expect(review).toHaveAttribute("href", `/pay/${meta.payRuns.review}`);
-    // This week's draft and past runs follow, each with its status and total.
+    // Past runs follow, newest first, each with its status and total. This week's draft has no one in it yet, so it is not listed
+    // (pay/i1-F15), and last week's draft stays the card above: the newest row is the week before.
     await expect(page.getByRole("heading", { level: 2, name: "Other pay runs" })).toBeVisible();
     expect(await rows(page).count()).toBeGreaterThan(1);
-    await expect(rows(page).first()).toContainText("Draft");
+    await expect(rows(page).first()).toContainText("Approved");
+    const firstHref = await rows(page).first().evaluate((el) => el.getAttribute("href") ?? el.querySelector("a")?.getAttribute("href") ?? null);
+    expect(firstHref).toBe(`/pay/${meta.payRuns.lastApproved}`);
     await expect(page.locator(`[data-screen="pay-runs"] a[href="/pay/${meta.payRuns.lastApproved}"]:visible`)).toHaveCount(1);
     for (const t of await page.locator("[data-pay-total]:visible").all()) await expect(t).toHaveText(MONEY);
     for (const r of await rows(page).all()) await expect(r).toContainText(/Draft|Approved|Exported/);

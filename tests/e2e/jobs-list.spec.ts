@@ -38,15 +38,26 @@ test.describe("Jobs list (manager)", () => {
   test("a row stays short: at most 120 px on a phone when its name and status fit on a line, 160 when they wrap; 56 px in the desktop table (i1-F5)", async ({ page }, testInfo) => {
     await signInAs(page, "manager", "/jobs?status=all");
     const desktop = testInfo.project.name === "desktop";
-    const rows = await jobRows(page).evaluateAll((els) =>
-      els.map((el) => {
-        const h = (sel: string) => Math.round(el.querySelector(sel)?.getBoundingClientRect().height ?? 0);
-        return { row: Math.round(el.getBoundingClientRect().height), name: h("[data-job-name]"), status: h("[data-job-status]") };
-      }),
-    );
+    const longId = meta.fixtures.longNames;
+    const all = await jobRows(page).evaluateAll((els, id) => {
+      const h = (el: Element, sel: string) => Math.round(el.querySelector(sel)?.getBoundingClientRect().height ?? 0);
+      return els.map((el) => ({
+        row: Math.round(el.getBoundingClientRect().height),
+        // The phone row has a name block; in the table the name is the row's link.
+        name: h(el, "[data-job-name]") || h(el, 'a[href^="/jobs/"]'),
+        status: h(el, "[data-job-status]"),
+        long: el.getAttribute("href") === `/jobs/${id}` || el.querySelector(`a[href="/jobs/${id}"]`) !== null,
+      }));
+    }, longId);
+    // The one fixture whose name runs to ~110 characters wraps as far as its name needs (names wrap, never truncate); it is held to
+    // "the wrapped name plus the same fixed parts" below, not to the ordinary-row heights.
+    const rows = all.filter((r) => !r.long);
+    const long = all.filter((r) => r.long);
+    expect(long).toHaveLength(1);
     expect(rows.length).toBeGreaterThan(5);
     if (desktop) {
       for (const r of rows) expect(r.row).toBeLessThanOrEqual(56);
+      expect(long[0]!.row - long[0]!.name - long[0]!.status).toBeLessThanOrEqual(16);
       // The table uses the content width, not a phone column (D1).
       const table = (await page.locator('[data-screen="jobs"] table').boundingBox())!;
       expect(table.width).toBeGreaterThan(900);
@@ -56,6 +67,8 @@ test.describe("Jobs list (manager)", () => {
     expect(oneLine.length).toBeGreaterThan(5);
     for (const r of oneLine) expect(r.row).toBeLessThanOrEqual(120);
     for (const r of rows) expect(r.row).toBeLessThanOrEqual(160);
+    // The long name wraps, and nothing else on its row grows: padding, status line, bar and figure stay the size of any row's.
+    expect(long[0]!.row - long[0]!.name - long[0]!.status).toBeLessThanOrEqual(96);
   });
 
   test("on its side the phone shows Add job in the header row, not pinned, and at least one job on the first screen (i2-F4)", async ({ page }, testInfo) => {
@@ -103,7 +116,13 @@ test.describe("Jobs list (manager)", () => {
     const bars = page.locator('[data-screen="jobs"] table [data-job-row] [role="progressbar"]');
     expect(await bars.count()).toBeGreaterThan(5);
     expect((await bars.first().boundingBox())!.width).toBeGreaterThanOrEqual(80);
-    const heights = await jobRows(page).evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
+    // Every row but the long-name fixture, whose name wraps onto more lines (names wrap, never truncate).
+    const longId = meta.fixtures.longNames;
+    const heights = await jobRows(page).evaluateAll(
+      (els, id) => els.filter((el) => el.querySelector(`a[href="/jobs/${id}"]`) === null).map((el) => Math.round(el.getBoundingClientRect().height)),
+      longId,
+    );
+    expect(heights.length).toBeGreaterThan(5);
     expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(1);
   });
 
@@ -144,8 +163,13 @@ test.describe("Jobs list (manager)", () => {
     await expect(cards(page)).toHaveCount(1);
     await expect(cards(page).first()).toContainText("Kelly");
     await expect(jobRows(page).first().getByText("On hold: client", { exact: true })).toBeVisible();
+    // The two screen fixtures (no stages yet; a very long name) are the quoted jobs.
     await page.getByRole("radio", { name: "Quoted" }).click();
-    await expect(page.getByText("No quoted jobs.")).toBeVisible();
+    await expect(page).toHaveURL(/\/jobs\?status=quoted$/);
+    await expect(cards(page)).toHaveCount(2);
+    // Nothing is closed, so Closed is the filter that says so.
+    await page.getByRole("radio", { name: "Closed" }).click();
+    await expect(page.getByText("No closed jobs.")).toBeVisible();
     await expect(cards(page)).toHaveCount(0);
     await page.getByRole("radio", { name: "Complete" }).click();
     // A long history: the first 20 show, the rest open in place.
