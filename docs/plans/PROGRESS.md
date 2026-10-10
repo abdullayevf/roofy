@@ -5,8 +5,8 @@
 - Phase: 2 — Design system and full prototype. Branch `phase/2-design-prototype` (local on the VPS, not pushed, not merged). Plan: `docs/plans/03-design-prototype.md`.
 - Ledger: `.superpowers/sdd/03-design-prototype/progress.md` (per-run lines; read its tail for where a task stands).
 - Done and reviewed: Tasks 1–15 (Task 15 = 60f8f5d..063b072, crew design loop accepted by the owner at iteration 2, avg 83.5; open P3 rows in ISSUES.md; task e2e 3 projects at 063b072: 122 pass, 0 fail).
-- **Now: Task 16** (Expenses list 16, add/edit 17), plan line 176. Nothing started.
-- **Next:** write `.superpowers/sdd/03-design-prototype/task-16-brief.md` (≤ 60 lines, RUNBOOK §3–§4: state checklist + lessons.md pointer; GST via `gstIncludedIn` in src/domain, so money parts on opus), then dispatch run A. Budget: screen-group task ≤ 28 runs / 800 tool uses (T15 ended at 843, assessed). Rerun verify before the phase gate (one unit test flaked once under load).
+- **Now: Task 16** (Expenses list 16, add/edit 17), plan line 176. Brief `.superpowers/sdd/03-design-prototype/task-16-brief.md`. Done: run A list (b57722b), run B Add expense + add-receipt flow (cfb6c73, c72eebe). Budget used: 4 runs / 136 tool uses of 28 / 800.
+- **Next:** dispatch run C (opus, cap 30; brief "Runs → C": `/expenses/[id]` edit, approved-pay-run warning, history link, expense-edit flow ≤ 6 taps, states, e2e; also make the reimbursement wording match flows.md 186 "Paid by Dima — reimbursed next pay run" on both the row and the form — see `task-16-run-b2-report.md`). Report `task-16-run-c-report.md`. Then reviewer + spec-reviewer on 1003c57..HEAD, then design loop `expenses`. Rerun verify before the phase gate (one unit test flaked once under load).
 - Then: Tasks 17–23 in order.
 - Known flaky (iphone, passed on re-run): flows/no-work-marker.spec.ts:6, log-progress.spec.ts:135, design-page.spec.ts:45 on a cold server.
 - Environment: real WebKit works on the VPS. Never stop the server with `pkill -f "next start"`; kill the PID from `ss -ltnp | grep 3100`.
@@ -37,6 +37,7 @@
 
 ## Decisions and deviations
 
+- Task 16 (2026-10-10): supplier is optional on Add expense — the receipt flow (flows.md 169–195, ≤ 10 taps) has no supplier step and the product spec does not require it.
 - Task 14 (2026-10-08): a stage paused on the same day it was started by a log gets an empty segment, so that day's log is flagged `paused_stage` (pay rules §9 check, a warning, not a block). Kept as spec-valid under §13 half-open ranges; a test will pin it. Revisit if field feedback says a same-day rain pause should keep the day.
 - Task 14: the forecast working line sits on stage detail, not behind tap 2, until the `/history?job=` list exists (Task 18).
 - TypeScript pinned to ~6.0.3 (TS 7 native compiler not yet supported by Next.js tooling).
