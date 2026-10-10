@@ -167,10 +167,6 @@ test.describe("Jobs list (manager)", () => {
     await page.getByRole("radio", { name: "Quoted" }).click();
     await expect(page).toHaveURL(/\/jobs\?status=quoted$/);
     await expect(cards(page)).toHaveCount(2);
-    // Nothing is closed, so Closed is the filter that says so.
-    await page.getByRole("radio", { name: "Closed" }).click();
-    await expect(page.getByText("No closed jobs.")).toBeVisible();
-    await expect(cards(page)).toHaveCount(0);
     await page.getByRole("radio", { name: "Complete" }).click();
     // A long history: the first 20 show, the rest open in place.
     await expect(cards(page)).toHaveCount(20);
@@ -181,6 +177,21 @@ test.describe("Jobs list (manager)", () => {
     await page.getByRole("radio", { name: "Active" }).click();
     await expect(page).toHaveURL(/\/jobs$/);
     await expect(cards(page)).toHaveCount(5);
+  });
+
+  test("a filter with no jobs says so (the seed has jobs under every filter, so the only job on hold is moved to Active first)", async ({ page }) => {
+    await signInAs(page, "manager", `/jobs/${meta.projects.kelly}/edit`);
+    await page.getByLabel("Status").selectOption("active");
+    await page.getByRole("button", { name: "Save changes", exact: true }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Changes saved" })).toBeVisible();
+    await page.goto("/jobs?status=on_hold");
+    await expect(page.getByRole("radio", { name: "On hold" })).toBeChecked();
+    await expect(page.getByText("No jobs on hold.")).toBeVisible();
+    await expect(cards(page)).toHaveCount(0);
+    // Nothing else changed: the moved job is now among the Active ones.
+    await page.getByRole("radio", { name: "Active" }).click();
+    await expect(cards(page)).toHaveCount(6);
+    await expect(cards(page).filter({ hasText: "Kelly" })).toHaveCount(1);
   });
 
   test("a filter in the address is honoured and keeps a demo state across a pick", async ({ page }) => {
