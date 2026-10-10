@@ -726,6 +726,61 @@ export const SCREENS: ScreenSpec[] = [
     roles: ["owner", "manager", "foreman"],
   },
   {
+    // Filled in, paid by Dima: the payback note shows under Who paid (flows.md, Add a receipt).
+    id: "expense-new-filled",
+    group: "expenses",
+    route: `/expenses/new?job=${meta.projects.smith}&supplier=Bunnings&total=110.00&paid=crew&crew=${meta.crew.dima}`,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // No GST chosen: the GST amount box goes and one line says the whole total is the cost.
+    id: "expense-new-no-gst",
+    group: "expenses",
+    route: `/expenses/new?supplier=Post%20office&total=12.40&gst=none`,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // Save expense tapped with nothing filled in: each missing field says so and the bar names what is left.
+    id: "expense-new-check",
+    group: "expenses",
+    route: `/expenses/new?check=1`,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // Saved with no signal: the expense waits on this device (Waiting) until it can send.
+    id: "expense-new-waiting",
+    group: "expenses",
+    route: `/expenses/new?job=${meta.projects.smith}&supplier=Bunnings&total=110.00&saved=waiting`,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
+    // Reached from a job's Add expense: the job is already chosen and its picker stays folded.
+    id: "expense-new-from-job",
+    group: "expenses",
+    route: `/expenses/new?job=${meta.projects.smith}`,
+    states: ["normal"],
+    roles: ["manager"],
+    viewports: ["iphone", "desktop"],
+    lightOnly: true,
+    noExtras: true,
+  },
+  {
     id: "expense-detail",
     group: "expenses",
     route: "/expenses/:expenseId",
