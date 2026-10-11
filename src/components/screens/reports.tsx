@@ -18,10 +18,13 @@ import { TD, TH } from "./table-cells";
 
 /** Full width from 1024 px: the hub list and the report table use the width (lesson 21). */
 const WIDE = cx(COLUMN, "lg:max-w-none");
-/** Left text, right figure column that is as wide as its figure and never wraps (D5, lesson 23). */
-const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4";
+/**
+ * Left text, right figure column as wide as its figure (D5, lesson 23). One line at 100%; at 200% text zoom the left
+ * text keeps at least 9rem, so the figure column drops under it, right-aligned, instead of squeezing the text to nothing.
+ */
+const ROW_GRID = "flex flex-wrap items-start gap-x-4 gap-y-1 [&>:first-child]:min-w-0 [&>:first-child]:flex-[1_1_9rem] [&>:last-child]:ml-auto [&>:last-child]:max-w-full";
 const PHONE_ROW = cx("relative block min-h-16 py-2 pl-4 pr-10 active:bg-galv", FOCUS);
-const FIG = "num text-figure text-ink whitespace-nowrap";
+const FIG = "num text-figure text-ink break-words";
 /** One rule for a negative figure in every column and on every row: the over-budget colour (D10). */
 const fig = (cents: number): string => cx(FIG, cents < 0 && "text-over");
 const NO_WRAP = "whitespace-nowrap";
@@ -129,7 +132,7 @@ function KeyFigure({ figure }: { figure: ReportKeyFigure }) {
   const { figure: text, unit } = keyFigureParts(figure);
   return (
     <div data-key-figure="" className="flex flex-col lg:col-span-2 lg:row-start-3">
-      <p data-oneline="" className="text-figure-xl num text-ink whitespace-nowrap">
+      <p data-oneline="" className="text-figure-xl num text-ink break-words">
         {text}
         {unit ? (
           <>
@@ -165,9 +168,9 @@ function ReportFrame({ kind, range, chosen, today, updated, empty, open, figure,
         </div>
         {figure}
         <details open={open} className="lg:col-span-2 lg:row-start-4">
-          <summary className={cx("flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 marker:hidden", FOCUS)}>
+          <summary className={cx("flex min-h-12 cursor-pointer list-none flex-wrap items-center justify-between gap-x-4 marker:hidden", FOCUS)}>
             <span data-report-range="" className="text-body text-ink">{rangeText(range, today)}</span>
-            <span className="text-body-strong text-chalk-link print:hidden">Change</span>
+            <span className="ml-auto text-body-strong text-chalk-link print:hidden">Change</span>
           </summary>
           <form method="get" action={`/reports/${kind}`} className="flex flex-col gap-4 pb-2 pt-2 sm:flex-row sm:flex-wrap sm:items-end print:hidden">
             <Field label="From" name="from" type="date" inputMode="none" defaultValue={range.from} max={today} className="sm:max-w-60" />
@@ -224,8 +227,8 @@ function JobRows({ rows }: { rows: JobProfitRow[] }) {
               <span className="flex flex-col">
                 <span className="text-body-strong text-ink"><KeepTogether text={r.name} /></span>
                 {r.marginBp === null ? <span className="text-meta text-ink">No contract price</span> : null}
-                <span className={cx("text-meta text-ink", NO_WRAP)}>Labour <span className={FIG}>{formatMoney(r.labourCents)}</span></span>
-                <span className={cx("text-meta text-ink", NO_WRAP)}>Expenses <span className={FIG}>{formatMoney(r.expensesCents)}</span></span>
+                <span className="text-meta text-ink">Labour <span className={FIG}>{formatMoney(r.labourCents)}</span></span>
+                <span className="text-meta text-ink">Expenses <span className={FIG}>{formatMoney(r.expensesCents)}</span></span>
               </span>
               <span className="flex flex-col items-end">
                 <span data-margin="" data-oneline="" className={fig(r.forecastMarginCents)}>{formatMoney(r.forecastMarginCents)}</span>
@@ -443,8 +446,8 @@ function PayHistoryRows({ rows, today }: { rows: PayHistoryRow[]; today: string 
               <span className="flex flex-col items-start gap-1">
                 <span className="text-body-strong text-ink">{payRunPeriodText(r.period, today)}</span>
                 <StatusChip status={r.status} plain />
-                <span className={cx("text-meta text-ink", NO_WRAP)}>Employees <span className={FIG}>{formatMoney(r.employeesCents)}</span></span>
-                <span className={cx("text-meta text-ink", NO_WRAP)}>Contractors <span className={FIG}>{formatMoney(r.contractorsCents)}</span></span>
+                <span className="text-meta text-ink">Employees <span className={FIG}>{formatMoney(r.employeesCents)}</span></span>
+                <span className="text-meta text-ink">Contractors <span className={FIG}>{formatMoney(r.contractorsCents)}</span></span>
               </span>
               <span data-total="" data-oneline="" className={cx(fig(r.totalCents), "text-right")}>{formatMoney(r.totalCents)}</span>
             </span>
