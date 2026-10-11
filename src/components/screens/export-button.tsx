@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle, WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { Button } from "@/components/ui/button";
 import { EXPORT_FILENAME } from "./export-text";
-import { NEEDS_CONNECTION, useOnline } from "./use-online";
+import { useOnline } from "./use-online";
 
 type Phase = "idle" | "exporting" | "done" | "failed";
+
+/** The one sentence under the off button when there is no signal. */
+export const EXPORT_NEEDS_CONNECTION = "Export needs a connection.";
 
 /**
  * The one Export workspace button. It asks the server for the file, saves it, and says so. Without a connection it
@@ -15,6 +18,12 @@ type Phase = "idle" | "exporting" | "done" | "failed";
 export function ExportWorkspaceButton({ demoOffline }: { demoOffline: boolean }) {
   const online = useOnline(demoOffline);
   const [phase, setPhase] = useState<Phase>("idle");
+  const result = useRef<HTMLParagraphElement>(null);
+
+  // The message can land below the visible part of a short screen, under the tab bar: bring it up above the bar (N15).
+  useEffect(() => {
+    if (phase === "done" || phase === "failed") result.current?.scrollIntoView({ block: "nearest" });
+  }, [phase]);
 
   async function run() {
     setPhase("exporting");
@@ -36,26 +45,28 @@ export function ExportWorkspaceButton({ demoOffline }: { demoOffline: boolean })
   }
 
   return (
-    <div data-export-action="" className="flex flex-col gap-3">
+    <div data-export-action="" className="flex flex-col items-start gap-3">
       <Button
         variant="primary"
         onClick={run}
         loading={phase === "exporting"}
         loadingLabel="Exporting"
         disabled={!online}
-        reason={online ? undefined : NEEDS_CONNECTION}
+        reason={online ? undefined : EXPORT_NEEDS_CONNECTION}
         className="w-full sm:w-auto sm:min-w-60"
       >
         Export workspace
       </Button>
       {phase === "done" ? (
-        <p role="status" className="flex items-start gap-2 text-body text-ink">
+        <p ref={result} role="status" className="flex scroll-mb-[var(--tab-bar-height)] items-start gap-2 text-body text-ink">
           <CheckCircle size={24} aria-hidden="true" className="shrink-0 text-ink" />
-          Done. {EXPORT_FILENAME} is saved to your downloads.
+          <span>
+            Done. <span className="whitespace-nowrap">{EXPORT_FILENAME}</span> is saved to your downloads.
+          </span>
         </p>
       ) : null}
       {phase === "failed" ? (
-        <p role="alert" className="flex items-start gap-2 text-body text-ink">
+        <p ref={result} role="alert" className="flex scroll-mb-[var(--tab-bar-height)] items-start gap-2 text-body text-ink">
           <WarningCircle size={24} aria-hidden="true" className="shrink-0 text-over" />
           Couldn&apos;t make the file. Try again.
         </p>

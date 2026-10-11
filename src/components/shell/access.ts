@@ -38,6 +38,9 @@ export function canOpen(role: ShellRole, section: Section): boolean {
   return true;
 }
 
+/** Who to ask for access: a manager's page is the owner's to open; everyone else asks their manager (N6). */
+export const whoToAsk = (role: ShellRole): string => (role === "manager" ? "the owner" : "your manager");
+
 export type MoreItem = { key: string; label: string; href: string; meta: string };
 
 const ALL_MORE: (MoreItem & { section: Section })[] = [

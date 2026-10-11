@@ -1203,3 +1203,22 @@ export async function checkActionsAtContentEdge(page: Page, actions: string, scr
   if (tops.size > 1) failures.push(`actions are not in one row (tops ${[...tops].join(", ")} px)`);
   return { name, ok: failures.length === 0, failures };
 }
+
+/**
+ * From 1024 px the sidebar's column (its background and rule) runs from the top of the page to the bottom, even on a page
+ * taller than the window (D18). Skips below 1024 px, where there is no sidebar.
+ */
+export async function checkSidebarSpansPage(page: Page): Promise<GuardResult> {
+  await polyfillEsbuildNameHelper(page);
+  const failures = await page.evaluate(() => {
+    const column = document.querySelector("[data-sidebar-column]");
+    if (!column || column.getBoundingClientRect().width === 0) return [];
+    const rect = column.getBoundingClientRect();
+    const page = document.documentElement.scrollHeight;
+    const out: string[] = [];
+    if (Math.abs(rect.height - page) > 1) out.push(`the sidebar column is ${rect.height.toFixed(0)}px tall on a ${page}px page`);
+    if (getComputedStyle(column).backgroundColor === "rgba(0, 0, 0, 0)") out.push("the sidebar column has no background");
+    return out;
+  });
+  return { name: "sidebar-spans-page", ok: failures.length === 0, failures };
+}

@@ -250,6 +250,9 @@ async function captureOne(opts: {
     await page.waitForTimeout(radio ? 1200 : 300);
   }
 
+  // The settled outcome (the "Done" row), not the "Exporting" spinner a fixed wait can catch.
+  if (screen.expectStill) await page.getByText(screen.expectStill).first().waitFor({ timeout: 15_000 });
+
   const fileName = `${label}.png`;
   await page.screenshot({ path: join(outDir, fileName), fullPage: true });
   await screenshotSlices(page, outDir, label, viewport.maxSlices);

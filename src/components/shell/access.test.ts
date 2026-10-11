@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canOpen, moreItems, navRoleFor, backLink } from "./access";
+import { canOpen, moreItems, navRoleFor, backLink, whoToAsk } from "./access";
 
 describe("navRoleFor", () => {
   it("gives the owner the manager nav", () => {
@@ -46,5 +46,14 @@ describe("backLink", () => {
   it("sends a foreman back to Log and everyone else Home", () => {
     expect(backLink("foreman")).toEqual({ href: "/log", label: "Back to Log" });
     expect(backLink("accountant")).toEqual({ href: "/", label: "Go to Home" });
+  });
+});
+
+describe("whoToAsk (N6)", () => {
+  it("sends a manager to the owner and everyone else to their manager", () => {
+    expect(whoToAsk("manager")).toBe("the owner");
+    expect(whoToAsk("foreman")).toBe("your manager");
+    expect(whoToAsk("accountant")).toBe("your manager");
+    expect(whoToAsk("owner")).toBe("your manager");
   });
 });

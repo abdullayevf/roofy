@@ -38,7 +38,7 @@ export function ExportScreen({ files, attachments, updated, demoOffline }: Body 
       <Head updated={updated} />
       <div className="flex max-w-180 flex-col gap-3">
         <p className="text-body text-ink">
-          Everything in your workspace as spreadsheet files, in one zip you can keep. {EXPORT_FILENAME} holds the {files.length} files below
+          Everything in your workspace as spreadsheet files, in one zip you can keep. <span className="whitespace-nowrap">{EXPORT_FILENAME}</span> holds the {files.length} files below
           {attachments.count > 0 ? " and your attachments" : ""}.
         </p>
         {nothingYet ? <p className="text-body text-ink">No jobs yet, so most of these files will only hold their column headings.</p> : null}
@@ -49,10 +49,12 @@ export function ExportScreen({ files, attachments, updated, demoOffline }: Body 
         <div className={cx(GROUP, "overflow-hidden")}>
           <ul className="divide-y divide-line lg:hidden">
             {files.map((f) => (
-              <li key={f.name} data-export-file="" className="flex min-h-16 flex-col gap-0.5 px-4 py-3">
-                <p className="text-body-strong text-ink [overflow-wrap:anywhere]">{f.name}</p>
-                <p className="text-meta text-ink-2">{f.description}</p>
-                <p className="text-meta text-ink-2">{rowsText(f.rows)}</p>
+              <li key={f.name} data-export-file="" className="flex min-h-16 items-center justify-between gap-4 px-4 py-3">
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <p className="text-body-strong text-ink [overflow-wrap:anywhere]">{f.name}</p>
+                  <p className="text-meta text-ink-2">{f.description}</p>
+                </div>
+                <p className="shrink-0 whitespace-nowrap text-meta text-ink-2">{rowsText(f.rows)}</p>
               </li>
             ))}
           </ul>
@@ -66,10 +68,10 @@ export function ExportScreen({ files, attachments, updated, demoOffline }: Body 
             </thead>
             <tbody className="divide-y divide-line">
               {files.map((f) => (
-                <tr key={f.name} data-export-file="">
-                  <td className={cx(TD, "text-body-strong text-ink [overflow-wrap:anywhere]")}>{f.name}</td>
-                  <td className={cx(TD, "text-body text-ink")}>{f.description}</td>
-                  <td className={cx(TD, "text-right text-body text-ink")}>{rowsText(f.rows)}</td>
+                <tr key={f.name} data-export-file="" className="min-h-12">
+                  <td className={cx(TD, "py-3 text-body-strong text-ink [overflow-wrap:anywhere]")}>{f.name}</td>
+                  <td className={cx(TD, "py-3 text-body text-ink")}>{f.description}</td>
+                  <td className={cx(TD, "py-3 text-right text-body text-ink")}>{rowsText(f.rows)}</td>
                 </tr>
               ))}
             </tbody>
@@ -94,9 +96,12 @@ export function ExportSkeleton({ updated }: { updated: string | null }) {
       <Skeleton width={240} height={48} />
       <div className={cx(GROUP, "overflow-hidden")}>
         {Array.from({ length: 6 }, (_, i) => (
-          <div key={i} className="flex min-h-16 flex-col gap-1 px-4 py-3">
-            <Skeleton width={180} height={20} />
-            <Skeleton width={120} height={14} />
+          <div key={i} className="flex min-h-16 items-center justify-between gap-4 px-4 py-3">
+            <div className="flex flex-col gap-1">
+              <Skeleton width={160} height={20} />
+              <Skeleton width={200} height={14} />
+            </div>
+            <Skeleton width={56} height={14} />
           </div>
         ))}
       </div>

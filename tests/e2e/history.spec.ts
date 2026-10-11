@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { checkBackRow, checkTableEdgeGap, checkTableHeaderAlign, collectConsole, expectScreenHealthy } from "./guards";
+import { checkBackRow, checkMoneyFigureFont, checkSidebarSpansPage, checkTableEdgeGap, checkTableHeaderAlign, collectConsole, expectScreenHealthy } from "./guards";
 import { expectNoMoney } from "./money-scan";
 import { getSeed } from "../../src/data/fake/store";
 
@@ -30,6 +30,10 @@ test.describe("Record history (screen 25)", () => {
     const all = await readRows(page);
     const receipt = all.find((r) => r.what.includes("receipt"))!;
     expect(receipt.what).toMatch(/^Changed total from \$[\d,]+\.\d{2} to \$[\d,]+\.\d{2} on Harbour Steel Supply receipt$/);
+    expect(all.filter((r) => /\bof \$[\d,]+\.\d{2}/.test(r.what)), 'D20: no "of $12.00" chains').toEqual([]);
+    expect(all.filter((r) => /\S Pay run/.test(r.what)), "D20: pay run is lower case inside a sentence").toEqual([]);
+    expect(all.filter((r) => /pause reason|status from \w+ to (paused|active|done)/.test(r.what)), "N11: a pause or restart reads as a sentence").toEqual([]);
+    expect((await checkMoneyFigureFont(page, '[data-screen="history"]')).failures, "N17: money in a sentence is in figure style").toEqual([]);
     const text = (await rows(page).allInnerTexts()).join("\n");
     expect(text, "no raw table or field names").not.toMatch(/[a-z]+_[a-z]+|[a-z][A-Z][a-z]|\b(Cents|undefined|null)\b/);
     // Who and when: three short lines under the sentence on a phone, the Who and When columns on desktop.
@@ -47,6 +51,7 @@ test.describe("Record history (screen 25)", () => {
     else {
       expect((await checkTableEdgeGap(page)).failures).toEqual([]);
       expect((await checkTableHeaderAlign(page)).failures).toEqual([]);
+      expect((await checkSidebarSpansPage(page)).failures, "D18: the sidebar background runs the whole page").toEqual([]);
     }
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
@@ -65,6 +70,7 @@ test.describe("Record history (screen 25)", () => {
       if (state === "offline") {
         await expect(page.getByText(/^Lists updated .+ ago\.$/)).toBeVisible();
         expect(await rows(page).count(), "reads stay available offline").toBeGreaterThan(5);
+        await expect(page.getByText(/will send automatically/), "D2: a read-only screen has nothing to send later").toHaveCount(0);
       }
       if (state === "empty") await expect(page.getByText(/^No changes yet\./)).toBeVisible();
       if (state !== "loading") await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
@@ -78,6 +84,18 @@ test.describe("Record history (screen 25)", () => {
       await expect(page.locator("[data-history-row]")).toHaveCount(0);
     }
     await expectNoMoney(page, ["/history", `/history?job=${meta.projects.smith}`, `/history?crew=${meta.crew.dima}`]);
+  });
+
+  test("on a phone on its side the no-access page sits in the same column as the screens (N5)", async ({ page }, testInfo) => {
+    test.skip(!isPhone(testInfo.project.name), "phone only");
+    await page.setViewportSize({ width: 844, height: 390 });
+    const title = (name: string) => page.getByRole("heading", { level: 1, name });
+    await signInAs(page, "manager", "/history");
+    const screenX = (await title("Record history").boundingBox())!.x;
+    await signInAs(page, "foreman", "/history");
+    const noAccessX = (await title("No access").boundingBox())!.x;
+    expect(noAccessX, "left edge is the screens' left edge, which is clear of the safe-area inset").toBeCloseTo(screenX, 0);
+    expect(noAccessX).toBeGreaterThanOrEqual(16);
   });
 });
 
@@ -112,16 +130,48 @@ test.describe("Record history filters (from job detail and crew detail)", () => 
     await expect(page.locator("[data-history-showing]")).toContainText(`Showing ${dimaName}`);
     const whats = (await readRows(page)).map((r) => r.what);
     expect(whats.length).toBeGreaterThan(0);
-    expect(whats.some((w) => /^Added Dima's advance of \$[\d,]+\.\d{2}$/.test(w)), "Dima's advance").toBe(true);
+    expect(whats.some((w) => /^Added Dima's advance, \$[\d,]+\.\d{2}$/.test(w)), "Dima's advance").toBe(true);
     expect(whats.filter((w) => w.includes("Sam's")), "nothing about Sam").toEqual([]);
     expect(whats.filter((w) => w.includes("receipt")), "no receipt of someone else's").toEqual([]);
+    await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
+  });
+
+  test("the Job and Crew filters are on the page, Show applies them and Clear is a 48 px target (N14)", async ({ page }, testInfo) => {
+    await signInAs(page, "manager", "/history");
+    const filters = page.locator("[data-history-filters]");
+    await expect(filters).toBeVisible();
+    await expect(filters.getByLabel("Job")).toBeVisible();
+    await expect(filters.getByLabel("Crew")).toBeVisible();
+    const everything = await readRows(page);
+    await filters.getByLabel("Job").selectOption(meta.projects.smith);
+    await filters.getByRole("button", { name: "Show" }).click();
+    await expect(page).toHaveURL(new RegExp(`job=${meta.projects.smith}`));
+    const showing = page.locator("[data-history-showing]");
+    await expect(showing).toContainText(/^Showing Smith job/);
+    await expect(filters.getByLabel("Job"), "the choice stays chosen").toHaveValue(meta.projects.smith);
+    expect((await readRows(page)).length, "fewer changes under a filter").toBeLessThan(everything.length);
+
+    const clear = (await showing.getByRole("link", { name: "Clear" }).boundingBox())!;
+    expect(clear.height, "Clear is a 48 px target").toBeGreaterThanOrEqual(48);
+    expect(clear.width, "Clear is a 48 px target").toBeGreaterThanOrEqual(48);
+    // No hole under the filter row: the list starts one section gap below it.
+    const list = (await rows(page).first().boundingBox())!;
+    const head = (await showing.boundingBox())!;
+    const header = isPhone(testInfo.project.name) ? 0 : ((await page.locator("table thead").boundingBox())?.height ?? 0);
+    expect(list.y - header - (head.y + head.height), "N14: the gap under the filter row is one section gap (32 or 40 px, plus a border)").toBeLessThanOrEqual(48);
+
+    await filters.getByLabel("Job").selectOption("");
+    await filters.getByLabel("Crew").selectOption(meta.crew.dima);
+    await filters.getByRole("button", { name: "Show" }).click();
+    await expect(showing).toContainText(`Showing ${dimaName}`);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
   });
 
   test("a job with nothing yet is still named, and says so", async ({ page }) => {
     await signInAs(page, "manager", `/history?job=${meta.fixtures.longNames}`);
     await expect(page.locator("[data-history-showing]")).toContainText(/^Showing /);
-    await expect(page.getByText(/^No changes for .+ yet\.$/)).toBeVisible();
+    await expect(page.getByText(/^No changes yet\.$/), "D16: the name is said once, in the Showing line").toBeVisible();
+    await expect(page.getByText(/^No changes for /)).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Show all changes" })).toBeVisible();
   });
 });

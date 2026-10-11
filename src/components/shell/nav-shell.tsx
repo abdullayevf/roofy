@@ -26,7 +26,7 @@ export function ShellSidebar({ role, workspaceName, outboxCount, outboxAttention
       outboxHref={outbox}
       extra={manageNavItems(role)}
       activeExtra={activeManageKey(pathname)}
-      className="min-h-dvh"
+      className="min-h-dvh lg:border-r-0"
     />
   );
 }

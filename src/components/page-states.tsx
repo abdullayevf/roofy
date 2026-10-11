@@ -4,7 +4,7 @@ type StateProps = { title: string; message: string; className?: string };
 
 function StateBody({ title, message, left = false, children }: StateProps & { left?: boolean; children: React.ReactNode }) {
   return (
-    <div className={left ? "flex w-full max-w-180 flex-col items-start gap-4 py-8 text-left" : "flex flex-col items-center gap-4 px-4 py-12 text-center"}>
+    <div className={left ? "mx-auto flex w-full max-w-180 flex-col items-start gap-4 py-8 text-left lg:mx-0" : "flex flex-col items-center gap-4 px-4 py-12 text-center"}>
       <h1 className="font-display text-title text-ink">{title}</h1>
       <p className="text-body text-ink-2">{message}</p>
       {children}
@@ -12,10 +12,13 @@ function StateBody({ title, message, left = false, children }: StateProps & { le
   );
 }
 
-/** DESIGN.md §4 no-permission state: one plain sentence, no figures, one way back. */
-export function NoPermission({ backHref = "/", backLabel = "Go to Home" }: { backHref?: string; backLabel?: string }) {
+/**
+ * DESIGN.md §4 no-permission state: one plain sentence, no figures, one way back. It sits in the same centred 45 rem
+ * column as the screens (so a phone on its side keeps it clear of the notch); `ask` is who can open it up ("the owner" for a manager).
+ */
+export function NoPermission({ backHref = "/", backLabel = "Go to Home", ask = "your manager" }: { backHref?: string; backLabel?: string; ask?: string }) {
   return (
-    <StateBody title="No access" message="You don't have access to this. Ask your manager." left>
+    <StateBody title="No access" message={`You don't have access to this. Ask ${ask}.`} left>
       <Button variant="primary" href={backHref}>
         {backLabel}
       </Button>

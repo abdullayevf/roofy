@@ -87,6 +87,34 @@ function valueText(field: string, value: unknown, today: string): string | null 
   return null;
 }
 
+const WAITING: Record<string, string> = { weather: "weather", materials: "materials", client: "the client", other_job: "another job", other: "something else" };
+
+/** "Pay run for 14 Sep" in the middle of a sentence is "pay run for 14 Sep". */
+const mid = (subject: string): string => subject.replace(/^Pay run\b/, "pay run");
+
+/** A stage pause, restart or finish as one plain sentence; null when the change is anything else. */
+function stageSentence(row: AuditRow): string | null {
+  if (row.table !== "stage" || row.action !== "update" || !row.fields.includes("status")) return null;
+  if (row.fields.some((f) => f !== "status" && f !== "pauseReason")) return null;
+  const was = row.before?.status;
+  const now = row.after?.status;
+  if (now === "paused") {
+    const why = typeof row.after?.pauseReason === "string" ? WAITING[row.after.pauseReason] : undefined;
+    return `Paused ${row.subject}${why ? `, waiting on ${why}` : ""}`;
+  }
+  if (now === "active") return was === "paused" ? `Restarted ${row.subject}` : `Started ${row.subject}`;
+  if (now === "done") return `Marked ${row.subject} done`;
+  return null;
+}
+
+/** The sentence cut at each dollar amount, so the amounts can be set in figure style (N17). */
+export function moneyParts(text: string): { text: string; money: boolean }[] {
+  return text
+    .split(/(\$[\d,]+\.\d{2})/)
+    .filter((t) => t !== "")
+    .map((t) => ({ text: t, money: /^\$[\d,]+\.\d{2}$/.test(t) }));
+}
+
 /** An expense's total is its amount plus GST; only the part present in the change counts. */
 function expenseTotal(side: Record<string, unknown> | null): number | null {
   if (!side) return null;
@@ -115,14 +143,16 @@ function changeClauses(row: AuditRow, today: string): string[] {
 
 /** The change in one plain sentence: "Changed total from $120.00 to $132.00 on Bunnings receipt". No table or field names. */
 export function historySentence(row: AuditRow, today: string): string {
-  if (row.action === "delete") return `Removed ${row.subject}`;
+  if (row.action === "delete") return `Removed ${mid(row.subject)}`;
   if (row.action === "insert") {
     const a = row.after ?? {};
-    const cents = typeof a.amountCents === "number" ? ` of ${formatMoney(a.amountCents)}` : "";
-    const basis = typeof a.basis === "string" && BASIS[a.basis] && cents ? ` ${BASIS[a.basis]}` : "";
-    const from = typeof a.effectiveFrom === "string" ? ` from ${formatDate(a.effectiveFrom, today)}` : "";
-    return `Added ${row.subject}${cents}${basis}${from}`;
+    const parts: string[] = [];
+    if (typeof a.amountCents === "number") parts.push(`${formatMoney(a.amountCents)}${typeof a.basis === "string" && BASIS[a.basis] ? ` ${BASIS[a.basis]}` : ""}`);
+    if (typeof a.effectiveFrom === "string") parts.push(`from ${formatDate(a.effectiveFrom, today)}`);
+    return `Added ${mid(row.subject)}${parts.map((p) => `, ${p}`).join("")}`;
   }
+  const stage = stageSentence(row);
+  if (stage) return stage;
   const clauses = changeClauses(row, today);
-  return clauses.length === 0 ? `Changed ${row.subject}` : `Changed ${clauses.join(" and ")} on ${row.subject}`;
+  return clauses.length === 0 ? `Changed ${mid(row.subject)}` : `Changed ${clauses.join(" and ")} on ${mid(row.subject)}`;
 }

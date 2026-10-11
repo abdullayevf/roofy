@@ -124,6 +124,8 @@ export type ScreenSpec = {
   noExtras?: boolean;
   /** Labels of buttons pressed in order once the page has loaded, before the shot (a save, then "Log another stage"); "radio:No work" presses a switch option; "fill:Sam's share=60" types into a field. */
   steps?: string[];
+  /** Text that must be on the page once `steps` have run, before the shot: the settled outcome, not the spinner on the way to it. */
+  expectStill?: string;
   /** Cut the network after the page has loaded and before `steps`, so a save is kept on the phone. */
   goOffline?: boolean;
 };
@@ -992,8 +994,9 @@ export const SCREENS: ScreenSpec[] = [
   { id: "record-history-no-access", group: "reports", route: "/history", states: ["normal"], roles: ["accountant", "foreman"] },
   // Workspace export (Task 18 run D): Owner only. The shot after the button is the saved state; the others are told
   // they have no permission.
-  { id: "workspace-export", group: "reports", route: "/export", states: ADMIN_STATES, roles: ["owner"] },
-  { id: "workspace-export-done", group: "reports", route: "/export", states: ["normal"], roles: ["owner"], steps: ["Export workspace"] },
+  // The Owner is never told they have no permission, so there is no noperm state for them (N6).
+  { id: "workspace-export", group: "reports", route: "/export", states: READ_STATES, roles: ["owner"] },
+  { id: "workspace-export-done", group: "reports", route: "/export", states: ["normal"], roles: ["owner"], steps: ["Export workspace"], expectStill: "is saved to your downloads" },
   { id: "workspace-export-no-access", group: "reports", route: "/export", states: ["normal"], roles: ["manager", "accountant", "foreman"] },
 
   // --- entry-settings (Task 19) -----------------------------------------

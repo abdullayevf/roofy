@@ -61,6 +61,11 @@ describe("queuesOffline (R7)", () => {
     // Workspace export is a download: it says Needs connection itself, so no banner promising to send later.
     expect(queuesOffline("/export")).toBe(false);
     expect(queuesOffline("/exports-archive")).toBe(true);
+    // Reports and Record history are read-only: nothing is entered there, so no banner promising to send later (D2).
+    expect(queuesOffline("/reports")).toBe(false);
+    expect(queuesOffline("/reports/job-profitability")).toBe(false);
+    expect(queuesOffline("/history")).toBe(false);
+    expect(queuesOffline("/reports-archive")).toBe(true);
     expect(queuesOffline("/jobs")).toBe(true);
     expect(queuesOffline("/jobs/abc-123")).toBe(true);
     expect(queuesOffline("/log")).toBe(true);

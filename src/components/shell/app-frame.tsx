@@ -22,8 +22,11 @@ export type AppFrameProps = {
 export function AppFrame({ role, workspaceName, offline, waiting, attention, children }: AppFrameProps) {
   return (
     <div className="min-h-dvh lg:flex">
-      <div className="hidden lg:sticky lg:top-0 lg:block lg:h-dvh lg:shrink-0 lg:overflow-y-auto print:hidden">
-        <ShellSidebar role={role} workspaceName={workspaceName} outboxCount={waiting + attention} outboxAttention={attention > 0} />
+      {/* The column is as tall as the page (its background and rule run to the bottom of a long page); the sidebar inside it stays put. */}
+      <div className="hidden lg:block lg:shrink-0 lg:border-r lg:border-line lg:bg-surface print:hidden" data-sidebar-column="">
+        <div className="lg:sticky lg:top-0 lg:h-dvh lg:overflow-y-auto">
+          <ShellSidebar role={role} workspaceName={workspaceName} outboxCount={waiting + attention} outboxAttention={attention > 0} />
+        </div>
       </div>
       <div
         className="flex min-w-0 flex-1 flex-col"
