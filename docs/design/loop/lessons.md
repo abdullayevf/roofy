@@ -36,3 +36,5 @@
 - Hub and index pages use one grouped list surface, not a grid of identical bordered cards.
 - File names and unit words ("crew-day", ".zip" names) never break at a hyphen: nowrap or non-breaking hyphen.
 - `nowrap` only on a short figure or name run that still fits at 200% text zoom; let it wrap (break-words) past the column, never widen the page (export zip name, report figures).
+- The collapsed range/filter row stays collapsed after it is applied: Show range closes the form again (reports iter2, all five kinds).
+- In a row's right column only the total is figure-sized; breakdown amounts are meta lines (pay iter, reports iter1 and iter2).
