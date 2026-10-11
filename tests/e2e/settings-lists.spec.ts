@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { collectConsole, expectScreenHealthy } from "./guards";
+import { SCREENS } from "./screens";
 
 const isPhone = (name: string) => name !== "desktop";
 const NEEDS_CONNECTION = "Needs connection — try again once you're back online.";
@@ -187,6 +188,11 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
     await page.getByRole("button", { name: "Send invite" }).click();
     await expect(saved(page, "Invite sent.")).toBeVisible();
     await expect(page.getByText(`${stamp}@harbourroofing.example`)).toBeVisible();
+    // The Owner's own address is a member already: the sentence shows on the Email field, as the capture entry shows it.
+    await page.getByLabel("Name", { exact: true }).fill("Karen Lee");
+    await page.getByLabel("Email", { exact: true }).fill("karen@harbourroofing.example");
+    await page.getByRole("button", { name: "Send invite" }).click();
+    await expect(page.getByText("Someone with that email is already a member.")).toBeVisible();
     // The same email again is a conflict on the email field, not a crash.
     await page.getByLabel("Name", { exact: true }).fill("Karen Lee");
     await page.getByLabel("Email", { exact: true }).fill(`${stamp}@harbourroofing.example`);
@@ -310,4 +316,25 @@ test.describe("More (screen 22)", () => {
     await go(page, "owner", "/more?demo=noperm");
     await expect(page.getByText(/You don't have access to this/)).toBeVisible();
   });
+});
+
+/**
+ * The design capture replays each entry's steps in a fresh browser and waits for `expectStill`. Replaying the
+ * same steps here, the same way (fill a labelled box, press a button), means a wrong entry fails this spec in
+ * minutes instead of stopping a whole group capture.
+ */
+test.describe("Settings capture entries reach their settled sentence", () => {
+  const entries = SCREENS.filter(
+    (s) => s.group === "entry-settings" && s.steps && s.expectStill && s.route.startsWith("/settings") && s.roles.length > 0,
+  );
+  for (const entry of entries)
+    test(`${entry.id}`, async ({ page }) => {
+      await go(page, entry.roles[0]!, entry.route);
+      for (const step of entry.steps!) {
+        const fill = /^fill:(.+?)=(.*)$/.exec(step);
+        if (fill) await page.getByLabel(fill[1]!, { exact: true }).fill(fill[2]!);
+        else await page.getByRole("button", { name: step, exact: true }).click();
+      }
+      await expect(page.getByText(entry.expectStill!).first()).toBeVisible();
+    });
 });

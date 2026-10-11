@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { memberSchema } from "../../src/data/admin-inputs";
 import { getSeed } from "../../src/data/fake/store";
 import { PLACEHOLDER_IDS, resolveRoute, SCREENS, type ScreenGroup } from "../e2e/screens";
 
@@ -121,5 +122,36 @@ describe("resolveRoute", () => {
     for (const screen of SCREENS) {
       expect(() => resolveRoute(screen.route)).not.toThrow();
     }
+  });
+});
+
+describe("entry-settings invite captures", () => {
+  const seedEmails = new Set(getSeed().members.map((m) => m.email.toLowerCase()));
+  const emailOf = (steps: string[] = []) => steps.find((s) => s.startsWith("fill:Email="))?.slice("fill:Email=".length);
+  const invites = SCREENS.filter((s) => s.group === "entry-settings" && s.steps?.includes("Send invite"));
+
+  it("an invite that is meant to be sent uses an email nobody in the seed already has", () => {
+    const sent = invites.filter((s) => s.expectStill === "Invite sent.");
+    expect(sent.length).toBeGreaterThan(0);
+    for (const screen of sent) {
+      const email = emailOf(screen.steps)?.toLowerCase();
+      expect(email, `${screen.id} fills an email`).toBeTruthy();
+      expect(seedEmails.has(email!), `${screen.id} invites ${email}, who is already a member, so "Invite sent." never shows`).toBe(false);
+    }
+  });
+
+  it("an invite that is meant to be sent passes the server's own name and email checks", () => {
+    for (const screen of invites.filter((s) => s.expectStill === "Invite sent.")) {
+      const name = screen.steps!.find((s) => s.startsWith("fill:Name="))!.slice("fill:Name=".length);
+      const email = emailOf(screen.steps)!;
+      const r = memberSchema.safeParse({ name, email, role: "foreman" });
+      expect(r.success, `${screen.id}: ${JSON.stringify(r.error?.issues.map((i) => i.message))}`).toBe(true);
+    }
+  });
+
+  it("shows the refusal for an email that is already a member", () => {
+    const refused = invites.filter((s) => s.expectStill === "Someone with that email is already a member.");
+    expect(refused.length).toBe(1);
+    expect(seedEmails.has(emailOf(refused[0]!.steps)!.toLowerCase())).toBe(true);
   });
 });

@@ -512,6 +512,12 @@ describe("settings", () => {
       role: "accountant",
     });
     expect([m.email, m.role]).toEqual(["sue@harbour.au", "accountant"]);
+    // An address someone already has is refused, the Owner's included, whatever the case.
+    const owner0 = (await data.workspace.members(actor)).find((x) => x.role === "owner")!;
+    for (const email of ["sue@harbour.au", owner0.email.toUpperCase()]) {
+      const r = await refusal(data.workspace.inviteMember(actor, { email, name: "Karen Lee", role: "foreman" }));
+      expect([r.code, r.message]).toEqual(["conflict", "Someone with that email is already a member."]);
+    }
     const owner = (await data.workspace.members(actor)).find((x) => x.role === "owner")!;
     expect((await refusal(data.workspace.setMemberRole(actor, owner.id, "manager"))).code).toBe("conflict");
     expect((await data.workspace.setMemberRole(actor, m.id, "manager")).role).toBe("manager");
