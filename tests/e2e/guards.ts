@@ -1222,3 +1222,99 @@ export async function checkSidebarSpansPage(page: Page): Promise<GuardResult> {
   });
   return { name: "sidebar-spans-page", ok: failures.length === 0, failures };
 }
+
+// ---------------------------------------------------------------------------
+// Reports (Task 18 design fix 1b)
+// ---------------------------------------------------------------------------
+
+/**
+ * D5/N7, lesson 23: every visible `[data-oneline]` element in `scope` (a right-hand figure, its unit line, the key figure)
+ * stays on one line, at any width. Fails when the scope has none, so a rename cannot hide the check.
+ */
+export async function checkOneLine(page: Page, scope: string): Promise<GuardResult> {
+  await polyfillEsbuildNameHelper(page);
+  const failures = await page.evaluate((sel) => {
+    const out: string[] = [];
+    let seen = 0;
+    for (const el of Array.from(document.querySelectorAll(`${sel} [data-oneline]`))) {
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0) continue;
+      seen += 1;
+      const style = getComputedStyle(el);
+      const line = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.5;
+      if (rect.height > line * 1.5) out.push(`"${(el.textContent ?? "").trim()}" wraps (${rect.height.toFixed(0)}px tall, line ${line.toFixed(0)}px)`);
+    }
+    if (seen === 0) out.push(`no [data-oneline] element found in ${sel}`);
+    return out;
+  }, scope);
+  return { name: "one-line-figures", ok: failures.length === 0, failures };
+}
+
+/**
+ * N3/D8, lesson 34: the first data row (a report row or hub row) ends inside the first viewport, so a phone sees data
+ * without scrolling. Also checks the key figure sits under the title and there is exactly one figure-xl on the page.
+ */
+export async function checkReportFirstScreen(page: Page, opts: { keyFigure: boolean }): Promise<GuardResult> {
+  await polyfillEsbuildNameHelper(page);
+  const failures = await page.evaluate((withFigure) => {
+    const out: string[] = [];
+    const visible = (el: Element) => el.getBoundingClientRect().width > 0;
+    const row = Array.from(document.querySelectorAll("[data-report-row], [data-report-card]")).find(visible);
+    if (!row) return ["no data row found"];
+    const bottom = row.getBoundingClientRect().bottom;
+    if (bottom > window.innerHeight) out.push(`first row ends at ${bottom.toFixed(0)}px, below the first screen (${window.innerHeight}px)`);
+    const xl = Array.from(document.querySelectorAll("main .text-figure-xl, [data-screen] .text-figure-xl")).filter(visible);
+    if (xl.length !== (withFigure ? 1 : 0)) out.push(`${xl.length} figure-xl on the page, expected ${withFigure ? 1 : 0}`);
+    const title = document.querySelector("h1");
+    if (withFigure && title && xl[0] && xl[0].getBoundingClientRect().top < title.getBoundingClientRect().bottom - 1)
+      out.push("the key figure is not under the title");
+    return out;
+  }, opts.keyFigure);
+  return { name: "report-first-screen", ok: failures.length === 0, failures };
+}
+
+/**
+ * D10: one rule for a negative figure. Every visible leaf in a report row whose text starts with a minus sign and a digit
+ * or $ has the over-budget colour, in every column.
+ */
+export async function checkNegativeFiguresShareColour(page: Page): Promise<GuardResult> {
+  await polyfillEsbuildNameHelper(page);
+  const failures = await page.evaluate(() => {
+    const probe = document.createElement("span");
+    probe.style.color = "var(--over)";
+    document.body.appendChild(probe);
+    const over = getComputedStyle(probe).color;
+    probe.remove();
+    const out: string[] = [];
+    for (const el of Array.from(document.querySelectorAll("[data-report-row] *"))) {
+      const text = (el.textContent ?? "").trim();
+      if (el.children.length > 0 || !/^−[\d$]/.test(text) || el.getBoundingClientRect().width === 0) continue;
+      const colour = getComputedStyle(el).color;
+      if (colour !== over) out.push(`"${text}" is ${colour}, not the over colour ${over}`);
+    }
+    return out;
+  });
+  return { name: "negative-figure-colour", ok: failures.length === 0, failures };
+}
+
+/** D13: no visible desktop table header breaks onto a second line ("To date", "Forecast", "Working days lost"). */
+export async function checkTableHeadersOneLine(page: Page): Promise<GuardResult> {
+  await polyfillEsbuildNameHelper(page);
+  const failures = await page.evaluate(() => {
+    const out: string[] = [];
+    for (const th of Array.from(document.querySelectorAll("table thead th"))) {
+      if (th.getBoundingClientRect().width === 0) continue;
+      const tops = new Set<number>();
+      const walker = document.createTreeWalker(th, NodeFilter.SHOW_TEXT);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        if (!(n.textContent ?? "").trim()) continue;
+        const range = document.createRange();
+        range.selectNodeContents(n);
+        for (const r of Array.from(range.getClientRects())) if (r.width > 0) tops.add(Math.round(r.top));
+      }
+      if (tops.size > 1) out.push(`header "${(th.textContent ?? "").trim()}" wraps onto ${tops.size} lines`);
+    }
+    return out;
+  });
+  return { name: "table-headers-one-line", ok: failures.length === 0, failures };
+}

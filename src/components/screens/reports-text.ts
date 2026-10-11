@@ -1,7 +1,8 @@
 // Words and the date range for Reports (flows.md screen 22). A plain module, so server pages and client parts share it.
-import type { DateRange, ReportKind, Unit } from "@/data/contracts";
+import type { DateRange, ProductivityRow, ReportKeyFigure, ReportKind, Unit } from "@/data/contracts";
+import type { PauseReason } from "@/domain/segments";
 import { addDays } from "@/domain/dates";
-import { formatHours, formatQuantity } from "@/lib/format";
+import { formatHours, formatMoney, formatQuantity } from "@/lib/format";
 import { payRunPeriodText } from "./pay-runs-text";
 
 export const REPORT_KINDS: readonly ReportKind[] = ["job-profitability", "crew", "productivity", "pauses", "pay-history"];
@@ -81,3 +82,35 @@ export const workingDaysText = (n: number): string => countText(n, "working day"
 
 /** Units laid per crew-day ("42.5 m² a crew-day"). */
 export const perCrewDayText = (perCrewDay: number, unit: Unit): string => `${formatQuantity(perCrewDay, unit)} a crew-day`;
+
+/** A figure and its unit apart, so a narrow right column keeps the figure on one line and the unit on the line below. */
+export type FigureParts = { figure: string; unit: string };
+
+export function keyFigureParts(f: ReportKeyFigure): FigureParts {
+  if (f.format === "per-crew-day") return { figure: formatQuantity(f.value, f.unit), unit: "a crew-day" };
+  if (f.format === "money") return { figure: formatMoney(f.value), unit: "" };
+  return { figure: String(f.value), unit: f.value === 1 ? "working day" : "working days" };
+}
+
+/** A report's key figure as one phrase: money, working days, or a pace per crew-day. */
+export function keyFigureText(f: ReportKeyFigure): string {
+  const { figure, unit } = keyFigureParts(f);
+  return unit ? `${figure} ${unit}` : figure;
+}
+
+/** A productivity row's label: the month when the row covers all of it, else the chosen range. */
+export function periodText(r: Pick<ProductivityRow, "month" | "period">, today: string): string {
+  const whole = r.period.from === `${r.month}-01` && r.period.to.slice(0, 7) === r.month && addDays(r.period.to, 1).slice(0, 7) !== r.month;
+  return whole ? monthText(r.month) : rangeText(r.period, today);
+}
+
+const PAUSE_LINE: Record<PauseReason, string> = {
+  weather: "Held up by weather",
+  materials: "Waiting on materials",
+  client: "Waiting on the client",
+  other_job: "Crew on another job",
+  other: "Another reason",
+};
+
+/** Why a stage was paused, as a line that reads on its own ("Waiting on materials"), not a bare "Materials". */
+export const pauseReasonLine = (reason: PauseReason): string => PAUSE_LINE[reason];

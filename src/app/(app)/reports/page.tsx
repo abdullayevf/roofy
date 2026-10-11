@@ -4,8 +4,8 @@ import type { SearchParams } from "@/data/session";
 import type { ReportKind } from "@/data/contracts";
 import { NoPermission } from "@/components/page-states";
 import { backLink } from "@/components/shell/access";
-import { keyFigureText, ReportsIndex, ReportsIndexError, ReportsIndexSkeleton, type ReportCard } from "@/components/screens/reports";
-import { defaultReportRange } from "@/components/screens/reports-text";
+import { ReportsIndex, ReportsIndexError, ReportsIndexSkeleton, type ReportCard } from "@/components/screens/reports";
+import { defaultReportRange, keyFigureParts } from "@/components/screens/reports-text";
 import { loadAll, updatedText } from "./load-reports";
 
 export const metadata: Metadata = { title: "Reports" };
@@ -28,12 +28,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
   const losing = jobs.filter((j) => j.forecastMarginCents < 0).length;
   const none = "Nothing in this range yet.";
   /** Each card's figure and label come from the report's own key figure, so the hub and the report agree. */
-  const card = (kind: ReportKind, count: number, extra = ""): ReportCard => ({
-    kind,
-    money: figures[kind].format === "money",
-    figure: count ? keyFigureText(figures[kind]) : "",
-    line: count ? `${figures[kind].label}.${extra}` : none,
-  });
+  const card = (kind: ReportKind, count: number, extra = ""): ReportCard => {
+    const { figure, unit } = keyFigureParts(figures[kind]);
+    return { kind, figure: count ? figure : "", unit: count ? unit : "", line: count ? `${figures[kind].label}.${extra}` : none };
+  };
   const cards: ReportCard[] = [
     card("job-profitability", jobs.length, ` ${losing === 1 ? "1 is" : `${losing} are`} losing money.`),
     card("crew", crew.length),
@@ -41,5 +39,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
     card("pauses", pauses.length),
     card("pay-history", pay.length),
   ];
-  return <ReportsIndex cards={cards} range={range} today={today} updated={updatedText(demo.offline)} />;
+  return <ReportsIndex cards={cards} range={range} today={today} updated={updatedText(demo.offline)} action={back} />;
 }

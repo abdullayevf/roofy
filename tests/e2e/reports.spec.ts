@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { checkBackRow, checkMoneyFigureFont, checkTableEdgeGap, checkTableHeaderAlign, collectConsole, expectScreenHealthy } from "./guards";
+import { checkBackRow, checkMoneyFigureFont, checkNegativeFiguresShareColour, checkOneLine, checkReportFirstScreen, checkTableEdgeGap, checkTableHeaderAlign, checkTableHeadersOneLine, collectConsole, expectScreenHealthy } from "./guards";
 import { expectNoMoney } from "./money-scan";
 import { getSeed } from "../../src/data/fake/store";
 
@@ -34,7 +34,8 @@ test.describe("Reports index (screen 22)", () => {
   test("hub figures are real: pace for productivity, pay counts only approved and exported runs", async ({ page }) => {
     await signInAs(page, "manager", "/reports");
     const card = (name: string) => page.locator("[data-report-card]").filter({ has: page.getByRole("link", { name: new RegExp(`^${name}`) }) });
-    await expect(card("Productivity").locator("[data-figure]")).toHaveText(/a crew-day$/);
+    await expect(card("Productivity").locator("[data-figure]")).toHaveText(/ (m²|lm)$|^\d/);
+    await expect(card("Productivity")).toContainText(/a crew-day/);
     const paidLine = (await card("Pay history").innerText()).match(/Paid in (\d+) pay runs?/);
     expect(paidLine).not.toBeNull();
     await signInAs(page, "manager", "/reports/pay-history");
@@ -50,7 +51,11 @@ test.describe("Reports index (screen 22)", () => {
       await expect(page.getByRole("heading", { level: 1, name: "Reports" })).toBeVisible();
       if (state === "error") await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
       if (state === "offline") await expect(page.getByText(/^Lists updated .+ ago\.$/)).toBeVisible();
-      if (state === "empty") await expect(page.getByText("Nothing to report yet. Reports fill in once the crew logs work.")).toBeVisible();
+      if (state === "empty") {
+        await expect(page.getByText("Nothing to report yet. Reports fill in once the crew logs work.")).toBeVisible();
+        await expect(page.getByRole("link", { name: "Go to Home" })).toBeVisible();
+        await expect(page.locator("[data-report-list]")).toHaveCount(0);
+      }
       if (state !== "loading") await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
     });
   }
@@ -61,6 +66,65 @@ test.describe("Reports index (screen 22)", () => {
     await signInAs(page, "foreman", "/reports");
     await expect(page.getByText("You don't have access to this. Ask your manager.")).toBeVisible();
     await expectNoMoney(page, ["/reports", "/reports/job-profitability", "/reports/crew"]);
+  });
+});
+
+test.describe("Report page layout (Task 18 fix 1b)", () => {
+  const KINDS = ["job-profitability", "crew", "productivity", "pauses", "pay-history"] as const;
+  for (const kind of KINDS) {
+    test(`${kind}: one key figure under the title, data in the first screen, figures on one line`, async ({ page }) => {
+      await signInAs(page, "manager", `/reports/${kind}`);
+      await expect(page.locator("[data-key-figure]")).toHaveCount(1);
+      await expect(page.locator("[data-report-range]")).toBeVisible();
+      await expect(page.getByRole("link", { name: "Export CSV" })).toBeEnabled();
+      await expect(page.getByRole("button", { name: "Print" })).toBeEnabled();
+      expect((await checkReportFirstScreen(page, { keyFigure: true })).failures).toEqual([]);
+      expect((await checkOneLine(page, "[data-screen=report]")).failures).toEqual([]);
+      expect((await checkNegativeFiguresShareColour(page)).failures).toEqual([]);
+    });
+  }
+
+  test("the range is one Change row that opens the filter", async ({ page }) => {
+    await signInAs(page, "manager", "/reports/crew");
+    await expect(page.getByLabel("From")).toBeHidden();
+    await page.getByText("Change", { exact: true }).click();
+    await expect(page.getByLabel("From")).toBeVisible();
+  });
+
+  test("the hub is one grouped list, not a grid of cards, with figures on one line", async ({ page }) => {
+    await signInAs(page, "manager", "/reports");
+    await expect(page.locator("[data-report-list]")).toHaveCount(1);
+    await expect(page.locator("[data-report-card] a").first()).toHaveCSS("border-top-width", "0px");
+    expect((await checkReportFirstScreen(page, { keyFigure: false })).failures).toEqual([]);
+    expect((await checkOneLine(page, "[data-screen=reports]")).failures).toEqual([]);
+  });
+
+  test("pay history lists approved and exported runs before drafts", async ({ page }) => {
+    await signInAs(page, "manager", "/reports/pay-history");
+    const isDraft = await rows(page).evaluateAll((els) => els.map((e) => /Draft/.test(e.textContent ?? "")));
+    expect(isDraft.includes(true)).toBe(true);
+    expect(isDraft.lastIndexOf(false)).toBeLessThan(isDraft.indexOf(true));
+  });
+
+  test("pauses give the reason in plain words", async ({ page }) => {
+    await signInAs(page, "manager", "/reports/pauses");
+    for (const text of await rows(page).allInnerTexts())
+      expect(text).toMatch(/Held up by weather|Waiting on materials|Waiting on the client|Crew on another job|Another reason/);
+  });
+
+  test("on desktop the headers stay on one line and each drillable row ends in a chevron", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "table layout is desktop only");
+    for (const kind of ["job-profitability", "crew", "pauses", "pay-history"]) {
+      await signInAs(page, "manager", `/reports/${kind}`);
+      expect((await checkTableHeadersOneLine(page)).failures).toEqual([]);
+      expect((await checkTableHeaderAlign(page)).failures).toEqual([]);
+      expect((await checkTableEdgeGap(page)).failures).toEqual([]);
+      const count = await rows(page).count();
+      await expect(page.locator("table tbody tr:visible td:last-child svg")).toHaveCount(count);
+    }
+    await signInAs(page, "manager", "/reports/job-profitability");
+    await expect(page.getByRole("columnheader", { name: "To date" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "Forecast" })).toBeVisible();
   });
 });
 
@@ -152,13 +216,17 @@ test.describe("Job profitability and Crew reports", () => {
   test("crew shows labour cost per unit by stage", async ({ page }) => {
     await signInAs(page, "manager", "/reports/crew?from=2026-09-01&to=2026-09-27");
     const first = page.locator("[data-report-row]:visible [data-cost-per-unit]").first();
-    await expect(first).toHaveText(/ \$[\d,]+\.\d{2} (a m²|a lm|each)$/);
+    await expect(first).toHaveText(/\s\$[\d,]+\.\d{2}\s(a\s(m²|lm)|each)$/);
+    expect((await checkOneLine(page, "[data-screen=report]")).failures).toEqual([]);
   });
 
   test("a range with nothing in it says so and keeps the filter", async ({ page }, testInfo) => {
     await signInAs(page, "manager", "/reports/crew?from=2020-01-01&to=2020-01-31");
     await expect(page.getByText("Nothing in this range. Try a longer range.")).toBeVisible();
     await expect(page.getByLabel("From")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Export CSV" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Print" })).toBeDisabled();
+    await expect(page.getByRole("link", { name: "Show the last 3 months" })).toHaveCount(1);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
   });
 
@@ -186,7 +254,8 @@ test.describe("Productivity, Pauses and Pay history reports; Export CSV and Prin
     await signInAs(page, "manager", "/reports/productivity");
     await expect(page.getByRole("heading", { level: 1, name: "Productivity" })).toBeVisible();
     expect(await rows(page).count()).toBeGreaterThan(0);
-    for (const f of await page.locator("[data-report-row]:visible [data-pace]").all()) await expect(f).toHaveText(/a crew-day$/);
+    for (const f of await page.locator("[data-report-row]:visible [data-pace]").all()) await expect(f).toHaveText(/^[\d,.]+(\s(m²|lm))?$/);
+    for (const r of await rows(page).all()) await expect(r).toContainText(/a crew-day/);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
   });
 

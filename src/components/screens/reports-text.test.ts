@@ -5,9 +5,13 @@ import {
   crewWorkText,
   defaultReportRange,
   isReportKind,
+  keyFigureParts,
+  keyFigureText,
   marginText,
   monthText,
+  pauseReasonLine,
   perCrewDayText,
+  periodText,
   reportCsvHref,
   workingDaysText,
   rangeText,
@@ -87,5 +91,47 @@ describe("reports text, run B kinds", () => {
   });
   it("says the pace per crew-day with its unit", () => {
     expect(perCrewDayText(4250, "m2")).toMatch(/^42\.5\s?m² a crew-day$/);
+  });
+
+  describe("periodText (a productivity row's label)", () => {
+    const today = "2026-09-28";
+    it("names the month when the row covers the whole month", () => {
+      expect(periodText({ month: "2026-08", period: { from: "2026-08-01", to: "2026-08-31" } }, today)).toBe("August 2026");
+      expect(periodText({ month: "2026-02", period: { from: "2026-02-01", to: "2026-02-28" } }, today)).toBe("February 2026");
+    });
+    it("names the range when it covers part of a month", () => {
+      const week = { from: "2026-09-21", to: "2026-09-27" };
+      expect(periodText({ month: "2026-09", period: week }, today)).toBe(rangeText(week, today));
+      const upToToday = { from: "2026-09-01", to: "2026-09-27" };
+      expect(periodText({ month: "2026-09", period: upToToday }, today)).toBe(rangeText(upToToday, today));
+      const fromMid = { from: "2026-08-10", to: "2026-08-31" };
+      expect(periodText({ month: "2026-08", period: fromMid }, today)).toBe(rangeText(fromMid, today));
+    });
+  });
+
+  describe("key figure parts (figure on one line, unit on the line below)", () => {
+    it("money has no unit", () => {
+      expect(keyFigureParts({ format: "money", value: -117000, label: "x" })).toEqual({ figure: "−$1,170.00", unit: "" });
+    });
+    it("working days: the count is the figure, the words are the unit", () => {
+      expect(keyFigureParts({ format: "days", value: 45, label: "x" })).toEqual({ figure: "45", unit: "working days" });
+      expect(keyFigureParts({ format: "days", value: 1, label: "x" })).toEqual({ figure: "1", unit: "working day" });
+    });
+    it("pace: the quantity is the figure, 'a crew-day' is the unit", () => {
+      expect(keyFigureParts({ format: "per-crew-day", value: 4250, unit: "m2", label: "x" })).toEqual({ figure: "42.5 m²", unit: "a crew-day" });
+    });
+    it("reads as one phrase in text", () => {
+      expect(keyFigureText({ format: "money", value: 12345, label: "x" })).toBe("$123.45");
+      expect(keyFigureText({ format: "days", value: 3, label: "x" })).toBe("3 working days");
+      expect(keyFigureText({ format: "per-crew-day", value: 4250, unit: "m2", label: "x" })).toBe("42.5 m² a crew-day");
+    });
+  });
+
+  it("says each pause reason as what the stage was waiting on", () => {
+    expect(pauseReasonLine("materials")).toBe("Waiting on materials");
+    expect(pauseReasonLine("weather")).toBe("Held up by weather");
+    expect(pauseReasonLine("client")).toBe("Waiting on the client");
+    expect(pauseReasonLine("other_job")).toBe("Crew on another job");
+    expect(pauseReasonLine("other")).toBe("Another reason");
   });
 });
