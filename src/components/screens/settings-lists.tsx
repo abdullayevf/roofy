@@ -15,7 +15,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
-import { jobTypeLabel } from "./job-input";
 import { bpText, readShare, shareErrors } from "./settings-input";
 import { FORM_GRID, SettingsForm, useSave, type Errors } from "./settings-forms";
 
@@ -172,19 +171,19 @@ export function CategoriesForm({
   const submit = () => {
     const found: Errors = {};
     const all = [
-      ...categories.map((c) => ({ key: c.id, name: names[c.id] ?? "" })),
+      ...categories.map((c) => ({ key: c.id, name: names[c.id] ?? c.name })),
       ...(added.trim() ? [{ key: "new", name: added }] : []),
     ];
     all.forEach((c, i) => {
       if (!c.name.trim()) found[c.key] = "Add a name for the category.";
-      else if (all.some((o, j) => j !== i && sameName(o.name, c.name)))
+      else if (all.some((o, j) => j < i && sameName(o.name, c.name)))
         found[c.key] = `There's already a category called ${c.name.trim()}.`;
     });
     return s.run(
       () => found,
       async () => {
         for (const c of categories) {
-          const name = (names[c.id] ?? "").trim();
+          const name = (names[c.id] ?? c.name).trim();
           if (name === c.name) continue;
           const r = await saveCategory({ id: c.id, name, position: c.position });
           if (!r.ok) return r;
@@ -207,7 +206,7 @@ export function CategoriesForm({
             key={c.id}
             label={`Rename ${c.name}`}
             inputMode="text"
-            value={names[c.id] ?? ""}
+            value={names[c.id] ?? c.name}
             onChange={(e) => setNames({ ...names, [c.id]: e.target.value })}
             error={s.errors[c.id]}
           />
@@ -282,8 +281,8 @@ export function MembersForm({ members, demoOffline }: { members: Member[]; demoO
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** Invite someone: a name, an email and a role. */
-export function InviteForm({ demoOffline }: { demoOffline: boolean }) {
+/** Invite someone: a name, an email and a role. `quiet` leaves out the Needs connection sentence when the list above already says it. */
+export function InviteForm({ demoOffline, quiet = false }: { demoOffline: boolean; quiet?: boolean }) {
   const s = useSave(demoOffline);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -305,7 +304,7 @@ export function InviteForm({ demoOffline }: { demoOffline: boolean }) {
       "Invite sent.",
     );
   return (
-    <SettingsForm s={s} onSubmit={submit} label="Send invite">
+    <SettingsForm s={s} onSubmit={submit} label="Send invite" quiet={quiet}>
       <div className={FORM_GRID}>
         <Field
           label="Name"
@@ -348,16 +347,16 @@ export function AssignmentsForm({
     Object.fromEntries(foremen.map((f) => [f.memberId, f.projectIds])),
   );
   const toggle = (member: Id, job: Id, on: boolean) =>
-    setPicked((p) => ({
-      ...p,
-      [member]: on ? [...(p[member] ?? []), job] : (p[member] ?? []).filter((x) => x !== job),
-    }));
+    setPicked((p) => {
+      const now = p[member] ?? foremen.find((f) => f.memberId === member)?.projectIds ?? [];
+      return { ...p, [member]: on ? [...now, job] : now.filter((x) => x !== job) };
+    });
   const submit = () =>
     s.run(
       () => ({}),
       async () => {
         for (const f of foremen) {
-          const now = picked[f.memberId] ?? [];
+          const now = picked[f.memberId] ?? f.projectIds;
           if (now.length === f.projectIds.length && now.every((x) => f.projectIds.includes(x))) continue;
           const r = await setAssignments(f.memberId, now);
           if (!r.ok) return r;
@@ -373,12 +372,12 @@ export function AssignmentsForm({
             key={f.memberId}
             className="flex min-w-0 flex-col gap-1 rounded-md border border-line p-4"
           >
-            <legend className="px-1 text-body-strong text-ink">{f.name}</legend>
+            <legend className="max-w-full break-words px-1 text-body-strong text-ink">{f.name}</legend>
             {jobs.map((j) => (
               <Checkbox
                 key={j.id}
                 label={j.name}
-                checked={(picked[f.memberId] ?? []).includes(j.id)}
+                checked={(picked[f.memberId] ?? f.projectIds).includes(j.id)}
                 onCheckedChange={(on) => toggle(f.memberId, j.id, on)}
               />
             ))}

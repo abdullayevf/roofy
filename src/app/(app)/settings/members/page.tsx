@@ -22,7 +22,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
           </section>
           <section aria-labelledby="members-invite" className="flex flex-col gap-4">
             <h2 id="members-invite" className="text-heading text-ink">Invite someone</h2>
-            <InviteForm demoOffline={offline} />
+            <InviteForm demoOffline={offline} quiet={members.length > 0} />
           </section>
         </div>
       </SettingsPageFrame>

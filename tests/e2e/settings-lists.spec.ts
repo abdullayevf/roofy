@@ -119,6 +119,25 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
     await expect(page.getByLabel(/^Stage \d+ name$/)).toHaveCount(before);
   });
 
+  test("templates: a long stage name wraps inside the screen", async ({ page }, info) => {
+    await go(page, "owner", "/settings/templates?type=metal_reroof");
+    await page.getByLabel("Stage 1 name", { exact: true }).fill(LONG_NAME);
+    const log = collectConsole(page);
+    await expectScreenHealthy(page, { phone: isPhone(info.project.name), console: log });
+  });
+
+  test("the demo no-permission state refuses every settings list, for the Owner too", async ({ page }) => {
+    for (const path of [
+      "/settings/templates",
+      "/settings/categories",
+      "/settings/members",
+      "/settings/assignments",
+    ]) {
+      await go(page, "owner", `${path}?demo=noperm`);
+      await expect(page.getByText(/You don't have access to this/)).toBeVisible();
+    }
+  });
+
   test("categories: a new category saves, a repeat is refused, a long name stays inside the screen", async ({
     page,
   }, info) => {
@@ -132,6 +151,7 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
     await save(page).click();
     await expect(page.getByText(`There's already a category called ${name.toUpperCase()}.`)).toBeVisible();
     const long = unique(LONG_NAME).slice(0, 58);
+    await page.waitForLoadState("networkidle");
     await go(page, "owner", "/settings/categories");
     await page.getByLabel("New category", { exact: true }).fill(long);
     await save(page).click();
@@ -189,6 +209,7 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
     await expect(saved(page, "Invite sent.")).toBeVisible();
     const membersLog = collectConsole(page);
     await expectScreenHealthy(page, { phone: isPhone(info.project.name), console: membersLog });
+    await page.waitForLoadState("networkidle");
     await go(page, "owner", "/settings/assignments");
     const group = page.getByRole("group", { name: longName });
     await expect(group).toBeVisible();
@@ -210,6 +231,7 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
     await first.click();
     await save(page).click();
     await expect(saved(page)).toBeVisible();
+    await page.waitForLoadState("networkidle"); // the refresh after a save must finish before the next navigation
     await go(page, "owner", "/settings/assignments");
     expect(await page.getByRole("group").first().getByRole("checkbox").first().isChecked()).toBe(!was);
     // Put it back so later tests see the seeded assignments.
@@ -238,6 +260,10 @@ test.describe("More (screen 22)", () => {
     await expect(page.getByRole("link", { name: /^Install guide/ })).toBeVisible();
     await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
     expect(await page.locator("main").innerText()).not.toMatch(/\$/);
+    const labels = await page.locator("main [aria-label], main [title]").evaluateAll((els) =>
+      els.map((e) => `${e.getAttribute("aria-label") ?? ""} ${e.getAttribute("title") ?? ""}`),
+    );
+    expect(labels.join(" "), "no dollar sign in any aria label").not.toMatch(/\$/);
   });
 
   test("the accountant sees no Settings row", async ({ page }) => {

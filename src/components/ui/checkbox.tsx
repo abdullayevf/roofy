@@ -69,7 +69,7 @@ export function Checkbox({
           </RadixCheckbox.Indicator>
         </span>
       </RadixCheckbox.Root>
-      <span className={cx("text-body", disabled ? "text-ink-2" : "text-ink")}>{label}</span>
+      <span className={cx("min-w-0 break-words text-body", disabled ? "text-ink-2" : "text-ink")}>{label}</span>
     </label>
   );
 }

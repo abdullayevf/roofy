@@ -37,7 +37,7 @@ export function Select({
 
   return (
     <div className={cx("flex flex-col gap-1.5", className)}>
-      <label htmlFor={id} className="text-body-strong text-ink">
+      <label htmlFor={id} className="break-words text-body-strong text-ink">
         {label}
       </label>
       <div className="relative">

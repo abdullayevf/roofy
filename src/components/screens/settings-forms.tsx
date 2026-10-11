@@ -74,11 +74,14 @@ export function SettingsForm({
   s,
   onSubmit,
   label = "Save changes",
+  quiet = false,
   children,
 }: {
   s: Save;
   onSubmit: () => void;
   label?: string;
+  /** Another form on the same page already says Needs connection. */
+  quiet?: boolean;
   children: ReactNode;
 }) {
   function submit(e: FormEvent) {
@@ -94,7 +97,7 @@ export function SettingsForm({
     >
       {children}
       <div className="flex flex-col gap-3">
-        {s.online ? null : (
+        {s.online || quiet ? null : (
           <p role="status" className="text-body text-ink">
             {NEEDS_CONNECTION}
           </p>
