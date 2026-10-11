@@ -17,4 +17,16 @@ test("from Home, a manager finds the Smith job trending over and the lines behin
   await taps.tap(page.getByRole("link", { name: /^Forecast labour/ }));
   await expect(page).toHaveURL(new RegExp(`/history\\?job=${meta.projects.smith}$`));
   taps.assertWithin(3);
+
+  // What tap 2 shows (flows.md 202): the log lines behind the figure, and only this job's. The seed's Smith job has two
+  // log lines in its record history (flows.md names Sam and Dima; the seed's are Ben's and Jake's).
+  await expect(page.locator("[data-history-showing]")).toContainText(/^Showing Smith job/);
+  const whats = (await page.locator("[data-history-what]:visible").allInnerTexts()).map((t) => t.replace(/\u00a0/g, " ").trim());
+  const logLines = whats.filter((w) => /^Added \S+'s log for /.test(w));
+  // 1: exactly two log lines, one per person, each with the day it was for.
+  expect(logLines, "the two log lines behind the forecast").toHaveLength(2);
+  expect(logLines.map((w) => w.match(/^Added (\S+)'s log for (\w{3} \d{1,2} \w{3})/)?.[1]).sort()).toEqual(["Ben", "Jake"]);
+  // 2: nothing from another job sits beside them, and the job column is dropped because it is all one job.
+  expect(whats.filter((w) => !logLines.includes(w)), "the rest is this job's expense").toEqual([expect.stringMatching(/receipt$/)]);
+  await expect(page.locator("[data-history-job]:visible")).toHaveCount(0);
 });

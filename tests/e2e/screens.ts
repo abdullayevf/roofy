@@ -969,7 +969,13 @@ export const SCREENS: ScreenSpec[] = [
     // A chosen range (last week) and a range with nothing in it.
     { id: `reports-${kind}-filtered`, group: "reports" as const, route: `/reports/${kind}?from=2026-09-21&to=2026-09-27`, states: ["normal" as const], roles: [] },
     { id: `reports-${kind}-empty-range`, group: "reports" as const, route: `/reports/${kind}?from=2020-01-01&to=2020-01-31`, states: ["normal" as const], roles: [] },
+    // A Foreman never sees reports: no permission, no figures.
+    { id: `reports-${kind}-no-access`, group: "reports" as const, route: `/reports/${kind}`, states: ["normal" as const], roles: ["foreman"] as Role[] },
   ]),
+  { id: "reports-no-access", group: "reports", route: "/reports", states: ["normal"], roles: ["foreman"] },
+  // Long job names: the Featherstonehaugh-Montgomery job in August holds only a receipt. The index cards carry figures
+  // and counts, never names, so the long names show on the kind pages (phone cards wrap, the desktop table wraps).
+  { id: "reports-long-names", group: "reports", route: "/reports/job-profitability?from=2026-08-01&to=2026-08-31", states: ["normal"], roles: [] },
   // Record history (Task 18 run C): Owner and Manager. `?job=` and `?crew=` narrow it; an Accountant and a Foreman
   // are told they have no permission.
   {
@@ -984,7 +990,11 @@ export const SCREENS: ScreenSpec[] = [
   // A job with long names: the sentence and the job name wrap, nothing is cut.
   { id: "record-history-long-names", group: "reports", route: `/history?job=${meta.fixtures.longNames}`, states: ["normal"], roles: [] },
   { id: "record-history-no-access", group: "reports", route: "/history", states: ["normal"], roles: ["accountant", "foreman"] },
+  // Workspace export (Task 18 run D): Owner only. The shot after the button is the saved state; the others are told
+  // they have no permission.
   { id: "workspace-export", group: "reports", route: "/export", states: ADMIN_STATES, roles: ["owner"] },
+  { id: "workspace-export-done", group: "reports", route: "/export", states: ["normal"], roles: ["owner"], steps: ["Export workspace"] },
+  { id: "workspace-export-no-access", group: "reports", route: "/export", states: ["normal"], roles: ["manager", "accountant", "foreman"] },
 
   // --- entry-settings (Task 19) -----------------------------------------
   { id: "sign-in", group: "entry-settings", route: "/sign-in", states: ENTRY_STATES, roles: [] },

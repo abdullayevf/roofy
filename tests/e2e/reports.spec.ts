@@ -83,6 +83,27 @@ test.describe("Job profitability and Crew reports", () => {
     await expect(page).toHaveURL(new RegExp(`/crew/${meta.crew.dima}$`));
   });
 
+  test("a job with a very long name wraps in its row and the page stays healthy", async ({ page }, testInfo) => {
+    await signInAs(page, "accountant", "/reports/job-profitability?from=2026-08-01&to=2026-08-31");
+    const long = rows(page).filter({ hasText: "Featherstonehaugh-Montgomery estate" });
+    await expect(long).toHaveCount(1);
+    await expect(long.locator("[data-margin]")).toHaveText(MONEY);
+    // The whole name is there (wrapped, not cut) and the row does not push the page sideways.
+    expect((await long.innerText()).replace(/\u00a0/g, " ")).toContain("heritage slate and copper roof restoration, east and west wings");
+    await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
+  });
+
+  test("a Foreman gets no permission on the index and on every report, with no money", async ({ page }) => {
+    const paths = ["/reports", ...["job-profitability", "crew", "productivity", "pauses", "pay-history"].map((k) => `/reports/${k}`)];
+    await signInAs(page, "foreman", "/reports");
+    for (const path of paths) {
+      await page.goto(path);
+      await expect(page.getByText("You don't have access to this. Ask your manager.")).toBeVisible();
+      await expect(page.locator("[data-report-row], [data-report-card]")).toHaveCount(0);
+    }
+    await expectNoMoney(page, paths);
+  });
+
   test("a chosen range filters the rows and offers the default back", async ({ page }, testInfo) => {
     await signInAs(page, "manager", "/reports/crew?from=2026-09-21&to=2026-09-27");
     await expect(page.locator("[data-report-range]")).toHaveText("Mon 21 Sep to Sun 27 Sep");

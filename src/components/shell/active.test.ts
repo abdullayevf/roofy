@@ -58,6 +58,9 @@ describe("queuesOffline (R7)", () => {
     // Pay runs never queue (flows.md "Needs connection"): no "will send automatically" banner on the list or a run.
     expect(queuesOffline("/pay")).toBe(false);
     expect(queuesOffline("/pay/run-1")).toBe(false);
+    // Workspace export is a download: it says Needs connection itself, so no banner promising to send later.
+    expect(queuesOffline("/export")).toBe(false);
+    expect(queuesOffline("/exports-archive")).toBe(true);
     expect(queuesOffline("/jobs")).toBe(true);
     expect(queuesOffline("/jobs/abc-123")).toBe(true);
     expect(queuesOffline("/log")).toBe(true);
