@@ -15,7 +15,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
     <>
       <div className="flex flex-col gap-2">
         <h1 className="font-display text-title text-ink">Create your account</h1>
-        <p className="text-body text-ink-2">Set up your business in a few minutes.</p>
+        <p className="entry-intro text-body text-ink-2">Set up your business in a few minutes.</p>
       </div>
       <AuthForm mode="sign-up" demo={state} />
     </>

@@ -261,6 +261,22 @@ body {
     padding-inline: 0;
   }
 }
+/*
+ * Sign in, sign up and set-up on a short phone (the keyboard open, or on its side): the welcome sentence goes and the
+ * gaps above the form close up, so the primary button stays inside the visible area beside the field being typed in.
+ * tests/e2e/auth.spec.ts measures it at the height an iPhone has with its keyboard up (508 px).
+ */
+@media (max-height: 559px) and (max-width: 1023px) {
+  .entry-intro {
+    display: none;
+  }
+  .entry-header {
+    padding-top: 0.75rem;
+  }
+  .entry-main {
+    gap: 1rem;
+  }
+}
 @media (max-height: 499px) {
   .pin-hint:not(.pin-hint-side) {
     display: none;

@@ -59,7 +59,7 @@ export function AuthForm({ mode, demo }: { mode: AuthMode; demo: AuthDemo }) {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="entry-main flex flex-col gap-6">
       {!online ? (
         <p role="status" className="text-meta text-ink-2">
           {NEEDS_CONNECTION}

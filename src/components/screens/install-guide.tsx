@@ -7,6 +7,7 @@ import type { InstallPlatform } from "@/lib/install-platform";
 import { cx } from "@/lib/cx";
 import { Button } from "@/components/ui/button";
 import { FOCUS } from "./home-parts";
+import { LoadError } from "./field-entry";
 import { INSTALL_STEPS, installOrder } from "./install-text";
 
 const STANDALONE = "(display-mode: standalone)";
@@ -38,6 +39,28 @@ function Steps({ platform }: { platform: InstallPlatform }) {
   );
 }
 
+function InstallHeader({ title, backHref, backLabel }: { title: string; backHref: string; backLabel: string }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Link href={backHref} prefetch={false} className={cx("flex min-h-12 items-center gap-1 border-b border-line text-body-strong text-chalk-link", FOCUS)}>
+        <CaretLeft size={24} aria-hidden="true" />
+        {backLabel}
+      </Link>
+      <h1 className="font-display text-title text-ink">{title}</h1>
+    </div>
+  );
+}
+
+/** The guide failed to load (`?demo=error`): the back row and title stay, the body says so with Try again as the primary button. */
+export function InstallGuideError({ backHref, backLabel }: { backHref: string; backLabel: string }) {
+  return (
+    <div className="flex max-w-150 flex-col gap-6 lg:max-w-none">
+      <InstallHeader title="Install guide" backHref={backHref} backLabel={backLabel} />
+      <LoadError primary />
+    </div>
+  );
+}
+
 /**
  * The install guide: the steps for this device first, the other devices' behind a disclosure. Opened from the home
  * screen it says Roofy is installed instead. `installed` is the prototype's `?installed=1`, to look at that state in a browser.
@@ -48,13 +71,7 @@ export function InstallGuide({ platform, installed: forced, backHref, backLabel 
   const { first, others } = installOrder(platform);
   return (
     <div className="flex max-w-150 flex-col gap-6 lg:max-w-none">
-      <div className="flex flex-col gap-2">
-        <Link href={backHref} prefetch={false} className={cx("flex min-h-12 items-center gap-1 border-b border-line text-body-strong text-chalk-link", FOCUS)}>
-          <CaretLeft size={24} aria-hidden="true" />
-          {backLabel}
-        </Link>
-        <h1 className="font-display text-title text-ink">{installed ? "Roofy is installed" : "Install guide"}</h1>
-      </div>
+      <InstallHeader title={installed ? "Roofy is installed" : "Install guide"} backHref={backHref} backLabel={backLabel} />
       {installed ? (
         <div className="flex flex-col items-start gap-4">
           <p className="flex items-start gap-2 text-body text-ink-2">

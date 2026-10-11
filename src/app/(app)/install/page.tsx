@@ -4,7 +4,7 @@ import { getData } from "@/data";
 import type { SearchParams } from "@/data/session";
 import { NoPermission } from "@/components/page-states";
 import { backLink, canOpen } from "@/components/shell/access";
-import { InstallGuide } from "@/components/screens/install-guide";
+import { InstallGuide, InstallGuideError } from "@/components/screens/install-guide";
 import { detectPlatform, parsePlatform } from "@/lib/install-platform";
 
 export const metadata: Metadata = { title: "Install guide" };
@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Install guide" };
 export default async function Page({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const ctx = await getData({ searchParams });
   const params = await searchParams;
-  if (ctx.demo.state === "error") throw new Error("Demo: this screen could not load.");
+  if (ctx.demo.state === "error") return <InstallGuideError backHref="/more" backLabel="Back to More" />;
   if (!canOpen(ctx.actor.role, "install") || ctx.demo.state === "noperm") {
     const back = backLink(ctx.actor.role);
     return <NoPermission backHref={back.href} backLabel={back.label} />;

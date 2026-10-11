@@ -51,9 +51,19 @@ test.describe("Settings (screen 23)", () => {
       if (path.includes("?")) return;
       await go(page, "owner", `${path}?demo=offline`);
       await expect(page.getByText(NEEDS_CONNECTION)).toHaveCount(1);
+      await expect(page.getByText(/will send automatically/), "a page that cannot queue never promises to send later").toHaveCount(0);
       await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
       await expect(page.locator("input").first(), "reading stays available offline").toBeVisible();
     });
+
+  test("More offline: Sign out and the theme say Needs connection once, with no send-later banner", async ({ page }) => {
+    for (const role of ["owner", "manager", "foreman", "accountant"]) {
+      await go(page, role, "/more?demo=offline");
+      await expect(page.getByText(NEEDS_CONNECTION)).toHaveCount(1);
+      await expect(page.getByText(/will send automatically/)).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Sign out" })).toBeDisabled();
+    }
+  });
 
   test("validation errors are per field and nothing saves", async ({ page }) => {
     await go(page, "owner", "/settings/business");

@@ -66,6 +66,13 @@ describe("queuesOffline (R7)", () => {
     expect(queuesOffline("/reports/job-profitability")).toBe(false);
     expect(queuesOffline("/history")).toBe(false);
     expect(queuesOffline("/reports-archive")).toBe(true);
+    // Settings pages and More need a connection to save (Sign out, theme): each says Needs connection itself (D5).
+    expect(queuesOffline("/settings")).toBe(false);
+    expect(queuesOffline("/settings/business")).toBe(false);
+    expect(queuesOffline("/settings/templates/tpl-1")).toBe(false);
+    expect(queuesOffline("/settings-archive")).toBe(true);
+    expect(queuesOffline("/more")).toBe(false);
+    expect(queuesOffline("/more-archive")).toBe(true);
     expect(queuesOffline("/jobs")).toBe(true);
     expect(queuesOffline("/jobs/abc-123")).toBe(true);
     expect(queuesOffline("/log")).toBe(true);

@@ -53,4 +53,17 @@ test.describe("Install guide (screen 3)", () => {
     }
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
   });
+
+  test("?demo=error keeps the back row and title, says so once and logs nothing to the console", async ({ page }, testInfo) => {
+    const consoleLog = collectConsole(page);
+    for (const role of ["owner", "manager", "foreman", "accountant"]) {
+      await open(page, role, "/install?demo=error");
+      await expect(page.getByRole("heading", { level: 1, name: "Install guide" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Back to More" })).toHaveAttribute("href", "/more");
+      await expect(page.getByText("Couldn't load this. Try again.")).toBeVisible();
+      await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
+    }
+    // A thrown error would log a 500 and React error 441 here; the page draws its own error instead.
+    await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
+  });
 });

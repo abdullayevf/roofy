@@ -16,6 +16,21 @@ async function fill(page: Page, address: string, pass: string) {
   await password(page).fill(pass);
 }
 
+/**
+ * Design-loop keyboard-open check, kept as a test: with the keyboard up an iPhone has 508 px (844 - KEYBOARD_HEIGHT_PX);
+ * the primary button has to sit fully inside that, beside the Password field being typed in, with no scrolling.
+ */
+async function expectPrimaryClearOfKeyboard(page: Page, action: string, phone: boolean) {
+  test.skip(!phone, "the on-screen keyboard is a phone matter");
+  const width = page.viewportSize()?.width ?? 390;
+  await password(page).focus();
+  await page.setViewportSize({ width, height: 508 });
+  const box = await primary(page, action).boundingBox();
+  expect(box, `${action} is on the page`).not.toBeNull();
+  expect(box!.y, `${action} top`).toBeGreaterThanOrEqual(0);
+  expect(box!.y + box!.height, `${action} bottom, with the keyboard open (viewport 508 px tall)`).toBeLessThanOrEqual(508);
+}
+
 test.describe("Sign in (screen 1)", () => {
   test("shows Google and email sign-in with one primary button, and no tab bar", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
@@ -28,6 +43,11 @@ test.describe("Sign in (screen 1)", () => {
     await expect(password(page)).toHaveAttribute("autocomplete", "current-password");
     await expect(email(page)).toHaveAttribute("type", "email");
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
+  });
+
+  test("with the keyboard open the Sign in button is still fully on screen", async ({ page }, testInfo) => {
+    await page.goto("/sign-in");
+    await expectPrimaryClearOfKeyboard(page, "Sign in", isPhone(testInfo.project.name));
   });
 
   test("an empty form says what is missing, beside each field, and puts the cursor on the first", async ({ page }, testInfo) => {
@@ -115,6 +135,11 @@ test.describe("Sign up (screen 2)", () => {
     await expect(password(page)).toHaveAttribute("autocomplete", "new-password");
     await expect(page.getByText("At least 8 characters")).toHaveCount(1);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
+  });
+
+  test("with the keyboard open the Create account button is still fully on screen", async ({ page }, testInfo) => {
+    await page.goto("/sign-up");
+    await expectPrimaryClearOfKeyboard(page, "Create account", isPhone(testInfo.project.name));
   });
 
   test("a short password and a half-typed email are named beside their fields", async ({ page }, testInfo) => {

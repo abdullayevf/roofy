@@ -19,13 +19,13 @@ export default function EntryLayout({ children }: Readonly<{ children: React.Rea
         paddingRight: "env(safe-area-inset-right)",
       }}
     >
-      <header className="flex flex-col gap-3 px-4 pt-6 lg:justify-center lg:gap-4 lg:border-r lg:border-line lg:bg-surface lg:px-16 lg:pt-0">
+      <header className="entry-header flex flex-col gap-3 px-4 pt-6 lg:justify-center lg:gap-4 lg:border-r lg:border-line lg:bg-surface lg:px-16 lg:pt-0">
         <p className="font-display text-title text-ink">Roofy</p>
         <p className="hidden max-w-md text-body text-ink-2 lg:block">
           Crew and job costing for roofing businesses. Log the day on site, then see what each job is making.
         </p>
       </header>
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-start gap-6 p-4 lg:justify-center lg:p-16">{children}</main>
+      <main className="entry-main mx-auto flex w-full max-w-md flex-1 flex-col justify-start gap-6 p-4 lg:justify-center lg:p-16">{children}</main>
     </div>
   );
 }
