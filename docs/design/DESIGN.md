@@ -139,6 +139,7 @@ Radius hierarchy is deliberate: controls 6, groups 8, sheets 12 (top only), chip
 ## 8. Responsive and platform behaviour
 
 - Breakpoints: `< 600` phone · `600–1023` large phone/tablet (phone layout, wider content, 2 columns only for crew grid) · `≥ 1024` desktop.
+- `wide:` (`--breakpoint-wide: 800px`) is one extra step for page titles only: from 800 px wide, actions such as Export CSV and Print join the title row (a landscape phone at 844 px gets the same layout as desktop there); content layout stays on the three breakpoints above.
 - Touch targets ≥ 48 × 48 px, 8 px apart.
 - Installed-app mode (`display: standalone`): respect `env(safe-area-inset-*)`; status bar `theme-color` = `galv`; no browser-only UI assumptions.
 - Keyboard: correct `inputmode` (decimal for m², numeric for hours, tel for phone); sheet content scrolls above the keyboard; primary action stays visible.

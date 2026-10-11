@@ -254,7 +254,7 @@ test.describe("Productivity, Pauses and Pay history reports; Export CSV and Prin
     await signInAs(page, "manager", "/reports/productivity");
     await expect(page.getByRole("heading", { level: 1, name: "Productivity" })).toBeVisible();
     expect(await rows(page).count()).toBeGreaterThan(0);
-    for (const f of await page.locator("[data-report-row]:visible [data-pace]").all()) await expect(f).toHaveText(/^[\d,.]+(\s(m²|lm))?$/);
+    for (const f of await page.locator("[data-report-row]:visible [data-pace]").all()) await expect(f, "D27/F10: pace always has 2 decimal places").toHaveText(/^\d[\d,]*\.\d{2}(\s(m²|lm))?$/);
     for (const r of await rows(page).all()) await expect(r).toContainText(/a crew-day/);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
   });
@@ -283,6 +283,41 @@ test.describe("Productivity, Pauses and Pay history reports; Export CSV and Prin
     }
     await row.click();
     await expect(page).toHaveURL(new RegExp(`/jobs/${meta.projects.patel}/stages/${patelSheet.id}$`));
+  });
+
+  test("pay history lists the same draft run in every range that overlaps it and captions it as not yet paid (F5/D25)", async ({ page }) => {
+    const draftRuns = async () =>
+      rows(page).evaluateAll((els) =>
+        els
+          .filter((e) => /Draft/.test(e.textContent ?? ""))
+          .map((e) => ({ href: (e.closest("a") ?? e.querySelector("a"))?.getAttribute("href") ?? "", total: e.querySelector("[data-total]")?.textContent ?? "" })),
+      );
+    let expected: string[] | null = null;
+    // The narrowest range first: the draft that overlaps 21-27 Sep must be listed, marked and captioned in every wider range too.
+    for (const query of ["?from=2026-09-21&to=2026-09-27", "?from=2026-09-01&to=2026-09-27", "?from=2026-06-29&to=2026-09-28", ""]) {
+      await signInAs(page, "accountant", `/reports/pay-history${query}`);
+      const drafts = await draftRuns();
+      expect(drafts.length, `a draft run is listed for ${query || "the default range"}`).toBeGreaterThan(0);
+      const hrefs = drafts.map((d) => d.href).sort();
+      expected ??= hrefs;
+      expect(hrefs, `the 21-27 Sep draft is listed for ${query || "the default range"}`).toEqual(expect.arrayContaining(expected));
+      const caption = page.locator("[data-draft-caption]");
+      await expect(caption).toHaveCount(1);
+      await expect(caption).toHaveText(/^\$[\d,]+\.\d{2} in (a draft|drafts), not yet paid\.$/);
+      const amount = cents((await caption.innerText()).match(/\$[\d,]+\.\d{2}/)![0]);
+      expect(amount, "the caption is the sum of the draft rows").toBe(drafts.reduce((sum, d) => sum + cents(d.total), 0));
+    }
+  });
+
+  test("pauses show when each pause ran and list the most working days lost first (F6/F11)", async ({ page }) => {
+    await signInAs(page, "owner", "/reports/pauses");
+    const dates = await page.locator("[data-report-row]:visible [data-pause-dates]").allInnerTexts();
+    expect(dates.length).toBeGreaterThan(0);
+    const DAY = "(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \\d{1,2} (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)( \\d{4})?";
+    for (const d of dates) expect(d.replace(/\u00a0/g, " ")).toMatch(new RegExp(`^${DAY}( to ${DAY})?$`));
+    const days = await rows(page).evaluateAll((els) => els.map((e) => Number((e.querySelector("[data-days]") ?? e.querySelector("td:last-child"))?.textContent?.match(/\d+/)?.[0])));
+    expect(days.every((n) => Number.isFinite(n))).toBe(true);
+    expect(days, "most working days lost first").toEqual([...days].sort((a, b) => b - a));
   });
 
   test("pay history shows each pay run's total and opens the pay run", async ({ page }, testInfo) => {

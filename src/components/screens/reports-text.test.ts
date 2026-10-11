@@ -9,6 +9,8 @@ import {
   keyFigureText,
   marginText,
   monthText,
+  draftCaption,
+  pauseDatesText,
   pauseReasonLine,
   perCrewDayText,
   periodText,
@@ -90,7 +92,7 @@ describe("reports text, run B kinds", () => {
     expect(workingDaysText(3)).toBe("3\u00a0working days");
   });
   it("says the pace per crew-day with its unit", () => {
-    expect(perCrewDayText(4250, "m2")).toMatch(/^42\.5\s?m² a crew-day$/);
+    expect(perCrewDayText(4250, "m2")).toMatch(/^42\.50\s?m² a crew-day$/);
   });
 
   describe("periodText (a productivity row's label)", () => {
@@ -118,12 +120,40 @@ describe("reports text, run B kinds", () => {
       expect(keyFigureParts({ format: "days", value: 1, label: "x" })).toEqual({ figure: "1", unit: "working day" });
     });
     it("pace: the quantity is the figure, 'a crew-day' is the unit", () => {
-      expect(keyFigureParts({ format: "per-crew-day", value: 4250, unit: "m2", label: "x" })).toEqual({ figure: "42.5 m²", unit: "a crew-day" });
+      expect(keyFigureParts({ format: "per-crew-day", value: 4250, unit: "m2", label: "x" })).toEqual({ figure: "42.50 m²", unit: "a crew-day" });
     });
     it("reads as one phrase in text", () => {
       expect(keyFigureText({ format: "money", value: 12345, label: "x" })).toBe("$123.45");
       expect(keyFigureText({ format: "days", value: 3, label: "x" })).toBe("3 working days");
-      expect(keyFigureText({ format: "per-crew-day", value: 4250, unit: "m2", label: "x" })).toBe("42.5 m² a crew-day");
+      expect(keyFigureText({ format: "per-crew-day", value: 4250, unit: "m2", label: "x" })).toBe("42.50 m² a crew-day");
+    });
+  });
+
+  describe("pace always has 2 decimal places (D27/F10)", () => {
+    it("whole and one-decimal paces read evenly", () => {
+      expect(keyFigureParts({ format: "per-crew-day", value: 1100, unit: "m2", label: "x" }).figure).toBe("11.00 m²");
+      expect(keyFigureParts({ format: "per-crew-day", value: 1450, unit: "lm", label: "x" }).figure).toBe("14.50 lm");
+      expect(keyFigureParts({ format: "per-crew-day", value: 2778, unit: "each", label: "x" }).figure).toBe("27.78");
+    });
+  });
+
+  describe("pause dates (F6)", () => {
+    const today = "2026-09-28";
+    it("a pause over several days reads from the first day to the last", () => {
+      expect(pauseDatesText({ start: "2026-09-14", end: "2026-09-16" }, today)).toBe(rangeText({ from: "2026-09-14", to: "2026-09-16" }, today));
+    });
+    it("a one-day pause names the day once", () => {
+      const text = pauseDatesText({ start: "2026-09-14", end: "2026-09-14" }, today);
+      expect(text).toBe("Mon\u00a014\u00a0Sep");
+    });
+  });
+
+  describe("draft caption on the pay history key figure (D25)", () => {
+    it("says the money is in a draft and not yet paid", () => {
+      expect(draftCaption(1424216, 1)).toBe("$14,242.16 in a draft, not yet paid");
+    });
+    it("says drafts when there is more than one", () => {
+      expect(draftCaption(1424216, 2)).toBe("$14,242.16 in drafts, not yet paid");
     });
   });
 

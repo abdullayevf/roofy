@@ -2,7 +2,7 @@
 import type { DateRange, ProductivityRow, ReportKeyFigure, ReportKind, Unit } from "@/data/contracts";
 import type { PauseReason } from "@/domain/segments";
 import { addDays } from "@/domain/dates";
-import { formatHours, formatMoney, formatQuantity } from "@/lib/format";
+import { formatDate, formatHours, formatMoney, formatPace } from "@/lib/format";
 import { payRunPeriodText } from "./pay-runs-text";
 
 export const REPORT_KINDS: readonly ReportKind[] = ["job-profitability", "crew", "productivity", "pauses", "pay-history"];
@@ -81,13 +81,13 @@ export const reportCsvHref = (kind: ReportKind, range: DateRange): string => `/r
 export const workingDaysText = (n: number): string => countText(n, "working day");
 
 /** Units laid per crew-day ("42.5 m² a crew-day"). */
-export const perCrewDayText = (perCrewDay: number, unit: Unit): string => `${formatQuantity(perCrewDay, unit)} a crew-day`;
+export const perCrewDayText = (perCrewDay: number, unit: Unit): string => `${formatPace(perCrewDay, unit)} a crew-day`;
 
 /** A figure and its unit apart, so a narrow right column keeps the figure on one line and the unit on the line below. */
 export type FigureParts = { figure: string; unit: string };
 
 export function keyFigureParts(f: ReportKeyFigure): FigureParts {
-  if (f.format === "per-crew-day") return { figure: formatQuantity(f.value, f.unit), unit: "a crew-day" };
+  if (f.format === "per-crew-day") return { figure: formatPace(f.value, f.unit), unit: "a crew-day" };
   if (f.format === "money") return { figure: formatMoney(f.value), unit: "" };
   return { figure: String(f.value), unit: f.value === 1 ? "working day" : "working days" };
 }
@@ -103,6 +103,17 @@ export function periodText(r: Pick<ProductivityRow, "month" | "period">, today: 
   const whole = r.period.from === `${r.month}-01` && r.period.to.slice(0, 7) === r.month && addDays(r.period.to, 1).slice(0, 7) !== r.month;
   return whole ? monthText(r.month) : rangeText(r.period, today);
 }
+
+/** When a stage was paused inside the range: "Mon 14 Sep to Wed 16 Sep", or one date for a one-day pause (F6). */
+export function pauseDatesText(r: { start: string; end: string }, today: string): string {
+  return r.start === r.end ? formatDate(r.start, today).replace(/ /g, "\u00a0") : rangeText({ from: r.start, to: r.end }, today);
+}
+
+/** The line under the pay history key figure for runs still in draft: listed, but never in the paid total (D25/F5). */
+export const draftCaption = (draftCents: number, draftRuns: number): string => `${formatMoney(draftCents)} in ${draftCaptionTail(draftRuns)}`;
+
+/** The words after the amount in the draft caption, so the page can set the amount in figure style. */
+export const draftCaptionTail = (draftRuns: number): string => `${draftRuns === 1 ? "a draft" : "drafts"}, not yet paid`;
 
 const PAUSE_LINE: Record<PauseReason, string> = {
   weather: "Held up by weather",

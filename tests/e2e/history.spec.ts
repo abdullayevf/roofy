@@ -30,7 +30,7 @@ test.describe("Record history (screen 25)", () => {
     const all = await readRows(page);
     const receipt = all.find((r) => r.what.includes("receipt"))!;
     expect(receipt.what).toMatch(/^Changed total from \$[\d,]+\.\d{2} to \$[\d,]+\.\d{2} on Harbour Steel Supply receipt$/);
-    expect(all.filter((r) => /\bof \$[\d,]+\.\d{2}/.test(r.what)), 'D20: no "of $12.00" chains').toEqual([]);
+    expect(all.filter((r) => /\bof \$[\d,]+\.\d{2}/.test(r.what) && !/\b(advance|rate) of \$/.test(r.what)), 'D20/F7: an amount says what it is for ("advance of $300.00", "$12.00 pay adjustment"), never a bare "of $12.00"').toEqual([]);
     expect(all.filter((r) => /\S Pay run/.test(r.what)), "D20: pay run is lower case inside a sentence").toEqual([]);
     expect(all.filter((r) => /pause reason|status from \w+ to (paused|active|done)/.test(r.what)), "N11: a pause or restart reads as a sentence").toEqual([]);
     expect((await checkMoneyFigureFont(page, '[data-screen="history"]')).failures, "N17: money in a sentence is in figure style").toEqual([]);
@@ -139,7 +139,7 @@ test.describe("Record history filters (from job detail and crew detail)", () => 
     await expect(page.locator("[data-history-showing]")).toContainText(`Showing ${dimaName}`);
     const whats = (await readRows(page)).map((r) => r.what);
     expect(whats.length).toBeGreaterThan(0);
-    expect(whats.some((w) => /^Added Dima's advance, \$[\d,]+\.\d{2}$/.test(w)), "Dima's advance").toBe(true);
+    expect(whats.some((w) => /^Added Dima's advance of \$[\d,]+\.\d{2}$/.test(w)), "Dima's advance").toBe(true);
     expect(whats.filter((w) => w.includes("Sam's")), "nothing about Sam").toEqual([]);
     expect(whats.filter((w) => w.includes("receipt")), "no receipt of someone else's").toEqual([]);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });

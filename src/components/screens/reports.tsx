@@ -4,7 +4,7 @@ import type { CrewReportRow, DateRange, JobProfitRow, PauseReportRow, PayHistory
 import { KeepTogether } from "@/components/keep-together";
 import { StatusChip } from "@/components/ui/status-chip";
 import { cx } from "@/lib/cx";
-import { formatMoney, formatQuantity } from "@/lib/format";
+import { formatMoney, formatPace, formatQuantity } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +13,7 @@ import { COLUMN, FOCUS, GROUP } from "./home-parts";
 import { jobTypeLabel } from "./job-input";
 import { payRunPeriodText } from "./pay-runs-text";
 import { ReportPrintButton } from "./report-print-button";
-import { countText, crewWorkText, keyFigureParts, marginText, monthText, pauseReasonLine, periodText, rangeText, reportCsvHref, reportTitle } from "./reports-text";
+import { countText, crewWorkText, draftCaptionTail, keyFigureParts, marginText, pauseDatesText, pauseReasonLine, periodText, rangeText, reportCsvHref, reportTitle } from "./reports-text";
 import { TD, TH } from "./table-cells";
 
 /** Full width from 1024 px: the hub list and the report table use the width (lesson 21). */
@@ -131,7 +131,7 @@ export function ReportsIndexError() {
 }
 
 /** The key figure: the one figure-xl on a report page, with its unit beside it and its label under it (N3/D8, lesson 5). */
-function KeyFigure({ figure }: { figure: ReportKeyFigure }) {
+function KeyFigure({ figure, draftRuns = 0 }: { figure: ReportKeyFigure; draftRuns?: number }) {
   const { figure: text, unit } = keyFigureParts(figure);
   return (
     <div data-key-figure="" className="flex flex-col wide:col-span-2 wide:row-start-3">
@@ -145,6 +145,12 @@ function KeyFigure({ figure }: { figure: ReportKeyFigure }) {
         ) : null}
       </p>
       <p className="text-meta text-ink">{figure.label}.</p>
+      {figure.format === "money" && figure.draftCents ? (
+        <p data-draft-caption="" className="text-meta text-ink">
+          <span className={META_FIG}>{formatMoney(figure.draftCents)}</span>
+          {" "}in {draftCaptionTail(draftRuns)}.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -363,7 +369,7 @@ function ProductivityRows({ rows, today }: { rows: ProductivityRow[]; today: str
                 <span className="text-meta text-ink">{jobTypeLabel(r.jobType)}</span>
                 <span className="text-meta text-ink">{formatQuantity(r.quantity, r.unit)} in {countText(r.crewDays, "crew-day")}</span>
               </span>
-              <FigureColumn figure={formatQuantity(r.perCrewDay, r.unit)} unit="a crew-day" attrs={{ "data-pace": "" }} />
+              <FigureColumn figure={formatPace(r.perCrewDay, r.unit)} unit="a crew-day" attrs={{ "data-pace": "" }} />
             </span>
           </div>
         ))}
@@ -383,7 +389,7 @@ function ProductivityRows({ rows, today }: { rows: ProductivityRow[]; today: str
               <td className={cx(TD, "text-body text-ink")}>{jobTypeLabel(r.jobType)}</td>
               <td className={cx(TD, "text-right")}><span className={cx(FIG, NO_WRAP)}>{formatQuantity(r.quantity, r.unit)}</span></td>
               <td className={cx(TD, "text-right")}><span className={FIG}>{r.crewDays}</span></td>
-              <td className={cx(TD, "text-right")}><span data-pace="" className={FIG}>{formatQuantity(r.perCrewDay, r.unit)}</span> <span className={cx("text-meta text-ink", NO_WRAP)}>a crew-day</span></td>
+              <td className={cx(TD, "text-right")}><span data-pace="" className={FIG}>{formatPace(r.perCrewDay, r.unit)}</span> <span className={cx("text-meta text-ink", NO_WRAP)}>a crew-day</span></td>
             </tr>
           ))}
         </tbody>
@@ -395,7 +401,7 @@ function ProductivityRows({ rows, today }: { rows: ProductivityRow[]; today: str
 const stageHref = (r: PauseReportRow) => `/jobs/${r.projectId}/stages/${r.stageId}`;
 
 /** Pauses: working days lost per stage and reason; a row opens the paused stage. */
-function PauseRows({ rows }: { rows: PauseReportRow[] }) {
+function PauseRows({ rows, today }: { rows: PauseReportRow[]; today: string }) {
   const key = (r: PauseReportRow, i: number) => `${r.stageId}|${r.month}|${r.reason}|${i}`;
   return (
     <div className={cx(GROUP, "overflow-hidden")}>
@@ -407,7 +413,7 @@ function PauseRows({ rows }: { rows: PauseReportRow[] }) {
                 <span className="text-body-strong text-ink"><KeepTogether text={r.projectName} /></span>
                 <span className="text-meta text-ink"><KeepTogether text={r.stageName} /></span>
                 <span className="text-meta text-ink">{pauseReasonLine(r.reason)}</span>
-                <span className="text-meta text-ink">{monthText(r.month)}</span>
+                <span className="text-meta text-ink" data-pause-dates="">{pauseDatesText(r, today)}</span>
               </span>
               <FigureColumn figure={String(r.workingDays)} unit={r.workingDays === 1 ? "working day" : "working days"} attrs={{ "data-days": "" }} />
             </span>
@@ -418,7 +424,7 @@ function PauseRows({ rows }: { rows: PauseReportRow[] }) {
       <table className="hidden w-full lg:table">
         <thead>
           <tr>
-            {["Job", "Stage", "Reason", "Month"].map((h) => <th key={h} scope="col" className={TH}>{h}</th>)}
+            {["Job", "Stage", "Reason", "Dates"].map((h) => <th key={h} scope="col" className={TH}>{h}</th>)}
             <th scope="col" className={cx(TH, "text-right", NO_WRAP)}>
               <span className={CHEVRON_GAP}>Working days lost<ChevronSpacer /></span>
             </th>
@@ -432,7 +438,7 @@ function PauseRows({ rows }: { rows: PauseReportRow[] }) {
               </td>
               <td className={cx(TD, "text-body text-ink")}><KeepTogether text={r.stageName} /></td>
               <td className={cx(TD, "text-body text-ink")}>{pauseReasonLine(r.reason)}</td>
-              <td className={cx(TD, "text-body text-ink whitespace-nowrap")}>{monthText(r.month)}</td>
+              <td className={cx(TD, "text-body text-ink")} data-pause-dates="">{pauseDatesText(r, today)}</td>
               <td className={cx(TD, "text-right")}>
                 <span className={CHEVRON_GAP}><span className={FIG}>{r.workingDays}</span><TrailingChevron /></span>
               </td>
@@ -519,10 +525,10 @@ export function ReportView({ body, action, ...frame }: ReportFrameProps & { body
   else if (body.kind === "job-profitability") content = <JobRows rows={body.rows} />;
   else if (body.kind === "crew") content = <CrewRows rows={body.rows} />;
   else if (body.kind === "productivity") content = <ProductivityRows rows={body.rows} today={frame.today} />;
-  else if (body.kind === "pauses") content = <PauseRows rows={body.rows} />;
+  else if (body.kind === "pauses") content = <PauseRows rows={body.rows} today={frame.today} />;
   else content = <PayHistoryRows rows={draftsLast(body.rows)} today={frame.today} />;
   return (
-    <ReportFrame kind={body.kind} {...frame} empty={empty} open={empty && frame.chosen} figure={empty ? null : <KeyFigure figure={body.keyFigure} />}>
+    <ReportFrame kind={body.kind} {...frame} empty={empty} open={empty && frame.chosen} figure={empty ? null : <KeyFigure figure={body.keyFigure} draftRuns={body.kind === "pay-history" ? body.rows.filter((r) => r.status === "draft").length : 0} />}>
       {content}
     </ReportFrame>
   );

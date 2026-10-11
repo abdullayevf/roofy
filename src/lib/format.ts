@@ -23,6 +23,11 @@ export function formatQuantity(value: number, unit: keyof typeof UNIT_LABEL): st
   return `${hundredths(value)}${UNIT_LABEL[unit]}`;
 }
 
+/** A pace or rate: always 2 decimal places and the unit, so a column reads evenly ("14.50 m²", "27.78"). */
+export function formatPace(value: number, unit: keyof typeof UNIT_LABEL): string {
+  return `${formatFixed2(value)}${UNIT_LABEL[unit]}`;
+}
+
 /**
  * A quantity for a summary line: at most one decimal ("335.7 m²", "80 lm", "368 h"). Display only; the data keeps
  * hundredths. Rounds half up.

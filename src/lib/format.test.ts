@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatDateTime, formatTime, formatDays, formatRoundedQuantity, formatDecimal, formatHours, formatMoney, formatQuantity } from "./format";
+import { formatDate, formatDateTime, formatTime, formatDays, formatRoundedQuantity, formatDecimal, formatHours, formatMoney, formatPace, formatQuantity } from "./format";
 
 describe("format", () => {
   it("formats AUD with a true minus sign", () => {
@@ -65,5 +65,14 @@ describe("formatRoundedQuantity", () => {
   it("adds hours the same way", () => {
     expect(formatRoundedQuantity(36800, "h")).toBe("368 h");
     expect(formatRoundedQuantity(36849, "h")).toBe("368.5 h");
+  });
+});
+
+describe("formatPace (a quantity with 2 decimal places and its unit)", () => {
+  it("always shows 2 places, never trims them", () => {
+    expect(formatPace(1450, "m2")).toBe("14.50 m²");
+    expect(formatPace(1100, "lm")).toBe("11.00 lm");
+    expect(formatPace(2778, "each")).toBe("27.78");
+    expect(formatPace(5, "each")).toBe("0.05");
   });
 });
