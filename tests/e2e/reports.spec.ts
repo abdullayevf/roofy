@@ -152,7 +152,13 @@ test.describe("Productivity, Pauses and Pay history reports; Export CSV and Prin
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
     const row = page.locator(`[data-report-screen] a[href="/jobs/${meta.projects.patel}/stages/${patelSheet.id}"]:visible`);
     await expect(row).toHaveCount(1);
-    await expect(row).toContainText("3 working days");
+    if (isPhone(testInfo.project.name)) await expect(row).toContainText("3 working days");
+    else {
+      // Desktop is a table: the unit sits in the column header, the figure alone in its cell.
+      const tr = row.locator("xpath=ancestor::tr[@data-report-row]");
+      await expect(page.locator("[data-report-screen] table thead th").last()).toHaveText("Working days lost");
+      await expect(tr.locator("td").last()).toHaveText("3");
+    }
     await row.click();
     await expect(page).toHaveURL(new RegExp(`/jobs/${meta.projects.patel}/stages/${patelSheet.id}$`));
   });

@@ -32,8 +32,17 @@ test.describe("Record history (screen 25)", () => {
     expect(receipt.what).toMatch(/^Changed total from \$[\d,]+\.\d{2} to \$[\d,]+\.\d{2} on Harbour Steel Supply receipt$/);
     const text = (await rows(page).allInnerTexts()).join("\n");
     expect(text, "no raw table or field names").not.toMatch(/[a-z]+_[a-z]+|[a-z][A-Z][a-z]|\b(Cents|undefined|null)\b/);
-    // Who and when sit under the sentence.
-    await expect(rows(page).first().locator("p").nth(1)).toContainText("Dan Holt");
+    // Who and when: three short lines under the sentence on a phone, the Who and When columns on desktop.
+    const first = rows(page).first();
+    const phone = isPhone(testInfo.project.name);
+    const who = phone ? first.locator("p").nth(1) : first.locator("td").nth(1);
+    const when = phone ? first.locator("p").nth(2) : first.locator("td").nth(0);
+    await expect(who).toContainText("Dan Holt");
+    await expect(when).toContainText(/\d{1,2}:\d{2}\s[ap]m$/);
+    if (!phone) {
+      const heads = await page.locator("table thead th").allInnerTexts();
+      expect(heads.slice(0, 3), "desktop columns").toEqual(["When", "Who", "What changed"]);
+    }
     if (isPhone(testInfo.project.name)) expect((await checkBackRow(page)).failures).toEqual([]);
     else {
       expect((await checkTableEdgeGap(page)).failures).toEqual([]);
