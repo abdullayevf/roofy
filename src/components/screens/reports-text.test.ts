@@ -6,6 +6,10 @@ import {
   defaultReportRange,
   isReportKind,
   marginText,
+  monthText,
+  perCrewDayText,
+  reportCsvHref,
+  workingDaysText,
   rangeText,
   readReportRange,
   reportTitle,
@@ -66,5 +70,22 @@ describe("reports text", () => {
   it("words a crew member's days and hours", () => {
     expect(crewWorkText(1, 800)).toBe("1 day, 8 h");
     expect(crewWorkText(12, 9650)).toBe("12 days, 96.5 h");
+  });
+});
+
+describe("reports text, run B kinds", () => {
+  it("names a month in words", () => {
+    expect(monthText("2026-09")).toBe("September 2026");
+    expect(monthText("2026-01")).toBe("January 2026");
+  });
+  it("links Export CSV to the report's range", () => {
+    expect(reportCsvHref("pauses", { from: "2026-06-29", to: "2026-09-28" })).toBe("/reports/pauses/csv?from=2026-06-29&to=2026-09-28");
+  });
+  it("counts working days lost", () => {
+    expect(workingDaysText(1)).toBe("1\u00a0working day");
+    expect(workingDaysText(3)).toBe("3\u00a0working days");
+  });
+  it("says the pace per crew-day with its unit", () => {
+    expect(perCrewDayText(4250, "m2")).toMatch(/^42\.5\s?m² a crew-day$/);
   });
 });

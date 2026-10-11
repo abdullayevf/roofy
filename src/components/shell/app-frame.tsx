@@ -22,7 +22,7 @@ export type AppFrameProps = {
 export function AppFrame({ role, workspaceName, offline, waiting, attention, children }: AppFrameProps) {
   return (
     <div className="min-h-dvh lg:flex">
-      <div className="hidden lg:sticky lg:top-0 lg:block lg:h-dvh lg:shrink-0 lg:overflow-y-auto">
+      <div className="hidden lg:sticky lg:top-0 lg:block lg:h-dvh lg:shrink-0 lg:overflow-y-auto print:hidden">
         <ShellSidebar role={role} workspaceName={workspaceName} outboxCount={waiting + attention} outboxAttention={attention > 0} />
       </div>
       <div
@@ -35,9 +35,9 @@ export function AppFrame({ role, workspaceName, offline, waiting, attention, chi
       >
         {offline ? <OfflineSlot /> : null}
         <OutboxBadgeSlot waiting={waiting} attention={attention} />
-        <main className="flex-1 p-4 pb-tab-bar lg:pb-page">{children}</main>
+        <main className="flex-1 p-4 pb-tab-bar lg:pb-page print:p-0">{children}</main>
       </div>
-      <div className="lg:hidden">
+      <div className="lg:hidden print:hidden">
         <ShellTabBar role={role} outboxCount={waiting + attention} outboxAttention={attention > 0} />
       </div>
     </div>

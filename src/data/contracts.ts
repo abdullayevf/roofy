@@ -1187,6 +1187,8 @@ export interface ProductivityRow {
 export interface PauseReportRow {
   month: string;
   projectId: Id;
+  /** The paused stage, so the row opens it. */
+  stageId: Id;
   projectName: string;
   stageName: string;
   reason: PauseReason;

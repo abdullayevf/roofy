@@ -1,7 +1,7 @@
 // Words and the date range for Reports (flows.md screen 22). A plain module, so server pages and client parts share it.
-import type { DateRange, ReportKind } from "@/data/contracts";
+import type { DateRange, ReportKind, Unit } from "@/data/contracts";
 import { addDays } from "@/domain/dates";
-import { formatHours } from "@/lib/format";
+import { formatHours, formatQuantity } from "@/lib/format";
 import { payRunPeriodText } from "./pay-runs-text";
 
 export const REPORT_KINDS: readonly ReportKind[] = ["job-profitability", "crew", "productivity", "pauses", "pay-history"];
@@ -65,3 +65,19 @@ export const countText = (n: number, word: string): string => `${n} ${n === 1 ?
 
 export const crewWorkText = (days: number, hours: number): string =>
   `${countText(days, "day")}, ${formatHours(hours).replace(" ", " ")}`;
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** "2026-09" as "September 2026". */
+export function monthText(month: string): string {
+  const [y, m] = month.split("-");
+  return `${MONTHS[Number(m) - 1]} ${y}`;
+}
+
+/** Export CSV for the range on screen (the route answers with the data layer's `reports.csv`). */
+export const reportCsvHref = (kind: ReportKind, range: DateRange): string => `/reports/${kind}/csv?from=${range.from}&to=${range.to}`;
+
+export const workingDaysText = (n: number): string => countText(n, "working day");
+
+/** Units laid per crew-day ("42.5 m² a crew-day"). */
+export const perCrewDayText = (perCrewDay: number, unit: Unit): string => `${formatQuantity(perCrewDay, unit)} a crew-day`;

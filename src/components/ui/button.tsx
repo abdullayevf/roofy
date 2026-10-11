@@ -28,6 +28,8 @@ type Shared = {
   className?: string;
   type?: "button" | "submit" | "reset";
   href?: string;
+  /** With `href`: the link fetches a file (a plain <a download>, so the browser saves it instead of routing). */
+  download?: boolean;
   onClick?: ComponentPropsWithoutRef<"button">["onClick"];
   name?: string;
   value?: string;
@@ -127,6 +129,10 @@ export function Button(props: ButtonProps) {
     >
       {content}
     </span>
+  ) : props.href && props.download ? (
+    <a href={props.href} download data-variant={props.variant ?? "primary"} className={className}>
+      {content}
+    </a>
   ) : props.href ? (
     <Link
       href={props.href}

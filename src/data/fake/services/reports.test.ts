@@ -80,6 +80,7 @@ describe("reports: every total equals its summed source lines", () => {
     expect(r.rows).toContainEqual({
       month: "2026-09",
       projectId: meta.projects.patel,
+      stageId: seed.stages.find((s) => s.projectId === meta.projects.patel && s.name === "Sheet install")!.id,
       projectName: "Patel job — Epping re-roof",
       stageName: "Sheet install",
       reason: "weather",

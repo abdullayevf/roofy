@@ -1,14 +1,20 @@
 import Link from "next/link";
 import { CaretLeft, CaretRight } from "@phosphor-icons/react/dist/ssr";
-import type { CrewReportRow, DateRange, JobProfitRow, ReportKind } from "@/data/contracts";
+import type { CrewReportRow, DateRange, JobProfitRow, PauseReportRow, PayHistoryRow, ProductivityRow, ReportKind } from "@/data/contracts";
+import { KeepTogether } from "@/components/keep-together";
+import { StatusChip } from "@/components/ui/status-chip";
 import { cx } from "@/lib/cx";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, formatQuantity } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoadError } from "./field-entry";
 import { COLUMN, FOCUS, GROUP } from "./home-parts";
-import { countText, crewWorkText, marginText, rangeText, reportTitle } from "./reports-text";
+import { pauseReasonText } from "./home-text";
+import { jobTypeLabel } from "./job-input";
+import { payRunPeriodText } from "./pay-runs-text";
+import { ReportPrintButton } from "./report-print-button";
+import { countText, crewWorkText, marginText, monthText, perCrewDayText, rangeText, reportCsvHref, reportTitle, workingDaysText } from "./reports-text";
 import { TD, TH } from "./table-cells";
 
 /** Full width from 1024 px: the cards sit in two columns, the report table uses the width (lesson 19). */
@@ -96,7 +102,7 @@ function ReportFrame({ kind, range, chosen, today, updated, children }: { kind: 
   return (
     <div data-screen="report" data-report-screen={kind} className={WIDE}>
       <div className="flex flex-col gap-1">
-        <Link href="/reports" prefetch={false} className={cx("flex min-h-12 items-center gap-1 self-start text-body-strong text-chalk-link", FOCUS)}>
+        <Link href="/reports" prefetch={false} className={cx("flex min-h-12 items-center gap-1 self-start text-body-strong text-chalk-link print:hidden", FOCUS)}>
           <CaretLeft size={24} aria-hidden="true" />
           Back to reports
         </Link>
@@ -104,7 +110,7 @@ function ReportFrame({ kind, range, chosen, today, updated, children }: { kind: 
         <p data-report-range="" className="text-body text-ink">{rangeText(range, today)}</p>
         <Updated text={updated} />
       </div>
-      <form method="get" action={`/reports/${kind}`} className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
+      <form method="get" action={`/reports/${kind}`} className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end print:hidden">
         <Field label="From" name="from" type="date" inputMode="none" defaultValue={range.from} max={today} className="sm:max-w-60" />
         <Field label="To" name="to" type="date" inputMode="none" defaultValue={range.to} max={today} className="sm:max-w-60" />
         <Button variant="secondary" type="submit" className="w-full sm:w-auto sm:min-w-40">Show range</Button>
@@ -114,6 +120,16 @@ function ReportFrame({ kind, range, chosen, today, updated, children }: { kind: 
           </Link>
         ) : null}
       </form>
+      <div data-report-actions="" className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center print:hidden">
+        {updated === null ? (
+          <Button variant="secondary" href={reportCsvHref(kind, range)} download className="w-full sm:w-auto sm:min-w-40">
+            Export CSV
+          </Button>
+        ) : (
+          <p className="text-body text-ink">Export CSV needs a connection.</p>
+        )}
+        <ReportPrintButton />
+      </div>
       {children}
     </div>
   );
@@ -131,7 +147,7 @@ function JobRows({ rows }: { rows: JobProfitRow[] }) {
           <Link key={r.projectId} href={r.href} prefetch={false} data-report-row="" className={PHONE_ROW}>
             <span className={ROW_GRID}>
               <span className="flex flex-col">
-                <span className="text-body-strong text-ink">{r.name}</span>
+                <span className="text-body-strong text-ink"><KeepTogether text={r.name} /></span>
                 <span className="text-meta text-ink">Labour <span className={FIG}>{formatMoney(r.labourCents)}</span></span>
                 <span className="text-meta text-ink">Expenses <span className={FIG}>{formatMoney(r.expensesCents)}</span></span>
               </span>
@@ -157,7 +173,7 @@ function JobRows({ rows }: { rows: JobProfitRow[] }) {
           {rows.map((r) => (
             <tr key={r.projectId} data-report-row="" className="relative h-14 hover:bg-galv">
               <td className={TD}>
-                <Link href={r.href} prefetch={false} className={cx("block text-body-strong text-ink after:absolute after:inset-0", FOCUS)}>{r.name}</Link>
+                <Link href={r.href} prefetch={false} className={cx("block text-body-strong text-ink after:absolute after:inset-0", FOCUS)}><KeepTogether text={r.name} /></Link>
               </td>
               {[r.contractCents, r.labourCents, r.expensesCents, r.marginToDateCents].map((c, i) => (
                 <td key={i} className={cx(TD, "text-right")}><span className={FIG}>{formatMoney(c)}</span></td>
@@ -220,19 +236,168 @@ function CrewRows({ rows }: { rows: CrewReportRow[] }) {
   );
 }
 
+const sentence = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
+const STATIC_ROW = "block min-h-16 py-2 px-4";
+const ROW_LINK = cx("block text-body-strong text-ink after:absolute after:inset-0", FOCUS);
+const Caret = () => <CaretRight size={24} aria-hidden="true" className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-2" />;
+
+/** Productivity: stages finished per crew-day by month. A row sums many stages, so it has no single source to open. */
+function ProductivityRows({ rows }: { rows: ProductivityRow[] }) {
+  const key = (r: ProductivityRow) => `${r.month}|${r.stageName}|${r.jobType}|${r.unit}`;
+  return (
+    <div className={cx(GROUP, "overflow-hidden")}>
+      <div className="divide-y divide-line lg:hidden">
+        {rows.map((r) => (
+          <div key={key(r)} data-report-row="" className={STATIC_ROW}>
+            <span className={ROW_GRID}>
+              <span className="flex flex-col">
+                <span className="text-body-strong text-ink"><KeepTogether text={r.stageName} /></span>
+                <span className="text-meta text-ink">{monthText(r.month)}</span>
+                <span className="text-meta text-ink">{jobTypeLabel(r.jobType)}</span>
+                <span className="text-meta text-ink">{formatQuantity(r.quantity, r.unit)} in {countText(r.crewDays, "crew-day")}</span>
+              </span>
+              <span data-pace="" className="num text-body-strong text-ink text-right">{perCrewDayText(r.perCrewDay, r.unit)}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+      <table className="hidden w-full lg:table">
+        <thead>
+          <tr>
+            {["Month", "Stage", "Job type"].map((h) => <th key={h} scope="col" className={TH}>{h}</th>)}
+            {["Done", "Crew-days", "Pace"].map((h) => <th key={h} scope="col" className={cx(TH, "text-right")}>{h}</th>)}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line">
+          {rows.map((r) => (
+            <tr key={key(r)} data-report-row="" className="h-14">
+              <td className={cx(TD, "text-body text-ink whitespace-nowrap")}>{monthText(r.month)}</td>
+              <td className={cx(TD, "text-body-strong text-ink")}><KeepTogether text={r.stageName} /></td>
+              <td className={cx(TD, "text-body text-ink")}>{jobTypeLabel(r.jobType)}</td>
+              <td className={cx(TD, "num text-right text-body text-ink whitespace-nowrap")}>{formatQuantity(r.quantity, r.unit)}</td>
+              <td className={cx(TD, "num text-right text-body text-ink")}>{r.crewDays}</td>
+              <td className={cx(TD, "text-right")}><span data-pace="" className="num text-body-strong text-ink whitespace-nowrap">{perCrewDayText(r.perCrewDay, r.unit)}</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const stageHref = (r: PauseReportRow) => `/jobs/${r.projectId}/stages/${r.stageId}`;
+
+/** Pauses: working days lost per stage and reason; a row opens the paused stage. */
+function PauseRows({ rows }: { rows: PauseReportRow[] }) {
+  const key = (r: PauseReportRow, i: number) => `${r.stageId}|${r.month}|${r.reason}|${i}`;
+  return (
+    <div className={cx(GROUP, "overflow-hidden")}>
+      <div className="divide-y divide-line lg:hidden">
+        {rows.map((r, i) => (
+          <Link key={key(r, i)} href={stageHref(r)} prefetch={false} data-report-row="" className={PHONE_ROW}>
+            <span className={ROW_GRID}>
+              <span className="flex flex-col">
+                <span className="text-body-strong text-ink"><KeepTogether text={r.projectName} /></span>
+                <span className="text-meta text-ink"><KeepTogether text={r.stageName} /></span>
+                <span className="text-meta text-ink">{sentence(pauseReasonText(r.reason))}</span>
+                <span className="text-meta text-ink">{monthText(r.month)}</span>
+              </span>
+              <span data-days="" className="num text-body-strong text-ink text-right">{workingDaysText(r.workingDays)}</span>
+            </span>
+            <Caret />
+          </Link>
+        ))}
+      </div>
+      <table className="hidden w-full lg:table">
+        <thead>
+          <tr>
+            {["Job", "Stage", "Reason", "Month"].map((h) => <th key={h} scope="col" className={TH}>{h}</th>)}
+            <th scope="col" className={cx(TH, "text-right")}>Working days lost</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line">
+          {rows.map((r, i) => (
+            <tr key={key(r, i)} data-report-row="" className="relative h-14 hover:bg-galv">
+              <td className={TD}>
+                <Link href={stageHref(r)} prefetch={false} className={ROW_LINK}><KeepTogether text={r.projectName} /></Link>
+              </td>
+              <td className={cx(TD, "text-body text-ink")}><KeepTogether text={r.stageName} /></td>
+              <td className={cx(TD, "text-body text-ink")}>{sentence(pauseReasonText(r.reason))}</td>
+              <td className={cx(TD, "text-body text-ink whitespace-nowrap")}>{monthText(r.month)}</td>
+              <td className={cx(TD, "num text-right text-body text-ink")}>{r.workingDays}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Pay history: each pay run in the range with its totals; a row opens the pay run. */
+function PayHistoryRows({ rows, today }: { rows: PayHistoryRow[]; today: string }) {
+  return (
+    <div className={cx(GROUP, "overflow-hidden")}>
+      <div className="divide-y divide-line lg:hidden">
+        {rows.map((r) => (
+          <Link key={r.payRunId} href={`/pay/${r.payRunId}`} prefetch={false} data-report-row="" className={PHONE_ROW}>
+            <span className={ROW_GRID}>
+              <span className="flex flex-col items-start gap-1">
+                <span className="text-body-strong text-ink">{payRunPeriodText(r.period, today)}</span>
+                <StatusChip status={r.status} plain />
+                <span className="text-meta text-ink">Employees <span className={FIG}>{formatMoney(r.employeesCents)}</span></span>
+                <span className="text-meta text-ink">Contractors <span className={FIG}>{formatMoney(r.contractorsCents)}</span></span>
+              </span>
+              <span data-total="" className={cx(FIG, "text-right")}>{formatMoney(r.totalCents)}</span>
+            </span>
+            <Caret />
+          </Link>
+        ))}
+      </div>
+      <table className="hidden w-full lg:table">
+        <thead>
+          <tr>
+            <th scope="col" className={TH}>Pay period</th>
+            <th scope="col" className={TH}>Status</th>
+            {["Employees", "Contractors", "GST", "Reimbursements", "Total"].map((h) => <th key={h} scope="col" className={cx(TH, "text-right")}>{h}</th>)}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line">
+          {rows.map((r) => (
+            <tr key={r.payRunId} data-report-row="" className="relative h-14 hover:bg-galv">
+              <td className={TD}>
+                <Link href={`/pay/${r.payRunId}`} prefetch={false} className={ROW_LINK}>{payRunPeriodText(r.period, today)}</Link>
+              </td>
+              <td className={TD}><StatusChip status={r.status} plain /></td>
+              {[r.employeesCents, r.contractorsCents, r.gstCents, r.reimbursementsCents].map((c, i) => (
+                <td key={i} className={cx(TD, "text-right")}><span className={FIG}>{formatMoney(c)}</span></td>
+              ))}
+              <td className={cx(TD, "text-right")}><span data-total="" className={FIG}>{formatMoney(r.totalCents)}</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export type ReportBody =
   | { kind: "job-profitability"; rows: JobProfitRow[] }
   | { kind: "crew"; rows: CrewReportRow[] }
-  | { kind: "productivity" | "pauses" | "pay-history"; rows: unknown[] };
+  | { kind: "productivity"; rows: ProductivityRow[] }
+  | { kind: "pauses"; rows: PauseReportRow[] }
+  | { kind: "pay-history"; rows: PayHistoryRow[] };
 
 export type ReportFrameProps = { range: DateRange; chosen: boolean; today: string; updated: string | null };
 
 /** One report (flows.md screen 22, `/reports/[kind]`): every row drills down to its source (job detail, crew detail). */
 export function ReportView({ body, ...frame }: ReportFrameProps & { body: ReportBody }) {
   let content: React.ReactNode;
-  if (body.kind !== "job-profitability" && body.kind !== "crew") content = <p className="text-body text-ink">This report shows here soon.</p>;
-  else if (body.rows.length === 0) content = <NothingInRange />;
-  else content = body.kind === "job-profitability" ? <JobRows rows={body.rows} /> : <CrewRows rows={body.rows} />;
+  if (body.rows.length === 0) content = <NothingInRange />;
+  else if (body.kind === "job-profitability") content = <JobRows rows={body.rows} />;
+  else if (body.kind === "crew") content = <CrewRows rows={body.rows} />;
+  else if (body.kind === "productivity") content = <ProductivityRows rows={body.rows} />;
+  else if (body.kind === "pauses") content = <PauseRows rows={body.rows} />;
+  else content = <PayHistoryRows rows={body.rows} today={frame.today} />;
   return <ReportFrame kind={body.kind} {...frame}>{content}</ReportFrame>;
 }
 

@@ -113,3 +113,77 @@ test.describe("Job profitability and Crew reports", () => {
     expect((await page.request.get("/reports/margins")).status()).toBe(404);
   });
 });
+
+test.describe("Productivity, Pauses and Pay history reports; Export CSV and Print", () => {
+  const patelSheet = getSeed().stages.find((s) => s.projectId === meta.projects.patel && s.name === "Sheet install")!;
+
+  test("productivity shows each stage's pace per crew-day", async ({ page }, testInfo) => {
+    await signInAs(page, "manager", "/reports/productivity");
+    await expect(page.getByRole("heading", { level: 1, name: "Productivity" })).toBeVisible();
+    expect(await rows(page).count()).toBeGreaterThan(0);
+    for (const f of await page.locator("[data-report-row]:visible [data-pace]").all()) await expect(f).toHaveText(/a crew-day$/);
+    await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
+  });
+
+  test("pauses lists working days lost and opens the paused stage", async ({ page }, testInfo) => {
+    await signInAs(page, "owner", "/reports/pauses?from=2026-09-01&to=2026-09-27");
+    await expect(page.getByRole("heading", { level: 1, name: "Pauses" })).toBeVisible();
+    await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
+    const row = page.locator(`[data-report-screen] a[href="/jobs/${meta.projects.patel}/stages/${patelSheet.id}"]:visible`);
+    await expect(row).toHaveCount(1);
+    await expect(row).toContainText("3 working days");
+    await row.click();
+    await expect(page).toHaveURL(new RegExp(`/jobs/${meta.projects.patel}/stages/${patelSheet.id}$`));
+  });
+
+  test("pay history shows each pay run's total and opens the pay run", async ({ page }, testInfo) => {
+    await signInAs(page, "accountant", "/reports/pay-history");
+    await expect(page.getByRole("heading", { level: 1, name: "Pay history" })).toBeVisible();
+    for (const f of await page.locator("[data-report-row]:visible [data-total]").all()) await expect(f).toHaveText(MONEY);
+    expect((await checkMoneyFigureFont(page, '[data-screen="report"]')).failures).toEqual([]);
+    await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
+    const first = page.locator('[data-report-screen] a[href^="/pay/"]:visible').first();
+    await first.click();
+    await expect(page).toHaveURL(/\/pay\/[^/?]+$/);
+  });
+
+  for (const kind of ["job-profitability", "crew", "productivity", "pauses", "pay-history"]) {
+    test(`${kind}: Export CSV downloads the range on screen and Print is offered`, async ({ page }) => {
+      await signInAs(page, "accountant", `/reports/${kind}?from=2026-09-01&to=2026-09-27`);
+      const csv = page.getByRole("link", { name: "Export CSV" });
+      await expect(csv).toHaveAttribute("href", `/reports/${kind}/csv?from=2026-09-01&to=2026-09-27`);
+      await expect(page.getByRole("button", { name: "Print" })).toBeVisible();
+      const res = await page.request.get(`/reports/${kind}/csv?from=2026-09-01&to=2026-09-27`);
+      expect(res.status()).toBe(200);
+      expect(res.headers()["content-type"]).toContain("text/csv");
+      expect(res.headers()["content-disposition"]).toContain(`attachment; filename="${kind}-2026-09-01-to-2026-09-27.csv"`);
+      expect((await res.text()).split("\r\n").length).toBeGreaterThan(2);
+    });
+  }
+
+  test("offline, a report still reads and prints; Export CSV says it needs a connection", async ({ page }, testInfo) => {
+    await signInAs(page, "owner", "/reports/pauses?demo=offline");
+    await expect(page.getByRole("link", { name: "Export CSV" })).toHaveCount(0);
+    await expect(page.getByText("Export CSV needs a connection.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Print" })).toBeVisible();
+    await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
+  });
+
+  test("printed at A4 width, the report has no app chrome, no buttons and no sideways scroll", async ({ page }) => {
+    await page.setViewportSize({ width: 794, height: 1123 });
+    await signInAs(page, "manager", "/reports/job-profitability");
+    await page.emulateMedia({ media: "print" });
+    await expect(page.getByRole("heading", { level: 1, name: "Job profitability" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Print" })).toBeHidden();
+    await expect(page.getByRole("button", { name: "Show range" })).toBeHidden();
+    await expect(page.getByRole("navigation")).toHaveCount(await page.getByRole("navigation").and(page.locator(":not(:visible)")).count());
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+  });
+
+  test("a foreman can't download a report", async ({ page }) => {
+    await signInAs(page, "foreman", "/");
+    const res = await page.request.get("/reports/job-profitability/csv");
+    expect(res.status()).toBe(403);
+    expect(await res.text()).not.toMatch(/\$|\d+\.\d{2}/);
+  });
+});

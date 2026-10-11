@@ -962,8 +962,9 @@ export const SCREENS: ScreenSpec[] = [
     states: READ_STATES,
     roles: ["owner", "manager", "accountant"],
   },
-  // Each report kind (Task 18 run A: Job profitability and Crew; run B adds the other three). Default range: the last 3 months.
-  ...(["job-profitability", "crew"] as const).flatMap((kind) => [
+  // Each report kind (Task 18 runs A and B). Default range: the last 3 months. Offline: Export CSV needs a connection,
+  // Print stays. Print width is checked by `reports.spec.ts` (print media at A4 width), not by capture.
+  ...(["job-profitability", "crew", "productivity", "pauses", "pay-history"] as const).flatMap((kind) => [
     { id: `reports-${kind}`, group: "reports" as const, route: `/reports/${kind}`, states: READ_STATES, roles: ["owner", "manager", "accountant"] as Role[] },
     // A chosen range (last week) and a range with nothing in it.
     { id: `reports-${kind}-filtered`, group: "reports" as const, route: `/reports/${kind}?from=2026-09-21&to=2026-09-27`, states: ["normal" as const], roles: [] },

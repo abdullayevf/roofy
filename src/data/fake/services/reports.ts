@@ -175,6 +175,7 @@ export function createReportService(c: FakeContext): ReportService {
             row: {
               month: p.start.slice(0, 7),
               projectId: project.id,
+              stageId: st.id,
               projectName: project.nickname,
               stageName: st.name,
               reason: p.reason,
