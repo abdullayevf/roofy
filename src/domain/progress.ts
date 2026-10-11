@@ -38,6 +38,11 @@ export function forecastLabour(status: StageStatus, pctBp: BasisPoints, actualCe
   return mulDivRound(actualCents, 10_000, pctBp);
 }
 
+/** Pay rules §12: the forecast labour above which a stage reads as trending over (budget × 1.05). */
+export function trendingTriggerCents(budgetCents: Cents): Cents {
+  return mulDivRound(budgetCents, 10_000 + TRENDING_TOLERANCE_BP, 10_000);
+}
+
 export type BudgetAlert = { level: "over" | "trending"; byCents: Cents } | null;
 
 export function budgetAlert(

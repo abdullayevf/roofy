@@ -30,7 +30,7 @@ function Money({ stage }: { stage: StageDetailManager }) {
       href: historyHref(stage.projectId),
     },
     ...(stage.forecastLabourCents !== null && stage.status !== "done"
-      ? [{ key: "forecast", primary: "Forecast labour", meta: stage.forecastWorking ? forecastWorkingText(stage.forecastWorking) : "At this pace", figure: <MoneyCell cents={stage.forecastLabourCents} />, href: historyHref(stage.projectId) }]
+      ? [{ key: "forecast", primary: "Forecast labour", meta: stage.forecastWorking ? forecastWorkingText(stage.forecastWorking) : "At this pace", figure: <MoneyCell cents={stage.forecastLabourCents} />, href: `/jobs/${stage.projectId}/stages/${stage.id}/forecast` }]
       : []),
     {
       key: "materials",

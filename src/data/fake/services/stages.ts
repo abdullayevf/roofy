@@ -1,6 +1,7 @@
 import { reversal } from "@/domain/adjustments";
 import { addDays, countWorkingDays } from "@/domain/dates";
 import { lumpSumLines } from "@/domain/piece";
+import { trendingTriggerCents } from "@/domain/progress";
 import { lostWorkingDays, pausePeriods, realWorkingDays } from "@/domain/segments";
 import { sum } from "@/domain/money";
 import { splitWeighted } from "@/domain/split";
@@ -183,6 +184,7 @@ export function createStageService(c: FakeContext): StageService {
         manualPctBp: st.manualPctBp,
         labourActualCents: sf.actualCents,
         forecastLabourCents: sf.forecastCents,
+        labourTriggerCents: trendingTriggerCents(st.labourBudgetCents),
         alert: sf.alert,
         forecastWorking:
           st.status === "not_started"

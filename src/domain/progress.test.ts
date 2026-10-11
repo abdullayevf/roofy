@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   budgetAlert,
+  trendingTriggerCents,
   forecastLabour,
   jobOver,
   projectMargins,
@@ -143,5 +144,15 @@ describe("jobOver (R9: the one rule for an over-budget job)", () => {
   });
   it("names the job as a whole when both are true", () => {
     expect(jobOver(300_000, 200_000, [st("Clean-up", 50_000, 30_000)])).toEqual({ kind: "labour", byCents: 100_000 });
+  });
+});
+
+describe("trending trigger point (pay rules §12 alerts)", () => {
+  it("E12.1 the warning starts above budget × 1.05: $4,000.00 → $4,200.00", () => {
+    expect(trendingTriggerCents(400_000)).toBe(420_000);
+  });
+  it("rounds to the cent and stays $0 for no budget", () => {
+    expect(trendingTriggerCents(1_001)).toBe(1_051);
+    expect(trendingTriggerCents(0)).toBe(0);
   });
 });

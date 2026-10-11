@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SegmentDto, StageActions } from "@/data/contracts";
-import { forecastWorkingText, lostDaysRows, materialsMeta, NOT_STARTED_TIMELINE, PAUSE_CHOICES, progressRowText, segmentsShown, segmentText, timelineRows, stageActionsNow, stageButtons, stageChipFor } from "./stage-detail-text";
+import { forecastStateText, labourLineText, forecastWorkingText, lostDaysRows, materialsMeta, NOT_STARTED_TIMELINE, PAUSE_CHOICES, progressRowText, segmentsShown, segmentText, timelineRows, stageActionsNow, stageButtons, stageChipFor } from "./stage-detail-text";
 
 const none: StageActions = { canStart: false, canPause: false, canResume: false, canMarkDone: false, canReopen: false, canSetManualPct: false };
 const TODAY = "2026-09-28";
@@ -172,5 +172,34 @@ describe("timeline and materials words", () => {
   it("materials meta names the budget, or says none is set rather than $0.00 (D7, F8)", () => {
     expect(materialsMeta(250000)).toBe("Budget $2,500.00");
     expect(materialsMeta(0)).toBe("No budget set");
+  });
+});
+
+describe("labourLineText (forecast breakdown lines)", () => {
+  const base = { crewName: "Sam", date: "2026-09-25", basis: "per_unit" as const, unit: "m2" as const, quantity: 6000, hours: 0, rateCents: 950, amountCents: 57_000, labourCostCents: 71_250, adjustsLogId: null };
+  it("E11.1 Sam's per-unit line: who, the day, quantity at the rate, and the on-cost on top", () => {
+    expect(labourLineText(base, TODAY)).toEqual({ primary: "Sam, Fri 25 Sep", meta: "60 m² at $9.50 = $570.00, plus on-cost" });
+  });
+  it("E11.1 Dima's contractor line costs what he is paid", () => {
+    expect(labourLineText({ ...base, crewName: "Dima", rateCents: 1200, amountCents: 72_000, labourCostCents: 72_000 }, TODAY).meta).toBe("60 m² at $12.00 = $720.00");
+  });
+  it("hours, days, lump sums, adjustments and a missing rate each say how the pay was worked out", () => {
+    expect(labourLineText({ ...base, basis: "hourly", unit: null, quantity: 800, rateCents: 4500, amountCents: 36_000, labourCostCents: 36_000 }, TODAY).meta).toBe("8 h at $45.00 an hour = $360.00");
+    expect(labourLineText({ ...base, basis: "daily", unit: null, quantity: 100, rateCents: 40_000, amountCents: 40_000, labourCostCents: 40_000 }, TODAY).meta).toBe("1 day at $400.00 a day = $400.00");
+    expect(labourLineText({ ...base, basis: "lump_sum", amountCents: 50_000, labourCostCents: 50_000 }, TODAY).meta).toBe("Share of the lump sum, $500.00");
+    expect(labourLineText({ ...base, adjustsLogId: "x", amountCents: 1_200, labourCostCents: 1_200 }, TODAY).meta).toBe("Pay adjustment, $12.00");
+    expect(labourLineText({ ...base, rateCents: null, amountCents: 0, labourCostCents: 0 }, TODAY).meta).toBe("60 m², no rate set yet");
+  });
+});
+
+describe("forecastStateText", () => {
+  it("open stage at 30%: the division that gives the forecast", () => {
+    expect(forecastStateText({ status: "active", actualCents: 143_250, pctBp: 3000, forecastCents: 477_500 })).toBe("$1,432.50 ÷ 30% done = $4,775.00");
+  });
+  it("done stage: the forecast is what it cost", () => {
+    expect(forecastStateText({ status: "done", actualCents: 163_000, pctBp: 10_000, forecastCents: 163_000 })).toBe("Done, so the forecast is what it cost: $1,630.00");
+  });
+  it("under 10% done: no forecast yet", () => {
+    expect(forecastStateText({ status: "paused", actualCents: 81_000, pctBp: 0, forecastCents: null })).toBe("No forecast yet. It starts once the stage is 10% done.");
   });
 });

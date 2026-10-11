@@ -5,6 +5,7 @@ import type { DoneProposal, ProjectDetail, StageDetail } from "../../contracts";
 import { JobDetailBody } from "@/components/screens/job-detail";
 import { StageDetailBody } from "@/components/screens/stage-detail";
 import { StageDone } from "@/components/screens/stage-done";
+import { StageForecastBody } from "@/components/screens/stage-forecast";
 import { expectNoMoney } from "../../dto";
 import { getSeed } from "../store";
 import { fake } from "./testing";
@@ -101,5 +102,34 @@ describe("stage done on a lump-sum stage nobody has logged work on", () => {
 
   it("offers Log crew time, opened on this job and this stage", () => {
     expect(html).toMatch(/<a[^>]*href="\/log\?project=p1&(amp;)?stage=s1"[^>]*>(<[^>]+>)*Log crew time/);
+  });
+});
+
+describe("forecast breakdown (flows find the job losing money, tap 2)", () => {
+  async function manager(role: "manager" | "accountant" | "owner", stageId: string) {
+    const { data, actor } = fake(role);
+    const d = await data.stages.get(actor, stageId);
+    if (d.view !== "manager") throw new Error("expected the money view");
+    return renderToStaticMarkup(<StageForecastBody stage={d} today={TODAY} />).replace(/\u00a0/g, " ");
+  }
+  it("E11.1/E12.1 Smith sheet install: Sam and Dima per-unit lines, $1,432.50 so far, ÷ 30% = $4,775.00 against $4,000.00 and $4,200.00", async () => {
+    const html = await manager("manager", meta.stages.smithSheetInstall);
+    for (const t of ["Sam, Fri 25 Sep", "60 m² at $9.50 = $570.00, plus on-cost", "$712.50", "Dima, Fri 25 Sep", "60 m² at $12.00 = $720.00", "$720.00", "$1,432.50", "6 time-only lines cost nothing on their own", "$1,432.50 ÷ 30% done = $4,775.00", "$4,000.00", "$4,200.00", "Trending $775.00 over budget"]) {
+      expect(html).toContain(t);
+    }
+  });
+  it("the accountant and owner see the same breakdown", async () => {
+    for (const role of ["accountant", "owner"] as const) expect(await manager(role, meta.stages.smithSheetInstall)).toContain("$1,432.50 ÷ 30% done = $4,775.00");
+  });
+  it("a done stage says the forecast is what it cost, with no trigger", async () => {
+    const id = getSeed().stages.find((st) => st.projectId === meta.projects.smith && st.name === "Site setup & safety")!.id;
+    const html = await manager("manager", id);
+    expect(html).toContain("Done, so the forecast is what it cost:");
+    expect(html).not.toContain("Warning from");
+  });
+  it("a stage under 10% done says there is no forecast yet", async () => {
+    const html = await manager("manager", meta.stages.rydeCoat);
+    expect(html).toContain("No forecast yet. It starts once the stage is 10% done.");
+    expect(html).not.toContain("Forecast labour</span>");
   });
 });

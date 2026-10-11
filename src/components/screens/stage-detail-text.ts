@@ -1,8 +1,8 @@
-import type { SegmentDto, StageActions, StageDetail } from "@/data/contracts";
+import type { LogRowManager, SegmentDto, StageActions, StageDetail } from "@/data/contracts";
 import type { PauseReason } from "@/domain/segments";
 import { addDays } from "@/domain/dates";
 import type { Status } from "@/components/ui/status-chip";
-import { formatDate, formatMoney, formatQuantity } from "@/lib/format";
+import { formatDate, formatDays, formatHours, formatMoney, formatQuantity } from "@/lib/format";
 import { hundredthsText } from "./field-input";
 
 type StageStatus = StageDetail["status"];
@@ -72,6 +72,32 @@ export function lostDaysRows(lost: Record<PauseReason, number>): { label: string
 export function forecastWorkingText(w: { actualCents: number; pctBp: number; forecastCents: number | null }): string {
   const spent = `${formatMoney(w.actualCents)} spent at ${hundredthsText(w.pctBp)}% done`;
   return w.forecastCents === null ? `${spent}. No forecast until some work is done.` : `${spent}, so about ${formatMoney(w.forecastCents)} for the whole stage.`;
+}
+
+/** The fields of a log line the forecast breakdown shows (a manager's log row). */
+type LabourLine = Pick<LogRowManager, "crewName" | "date" | "basis" | "unit" | "quantity" | "rateCents" | "amountCents" | "labourCostCents" | "adjustsLogId">;
+
+/** How a line's pay was worked out, before on-cost: "60 m² at $9.50 = $570.00". */
+function payWorking(l: LabourLine): string {
+  if (l.adjustsLogId !== null) return `Pay adjustment, ${formatMoney(l.amountCents)}`;
+  if (l.basis === "lump_sum") return `Share of the lump sum, ${formatMoney(l.amountCents)}`;
+  const qty = l.basis === "per_unit" && l.unit ? formatQuantity(l.quantity, l.unit) : l.basis === "daily" ? formatDays(l.quantity) : formatHours(l.quantity);
+  if (l.rateCents === null) return `${qty}, no rate set yet`;
+  const per = l.basis === "daily" ? " a day" : l.basis === "hourly" ? " an hour" : "";
+  return `${qty} at ${formatMoney(l.rateCents)}${per} = ${formatMoney(l.amountCents)}`;
+}
+
+/** A labour line behind a stage's forecast: who and the day, then how its pay was worked out; on-cost noted when the job pays more than the person gets. */
+export function labourLineText(l: LabourLine, today: string): { primary: string; meta: string } {
+  const onCost = l.labourCostCents > l.amountCents ? ", plus on-cost" : "";
+  return { primary: `${l.crewName}, ${formatDate(l.date, today)}`, meta: `${payWorking(l)}${onCost}` };
+}
+
+/** The forecast in one line: the division while open, the cost once done, or why there is none yet (pay rules §12). */
+export function forecastStateText(w: { status: StageStatus; actualCents: number; pctBp: number; forecastCents: number | null }): string {
+  if (w.status === "done") return `Done, so the forecast is what it cost: ${formatMoney(w.actualCents)}`;
+  if (w.forecastCents === null) return "No forecast yet. It starts once the stage is 10% done.";
+  return `${formatMoney(w.actualCents)} ÷ ${hundredthsText(w.pctBp)}% done = ${formatMoney(w.forecastCents)}`;
 }
 
 /** A progress entry as a row: its date, the quantity with its unit, and who entered it. */

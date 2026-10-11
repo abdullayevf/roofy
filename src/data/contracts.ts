@@ -562,6 +562,8 @@ export interface StageDetailManager extends StageDetailBase {
   manualPctBp: BasisPoints | null;
   labourActualCents: Cents;
   forecastLabourCents: Cents | null;
+  /** Forecast labour above this reads as trending over: budget × 1.05 (pay rules §12). */
+  labourTriggerCents: Cents;
   alert: BudgetAlertDto | null;
   /** The arithmetic behind the forecast (flows "Find the job losing money", tap 2). */
   forecastWorking: { actualCents: Cents; pctBp: BasisPoints; forecastCents: Cents | null } | null;

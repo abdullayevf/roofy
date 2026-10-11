@@ -518,6 +518,38 @@ export const SCREENS: ScreenSpec[] = [
     roles: ["manager"],
   },
   {
+    // Forecast labour breakdown (flows "Find the job losing money", tap 2): Sam's and Dima's per-unit lines, $1,432.50 so far,
+    // ÷ 30% done = $4,775.00 against the $4,000.00 budget and $4,200.00 warning point. Money only: the foreman gets No permission.
+    id: "stage-forecast",
+    group: "jobs-2",
+    route: `${stageRoute(meta.projects.smith, meta.stages.smithSheetInstall)}/forecast`,
+    states: ["normal", "loading", "error", "offline", "foreman", "noperm"],
+    roles: ["owner", "manager", "accountant", "foreman"],
+  },
+  {
+    // A done stage: the forecast is what it cost, no warning point.
+    id: "stage-forecast-done",
+    group: "jobs-2",
+    route: `${stageRoute(meta.projects.smith, STAGE_DONE)}/forecast`,
+    states: ["normal"],
+    roles: ["manager"],
+  },
+  {
+    // Ryde coat, paused at 0% with labour logged: no forecast yet (under 10% done).
+    id: "stage-forecast-under-10",
+    group: "jobs-2",
+    route: `${stageRoute(meta.projects.rydeHeritage, meta.stages.rydeCoat)}/forecast`,
+    states: ["normal"],
+    roles: ["accountant"],
+  },
+  {
+    id: "stage-forecast-long-names",
+    group: "jobs-2",
+    route: `${stageRoute(meta.fixtures.longNames, meta.fixtures.longNamesStage)}/forecast`,
+    states: ["normal"],
+    roles: ["manager"],
+  },
+  {
     // The pause sheet open: a note field, then five reasons.
     id: "stage-detail-pause-sheet",
     group: "jobs-2",
