@@ -5,7 +5,7 @@ import { KeepTogether } from "@/components/keep-together";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cx } from "@/lib/cx";
 import { ExportWorkspaceButton } from "./export-button";
-import { attachmentsText, EXPORT_FILENAME, rowsText } from "./export-text";
+import { attachmentsText, EXPORT_FILENAME, EXPORT_NAME_CLASS, rowsText } from "./export-text";
 import { LoadError } from "./field-entry";
 import { COLUMN, FOCUS, GROUP } from "./home-parts";
 import { TD, TH } from "./table-cells";
@@ -38,7 +38,7 @@ export function ExportScreen({ files, attachments, updated, demoOffline }: Body 
       <Head updated={updated} />
       <div className="flex max-w-180 flex-col gap-3">
         <p className="text-body text-ink">
-          Everything in your workspace as spreadsheet files, in one zip you can keep. <span className="whitespace-nowrap">{EXPORT_FILENAME}</span> holds the {files.length} files below
+          Everything in your workspace as spreadsheet files, in one zip you can keep. <span className={EXPORT_NAME_CLASS}>{EXPORT_FILENAME}</span> holds the {files.length} files below
           {attachments.count > 0 ? " and your attachments" : ""}.
         </p>
         {nothingYet ? <p className="text-body text-ink">No jobs yet, so most of these files will only hold their column headings.</p> : null}

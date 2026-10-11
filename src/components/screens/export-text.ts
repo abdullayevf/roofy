@@ -3,6 +3,13 @@
 /** The file the Export workspace button saves. */
 export const EXPORT_FILENAME = "roofy-workspace-export.zip";
 
+/**
+ * Classes for the zip's name inside a sentence. It never breaks while it fits on a line, and moves to its own line when
+ * the rest of the sentence leaves too little room. Only at 200% text zoom, where the name is wider than the screen, may
+ * it break inside the word, instead of pushing the page sideways.
+ */
+export const EXPORT_NAME_CLASS = "inline-block max-w-full [overflow-wrap:anywhere]";
+
 export const rowsText = (n: number): string => `${n.toLocaleString("en-AU")} ${n === 1 ? "row" : "rows"}`;
 
 /** Sizes the way a phone shows them: whole KB below 1 MB, then one decimal. */

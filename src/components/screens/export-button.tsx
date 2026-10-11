@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle, WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { Button } from "@/components/ui/button";
-import { EXPORT_FILENAME } from "./export-text";
+import { EXPORT_FILENAME, EXPORT_NAME_CLASS } from "./export-text";
 import { useOnline } from "./use-online";
 
 type Phase = "idle" | "exporting" | "done" | "failed";
@@ -61,7 +61,7 @@ export function ExportWorkspaceButton({ demoOffline }: { demoOffline: boolean })
         <p ref={result} role="status" className="flex scroll-mb-[var(--tab-bar-height)] items-start gap-2 text-body text-ink">
           <CheckCircle size={24} aria-hidden="true" className="shrink-0 text-ink" />
           <span>
-            Done. <span className="whitespace-nowrap">{EXPORT_FILENAME}</span> is saved to your downloads.
+            Done. <span className={EXPORT_NAME_CLASS}>{EXPORT_FILENAME}</span> is saved to your downloads.
           </span>
         </p>
       ) : null}
