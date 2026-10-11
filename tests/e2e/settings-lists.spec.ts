@@ -4,8 +4,20 @@ import { SCREENS } from "./screens";
 
 const isPhone = (name: string) => name !== "desktop";
 const NEEDS_CONNECTION = "Needs connection — try again once you're back online.";
-const go = (page: Page, role: string, next: string) =>
-  page.goto(`/prototype/role?as=${role}&next=${encodeURIComponent(next)}`);
+/**
+ * Open a page and wait for React to attach to its controls. The server draws the form first; a fill made before
+ * the page wakes up shows in the box but never reaches the form's state, so Send invite then says the Name is
+ * empty (about 1 run in 6 under load; reproduced by holding the scripts back). A person types into a form after
+ * it has woken, and so do these tests.
+ */
+async function go(page: Page, role: string, next: string) {
+  await page.goto(`/prototype/role?as=${role}&next=${encodeURIComponent(next)}`);
+  await page.waitForFunction(() => {
+    // The boxes a person types or picks in: the ones whose state a too-early fill never reaches.
+    const controls = [...document.querySelectorAll("main input:not([type=radio]):not([type=checkbox]):not([type=hidden]), main select")];
+    return controls.every((el) => Object.keys(el).some((k) => k.startsWith("__reactProps$")));
+  });
+}
 const h1 = (page: Page, name: string | RegExp) => page.getByRole("heading", { level: 1, name });
 const saved = (page: Page, text = "Changes saved.") => page.getByText(text, { exact: true });
 const save = (page: Page) => page.getByRole("button", { name: "Save changes", exact: true });
