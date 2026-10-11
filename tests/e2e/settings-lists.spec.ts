@@ -11,6 +11,24 @@ const saved = (page: Page, text = "Changes saved.") => page.getByText(text, { ex
 const save = (page: Page) => page.getByRole("button", { name: "Save changes", exact: true });
 /** Fake data is shared by every test in the run, so anything a test adds gets a name of its own. */
 const unique = (stem: string) => `${stem} ${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
+/**
+ * The saved toast sits over the bottom of the page, where Send invite is. The press that sent the invite left the
+ * pointer on it, and a toast pauses its timer while the pointer is over it, so move off and wait for it to close.
+ */
+async function toastGone(page: Page, text: string) {
+  await page.mouse.move(1, 1);
+  await expect(page.getByText(text, { exact: true })).toHaveCount(0, { timeout: 10_000 });
+}
+
+/**
+ * A focused text field puts a pinned Save bar on the visual viewport (above the on-screen keyboard); with no real
+ * keyboard in the test that is the very bottom of the window. Leave the field and wait for the bar to settle back
+ * above the tab bar before the layout guards read it.
+ */
+async function settleKeyboardBar(page: Page) {
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await expect(page.locator('[data-slot="primary-action"]')).not.toHaveAttribute("data-keyboard", "true");
+}
 const LONG_NAME =
   "Scaffolding hire, safety rails and edge protection for the Harbour View Apartments re-roof";
 
@@ -123,6 +141,7 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
   test("templates: a long stage name wraps inside the screen", async ({ page }, info) => {
     await go(page, "owner", "/settings/templates?type=metal_reroof");
     await page.getByLabel("Stage 1 name", { exact: true }).fill(LONG_NAME);
+    await settleKeyboardBar(page);
     const log = collectConsole(page);
     await expectScreenHealthy(page, { phone: isPhone(info.project.name), console: log });
   });
@@ -188,6 +207,7 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
     await page.getByRole("button", { name: "Send invite" }).click();
     await expect(saved(page, "Invite sent.")).toBeVisible();
     await expect(page.getByText(`${stamp}@harbourroofing.example`)).toBeVisible();
+    await toastGone(page, "Invite sent.");
     // The Owner's own address is a member already: the sentence shows on the Email field, as the capture entry shows it.
     await page.getByLabel("Name", { exact: true }).fill("Karen Lee");
     await page.getByLabel("Email", { exact: true }).fill("karen@harbourroofing.example");
@@ -200,12 +220,24 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
     await expect(page.getByText(/already/i).first()).toBeVisible();
   });
 
-  test("members: roles change from the list", async ({ page }) => {
+  test("members: a role picked in the list saves at once and sticks", async ({ page }) => {
     await go(page, "owner", "/settings/members");
-    const selects = page.getByLabel(/^Role for /);
-    expect(await selects.count()).toBeGreaterThan(0);
-    await save(page).click();
-    await expect(saved(page)).toBeVisible();
+    await expect(save(page), "a role saves on pick: the page has no Save button").toHaveCount(0);
+    // The Owner has no role picker (the role is fixed); the accountant is the member nothing else depends on.
+    const role = () => page.getByLabel("Role for Priya Shah", { exact: true });
+    await expect(role()).toHaveValue("accountant");
+    await role().selectOption("manager");
+    await expect(saved(page, "Role changed.")).toBeVisible();
+    await page.waitForLoadState("networkidle"); // the refresh after a save must finish before the next navigation
+    await toastGone(page, "Role changed.");
+    await go(page, "owner", "/settings/members");
+    await expect(role()).toHaveValue("manager");
+    // Put it back so later tests see the seeded roles.
+    await role().selectOption("accountant");
+    await expect(saved(page, "Role changed.")).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    await go(page, "owner", "/settings/members");
+    await expect(role()).toHaveValue("accountant");
   });
 
   test("a long-name foreman fits on members and on foreman assignments", async ({ page }, info) => {
@@ -218,6 +250,8 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
       .fill(`${stamp}.with.a.very.long.address.that.keeps.going@harbourroofingandrestoration.example`);
     await page.getByRole("button", { name: "Send invite" }).click();
     await expect(saved(page, "Invite sent.")).toBeVisible();
+    // The guards read the screen at rest: a toast over the bottom of the page for its few seconds is not part of it.
+    await toastGone(page, "Invite sent.");
     const membersLog = collectConsole(page);
     await expectScreenHealthy(page, { phone: isPhone(info.project.name), console: membersLog });
     await page.waitForLoadState("networkidle");
@@ -243,6 +277,9 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
     await save(page).click();
     await expect(saved(page)).toBeVisible();
     await page.waitForLoadState("networkidle"); // the refresh after a save must finish before the next navigation
+    // The page's own history update after that refresh can land a beat later and interrupt a goto; the toast closing
+    // (its few seconds) is well after it.
+    await toastGone(page, "Changes saved.");
     await go(page, "owner", "/settings/assignments");
     expect(await page.getByRole("group").first().getByRole("checkbox").first().isChecked()).toBe(!was);
     // Put it back so later tests see the seeded assignments.
@@ -257,7 +294,7 @@ test.describe("More (screen 22)", () => {
     const log = collectConsole(page);
     await go(page, "owner", "/more");
     await expect(h1(page, "More")).toBeVisible();
-    await expect(page.getByRole("link", { name: /^Settings/ })).toBeVisible();
+    await expect(page.locator("main").getByRole("link", { name: /^Settings/ })).toBeVisible();
     await expect(page.getByRole("radio", { name: "Dark" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
     await expectScreenHealthy(page, { phone: isPhone(info.project.name), console: log });
@@ -306,7 +343,7 @@ test.describe("More (screen 22)", () => {
     await page.getByRole("radio", { name: "Dark" }).click({ force: true });
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await expect(
-      page.getByRole("link", { name: /^Settings/ }),
+      page.locator("main").getByRole("link", { name: /^Settings/ }),
       "the menu itself stays available",
     ).toBeVisible();
   });
@@ -335,7 +372,10 @@ test.describe("Settings capture entries reach their settled sentence", () => {
   );
   for (const entry of entries)
     test(`${entry.id}`, async ({ page }) => {
-      await go(page, entry.roles[0]!, entry.route);
+      // The capture opens a state other than normal with `?demo=<state>` (design-capture.ts); do the same here.
+      const state = entry.states.includes("normal") ? undefined : entry.states[0];
+      const route = state ? `${entry.route}${entry.route.includes("?") ? "&" : "?"}demo=${state}` : entry.route;
+      await go(page, entry.roles[0]!, route);
       for (const step of entry.steps!) {
         const fill = /^fill:(.+?)=(.*)$/.exec(step);
         if (fill) await page.getByLabel(fill[1]!, { exact: true }).fill(fill[2]!);
