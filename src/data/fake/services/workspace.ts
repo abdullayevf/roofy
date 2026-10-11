@@ -18,7 +18,7 @@ import type {
   WorkspaceSettingsInput,
   WorkspaceView,
 } from "../../contracts";
-import { FIELD_ACCESS, type FakeContext, notFound } from "./context";
+import { FIELD_ACCESS, type FakeContext, forbidden, notFound } from "./context";
 import { conflict, invalid, requireEditor, requireOwner, snapshot, write } from "./writes";
 
 const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -191,6 +191,21 @@ export function createWorkspaceService(c: FakeContext): WorkspaceService {
         w.audit("workspace", ws.id, "update", before, snapshot(ws));
       });
       return settingsOf();
+    },
+
+    /** Owner only. The prototype accepts any 6 digits; the owner's member row records it. Audited. */
+    async turnOnTwoFactor(actor: Actor, code: string): Promise<{ twoFactorEnabled: true }> {
+      if (!c.access(actor).canAdminister) throw forbidden("Only the Owner can turn on two-factor.");
+      const digits = code.replace(/\s/g, "");
+      if (!/^\d{6}$/.test(digits))
+        throw invalid("Enter the 6-digit code from your app.", [{ field: "code", message: "Enter the 6-digit code from your app." }]);
+      write(c, actor, "two_factor_on", (w) => {
+        const owner = w.t.members.find((m) => m.role === "owner")!;
+        const before = snapshot(owner);
+        Object.assign(owner, { twoFactorEnabled: true, updatedAt: w.at });
+        w.audit("member", owner.id, "update", before, snapshot(owner));
+      });
+      return { twoFactorEnabled: true };
     },
 
     /** Add (id null) or change a level and its floor rate (Owner/Manager). Audited. */

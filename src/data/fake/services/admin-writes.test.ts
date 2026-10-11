@@ -449,6 +449,16 @@ describe("settings", () => {
     expect(e.message).toBe("The pay period start date must be a Monday.");
   });
 
+  it("two-factor: the Owner turns it on with a 6-digit code; anyone else is refused", async () => {
+    const { data, actor } = fakeSession("owner");
+    expect((await refusal(data.workspace.turnOnTwoFactor(actor, "12ab56"))).message).toBe(
+      "Enter the 6-digit code from your app.",
+    );
+    await expect(data.workspace.turnOnTwoFactor(actor, "123456")).resolves.toEqual({ twoFactorEnabled: true });
+    const manager = fakeSession("manager");
+    expect((await refusal(manager.data.workspace.turnOnTwoFactor(manager.actor, "123456"))).code).toBe("forbidden");
+  });
+
   it("levels, categories and templates", async () => {
     const { data, actor } = fakeSession("manager");
     const roofer = (await data.workspace.levels(actor)).find((l) => l.name === "Roofer")!;

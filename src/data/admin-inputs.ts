@@ -274,3 +274,5 @@ export const memberSchema: z.ZodType<MemberInput> = z.object({
 
 export { idSchema, localDateSchema, roleSchema };
 export const idListSchema = z.array(idSchema).max(500);
+
+export const codeSchema = z.string().trim().max(20, { error: "Enter the 6-digit code from your app." });

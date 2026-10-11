@@ -5,6 +5,7 @@
  */
 import {
   categorySchema,
+  codeSchema,
   idListSchema,
   idSchema,
   levelSchema,
@@ -100,5 +101,15 @@ export async function setAssignments(memberId: Id, projectIds: Id[]): Promise<Ac
       return {};
     },
     [PATHS.settings, PATHS.jobs, PATHS.log, PATHS.home],
+  );
+}
+
+/** Owner only: two-factor on, so pay runs can be approved (flows.md: Owner 2FA off blocks Approve). */
+export async function turnOnTwoFactor(code: string): Promise<ActionResult<{ twoFactorEnabled: true }>> {
+  return act(
+    [codeSchema],
+    [code],
+    async ({ data, actor }, c) => data.workspace.turnOnTwoFactor(actor, c),
+    [PATHS.settings, PATHS.pay, PATHS.home],
   );
 }

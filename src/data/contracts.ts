@@ -1574,6 +1574,8 @@ export interface WorkspaceService {
   /** Foreman project assignments. */
   assignments(actor: Actor): Promise<{ memberId: Id; name: string; projectIds: Id[] }[]>;
   setAssignments(actor: Actor, memberId: Id, projectIds: Id[]): Promise<void>;
+  /** Owner only: turn on two-factor with the 6-digit code from an authenticator app (fake: any 6 digits). */
+  turnOnTwoFactor(actor: Actor, code: string): Promise<{ twoFactorEnabled: true }>;
 }
 
 export interface ProjectService {
