@@ -16,3 +16,11 @@ export function parseTheme(value: unknown): Theme {
 export function dataThemeFor(theme: Theme): "light" | "dark" | undefined {
   return theme === "system" ? undefined : theme;
 }
+
+/** A year, in seconds: how long the choice is kept. The server action and the offline write share it. */
+export const THEME_MAX_AGE = 60 * 60 * 24 * 365;
+
+/** The `document.cookie` string for a choice, so Theme works with no connection (it is device-local). */
+export function themeCookieString(theme: Theme): string {
+  return `${THEME_COOKIE}=${parseTheme(theme)}; path=/; max-age=${THEME_MAX_AGE}; samesite=lax`;
+}

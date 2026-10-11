@@ -10,6 +10,8 @@ export type CheckboxProps = {
   defaultChecked?: boolean;
   onCheckedChange?: (checked: boolean) => void;
   disabled?: boolean;
+  /** A row of a grouped list: the list around it supplies the surface, outline and `line` dividers, so the row has none of its own. */
+  grouped?: boolean;
   /** Demo-only: forces the focus ring so it shows up in a static screenshot. */
   focusVisible?: boolean;
   className?: string;
@@ -28,17 +30,19 @@ export function Checkbox({
   defaultChecked,
   onCheckedChange,
   disabled,
+  grouped = false,
   focusVisible,
   className,
 }: CheckboxProps) {
   return (
     <label
       className={cx(
-        "flex min-h-[64px] w-full items-center gap-1 rounded-group px-2 pr-4 lg:min-h-12",
+        "flex min-h-[64px] w-full items-center gap-1 px-2 pr-4 lg:min-h-12",
+        grouped ? "" : "rounded-group",
         // Disabled keeps a visible row container (a `line` border) on galv pages too.
         disabled
-          ? "cursor-not-allowed border border-line bg-galv"
-          : "border-group cursor-pointer bg-surface active:bg-galv",
+          ? cx("cursor-not-allowed bg-galv", grouped ? "" : "border border-line")
+          : cx("cursor-pointer active:bg-galv", grouped ? "bg-transparent" : "border-group bg-surface"),
         className,
       )}
     >

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { collectConsole, expectScreenHealthy } from "./guards";
+import { checkPrimaryActionPlacement, checkToastClearsBars, collectConsole, expectScreenHealthy } from "./guards";
 
 const isPhone = (name: string) => name !== "desktop";
 const NEEDS_CONNECTION = "Needs connection — try again once you're back online.";
@@ -56,12 +56,13 @@ test.describe("Settings (screen 23)", () => {
       await expect(page.locator("input").first(), "reading stays available offline").toBeVisible();
     });
 
-  test("More offline: Sign out and the theme say Needs connection once, with no send-later banner", async ({ page }) => {
+  test("More offline: Sign out waits under one Needs connection sentence, the theme still works, no send-later banner", async ({ page }) => {
     for (const role of ["owner", "manager", "foreman", "accountant"]) {
       await go(page, role, "/more?demo=offline");
       await expect(page.getByText(NEEDS_CONNECTION)).toHaveCount(1);
       await expect(page.getByText(/will send automatically/)).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Sign out" })).toBeDisabled();
+      await expect(page.getByRole("radio", { name: "Dark" }), "the theme is kept on the device, so it works offline").toBeEnabled();
     }
   });
 
@@ -105,5 +106,47 @@ test.describe("Settings (screen 23)", () => {
   test("levels empty state", async ({ page }) => {
     await go(page, "owner", "/settings/levels?demo=empty");
     await expect(page.getByText("No levels yet.", { exact: false })).toBeVisible();
+  });
+  // Entry-settings iter1 D8 + F2 (P1): a settings form taller than the first screen pins its Save bar, so Save and its
+  // error or Needs connection line are on screen without scrolling; a saved toast sits above the bars.
+  for (const [path, role] of [
+    ["/settings/levels", "owner"],
+    ["/settings/pay-period", "owner"],
+    ["/settings/categories", "owner"],
+    ["/settings/templates?type=metal_reroof", "owner"],
+    ["/settings/assignments", "owner"],
+  ] as const)
+    test(`${path}: Save is pinned inside the first viewport and the saved toast clears the bars`, async ({ page }, info) => {
+      await go(page, role, path);
+      const save = page.getByRole("button", { name: "Save changes", exact: true });
+      await expect(save).toBeVisible();
+      await expect(page.locator('[data-slot="primary-action"] [data-variant="primary"]'), "Save lives in the pinned bar").toHaveCount(1);
+      const phone = isPhone(info.project.name);
+      const placement = await checkPrimaryActionPlacement(page);
+      expect(placement.failures, "Save is in the first viewport, above the tab bar").toEqual([]);
+      if (phone) {
+        const box = await save.boundingBox();
+        expect(box!.y + box!.height, "Save ends inside the first viewport").toBeLessThanOrEqual(page.viewportSize()!.height);
+      }
+      await save.click();
+      await expect(page.getByText("Changes saved.", { exact: true })).toBeVisible();
+      if (phone) {
+        const toast = await checkToastClearsBars(page);
+        expect(toast.failures).toEqual([]);
+      }
+    });
+
+  test("a refused save on a pinned form puts the error in the bar's reach and focuses the first bad field", async ({ page }) => {
+    await go(page, "owner", "/settings/pay-period");
+    await page.getByLabel("Standard day").fill("0");
+    await page.getByRole("button", { name: "Save changes", exact: true }).click();
+    await expect(page.locator('[aria-invalid="true"]').first()).toBeFocused();
+  });
+
+  test("Members: a role change saves on pick and Send invite is the one primary", async ({ page }) => {
+    await go(page, "owner", "/settings/members");
+    await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(0);
+    await expect(page.locator('[data-variant="primary"]:visible')).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "Send invite" })).toBeVisible();
   });
 });

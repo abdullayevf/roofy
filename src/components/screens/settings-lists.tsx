@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { ExpenseCategory, Id, JobType, Member, Role, StageTemplateItem } from "@/data/contracts";
 import type { Unit } from "@/domain/types";
 import {
@@ -15,8 +15,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
+import { Toast } from "@/components/ui/toast";
 import { bpText, CATEGORY_NAME_MAX, nameLengthError, readShare, shareErrors } from "./settings-input";
 import { FORM_GRID, SettingsForm, useSave, type Errors } from "./settings-forms";
+import { NEEDS_CONNECTION } from "./use-online";
 
 const UNITS: { value: Unit | ""; label: string }[] = [
   { value: "", label: "No unit" },
@@ -82,7 +84,7 @@ export function TemplateForm({
     );
   };
   return (
-    <SettingsForm s={s} onSubmit={submit}>
+    <SettingsForm s={s} onSubmit={submit} pinned>
       <ol className="flex flex-col gap-4">
         {rows.map((r, k) => (
           <li key={r.key} className="flex flex-col gap-4 rounded-md border border-line p-4">
@@ -200,7 +202,7 @@ export function CategoriesForm({
     );
   };
   return (
-    <SettingsForm s={s} onSubmit={submit}>
+    <SettingsForm s={s} onSubmit={submit} pinned>
       <div className={FORM_GRID}>
         {categories.map((c) => (
           <Field
@@ -231,32 +233,35 @@ const ROLES: { value: Role; label: string }[] = [
   { value: "accountant", label: "Accountant" },
 ];
 
-/** Who is in the workspace and what each person can do. The Owner's role is fixed. */
+/**
+ * Who is in the workspace and what each person can do. The Owner's role is fixed. Picking a role saves it at once
+ * (there is no Save button here, so Send invite below is the one primary action on the page).
+ */
 export function MembersForm({ members, demoOffline }: { members: Member[]; demoOffline: boolean }) {
   const s = useSave(demoOffline);
   const [roles, setRoles] = useState<Record<string, Role>>(() =>
     Object.fromEntries(members.map((m) => [m.id, m.role])),
   );
-  const submit = () =>
-    s.run(
+  const pick = (m: Member, role: Role) => {
+    const before = roles[m.id] ?? m.role;
+    setRoles((r) => ({ ...r, [m.id]: role }));
+    void s.run(
       () => ({}),
       async () => {
-        for (const m of members) {
-          const role = roles[m.id] ?? m.role;
-          if (m.role === "owner" || role === m.role) continue;
-          const r = await setMemberRole(m.id, role);
-          if (!r.ok) return r;
-        }
-        return { ok: true } as const;
+        const r = await setMemberRole(m.id, role);
+        if (!r.ok) setRoles((x) => ({ ...x, [m.id]: before }));
+        return r;
       },
+      "Role changed.",
     );
+  };
   return (
-    <SettingsForm s={s} onSubmit={submit}>
-      <ul className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
+      <ul className="divide-y divide-line overflow-hidden rounded-group border-group bg-surface">
         {members.map((m) => (
           <li
             key={m.id}
-            className="flex flex-col gap-3 rounded-md border border-line p-4 lg:flex-row lg:items-end lg:justify-between"
+            className="flex min-h-[64px] flex-col justify-center gap-2 px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6"
           >
             <div className="min-w-0 flex-1">
               <p className="break-words text-body-strong text-ink">{m.name}</p>
@@ -269,14 +274,22 @@ export function MembersForm({ members, demoOffline }: { members: Member[]; demoO
                 label={`Role for ${m.name}`}
                 options={ROLES}
                 value={roles[m.id] ?? m.role}
-                onChange={(e) => setRoles({ ...roles, [m.id]: e.target.value as Role })}
-                className="lg:w-64"
+                disabled={!s.online || s.busy}
+                onChange={(e) => pick(m, e.target.value as Role)}
+                className="[&>label]:sr-only lg:w-56"
               />
             )}
           </li>
         ))}
       </ul>
-    </SettingsForm>
+      {s.online ? null : (
+        <p role="status" className="text-body text-ink">
+          {NEEDS_CONNECTION}
+        </p>
+      )}
+      {s.failed ? <ErrorMessage>{s.failed}</ErrorMessage> : null}
+      <Toast open={s.saved} onOpenChange={s.setSaved} message={s.savedMessage} viewportClassName="toast-above-tabs" />
+    </div>
   );
 }
 
@@ -344,6 +357,7 @@ export function AssignmentsForm({
   demoOffline: boolean;
 }) {
   const s = useSave(demoOffline);
+  const base = useId();
   const [picked, setPicked] = useState<Record<string, Id[]>>(() =>
     Object.fromEntries(foremen.map((f) => [f.memberId, f.projectIds])),
   );
@@ -366,23 +380,25 @@ export function AssignmentsForm({
       },
     );
   return (
-    <SettingsForm s={s} onSubmit={submit}>
+    <SettingsForm s={s} onSubmit={submit} pinned>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start lg:gap-x-8">
         {foremen.map((f) => (
-          <fieldset
-            key={f.memberId}
-            className="flex min-w-0 flex-col gap-1 rounded-md border border-line p-4"
-          >
-            <legend className="max-w-full break-words px-1 text-body-strong text-ink">{f.name}</legend>
-            {jobs.map((j) => (
-              <Checkbox
-                key={j.id}
-                label={j.name}
-                checked={(picked[f.memberId] ?? f.projectIds).includes(j.id)}
-                onCheckedChange={(on) => toggle(f.memberId, j.id, on)}
-              />
-            ))}
-          </fieldset>
+          <div key={f.memberId} role="group" aria-labelledby={`${base}-${f.memberId}`} className="flex min-w-0 flex-col gap-2">
+            <h2 id={`${base}-${f.memberId}`} className="max-w-full break-words text-body-strong text-ink">
+              {f.name}
+            </h2>
+            <div className="divide-y divide-line overflow-hidden rounded-group border-group bg-surface">
+              {jobs.map((j) => (
+                <Checkbox
+                  key={j.id}
+                  grouped
+                  label={j.name}
+                  checked={(picked[f.memberId] ?? f.projectIds).includes(j.id)}
+                  onCheckedChange={(on) => toggle(f.memberId, j.id, on)}
+                />
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     </SettingsForm>

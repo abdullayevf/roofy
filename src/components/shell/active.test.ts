@@ -30,6 +30,10 @@ describe("activeNavKey", () => {
     expect(activeNavKey("/", "foreman", "phone")).toBe("home");
     expect(activeNavKey("/", "foreman", "desktop")).toBe("home");
   });
+  it("marks Home for a foreman on More, which has no tab of its own for them", () => {
+    for (const layout of ["phone", "desktop"] as const) expect(activeNavKey("/more", "foreman", layout)).toBe("home");
+    expect(activeNavKey("/more", "manager", "phone")).toBe("more");
+  });
   it("keeps the foreman's receipts under Jobs, and gives no active tab on pages outside their four", () => {
     for (const layout of ["phone", "desktop"] as const) {
       expect(activeNavKey("/expenses", "foreman", layout)).toBe("jobs");

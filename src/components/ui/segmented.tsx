@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { Check } from "@phosphor-icons/react";
 import { cx } from "@/lib/cx";
-import { focusRingWithin } from "./focus";
+
+// The group clips its corners, so the focus ring is drawn inside the segment (an outer ring would be cut off).
+const RING = "has-[:focus-visible]:outline has-[:focus-visible]:outline-[3px] has-[:focus-visible]:-outline-offset-3 has-[:focus-visible]:outline-chalk-link";
+const RING_FORCED = "outline outline-[3px] -outline-offset-3 outline-chalk-link";
 
 export type SegmentedOption = { value: string; label: string };
 
@@ -28,8 +31,9 @@ export type SegmentedProps = {
 
 /**
  * DESIGN.md §4 segmented control: radiogroup, segments 52 px phone / 48
- * desktop, full width on phone. A selected segment is `tape` fill, `ink` text
- * and a check — the one selection treatment (`chalk` is for actions and focus).
+ * desktop, full width on phone. One outer border, a straight 1 px divider between every two segments (the group is
+ * `edge` showing through a 1 px gap, so the line never curves or vanishes beside the selected one). A selected segment
+ * is flush `tape` fill, `ink` text and a check — the one selection treatment (`chalk` is for actions and focus).
  * Built on native radio inputs (visually hidden) so arrow-key
  * navigation between segments (DESIGN.md §8 desktop keyboard operation)
  * comes from the browser's own radio-group behaviour rather than a
@@ -62,34 +66,29 @@ export function Segmented({
       aria-disabled={disabled || undefined}
       style={equal ? { gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` } : undefined}
       className={cx(
-        "w-full max-w-full rounded-control border-[1.5px] border-edge p-1",
+        "w-full max-w-full gap-px overflow-hidden rounded-control border-[1.5px] border-edge bg-edge",
         equal ? "grid" : "flex flex-wrap",
         fill ? "" : "lg:w-fit",
-        disabled ? "bg-galv" : "bg-surface",
         className,
       )}
     >
-      {options.map((opt, i) => {
+      {options.map((opt) => {
         const checked = opt.value === value;
-        // A straight 1 px divider (a pseudo-element, not a border, so it never curves with the option's corners) between two
-        // options that are both unselected; the selected one is its own block.
-        const seam = i > 0 && !checked && options[i - 1]?.value !== value;
         return (
           <label
             key={opt.value}
             className={cx(
-              "relative flex min-h-[52px] items-center justify-center gap-1.5 rounded-control py-1 text-center text-body-strong lg:min-h-12",
+              "relative flex min-h-[52px] items-center justify-center gap-1.5 py-1 text-center text-body-strong lg:min-h-12",
               equal ? "min-w-0 px-2" : "flex-auto px-3",
               disabled ? "cursor-not-allowed" : "cursor-pointer",
-              seam && "before:absolute before:inset-y-2 before:left-0 before:w-px before:bg-edge",
               checked
                 ? disabled
                   ? "bg-line text-ink-2"
                   : "bg-tape text-on-tape"
                 : disabled
-                  ? "text-ink-2"
-                  : "text-ink",
-              focusRingWithin(focusVisible && checked),
+                  ? "bg-galv text-ink-2"
+                  : "bg-surface text-ink",
+              focusVisible && checked ? RING_FORCED : RING,
             )}
           >
             <input

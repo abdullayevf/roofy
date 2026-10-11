@@ -295,10 +295,16 @@ test.describe("More (screen 22)", () => {
     await expect(page.locator("html")).not.toHaveAttribute("data-theme", /.+/);
   });
 
-  test("offline: Needs connection once, theme and Sign out wait", async ({ page }) => {
+  test("offline: the theme still works, Sign out waits with Needs connection under it", async ({ page }) => {
     await go(page, "owner", "/more?demo=offline");
     await expect(page.getByText(NEEDS_CONNECTION)).toHaveCount(1);
-    await expect(page.getByRole("button", { name: "Sign out" })).toBeDisabled();
+    const signOut = page.getByRole("button", { name: "Sign out" });
+    await expect(signOut).toBeDisabled();
+    const sentence = await page.getByText(NEEDS_CONNECTION).boundingBox();
+    const button = await signOut.boundingBox();
+    expect(sentence!.y, "the sentence sits under the disabled button").toBeGreaterThanOrEqual(button!.y + button!.height - 1);
+    await page.getByRole("radio", { name: "Dark" }).click({ force: true });
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await expect(
       page.getByRole("link", { name: /^Settings/ }),
       "the menu itself stays available",

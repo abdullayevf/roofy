@@ -25,7 +25,8 @@ export function activeNavKey(pathname: string, role: NavRole, layout: NavLayout)
   if (own === "outbox") return role === "foreman" ? own : "more";
   if (own) return own;
   // A foreman reaches Expenses from a job, so the receipts sit under Jobs.
-  if (role === "foreman") return first === "expenses" ? "jobs" : "";
+  // The foreman has no More tab; their More page hangs off Home, so Home is the tab that is marked.
+  if (role === "foreman") return first === "expenses" ? "jobs" : first === "more" ? "home" : "";
   if (role === "accountant" && (first === "pay" || first === "reports")) return first;
   if (layout === "desktop" && role === "manager" && MANAGE_PAGES.has(first)) return "";
   return MORE_PAGES.has(first) ? "more" : "";

@@ -419,6 +419,20 @@ body {
     bottom: calc(var(--tab-bar-body) + var(--tab-bar-raise) + 6rem + max(var(--sab-sim, 0px), env(safe-area-inset-bottom))) !important;
   }
 }
+/*
+ * A saved toast on a settings page, below 1024 px: on a form without a pinned bar it clears the tab bar and the Log
+ * circle's lift; on a pinned form it clears that bar too (its measured height, `--pin-action-height`, comes from the form).
+ */
+@media (max-width: 1023px) {
+  .toast-above-tabs {
+    bottom: calc(var(--tab-bar-height) + 0.5rem) !important;
+  }
+  .toast-above-pin {
+    bottom: calc(
+      var(--tab-bar-body) + var(--tab-bar-raise) + var(--pin-action-height, 9rem) + max(var(--sab-sim, 0px), env(safe-area-inset-bottom))
+    ) !important;
+  }
+}
 @media (max-height: 499px) {
   .jobs-add-bar {
     display: none;

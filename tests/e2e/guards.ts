@@ -712,6 +712,38 @@ export async function checkPrimaryActionPlacement(page: Page): Promise<GuardResu
   return { name, ok: failures.length === 0, failures };
 }
 
+/**
+ * An open toast on a phone sits above the tab bar, the Log circle's lift and any pinned bar, never over them
+ * (entry-settings i1 D6 + F9). Open the toast first (save, then call this straight away; a toast lasts 4 s).
+ */
+export async function checkToastClearsBars(page: Page): Promise<GuardResult> {
+  const name = "toast-clears-bars";
+  const toast = page.locator('li[data-state="open"]').filter({ hasText: /\S/ }).first();
+  if ((await toast.count()) === 0) return { name, ok: false, failures: ["no open toast to measure"] };
+  const failures = await page.evaluate(() => {
+    const li = document.querySelector('li[data-state="open"]');
+    if (!li) return ["the toast closed before it was measured"];
+    const toastBox = li.getBoundingClientRect();
+    const out: string[] = [];
+    const tops: { what: string; top: number }[] = [];
+    for (const nav of Array.from(document.querySelectorAll("nav"))) {
+      const r = nav.getBoundingClientRect();
+      if (getComputedStyle(nav).position === "fixed" && r.height > 0 && r.bottom >= window.innerHeight - 2) tops.push({ what: "the tab bar", top: r.top });
+    }
+    const circle = document.querySelector("nav .rounded-full.bg-chalk");
+    if (circle && circle.getBoundingClientRect().height > 0) tops.push({ what: "the Log circle", top: circle.getBoundingClientRect().top });
+    for (const bar of Array.from(document.querySelectorAll('[data-slot="primary-action"]'))) {
+      const r = bar.getBoundingClientRect();
+      if (getComputedStyle(bar).position === "fixed" && r.height > 0) tops.push({ what: "the pinned bar", top: r.top });
+    }
+    for (const t of tops)
+      if (window.innerWidth < 1024 && toastBox.bottom > t.top + 0.5)
+        out.push(`the toast ends at ${Math.round(toastBox.bottom)} px, over ${t.what} (top ${Math.round(t.top)} px)`);
+    return out;
+  });
+  return { name, ok: failures.length === 0, failures };
+}
+
 // ---------------------------------------------------------------------------
 // Composition
 // ---------------------------------------------------------------------------

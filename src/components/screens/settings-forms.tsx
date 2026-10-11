@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { ActionResult, Cents, CrewLevel, PayFrequency, WorkspaceSettings, WorkspaceSettingsInput } from "@/data/contracts";
 import { saveLevel, turnOnTwoFactor, updateSettings } from "@/app/actions/settings";
@@ -23,6 +23,7 @@ import {
   readOnCost,
   WEEKDAYS,
 } from "./settings-input";
+import { PinnedAction, usePinnedBar } from "./field-entry";
 import { NEEDS_CONNECTION, useOnline } from "./use-online";
 
 export type Errors = Record<string, string | undefined>;
@@ -42,10 +43,13 @@ export function useSave(demoOffline: boolean) {
   const [saved, setSaved] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
   const [errors, setErrors] = useState<Errors>({});
+  // Bumped whenever a save is refused for a bad field, so the form can move focus to the first one.
+  const [refused, setRefused] = useState(0);
   async function run(check: () => Errors, save: () => Promise<ActionResult>, savedMessage = SAVED) {
     const found = check();
     setErrors(found);
     setFailed(null);
+    if (Object.values(found).some(Boolean)) setRefused((n) => n + 1);
     if (Object.values(found).some(Boolean) || !online) return;
     setBusy(true);
     try {
@@ -56,6 +60,7 @@ export function useSave(demoOffline: boolean) {
         router.refresh();
       } else {
         setErrors(issuesOf(result));
+        if (result.issues.length) setRefused((n) => n + 1);
         setFailed(result.issues.length ? null : result.message);
       }
     } catch {
@@ -65,36 +70,49 @@ export function useSave(demoOffline: boolean) {
     }
   }
   const [savedMessage, setSavedMessage] = useState(SAVED);
-  return { online, busy, saved, setSaved, savedMessage, failed, errors, setErrors, run };
+  return { online, busy, saved, setSaved, savedMessage, failed, errors, setErrors, refused, run };
 }
 
 export type Save = ReturnType<typeof useSave>;
 
-export function SettingsForm({
-  s,
-  onSubmit,
-  label = "Save changes",
-  quiet = false,
-  children,
-}: {
+const FORM_CLASS = "flex flex-col gap-6 [&_input]:scroll-mb-[calc(var(--tab-bar-height)+1rem)]";
+/** The first field a refused save names, or the first tick of a group that has the error (a working-days group). */
+const FIRST_BAD = '[aria-invalid="true"], [data-invalid="true"] [role="checkbox"]';
+
+/** A refused save moves focus to the first bad field, so it is on screen however tall the form is. */
+function useFocusFirstBad(s: Save) {
+  const ref = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (s.refused) ref.current?.querySelector<HTMLElement>(FIRST_BAD)?.focus();
+  }, [s.refused]);
+  return ref;
+}
+
+type SettingsFormProps = {
   s: Save;
   onSubmit: () => void;
   label?: string;
   /** Another form on the same page already says Needs connection. */
   quiet?: boolean;
+  /** A form taller than the first viewport pins its Save bar above the tab bar (DESIGN.md §5); its error and Needs connection line sit in the bar. */
+  pinned?: boolean;
   children: ReactNode;
-}) {
+};
+
+/** One form shell for every settings page: pinned Save bar when the form is long, else Save at the end of the form. */
+export function SettingsForm(props: SettingsFormProps) {
+  return props.pinned ? <PinnedSettingsForm {...props} /> : <PlainSettingsForm {...props} />;
+}
+
+function PlainSettingsForm({ s, onSubmit, label = "Save changes", quiet = false, children }: SettingsFormProps) {
+  const ref = useFocusFirstBad(s);
   function submit(e: FormEvent) {
     e.preventDefault();
     onSubmit();
   }
   // On a phone, a focused field scrolls clear of the tab bar when the keyboard opens.
   return (
-    <form
-      noValidate
-      onSubmit={submit}
-      className="flex flex-col gap-6 [&_input]:scroll-mb-[calc(var(--tab-bar-height)+1rem)]"
-    >
+    <form ref={ref} noValidate onSubmit={submit} className={FORM_CLASS}>
       {children}
       <div className="flex flex-col gap-3">
         {s.online || quiet ? null : (
@@ -113,7 +131,33 @@ export function SettingsForm({
           {label}
         </Button>
       </div>
-      <Toast open={s.saved} onOpenChange={s.setSaved} message={s.savedMessage} />
+      <Toast open={s.saved} onOpenChange={s.setSaved} message={s.savedMessage} viewportClassName="toast-above-tabs" />
+    </form>
+  );
+}
+
+function PinnedSettingsForm({ s, onSubmit, label = "Save changes", quiet = false, children }: SettingsFormProps) {
+  const ref = useFocusFirstBad(s);
+  const { style, barProps } = usePinnedBar(`${s.online}${s.failed}${Object.values(s.errors).length}`);
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    onSubmit();
+  }
+  return (
+    <form ref={ref} noValidate onSubmit={submit} style={style} className={`${FORM_CLASS} pin-pad`}>
+      {children}
+      <PinnedAction barProps={barProps} error={s.failed} hintOnSide hint={s.online || quiet ? undefined : NEEDS_CONNECTION}>
+        <Button
+          type="submit"
+          variant="primary"
+          loading={s.busy}
+          disabled={!s.online}
+          className="w-full lg:w-auto lg:min-w-60 lg:self-start"
+        >
+          {label}
+        </Button>
+      </PinnedAction>
+      <Toast open={s.saved} onOpenChange={s.setSaved} message={s.savedMessage} viewportClassName="toast-above-pin" />
     </form>
   );
 }
@@ -206,7 +250,7 @@ export function PayPeriodForm({
     );
   };
   return (
-    <SettingsForm s={s} onSubmit={submit}>
+    <SettingsForm s={s} onSubmit={submit} pinned>
       <div className={FORM_GRID}>
         <Segmented
           legend="Pay period"
@@ -225,12 +269,15 @@ export function PayPeriodForm({
           value={String(weekStart)}
           onChange={(e) => setWeekStart(Number(e.target.value))}
         />
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-2 text-body-strong text-ink">Working days</legend>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,11rem),1fr))] gap-x-4">
+        <div role="group" aria-labelledby="working-days" data-invalid={s.errors.workingDays ? "true" : undefined} className="flex flex-col gap-2">
+          <h2 id="working-days" className="text-body-strong text-ink">
+            Working days
+          </h2>
+          <div className="divide-y divide-line overflow-hidden rounded-group border-group bg-surface">
             {[1, 2, 3, 4, 5, 6, 0].map((d) => (
               <Checkbox
                 key={d}
+                grouped
                 label={WEEKDAYS[d]!}
                 checked={days.includes(d)}
                 onCheckedChange={(on) => toggle(d, on)}
@@ -238,7 +285,7 @@ export function PayPeriodForm({
             ))}
           </div>
           {s.errors.workingDays ? <ErrorMessage>{s.errors.workingDays}</ErrorMessage> : null}
-        </fieldset>
+        </div>
         <Field
           label="Standard day"
           inputMode="decimal"
@@ -302,7 +349,7 @@ export function LevelsForm({ levels, demoOffline }: { levels: CrewLevel[]; demoO
       },
     );
   return (
-    <SettingsForm s={s} onSubmit={submit}>
+    <SettingsForm s={s} onSubmit={submit} pinned>
       <div className={FORM_GRID}>
         {levels.map((l) => (
           <MoneyField

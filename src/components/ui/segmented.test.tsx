@@ -29,4 +29,16 @@ describe("Segmented", () => {
     expect(screen.getByText("No work").closest("label")!.className).toContain("bg-tape");
     expect(screen.getByText("Progress").closest("label")!.className).not.toContain("bg-tape");
   });
+
+  it("draws one outer border and a 1 px divider between every option, selected or not, with square segments", () => {
+    render(<Segmented legend="Theme" name="t" options={OPTIONS} defaultValue="progress" />);
+    const group = screen.getByRole("radiogroup", { name: "Theme" });
+    expect(group.className).toContain("gap-px");
+    expect(group.className).toContain("bg-edge");
+    expect(group.className).toContain("border-edge");
+    for (const label of group.querySelectorAll(":scope > label")) {
+      expect(label.className).not.toContain("rounded");
+      expect(label.className).not.toContain("before:");
+    }
+  });
 });
