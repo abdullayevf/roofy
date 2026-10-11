@@ -77,7 +77,7 @@ describe("reports: every total equals its summed source lines", () => {
   it("pauses: Patel sheet install lost 3 working days to weather in September", async () => {
     const { data, actor } = fake("manager");
     const r = await data.reports.pauses(actor, SEPT);
-    expect(r.rows).toContainEqual({
+    expect(r.rows).toContainEqual(expect.objectContaining({
       month: "2026-09",
       projectId: meta.projects.patel,
       stageId: seed.stages.find((s) => s.projectId === meta.projects.patel && s.name === "Sheet install")!.id,
@@ -85,7 +85,7 @@ describe("reports: every total equals its summed source lines", () => {
       stageName: "Sheet install",
       reason: "weather",
       workingDays: 3,
-    });
+    }));
   });
 
   it("pay history: each approved run's total is the sum of its ledger credits", async () => {
@@ -188,6 +188,7 @@ describe("reports: range, order and key figure (design fix 1a)", () => {
       format: "money",
       value: sum(paid.map((x) => x.totalCents)),
       label: `Paid in ${paid.length} pay runs`,
+      draftCents: sum(r.rows.filter((x) => x.status === "draft").map((x) => x.totalCents)),
     });
   });
 
@@ -206,5 +207,55 @@ describe("reports: range, order and key figure (design fix 1a)", () => {
     const [header, ...lines] = f.body.trim().split("\r\n");
     expect(header).toContain("Cost per unit by stage");
     expect(lines.some((l) => /Sheet install [\d.]+\/m2/.test(l))).toBe(true);
+  });
+});
+
+describe("reports: design fix 2a (pauses by overlap, drafts in every range, pace places)", () => {
+  const WEEK_2A = { from: "2026-09-21", to: "2026-09-27" };
+  const LONG = { from: "2026-06-29", to: "2026-09-28" };
+
+  it("pauses: a pause overlapping the range is included, carries its dates, counts only days inside the range", async () => {
+    const { data, actor } = fake("manager");
+    const r = await data.reports.pauses(actor, WEEK_2A);
+    expect(r.rows.length).toBeGreaterThan(0);
+    for (const row of r.rows) {
+      expect(row.start <= WEEK_2A.to && row.end >= WEEK_2A.from).toBe(true);
+      expect(row.workingDays).toBeLessThanOrEqual(5);
+    }
+  });
+
+  it("pauses: most working days lost first", async () => {
+    const { data, actor } = fake("manager");
+    const r = await data.reports.pauses(actor, LONG);
+    const days = r.rows.map((x) => x.workingDays);
+    expect(days).toEqual([...days].sort((a, b) => b - a));
+    expect(r.rows.every((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.start) && x.end >= x.start)).toBe(true);
+  });
+
+  it("pay history: overlapping ranges give the same runs, drafts listed in each, never in Paid, draft total exposed", async () => {
+    const { data, actor } = fake("owner");
+    const week = await data.reports.payHistory(actor, WEEK_2A);
+    const sept = await data.reports.payHistory(actor, SEPT);
+    const long = await data.reports.payHistory(actor, LONG);
+    const key = (x: { payRunId: string; status: string }) => `${x.payRunId}:${x.status}`;
+    const inWeek = week.rows.map(key);
+    expect(inWeek.length).toBeGreaterThan(0);
+    for (const other of [sept, long]) expect(other.rows.map(key)).toEqual(expect.arrayContaining(inWeek));
+    for (const r of [week, sept, long]) {
+      const drafts = r.rows.filter((x) => x.status === "draft");
+      expect(drafts.length).toBeGreaterThan(0);
+      expect(r.keyFigure.value).toBe(sum(r.rows.filter((x) => x.status !== "draft").map((x) => x.totalCents)));
+      expect(r.keyFigure).toMatchObject({ format: "money", draftCents: sum(drafts.map((x) => x.totalCents)) });
+    }
+    expect(week.keyFigure).toMatchObject({ value: 0, draftCents: 1424216 });
+  });
+
+  it("productivity: the export gives pace with 2 decimal places on every row", async () => {
+    const { data, actor } = fake("owner");
+    const file = await data.reports.csv(actor, "productivity", SEPT);
+    const text = Object.values(file).find((v): v is string => typeof v === "string" && v.includes("\n"))!;
+    const lines = text.trim().split(/\r?\n/).slice(1);
+    expect(lines.length).toBeGreaterThan(0);
+    for (const l of lines) expect(l).toMatch(/,"?\d[\d,]*\.\d{2}"?$/);
   });
 });

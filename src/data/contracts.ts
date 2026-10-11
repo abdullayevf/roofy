@@ -1194,6 +1194,10 @@ export interface PauseReportRow {
   projectName: string;
   stageName: string;
   reason: PauseReason;
+  /** First and last day of the pause ("YYYY-MM-DD"); an ongoing pause ends today. */
+  start: string;
+  end: string;
+  /** Working days lost inside the chosen range. */
   workingDays: number;
 }
 
@@ -1208,7 +1212,13 @@ export interface PayHistoryRow extends PayRunTotals {
  * hundredths of `unit` per crew-day for "per-crew-day". `label` says what it is in plain words.
  */
 export type ReportKeyFigure =
-  | { format: "money" | "days"; value: number; label: string }
+  | {
+      format: "money" | "days";
+      value: number;
+      label: string;
+      /** Pay history only: cents in draft runs in the range, listed but not yet paid and never in `value`. */
+      draftCents?: number;
+    }
   | { format: "per-crew-day"; value: Hundredths; unit: Unit; label: string };
 
 export interface Report<Row> {

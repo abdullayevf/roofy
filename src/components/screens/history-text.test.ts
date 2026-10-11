@@ -41,15 +41,15 @@ describe("historySentence: plain words, never table or field names", () => {
     ).toBe("Changed progress to 50% on Sheet install");
     expect(
       historySentence(row({ table: "pay_run", subject: "Pay run for 14 Sep to 20 Sep", fields: ["status"], before: { status: "draft" }, after: { status: "approved" } }), TODAY),
-    ).toBe("Changed status from draft to approved on pay run for 14 Sep to 20 Sep");
+    ).toBe("Approved pay run 14 Sep to 20 Sep");
   });
 
   it("adds and removals say what was added, with the amount for money rows", () => {
     expect(historySentence(row({ table: "ledger_entry", action: "insert", subject: "Dima's advance", after: { kind: "advance", amountCents: 20000 } }), TODAY)).toBe(
-      "Added Dima's advance, $200.00",
+      "Added Dima's advance of $200.00",
     );
     expect(historySentence(row({ table: "rate", action: "insert", subject: "Sam's rate", after: { basis: "daily", amountCents: 32000, effectiveFrom: "2026-09-15" } }), TODAY)).toBe(
-      "Added Sam's rate, $320.00 a day, from Tue 15 Sep",
+      "Added Sam's rate of $320.00 a day, from Tue 15 Sep",
     );
     expect(historySentence(row({ table: "work_log", action: "delete", subject: "Dima's log for Mon 14 Sep" }), TODAY)).toBe("Removed Dima's log for Mon 14 Sep");
     expect(historySentence(row({ table: "project", action: "insert", subject: "Smith job" }), TODAY)).toBe("Added Smith job");
@@ -90,7 +90,7 @@ describe("plain-word sentences (N11, D20)", () => {
   });
   it("a pay run is lower case in the middle of a sentence, and an added pay run keeps no capital either", () => {
     const run = row({ table: "pay_run", action: "insert", subject: "Pay run for 14 Sep to 20 Sep", after: {} });
-    expect(historySentence(run, TODAY)).toBe("Added pay run for 14 Sep to 20 Sep");
+    expect(historySentence(run, TODAY)).toBe("Added pay run 14 Sep to 20 Sep");
   });
   it("money in a sentence splits out so it can be set in figure style", () => {
     expect(moneyParts("Changed total from $120.00 to $1,320.00 on Bunnings receipt")).toEqual([
@@ -101,5 +101,19 @@ describe("plain-word sentences (N11, D20)", () => {
       { text: " on Bunnings receipt", money: false },
     ]);
     expect(moneyParts("Removed Smith job")).toEqual([{ text: "Removed Smith job", money: false }]);
+  });
+});
+
+describe("history sentences: design fix 2a (F7)", () => {
+  const run = (before: string, after: string) =>
+    historySentence(row({ table: "pay_run", subject: "Pay run for Mon 14 Sep to Sun 20 Sep", fields: ["status"], before: { status: before }, after: { status: after } }), TODAY);
+  it("a pay run status change is one verb: approved, exported, back to draft", () => {
+    expect(run("draft", "approved")).toBe("Approved pay run Mon 14 Sep to Sun 20 Sep");
+    expect(run("approved", "exported")).toBe("Exported pay run Mon 14 Sep to Sun 20 Sep");
+    expect(run("approved", "draft")).toBe("Moved pay run Mon 14 Sep to Sun 20 Sep back to draft");
+  });
+  it("an added pay adjustment says the amount is an adjustment to that log", () => {
+    const adj = row({ table: "work_log", action: "insert", subject: "Jake's log for Thu 17 Sep", after: { adjustsLogId: "1bc7d86e-c6f0-4e5b-a3a9-971fc9892a5a", hours: 50, amountCents: 1200 } });
+    expect(historySentence(adj, TODAY)).toBe("Added a $12.00 pay adjustment to Jake's log for Thu 17 Sep");
   });
 });

@@ -90,7 +90,17 @@ function valueText(field: string, value: unknown, today: string): string | null 
 const WAITING: Record<string, string> = { weather: "weather", materials: "materials", client: "the client", other_job: "another job", other: "something else" };
 
 /** "Pay run for 14 Sep" in the middle of a sentence is "pay run for 14 Sep". */
-const mid = (subject: string): string => subject.replace(/^Pay run\b/, "pay run");
+const mid = (subject: string): string => subject.replace(/^Pay run(?: for)?\b/, "pay run");
+
+/** A pay run status change as one verb: "Approved pay run Mon 14 Sep to Sun 20 Sep"; null for anything else. */
+function payRunSentence(row: AuditRow): string | null {
+  if (row.table !== "pay_run" || row.action !== "update" || row.fields.some((f) => f !== "status")) return null;
+  const now = row.after?.status;
+  if (now === "approved") return `Approved ${mid(row.subject)}`;
+  if (now === "exported") return `Exported ${mid(row.subject)}`;
+  if (now === "draft") return `Moved ${mid(row.subject)} back to draft`;
+  return null;
+}
 
 /** A stage pause, restart or finish as one plain sentence; null when the change is anything else. */
 function stageSentence(row: AuditRow): string | null {
@@ -146,12 +156,14 @@ export function historySentence(row: AuditRow, today: string): string {
   if (row.action === "delete") return `Removed ${mid(row.subject)}`;
   if (row.action === "insert") {
     const a = row.after ?? {};
-    const parts: string[] = [];
-    if (typeof a.amountCents === "number") parts.push(`${formatMoney(a.amountCents)}${typeof a.basis === "string" && BASIS[a.basis] ? ` ${BASIS[a.basis]}` : ""}`);
-    if (typeof a.effectiveFrom === "string") parts.push(`from ${formatDate(a.effectiveFrom, today)}`);
-    return `Added ${mid(row.subject)}${parts.map((p) => `, ${p}`).join("")}`;
+    if (typeof a.adjustsLogId === "string" && typeof a.amountCents === "number") {
+      return `Added a ${formatMoney(a.amountCents)} pay adjustment to ${mid(row.subject)}`;
+    }
+    const amount = typeof a.amountCents === "number" ? ` of ${formatMoney(a.amountCents)}${typeof a.basis === "string" && BASIS[a.basis] ? ` ${BASIS[a.basis]}` : ""}` : "";
+    const from = typeof a.effectiveFrom === "string" ? `, from ${formatDate(a.effectiveFrom, today)}` : "";
+    return `Added ${mid(row.subject)}${amount}${from}`;
   }
-  const stage = stageSentence(row);
+  const stage = stageSentence(row) ?? payRunSentence(row);
   if (stage) return stage;
   const clauses = changeClauses(row, today);
   return clauses.length === 0 ? `Changed ${mid(row.subject)}` : `Changed ${clauses.join(" and ")} on ${mid(row.subject)}`;

@@ -4,7 +4,7 @@ import { sum } from "@/domain/money";
 import { centsPerUnit, quantityPerDay, ratioBp } from "@/domain/ratios";
 import { pausePeriods } from "@/domain/segments";
 import type { Unit } from "@/domain/types";
-import { formatDecimal } from "@/lib/format";
+import { formatDecimal, formatFixed2 } from "@/lib/format";
 import type {
   Actor,
   CrewReportRow,
@@ -202,7 +202,7 @@ export function createReportService(c: FakeContext): ReportService {
     const wd = c.t.workspace.workingDays;
     const rows: { start: string; row: PauseReportRow }[] = c.t.stages.flatMap((st) =>
       pausePeriods(c.ix.segmentsOf(st.id), c.today)
-        .filter((p) => inRange(p.start, range))
+        .filter((p) => p.start <= range.to && p.end >= range.from)
         .map((p) => {
           const project = c.ix.projects.get(st.projectId)!;
           return {
@@ -214,13 +214,20 @@ export function createReportService(c: FakeContext): ReportService {
               projectName: project.nickname,
               stageName: st.name,
               reason: p.reason,
-              workingDays: countWorkingDays(p.start, p.end, wd),
+              start: p.start,
+              end: p.end,
+              workingDays: countWorkingDays(p.start > range.from ? p.start : range.from, p.end < range.to ? p.end : range.to, wd),
             },
           };
         }),
     );
     return rows
-      .sort((a, b) => b.start.localeCompare(a.start) || a.row.projectName.localeCompare(b.row.projectName))
+      .sort(
+        (a, b) =>
+          b.row.workingDays - a.row.workingDays ||
+          b.start.localeCompare(a.start) ||
+          a.row.projectName.localeCompare(b.row.projectName),
+      )
       .map((x) => x.row);
   }
 
@@ -304,7 +311,7 @@ export function createReportService(c: FakeContext): ReportService {
             r.unit,
             formatDecimal(r.quantity),
             r.crewDays,
-            formatDecimal(r.perCrewDay),
+            formatFixed2(r.perCrewDay),
           ]),
         };
       case "pauses":
@@ -370,6 +377,7 @@ export function createReportService(c: FakeContext): ReportService {
           format: "money",
           value: sum(paid.map((r) => r.totalCents)),
           label: `Paid in ${plural(paid.length, "pay run")}`,
+          draftCents: sum(rows.filter((r) => r.status === "draft").map((r) => r.totalCents)),
         };
       });
     },

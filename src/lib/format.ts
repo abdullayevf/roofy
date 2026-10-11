@@ -84,3 +84,9 @@ export function formatDecimal(value: number): string {
   const digits = String(Math.abs(value)).padStart(3, "0");
   return `${value < 0 ? "-" : ""}${digits.slice(0, -2)}.${digits.slice(-2)}`;
 }
+
+/** Hundredths with exactly 2 decimal places and no grouping, e.g. 1450 -> "14.50": a pace column reads evenly. */
+export function formatFixed2(hundredths: number): string {
+  const a = Math.abs(hundredths);
+  return `${hundredths < 0 ? "-" : ""}${Math.trunc(a / 100)}.${String(a % 100).padStart(2, "0")}`;
+}
