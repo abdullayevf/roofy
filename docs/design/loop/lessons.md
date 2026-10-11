@@ -40,3 +40,6 @@
 - In a row's right column only the total is figure-sized; breakdown amounts are meta lines (pay iter, reports iter1 and iter2).
 - A per-unit rate with no units in the range is not "$0.00 a <unit>": hide the line or say "No units this week" (reports i3, design + field).
 - An empty state's button is the verb that fills it ("Log today"), not "Go to Home" (reports i2 F12, i3 D40).
+- A toast sits above the tab bar and the Log button's lift, never over them (entry-settings i1 D6 + F9; guard).
+- A form taller than the first viewport uses the pinned Save bar; its error or Needs connection line sits in the bar, and a failed save focuses the first bad field (entry-settings i1 D8 + F2).
+- A list of editable items (categories, stages) is grouped rows that open an edit sheet, not one input per item (entry-settings i1 D10, D11, F12).
