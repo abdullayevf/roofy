@@ -150,6 +150,11 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
     await page.getByLabel("New category", { exact: true }).fill(name.toUpperCase());
     await save(page).click();
     await expect(page.getByText(`There's already a category called ${name.toUpperCase()}.`)).toBeVisible();
+    // A name over 60 characters is refused on the field, not dropped without a word.
+    await page.getByLabel("New category", { exact: true }).fill(LONG_NAME);
+    await save(page).click();
+    await expect(page.getByText("Keep it under 60 characters.")).toBeVisible();
+    await expect(saved(page)).toHaveCount(0);
     const long = unique(LONG_NAME).slice(0, 58);
     await page.waitForLoadState("networkidle");
     await go(page, "owner", "/settings/categories");

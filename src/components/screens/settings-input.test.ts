@@ -1,7 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { bpText, floorError, payPeriodText, readCode, readHours, readOnCost, FLOOR_MISSING } from "./settings-input";
+import { categorySchema } from "@/data/admin-inputs";
+import {
+  bpText,
+  CATEGORY_NAME_MAX,
+  floorError,
+  nameLengthError,
+  payPeriodText,
+  readCode,
+  readHours,
+  readOnCost,
+  FLOOR_MISSING,
+} from "./settings-input";
 
 describe("settings input", () => {
+  it("refuses a category name the server would refuse, with the same sentence, instead of failing silently", () => {
+    const name = (n: number) => "a".repeat(n);
+    expect(nameLengthError(name(CATEGORY_NAME_MAX), CATEGORY_NAME_MAX)).toBeUndefined();
+    expect(nameLengthError(`  ${name(CATEGORY_NAME_MAX)}  `, CATEGORY_NAME_MAX)).toBeUndefined();
+    expect(nameLengthError(name(CATEGORY_NAME_MAX + 1), CATEGORY_NAME_MAX)).toBe("Keep it under 60 characters.");
+    const base = { id: null, position: 1 };
+    expect(categorySchema.safeParse({ ...base, name: name(CATEGORY_NAME_MAX) }).success).toBe(true);
+    const over = categorySchema.safeParse({ ...base, name: name(CATEGORY_NAME_MAX + 1) });
+    expect(over.success).toBe(false);
+    expect(over.error?.issues[0]?.message).toBe(nameLengthError(name(CATEGORY_NAME_MAX + 1), CATEGORY_NAME_MAX));
+  });
+
   it("reads an on-cost percent as basis points, never as 0% when blank or unreadable", () => {
     expect(readOnCost("18.5")).toEqual({ bp: 1850 });
     expect(readOnCost(" 20 % ")).toEqual({ bp: 2000 });

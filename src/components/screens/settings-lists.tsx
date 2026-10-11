@@ -15,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
-import { bpText, readShare, shareErrors } from "./settings-input";
+import { bpText, CATEGORY_NAME_MAX, nameLengthError, readShare, shareErrors } from "./settings-input";
 import { FORM_GRID, SettingsForm, useSave, type Errors } from "./settings-forms";
 
 const UNITS: { value: Unit | ""; label: string }[] = [
@@ -176,6 +176,7 @@ export function CategoriesForm({
     ];
     all.forEach((c, i) => {
       if (!c.name.trim()) found[c.key] = "Add a name for the category.";
+      else if (nameLengthError(c.name, CATEGORY_NAME_MAX)) found[c.key] = nameLengthError(c.name, CATEGORY_NAME_MAX);
       else if (all.some((o, j) => j < i && sameName(o.name, c.name)))
         found[c.key] = `There's already a category called ${c.name.trim()}.`;
     });

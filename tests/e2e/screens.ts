@@ -146,6 +146,10 @@ const AUTH_STATES: DemoState[] = ["normal", "loading", "offline", "error"];
 
 // An email long enough to push a field past its edge if the field does not wrap or scroll.
 const LONG_NAME = "Scaffolding hire, safety rails and edge protection for the Harbour View Apartments re-roof";
+// Saves keep a category name to 60 characters and a person's name to 80 (admin-inputs), so the saved long-name
+// states use names inside those limits; LONG_NAME above is the too-long case.
+const LONG_CATEGORY = "Scaffolding, safety rails and edge protection for re-roofs";
+const LONG_PERSON = "Bartholomew Wolfeschlegelsteinhausenberger-Smythe, Harbour View site lead";
 const LONG_EMAIL = "maria.fernanda.van-der-westhuizen-smith@harbour-and-bay-roofing-contractors.example";
 
 export const SCREENS: ScreenSpec[] = [
@@ -1113,12 +1117,13 @@ export const SCREENS: ScreenSpec[] = [
   { id: "settings-categories", group: "entry-settings", route: "/settings/categories", states: ["normal", "empty", "loading", "error", "offline", "noperm"], roles: ["owner", "manager"] },
   { id: "settings-categories-invalid", group: "entry-settings", route: "/settings/categories", states: ["normal"], roles: ["owner"], steps: ["fill:New category=materials", "Save changes"], expectStill: "There's already a category called materials." },
   { id: "settings-categories-saved", group: "entry-settings", route: "/settings/categories", states: ["normal"], roles: ["manager"], steps: ["fill:New category=Skip bins", "Save changes"], expectStill: "Changes saved." },
-  { id: "settings-categories-long", group: "entry-settings", route: "/settings/categories", states: ["normal"], roles: ["owner"], steps: [`fill:New category=${LONG_NAME}`, "Save changes"], expectStill: "Changes saved." },
+  { id: "settings-categories-long", group: "entry-settings", route: "/settings/categories", states: ["normal"], roles: ["owner"], steps: [`fill:New category=${LONG_CATEGORY}`, "Save changes"], expectStill: "Changes saved." },
+  { id: "settings-categories-too-long", group: "entry-settings", route: "/settings/categories", states: ["normal"], roles: ["owner"], steps: [`fill:New category=${LONG_NAME}`, "Save changes"], expectStill: "Keep it under 60 characters." },
   { id: "settings-categories-no-access", group: "entry-settings", route: "/settings/categories", states: ["normal"], roles: ["accountant", "foreman"] },
   { id: "settings-members", group: "entry-settings", route: "/settings/members", states: ["normal", "empty", "loading", "error", "offline", "noperm"], roles: ["owner"] },
   { id: "settings-members-invalid", group: "entry-settings", route: "/settings/members", states: ["normal"], roles: ["owner"], steps: ["fill:Email=karen@harbourroofing", "Send invite"], expectStill: "Add the person's name." },
   { id: "settings-members-saved", group: "entry-settings", route: "/settings/members", states: ["normal"], roles: ["owner"], steps: ["fill:Name=Karen Lee", "fill:Email=karen@harbourroofing.example", "Send invite"], expectStill: "Invite sent." },
-  { id: "settings-members-long", group: "entry-settings", route: "/settings/members", states: ["normal"], roles: ["owner"], steps: [`fill:Name=${LONG_NAME}`, `fill:Email=${LONG_EMAIL}`, "Send invite"], expectStill: "Invite sent." },
+  { id: "settings-members-long", group: "entry-settings", route: "/settings/members", states: ["normal"], roles: ["owner"], steps: [`fill:Name=${LONG_PERSON}`, `fill:Email=${LONG_EMAIL}`, "Send invite"], expectStill: "Invite sent." },
   { id: "settings-members-no-access", group: "entry-settings", route: "/settings/members", states: ["normal"], roles: ["manager", "accountant", "foreman"] },
   { id: "settings-assignments", group: "entry-settings", route: "/settings/assignments", states: ["normal", "empty", "loading", "error", "offline", "noperm"], roles: ["owner", "manager"] },
   { id: "settings-assignments-saved", group: "entry-settings", route: "/settings/assignments", states: ["normal"], roles: ["owner"], steps: ["Save changes"], expectStill: "Changes saved." },

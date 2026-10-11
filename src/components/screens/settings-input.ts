@@ -93,3 +93,11 @@ export function shareErrors(labour: number[], materials: number[]): { labour?: s
     out.materials = `Materials shares must add up to 100%, or all be 0%. They add up to ${bpText(sum(materials))}%.`;
   return out;
 }
+
+/** The longest expense category name the server keeps (`categorySchema`). */
+export const CATEGORY_NAME_MAX = 60;
+
+/** The same sentence the server gives for a name that is too long, shown on the field before saving. */
+export function nameLengthError(name: string, max: number): string | undefined {
+  return name.trim().length > max ? `Keep it under ${max} characters.` : undefined;
+}
