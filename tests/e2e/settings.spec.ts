@@ -70,14 +70,14 @@ test.describe("Settings (screen 23)", () => {
     await page.getByLabel("Floor rate for Roofer").fill("0.00");
     await page.getByRole("button", { name: "Save changes" }).click();
     await expect(page.getByText("Add a floor rate before saving.")).toBeVisible();
-    await expect(page.getByText("Changes saved.")).toHaveCount(0);
+    await expect(page.getByText("Changes saved.", { exact: true })).toHaveCount(0);
   });
 
   test("on-cost saves and the hub shows the new percent", async ({ page }) => {
     await go(page, "manager", "/settings/on-cost");
     await page.getByLabel("On-cost").fill("18.25");
     await page.getByRole("button", { name: "Save changes" }).click();
-    await expect(page.getByText("Changes saved.")).toBeVisible();
+    await expect(page.getByText("Changes saved.", { exact: true })).toBeVisible();
     await page.goto("/settings");
     await expect(page.getByRole("link", { name: /^On-cost/ })).toContainText("18.25% on employee pay");
   });
@@ -86,10 +86,10 @@ test.describe("Settings (screen 23)", () => {
     await go(page, "owner", "/settings/two-factor?demo=blocked");
     await page.getByRole("button", { name: "Turn on two-factor" }).click();
     await expect(page.getByText("Enter the 6-digit code from your app.")).toHaveCount(1);
-    await expect(page.getByText("Two-factor is on.")).toHaveCount(0);
+    await expect(page.getByText("Two-factor is on.", { exact: true })).toHaveCount(0);
     await page.getByLabel("Code").fill("123 456");
     await page.getByRole("button", { name: "Turn on two-factor" }).click();
-    await expect(page.getByText("Two-factor is on.")).toBeVisible();
+    await expect(page.getByText("Two-factor is on.", { exact: true })).toBeVisible();
   });
 
   test("levels empty state", async ({ page }) => {

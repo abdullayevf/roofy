@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import type { ActionResult, Cents, CrewLevel, PayFrequency, WorkspaceSettings, WorkspaceSettingsInput } from "@/data/contracts";
 import { saveLevel, turnOnTwoFactor, updateSettings } from "@/app/actions/settings";
 import { businessProblems } from "@/lib/onboarding-input";
-import { cx } from "@/lib/cx";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ErrorMessage } from "@/components/ui/error-message";
@@ -86,8 +85,13 @@ function SettingsForm({
     e.preventDefault();
     onSubmit();
   }
+  // On a phone, a focused field scrolls clear of the tab bar when the keyboard opens.
   return (
-    <form noValidate onSubmit={submit} className="flex flex-col gap-6">
+    <form
+      noValidate
+      onSubmit={submit}
+      className="flex flex-col gap-6 [&_input]:scroll-mb-[calc(var(--tab-bar-height)+1rem)]"
+    >
       {children}
       <div className="flex flex-col gap-3">
         {s.online ? null : (
@@ -204,7 +208,6 @@ export function PayPeriodForm({
         <Segmented
           legend="Pay period"
           name="pay-frequency"
-          equal
           fill
           options={[
             { value: "weekly", label: "Weekly" },
@@ -221,7 +224,7 @@ export function PayPeriodForm({
         />
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-2 text-body-strong text-ink">Working days</legend>
-          <div className="grid grid-cols-2 gap-x-4 sm:grid-cols-4">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,11rem),1fr))] gap-x-4">
             {[1, 2, 3, 4, 5, 6, 0].map((d) => (
               <Checkbox
                 key={d}
@@ -331,7 +334,7 @@ export function TwoFactorForm({ demoOffline }: { demoOffline: boolean }) {
         <li>Open an authenticator app, like Google Authenticator or 1Password.</li>
         <li>
           Add Roofy with this set-up key:{" "}
-          <span className={cx("whitespace-nowrap text-body-strong tabular-nums")}>RFY4 7KQ2 M9TD 3XWB</span>
+          <span className="text-body-strong tabular-nums">RFY4 7KQ2 M9TD 3XWB</span>
         </li>
         <li>Enter the 6-digit code the app shows.</li>
       </ol>

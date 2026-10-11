@@ -13,7 +13,7 @@ test("Settings changes: a level's floor rate saved within 5 taps from Home; $0.0
   await taps.tap(roofer);
   await roofer.fill("34.50");
   await taps.tap(page.getByRole("button", { name: "Save changes" }));
-  await expect(page.getByText("Changes saved.")).toBeVisible();
+  await expect(page.getByText("Changes saved.", { exact: true })).toBeVisible();
   taps.assertWithin(5);
 
   await page.reload();
