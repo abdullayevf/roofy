@@ -280,10 +280,28 @@ describe("reports: review fix (cost per unit, clamped periods)", () => {
     const r = await data.reports.crew(actor, SEPT);
     const tom = r.rows.find((x) => x.name === "Tom")!;
     const sheet = tom.costPerUnit.find((c) => c.stageName === "Sheet install")!;
-    const logs = live.filter((l) => l.crewMemberId === tom.crewMemberId && inSept(l.date) && stageOf(l.stageId).name === "Sheet install" && stageOf(l.stageId).unit === "m2");
+    const logs = live.filter((l) => l.crewMemberId === tom.crewMemberId && inSept(l.date) && l.basis === "per_unit" && stageOf(l.stageId).name === "Sheet install" && stageOf(l.stageId).unit === "m2");
     const cents = sum(logs.map((l) => labourCost(l.amountCents, crew(l.crewMemberId), { workspaceGstRegistered: true, onCostBp: 2500 })));
-    const qty = sum(logs.filter((l) => l.basis === "per_unit").map((l) => l.quantity));
+    const qty = sum(logs.map((l) => l.quantity));
     expect(sheet).toEqual({ stageName: "Sheet install", unit: "m2", centsPerUnit: Math.round((cents * 100) / qty) });
+  });
+
+  it("crew: hourly labour on a unit stage stays out of cost per unit (numerator and quantity are the same per-unit logs)", async () => {
+    const { data, actor } = fake("manager");
+    const r = await data.reports.crew(actor, SEPT);
+    const onUnitStage = (l: (typeof live)[number], name: string, unit: string) =>
+      inSept(l.date) && stageOf(l.stageId).name === name && stageOf(l.stageId).unit === unit;
+    let mixed = 0;
+    for (const row of r.rows) {
+      for (const cp of row.costPerUnit) {
+        const mine = live.filter((l) => l.crewMemberId === row.crewMemberId && onUnitStage(l, cp.stageName, cp.unit));
+        if (mine.some((l) => l.basis !== "per_unit")) mixed++;
+        const pu = mine.filter((l) => l.basis === "per_unit");
+        const cents = sum(pu.map((l) => labourCost(l.amountCents, crew(l.crewMemberId), { workspaceGstRegistered: true, onCostBp: 2500 })));
+        expect(cp.centsPerUnit).toBe(Math.round((cents * 100) / sum(pu.map((l) => l.quantity))));
+      }
+    }
+    expect(mixed).toBeGreaterThan(0);
   });
 
   it("productivity: a month only partly inside the range carries the clamped dates", async () => {

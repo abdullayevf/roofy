@@ -107,23 +107,22 @@ export function createReportService(c: FakeContext): ReportService {
       .sort((a, b) => a.m.name.localeCompare(b.m.name))
       .map(({ m, mine }) => {
         const perUnit = mine.filter((l) => l.basis === "per_unit" && l.unit !== null);
-        // One key for labour and quantity: the stage's name and unit. A stage with an unpriced per-unit log has no
-        // known cost, so it is left out (an unpriced stage must not read as a free one, E4.3).
+        // One key for labour and quantity: the stage's name and unit. Only per-unit logs count, so the labour and the
+        // quantity come from the same logs (hourly time on a unit stage is not paid by the unit). A stage with an
+        // unpriced per-unit log has no known cost, so it is left out (an unpriced stage must not read as a free one, E4.3).
         const groups = new Map<
           string,
           { stageName: string; unit: Unit; logs: WorkLogRow[]; qty: number[]; unpriced: boolean }
         >();
         for (const l of mine) {
           const st = c.ix.stages.get(l.stageId)!;
-          if (st.unit === null) continue;
+          if (st.unit === null || l.basis !== "per_unit") continue;
           const key = `${st.name}|${st.unit}`;
           if (!groups.has(key)) groups.set(key, { stageName: st.name, unit: st.unit, logs: [], qty: [], unpriced: false });
           const g = groups.get(key)!;
           g.logs.push(l);
-          if (l.basis === "per_unit") {
-            g.qty.push(l.quantity);
-            if (l.missingRate || l.rateCents === null) g.unpriced = true;
-          }
+          g.qty.push(l.quantity);
+          if (l.missingRate || l.rateCents === null) g.unpriced = true;
         }
         const util = endExclusive > range.from ? c.fig.utilisationOf(m.id, range.from, endExclusive) : null;
         return {
