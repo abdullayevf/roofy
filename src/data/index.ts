@@ -28,10 +28,11 @@
  */
 import { todayIn } from "@/domain/dates";
 import type { LocalDate } from "@/domain/types";
-import type { Actor, DataServices, Role } from "./contracts";
+import type { Actor, AuthService, DataServices, Role } from "./contracts";
 import { fakeNow } from "./fake/clock";
 import { demoFlags, parseDemoState, type DemoFlags } from "./fake/demo";
 import { createFakeServices } from "./fake/services";
+import { createFakeAuth } from "./fake/services/auth";
 import { actorFor } from "./fake/services/context";
 import { emptyStore, sessionStore, sharedStore } from "./fake/store";
 import { ensureDemoSession, readDemoParam, readSession, type SearchParamsInput } from "./session";
@@ -136,4 +137,10 @@ export async function getWriteData(): Promise<WriteContext> {
   const session = await readSession();
   const demoSessionId = await ensureDemoSession();
   return writeContext({ role: session.role, demoSessionId });
+}
+
+/** Sign in and sign up: there is no signed-in person yet, so no store, actor or demo state. */
+export function getAuth(): AuthService {
+  dataMode();
+  return createFakeAuth();
 }

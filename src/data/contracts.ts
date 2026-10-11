@@ -1742,3 +1742,28 @@ export interface DataServices {
 export type ActionResult<T extends object = object> =
   | ({ ok: true } & T)
   | { ok: false; code: DataErrorCode; message: string; issues: FieldIssue[] };
+
+// ─── Sign in and sign up ────────────────────────────────────────────────────
+
+export interface SignInInput {
+  email: string;
+  password: string;
+}
+export type SignUpInput = SignInInput;
+
+/** Who the person is signed in as, and where to go next: Home after signing in, set-up after signing up. */
+export interface AuthSession {
+  role: Role;
+  next: "/" | "/onboarding";
+}
+
+/**
+ * Sign in and sign up (no actor yet). Refusals are `DataError("invalid")` with a plain sentence and, for a
+ * blank or unusable field, `issues` naming it ("email", "password"); a wrong password has no field.
+ */
+export interface AuthService {
+  signIn(input: SignInInput): Promise<AuthSession>;
+  signUp(input: SignUpInput): Promise<AuthSession>;
+  /** Google's own screens are out of scope for the prototype: it goes straight on. */
+  continueWithGoogle(mode: "sign-in" | "sign-up"): Promise<AuthSession>;
+}

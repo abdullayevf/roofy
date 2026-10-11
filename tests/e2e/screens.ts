@@ -141,6 +141,12 @@ const READ_STATES: DemoState[] = ["normal", "empty", "loading", "error", "offlin
 // Short forms/wizards with little to design beyond the happy path and errors.
 const ENTRY_STATES: DemoState[] = ["normal", "error"];
 
+// Sign in and sign up have no data to wait for: the form, the busy button, no signal, and the sorry sentence.
+const AUTH_STATES: DemoState[] = ["normal", "loading", "offline", "error"];
+
+// An email long enough to push a field past its edge if the field does not wrap or scroll.
+const LONG_EMAIL = "maria.fernanda.van-der-westhuizen-smith@harbour-and-bay-roofing-contractors.example";
+
 export const SCREENS: ScreenSpec[] = [
   // --- system (Task 8) ------------------------------------------------
   {
@@ -1032,16 +1038,37 @@ export const SCREENS: ScreenSpec[] = [
   { id: "workspace-export-no-access", group: "reports", route: "/export", states: ["normal"], roles: ["manager", "accountant", "foreman"] },
 
   // --- entry-settings (Task 19) -----------------------------------------
-  { id: "sign-in", group: "entry-settings", route: "/sign-in", states: ENTRY_STATES, roles: [] },
-  { id: "sign-up", group: "entry-settings", route: "/sign-up", states: ENTRY_STATES, roles: [] },
-  { id: "onboarding", group: "entry-settings", route: "/onboarding", states: ENTRY_STATES, roles: ["owner"] },
+  // Sign in and sign up: the form, the busy button, no signal, and the plain-words refusals.
+  { id: "sign-in", group: "entry-settings", route: "/sign-in", states: AUTH_STATES, roles: [], keyboard: { field: "Password", action: "Sign in" } },
+  { id: "sign-in-invalid", group: "entry-settings", route: "/sign-in", states: ["normal"], roles: [], steps: ["Sign in"], expectStill: "Enter your email address." },
   {
-    id: "install-guide",
+    id: "sign-in-wrong-password",
     group: "entry-settings",
-    route: "/install",
+    route: "/sign-in",
     states: ["normal"],
-    roles: ["owner", "manager"],
+    roles: [],
+    steps: ["fill:Email=karen@harbourroofing.example", "fill:Password=not-the-password", "Sign in"],
+    expectStill: "don't match",
   },
+  { id: "sign-in-long-email", group: "entry-settings", route: "/sign-in", states: ["normal"], roles: [], steps: [`fill:Email=${LONG_EMAIL}`, "fill:Password=not-the-password"] },
+  { id: "sign-up", group: "entry-settings", route: "/sign-up", states: AUTH_STATES, roles: [], keyboard: { field: "Password", action: "Create account" } },
+  { id: "sign-up-invalid", group: "entry-settings", route: "/sign-up", states: ["normal"], roles: [], steps: ["fill:Email=karen@harbourroofing", "fill:Password=short", "Create account"], expectStill: "Use at least 8 characters." },
+  {
+    id: "sign-up-email-taken",
+    group: "entry-settings",
+    route: "/sign-up",
+    states: ["normal"],
+    roles: [],
+    steps: ["fill:Email=karen@harbourroofing.example", "fill:Password=a-long-password", "Create account"],
+    expectStill: "already exists",
+  },
+  { id: "onboarding", group: "entry-settings", route: "/onboarding", states: ENTRY_STATES, roles: ["owner"] },
+  // Install guide: the steps for the device it is opened on come first; the others sit behind a disclosure.
+  { id: "install-guide", group: "entry-settings", route: "/install", states: ["normal", "error"], roles: ["owner", "manager", "foreman", "accountant"] },
+  { id: "install-guide-ios", group: "entry-settings", route: "/install?platform=ios", states: ["normal"], roles: ["owner"] },
+  { id: "install-guide-android", group: "entry-settings", route: "/install?platform=android", states: ["normal"], roles: ["owner"] },
+  { id: "install-guide-desktop", group: "entry-settings", route: "/install?platform=desktop", states: ["normal"], roles: ["owner"] },
+  { id: "install-guide-installed", group: "entry-settings", route: "/install?installed=1", states: ["normal"], roles: ["owner"] },
   {
     id: "settings",
     group: "entry-settings",
