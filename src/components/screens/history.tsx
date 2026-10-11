@@ -36,15 +36,24 @@ function Sentence({ text }: { text: string }) {
   );
 }
 
-/** Job and Crew filters on the page itself: a plain GET form, so it works with nothing but the page loaded (N14). */
+/**
+ * Job and Crew filters on the page itself: a plain GET form in a native details, so it works with nothing but the page loaded
+ * (N14). It rests as one "All jobs, everyone" Change row, so the list starts in the first screen (F2/D26).
+ */
 function Filters({ filter, options, demo }: { filter: HistoryFilter; options: Options; demo?: string }) {
   return (
-    <form action="/history" method="get" data-history-filters="" className="flex flex-col gap-3 lg:flex-row lg:items-end">
-      {demo ? <input type="hidden" name="demo" value={demo} /> : null}
-      <Select className="lg:w-72" label="Job" name="job" defaultValue={filter.projectId ?? ""} options={[{ value: "", label: "All jobs" }, ...options.jobs]} />
-      <Select className="lg:w-72" label="Crew" name="crew" defaultValue={filter.crewMemberId ?? ""} options={[{ value: "", label: "Everyone" }, ...options.crew]} />
-      <Button type="submit" variant="secondary" className="lg:w-auto">Show</Button>
-    </form>
+    <details data-history-filters="">
+      <summary className={cx("flex min-h-12 cursor-pointer list-none flex-wrap items-center gap-x-3 marker:hidden", FOCUS)}>
+        <span className="text-body text-ink">{historyIsFiltered(filter) ? "Job and crew" : "All jobs, everyone"}</span>
+        <span className="text-body-strong text-chalk-link">Change</span>
+      </summary>
+      <form action="/history" method="get" className="flex flex-col gap-3 pb-2 pt-2 sm:flex-row sm:flex-wrap sm:items-end">
+        {demo ? <input type="hidden" name="demo" value={demo} /> : null}
+        <Select className="sm:w-72" label="Job" name="job" defaultValue={filter.projectId ?? ""} options={[{ value: "", label: "All jobs" }, ...options.jobs]} />
+        <Select className="sm:w-72" label="Crew" name="crew" defaultValue={filter.crewMemberId ?? ""} options={[{ value: "", label: "Everyone" }, ...options.crew]} />
+        <Button type="submit" variant="secondary" className="w-full sm:w-auto sm:min-w-40">Show</Button>
+      </form>
+    </details>
   );
 }
 

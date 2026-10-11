@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { checkBackRow, checkMoneyFigureFont, checkNegativeFiguresShareColour, checkOneLine, checkReportFirstScreen, checkTableEdgeGap, checkTableHeaderAlign, checkTableHeadersOneLine, collectConsole, expectScreenHealthy } from "./guards";
+import { checkBackRow, checkClearOfFixedBars, checkFirstRowTop, checkMoneyFigureFont, checkNoClippedText, checkNoOverflow, checkNegativeFiguresShareColour, checkOneLine, checkReportFirstScreen, checkTableEdgeGap, checkTableHeaderAlign, checkTableHeadersOneLine, collectConsole, expectScreenHealthy } from "./guards";
 import { expectNoMoney } from "./money-scan";
 import { getSeed } from "../../src/data/fake/store";
 
@@ -334,5 +334,98 @@ test.describe("Productivity, Pauses and Pay history reports; Export CSV and Prin
     const res = await page.request.get("/reports/job-profitability/csv");
     expect(res.status()).toBe(403);
     expect(await res.text()).not.toMatch(/\$|\d+\.\d{2}/);
+  });
+});
+
+test.describe("Report page layout (Task 18 fix 2b)", () => {
+  const KINDS = ["job-profitability", "crew", "productivity", "pauses", "pay-history"] as const;
+  const RANGE = "from=2026-01-01&to=2026-09-27";
+
+  for (const kind of KINDS) {
+    test(`${kind}: an applied range collapses to the one Change row and the data stays in the first screen (D23/F1)`, async ({ page }) => {
+      await signInAs(page, "manager", `/reports/${kind}?${RANGE}`);
+      await expect(page.getByLabel("From")).toBeHidden();
+      await expect(page.getByRole("link", { name: "Show the last 3 months" })).toBeVisible();
+      expect((await checkFirstRowTop(page, 400)).failures).toEqual([]);
+    });
+
+    test(`${kind}: on a phone on its side Export and Print sit in the title row and data starts in the first view (F2)`, async ({ page }, testInfo) => {
+      test.skip(!isPhone(testInfo.project.name), "the landscape phone is a phone case");
+      await page.setViewportSize({ width: 844, height: 390 });
+      await signInAs(page, "manager", `/reports/${kind}`);
+      const title = (await page.getByRole("heading", { level: 1 }).boundingBox())!;
+      const csv = (await page.getByRole("link", { name: "Export CSV" }).boundingBox())!;
+      const print = (await page.getByRole("button", { name: "Print" }).boundingBox())!;
+      for (const box of [csv, print]) expect(Math.abs(box.y + box.height / 2 - (title.y + title.height / 2)), "in the title row").toBeLessThan(24);
+      expect((await checkFirstRowTop(page, 390 - 100)).failures).toEqual([]);
+    });
+
+    test(`${kind}: nothing sits under the tab bar or the Log circle at the end of the page, installed and on its side (F3/F8)`, async ({ page }, testInfo) => {
+      test.skip(!isPhone(testInfo.project.name), "the tab bar is phone-only");
+      await page.setViewportSize({ width: 844, height: 390 });
+      await signInAs(page, "manager", `/reports/${kind}?${RANGE}`);
+      await page.evaluate(() => document.documentElement.style.setProperty("--sab-sim", "34px"));
+      await page.getByText("Change", { exact: true }).click();
+      expect((await checkClearOfFixedBars(page, "main a, main button, main summary, main p, main input")).failures).toEqual([]);
+    });
+
+    test(`${kind}: a new workspace says reports fill in once the crew logs work, with one button and the range closed (D24/F4)`, async ({ page }) => {
+      await signInAs(page, "owner", `/reports/${kind}?demo=empty`);
+      const empty = page.locator("[data-report-empty]");
+      await expect(empty).toContainText("Reports fill in once the crew logs work.");
+      await expect(empty.locator("a, button"), "one button in the empty state").toHaveCount(1);
+      await expect(page.getByLabel("From")).toBeHidden();
+    });
+  }
+
+  test("pay history and job profitability: only the row total is figure-sized, the breakdown is meta lines (D9/F13)", async ({ page }, testInfo) => {
+    test.skip(!isPhone(testInfo.project.name), "the phone rows");
+    for (const kind of ["pay-history", "job-profitability"]) {
+      await signInAs(page, "manager", `/reports/${kind}`);
+      const sizes = await page
+        .locator("[data-report-row]:visible")
+        .first()
+        .evaluate((row) =>
+          Array.from(row.querySelectorAll("*"))
+            .filter((el) => el.children.length === 0 && /^−?\$[\d,]+\.\d{2}$/.test((el.textContent ?? "").trim()))
+            .map((el) => parseFloat(getComputedStyle(el).fontSize)),
+        );
+      expect(sizes.length, `${kind}: money values in the first row`).toBeGreaterThan(1);
+      expect(sizes.filter((px) => px >= 20), `${kind}: one figure-sized value`).toHaveLength(1);
+    }
+  });
+
+  test("crew on desktop: Worked, Jobs and Utilisation are right-aligned figures, and a person without piece rates says so (D12/D32)", async ({ page }, testInfo) => {
+    test.skip(isPhone(testInfo.project.name), "the desktop table");
+    await signInAs(page, "manager", "/reports/crew");
+    const cells = await page.locator("table [data-report-row]").first().evaluate((tr) =>
+      Array.from(tr.querySelectorAll("td")).slice(1, 4).map((td) => {
+        const leaf = (td.querySelector("span") ?? td) as HTMLElement;
+        return { align: getComputedStyle(td).textAlign, family: getComputedStyle(leaf).fontFamily, size: parseFloat(getComputedStyle(leaf).fontSize) };
+      }),
+    );
+    const earned = await page.locator("table [data-earned]").first().evaluate((el) => getComputedStyle(el).fontFamily);
+    for (const c of cells) {
+      expect(c.align).toBe("right");
+      expect(c.family).toBe(earned);
+      expect(c.size).toBeGreaterThanOrEqual(20);
+    }
+    await expect(page.locator("table td:nth-child(5)").filter({ hasText: /^None$/ }), "no piece rates is said in words").toHaveCount(0);
+  });
+
+  test("crew: the cost-per-unit lines wrap instead of clipping at 200% text zoom (F9)", async ({ page }, testInfo) => {
+    test.skip(!isPhone(testInfo.project.name), "the phone rows");
+    await signInAs(page, "manager", "/reports/crew");
+    await expect(page.locator("[data-cost-per-unit]").first()).toBeVisible();
+    await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
+    expect((await checkNoClippedText(page, "[data-report-row]")).failures).toEqual([]);
+    expect((await checkNoOverflow(page)).failures).toEqual([]);
+  });
+
+  test("productivity Done and Crew-days are figures (D12)", async ({ page }, testInfo) => {
+    test.skip(isPhone(testInfo.project.name), "the desktop table");
+    await signInAs(page, "manager", "/reports/productivity");
+    const done = await page.locator("table [data-report-row] td:nth-child(4)").first().evaluate((td) => parseFloat(getComputedStyle(td.querySelector("span") ?? td).fontSize));
+    expect(done, "Done is a figure").toBeGreaterThanOrEqual(20);
   });
 });

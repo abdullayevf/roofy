@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { checkBackRow, checkMoneyFigureFont, checkSidebarSpansPage, checkTableEdgeGap, checkTableHeaderAlign, collectConsole, expectScreenHealthy } from "./guards";
+import { checkBackRow, checkFirstRowTop, checkMoneyFigureFont, checkSidebarSpansPage, checkTableEdgeGap, checkTableHeaderAlign, collectConsole, expectScreenHealthy } from "./guards";
 import { expectNoMoney } from "./money-scan";
 import { getSeed } from "../../src/data/fake/store";
 
@@ -100,6 +100,15 @@ test.describe("Record history (screen 25)", () => {
 });
 
 test.describe("Record history filters (from job detail and crew detail)", () => {
+  test("the filters collapse to one row, so the first change is in the first screen on a phone and on its side (F2/D26)", async ({ page }, testInfo) => {
+    test.skip(!isPhone(testInfo.project.name), "phone only");
+    await signInAs(page, "manager", "/history");
+    expect((await checkFirstRowTop(page, 300)).failures).toEqual([]);
+    await page.setViewportSize({ width: 844, height: 390 });
+    await signInAs(page, "manager", "/history");
+    expect((await checkFirstRowTop(page, 390 - 100)).failures).toEqual([]);
+  });
+
   test("a job's link shows only that job's changes, with Showing and Clear", async ({ page }, testInfo) => {
     // The full list says which job each change is about.
     await signInAs(page, "manager", "/history");
@@ -140,6 +149,9 @@ test.describe("Record history filters (from job detail and crew detail)", () => 
     await signInAs(page, "manager", "/history");
     const filters = page.locator("[data-history-filters]");
     await expect(filters).toBeVisible();
+    await expect(filters.getByLabel("Job"), "D26: the filters rest as one Change row").toBeHidden();
+    await expect(filters.getByText("All jobs, everyone")).toBeVisible();
+    await filters.getByText("Change", { exact: true }).click();
     await expect(filters.getByLabel("Job")).toBeVisible();
     await expect(filters.getByLabel("Crew")).toBeVisible();
     const everything = await readRows(page);
@@ -160,6 +172,7 @@ test.describe("Record history filters (from job detail and crew detail)", () => 
     const header = isPhone(testInfo.project.name) ? 0 : ((await page.locator("table thead").boundingBox())?.height ?? 0);
     expect(list.y - header - (head.y + head.height), "N14: the gap under the filter row is one section gap (32 or 40 px, plus a border)").toBeLessThanOrEqual(48);
 
+    await filters.getByText("Change", { exact: true }).click();
     await filters.getByLabel("Job").selectOption("");
     await filters.getByLabel("Crew").selectOption(meta.crew.dima);
     await filters.getByRole("button", { name: "Show" }).click();

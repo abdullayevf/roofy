@@ -28,6 +28,9 @@ const FIG = "num text-figure text-ink break-words";
 /** One rule for a negative figure in every column and on every row: the over-budget colour (D10). */
 const fig = (cents: number): string => cx(FIG, cents < 0 && "text-over");
 const NO_WRAP = "whitespace-nowrap";
+/** A money value inside a meta line: figure face at the meta size, so only a row's total is figure-sized (D9/F13). */
+const META_FIG = "font-display font-semibold num text-ink break-words";
+
 
 /** One row of the Reports index: its key figure (split from its unit, which sits on a meta line) and one plain line about it. */
 export type ReportCard = { kind: ReportKind; figure: string; unit: string; line: string };
@@ -131,7 +134,7 @@ export function ReportsIndexError() {
 function KeyFigure({ figure }: { figure: ReportKeyFigure }) {
   const { figure: text, unit } = keyFigureParts(figure);
   return (
-    <div data-key-figure="" className="flex flex-col lg:col-span-2 lg:row-start-3">
+    <div data-key-figure="" className="flex flex-col wide:col-span-2 wide:row-start-3">
       <p data-oneline="" className="text-figure-xl num text-ink break-words">
         {text}
         {unit ? (
@@ -158,33 +161,35 @@ function ReportFrame({ kind, range, chosen, today, updated, empty, open, figure,
   const BTN = "flex-1 sm:flex-none sm:min-w-40";
   return (
     <div data-screen="report" data-report-screen={kind} className={WIDE}>
-      <div className="flex flex-col gap-1 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-x-6">
-        <Link href="/reports" prefetch={false} className={cx("flex min-h-12 items-center gap-1 self-start text-body-strong text-chalk-link print:hidden lg:col-span-2 lg:row-start-1", FOCUS)}>
+      <div className="flex flex-col gap-1 wide:grid wide:grid-cols-[minmax(0,1fr)_auto] wide:gap-x-6">
+        <Link href="/reports" prefetch={false} className={cx("flex min-h-12 items-center gap-1 self-start text-body-strong text-chalk-link print:hidden wide:col-span-2 wide:row-start-1", FOCUS)}>
           <CaretLeft size={24} aria-hidden="true" />
           Back to reports
         </Link>
-        <div className="lg:col-start-1 lg:row-start-2">
+        <div className="wide:col-start-1 wide:row-start-2">
           <Title title={reportTitle(kind)} />
         </div>
         {figure}
-        <details open={open} className="lg:col-span-2 lg:row-start-4">
-          <summary className={cx("flex min-h-12 cursor-pointer list-none flex-wrap items-center justify-between gap-x-4 marker:hidden", FOCUS)}>
-            <span data-report-range="" className="text-body text-ink">{rangeText(range, today)}</span>
-            <span className="ml-auto text-body-strong text-chalk-link print:hidden">Change</span>
-          </summary>
-          <form method="get" action={`/reports/${kind}`} className="flex flex-col gap-4 pb-2 pt-2 sm:flex-row sm:flex-wrap sm:items-end print:hidden">
-            <Field label="From" name="from" type="date" inputMode="none" defaultValue={range.from} max={today} className="sm:max-w-60" />
-            <Field label="To" name="to" type="date" inputMode="none" defaultValue={range.to} max={today} className="sm:max-w-60" />
-            <Button variant="secondary" type="submit" className="w-full sm:w-auto sm:min-w-40">Show range</Button>
-            {chosen && !empty ? (
-              <Link href={`/reports/${kind}`} prefetch={false} className={cx("flex min-h-12 items-center text-body-strong text-chalk-link", FOCUS)}>
-                Show the last 3 months
-              </Link>
-            ) : null}
-          </form>
-        </details>
-        <div className="lg:col-span-2 lg:row-start-5 empty:hidden"><Updated text={updated} /></div>
-        <div data-report-actions="" className="flex flex-wrap gap-2 pt-2 print:hidden lg:col-start-2 lg:row-start-2 lg:justify-end lg:self-center lg:pt-0">
+        <div className="wide:col-span-2 wide:row-start-4">
+          <details open={open}>
+            <summary className={cx("flex min-h-12 cursor-pointer list-none flex-wrap items-center gap-x-3 marker:hidden", FOCUS)}>
+              <span data-report-range="" className="text-body text-ink">{rangeText(range, today)}</span>
+              <span className="text-body-strong text-chalk-link print:hidden">Change</span>
+            </summary>
+            <form method="get" action={`/reports/${kind}`} className="flex flex-col gap-4 pb-2 pt-2 sm:flex-row sm:flex-wrap sm:items-end print:hidden">
+              <Field label="From" name="from" type="date" inputMode="none" defaultValue={range.from} max={today} className="sm:max-w-60" />
+              <Field label="To" name="to" type="date" inputMode="none" defaultValue={range.to} max={today} className="sm:max-w-60" />
+              <Button variant="secondary" type="submit" className="w-full sm:w-auto sm:min-w-40">Show range</Button>
+            </form>
+          </details>
+          {chosen && !empty ? (
+            <Link href={`/reports/${kind}`} prefetch={false} className={cx("flex min-h-12 items-center self-start text-body-strong text-chalk-link print:hidden", FOCUS)}>
+              Show the last 3 months
+            </Link>
+          ) : null}
+        </div>
+        <div className="wide:col-span-2 wide:row-start-5 empty:hidden"><Updated text={updated} /></div>
+        <div data-report-actions="" className="flex flex-wrap gap-2 pt-2 print:hidden wide:col-start-2 wide:row-start-2 wide:justify-end wide:self-center wide:pt-0">
           {offline ? (
             <p className="w-full text-body text-ink sm:w-auto">Export CSV needs a connection.</p>
           ) : empty ? (
@@ -200,14 +205,16 @@ function ReportFrame({ kind, range, chosen, today, updated, empty, open, figure,
   );
 }
 
-/** The shared empty sentence; on a chosen range it comes with the way back to the default (D14/N8). */
-function NothingInRange({ kind, chosen }: { kind: ReportKind; chosen: boolean }) {
+/**
+ * The shared empty state: one sentence and one button. On a chosen range it is "Nothing in this range" with the way back to
+ * the default (D14/N8); on a new workspace it is the same sentence the hub uses, with the way back to the owner's start (D24/F4).
+ */
+function NothingInRange({ kind, chosen, action }: { kind: ReportKind; chosen: boolean; action?: { href: string; label: string } }) {
+  const button = chosen ? { href: `/reports/${kind}`, label: "Show the last 3 months" } : action;
   return (
     <div data-report-empty="" className="flex flex-col items-start gap-4">
-      <p className="text-body text-ink">Nothing in this range. Try a longer range.</p>
-      {chosen ? (
-        <Button variant="secondary" href={`/reports/${kind}`} className="w-full sm:w-auto sm:min-w-40">Show the last 3 months</Button>
-      ) : null}
+      <p className="text-body text-ink">{chosen ? "Nothing in this range. Try a longer range." : "Reports fill in once the crew logs work."}</p>
+      {button ? <Button variant="secondary" href={button.href} className="w-full sm:w-auto sm:min-w-40">{button.label}</Button> : null}
     </div>
   );
 }
@@ -227,8 +234,8 @@ function JobRows({ rows }: { rows: JobProfitRow[] }) {
               <span className="flex flex-col">
                 <span className="text-body-strong text-ink"><KeepTogether text={r.name} /></span>
                 {r.marginBp === null ? <span className="text-meta text-ink">No contract price</span> : null}
-                <span className="text-meta text-ink">Labour <span className={FIG}>{formatMoney(r.labourCents)}</span></span>
-                <span className="text-meta text-ink">Expenses <span className={FIG}>{formatMoney(r.expensesCents)}</span></span>
+                <span className="text-meta text-ink">Labour <span className={META_FIG}>{formatMoney(r.labourCents)}</span></span>
+                <span className="text-meta text-ink">Expenses <span className={META_FIG}>{formatMoney(r.expensesCents)}</span></span>
               </span>
               <span className="flex flex-col items-end">
                 <span data-margin="" data-oneline="" className={fig(r.forecastMarginCents)}>{formatMoney(r.forecastMarginCents)}</span>
@@ -265,8 +272,8 @@ function JobRows({ rows }: { rows: JobProfitRow[] }) {
               <td className={cx(TD, "text-right")}>
                 <span data-margin="" className={fig(r.forecastMarginCents)}>{formatMoney(r.forecastMarginCents)}</span>
               </td>
-              <td className={cx(TD, "text-right text-body text-ink", NO_WRAP, r.marginBp !== null && r.marginBp < 0 && "text-over")}>
-                <span className={CHEVRON_GAP}>{marginText(r.marginBp)}<TrailingChevron /></span>
+              <td className={cx(TD, "text-right", NO_WRAP)}>
+                <span className={CHEVRON_GAP}><span className={cx(FIG, r.marginBp !== null && r.marginBp < 0 && "text-over")}>{marginText(r.marginBp)}</span><TrailingChevron /></span>
               </td>
             </tr>
           ))}
@@ -278,7 +285,9 @@ function JobRows({ rows }: { rows: JobProfitRow[] }) {
 
 const PER_UNIT = { m2: "a\u00a0m²", lm: "a\u00a0lm", each: "each" } as const;
 /** "Sheet install $12.40 a m²": labour cost per unit by stage (product spec §5.10). */
-const costPerUnitText = (u: CrewReportRow["costPerUnit"][number]): string => `${u.stageName} ${formatMoney(u.centsPerUnit)} ${PER_UNIT[u.unit]}`;
+function CostPerUnit({ u }: { u: CrewReportRow["costPerUnit"][number] }) {
+  return <>{u.stageName} <span className={META_FIG}>{formatMoney(u.centsPerUnit)}</span> {PER_UNIT[u.unit]}</>;
+}
 
 function CrewRows({ rows }: { rows: CrewReportRow[] }) {
   return (
@@ -292,7 +301,7 @@ function CrewRows({ rows }: { rows: CrewReportRow[] }) {
                 <span className="text-meta text-ink">{crewWorkText(r.days, r.hours)}</span>
                 <span className="text-meta text-ink">{countText(r.jobs, "job")}</span>
                 {r.costPerUnit.map((u) => (
-                  <span key={`${u.stageName}|${u.unit}`} data-cost-per-unit="" data-oneline="" className={cx("text-meta text-ink", NO_WRAP)}>{costPerUnitText(u)}</span>
+                  <span key={`${u.stageName}|${u.unit}`} data-cost-per-unit="" className="text-meta text-ink [overflow-wrap:anywhere]"><CostPerUnit u={u} /></span>
                 ))}
               </span>
               <span data-earned="" data-oneline="" className={cx(fig(r.earningsCents), "text-right")}>{formatMoney(r.earningsCents)}</span>
@@ -305,10 +314,10 @@ function CrewRows({ rows }: { rows: CrewReportRow[] }) {
         <thead>
           <tr>
             <th scope="col" className={TH}>Name</th>
-            <th scope="col" className={TH}>Worked</th>
+            <th scope="col" className={cx(TH, "text-right")}>Worked</th>
             <th scope="col" className={cx(TH, "text-right")}>Jobs</th>
             <th scope="col" className={cx(TH, "text-right", NO_WRAP)}>Utilisation</th>
-            <th scope="col" className={TH}>Cost per unit</th>
+            <th scope="col" className={cx(TH, "text-right")}>Cost per unit</th>
             <th scope="col" className={cx(TH, "text-right", NO_WRAP)}>
               <span className={CHEVRON_GAP}>Earned<ChevronSpacer /></span>
             </th>
@@ -320,11 +329,11 @@ function CrewRows({ rows }: { rows: CrewReportRow[] }) {
               <td className={TD}>
                 <Link href={`/crew/${r.crewMemberId}`} prefetch={false} className={cx("block text-body-strong text-ink after:absolute after:inset-0", FOCUS)}>{r.name}</Link>
               </td>
-              <td className={cx(TD, "text-body text-ink")}>{crewWorkText(r.days, r.hours)}</td>
-              <td className={cx(TD, "text-right text-body text-ink")}>{r.jobs}</td>
-              <td className={cx(TD, "text-right text-body text-ink")}>{r.utilisationBp === null ? "None" : marginText(r.utilisationBp)}</td>
-              <td className={cx(TD, "text-meta text-ink")}>
-                {r.costPerUnit.length === 0 ? "None" : r.costPerUnit.map((u) => <span key={`${u.stageName}|${u.unit}`} data-cost-per-unit="" className="block">{costPerUnitText(u)}</span>)}
+              <td className={cx(TD, "text-right")}><span className={FIG}>{crewWorkText(r.days, r.hours)}</span></td>
+              <td className={cx(TD, "text-right")}><span className={FIG}>{r.jobs}</span></td>
+              <td className={cx(TD, "text-right")}>{r.utilisationBp === null ? <span className="text-body text-ink">None</span> : <span className={FIG}>{marginText(r.utilisationBp)}</span>}</td>
+              <td className={cx(TD, "text-right text-meta text-ink")}>
+                {r.costPerUnit.length === 0 ? "No piece rates" : r.costPerUnit.map((u) => <span key={`${u.stageName}|${u.unit}`} data-cost-per-unit="" className="block"><CostPerUnit u={u} /></span>)}
               </td>
               <td className={cx(TD, "text-right")}>
                 <span className={CHEVRON_GAP}><span data-earned="" className={fig(r.earningsCents)}>{formatMoney(r.earningsCents)}</span><TrailingChevron /></span>
@@ -372,8 +381,8 @@ function ProductivityRows({ rows, today }: { rows: ProductivityRow[]; today: str
               <td className={cx(TD, "text-body text-ink whitespace-nowrap")}>{periodText(r, today)}</td>
               <td className={cx(TD, "text-body-strong text-ink")}><KeepTogether text={r.stageName} /></td>
               <td className={cx(TD, "text-body text-ink")}>{jobTypeLabel(r.jobType)}</td>
-              <td className={cx(TD, "num text-right text-body text-ink whitespace-nowrap")}>{formatQuantity(r.quantity, r.unit)}</td>
-              <td className={cx(TD, "num text-right text-body text-ink")}>{r.crewDays}</td>
+              <td className={cx(TD, "text-right")}><span className={cx(FIG, NO_WRAP)}>{formatQuantity(r.quantity, r.unit)}</span></td>
+              <td className={cx(TD, "text-right")}><span className={FIG}>{r.crewDays}</span></td>
               <td className={cx(TD, "text-right")}><span data-pace="" className={FIG}>{formatQuantity(r.perCrewDay, r.unit)}</span> <span className={cx("text-meta text-ink", NO_WRAP)}>a crew-day</span></td>
             </tr>
           ))}
@@ -424,8 +433,8 @@ function PauseRows({ rows }: { rows: PauseReportRow[] }) {
               <td className={cx(TD, "text-body text-ink")}><KeepTogether text={r.stageName} /></td>
               <td className={cx(TD, "text-body text-ink")}>{pauseReasonLine(r.reason)}</td>
               <td className={cx(TD, "text-body text-ink whitespace-nowrap")}>{monthText(r.month)}</td>
-              <td className={cx(TD, "num text-right text-body text-ink")}>
-                <span className={CHEVRON_GAP}>{r.workingDays}<TrailingChevron /></span>
+              <td className={cx(TD, "text-right")}>
+                <span className={CHEVRON_GAP}><span className={FIG}>{r.workingDays}</span><TrailingChevron /></span>
               </td>
             </tr>
           ))}
@@ -446,8 +455,8 @@ function PayHistoryRows({ rows, today }: { rows: PayHistoryRow[]; today: string 
               <span className="flex flex-col items-start gap-1">
                 <span className="text-body-strong text-ink">{payRunPeriodText(r.period, today)}</span>
                 <StatusChip status={r.status} plain />
-                <span className="text-meta text-ink">Employees <span className={FIG}>{formatMoney(r.employeesCents)}</span></span>
-                <span className="text-meta text-ink">Contractors <span className={FIG}>{formatMoney(r.contractorsCents)}</span></span>
+                <span className="text-meta text-ink">Employees <span className={META_FIG}>{formatMoney(r.employeesCents)}</span></span>
+                <span className="text-meta text-ink">Contractors <span className={META_FIG}>{formatMoney(r.contractorsCents)}</span></span>
               </span>
               <span data-total="" data-oneline="" className={cx(fig(r.totalCents), "text-right")}>{formatMoney(r.totalCents)}</span>
             </span>
@@ -496,22 +505,24 @@ export type ReportBody = (
 ) & { keyFigure: ReportKeyFigure };
 
 export type ReportFrameProps = { range: DateRange; chosen: boolean; today: string; updated: string | null };
+/** Where the empty state sends someone with nothing to report yet (their start screen). */
+type EmptyAction = { href: string; label: string };
 
 /** Approved and exported runs first, $0.00 drafts below them (D21); the data order is kept inside each group. */
 const draftsLast = (rows: PayHistoryRow[]): PayHistoryRow[] => [...rows.filter((r) => r.status !== "draft"), ...rows.filter((r) => r.status === "draft")];
 
 /** One report (flows.md screen 22, `/reports/[kind]`): every row drills down to its source (job detail, crew detail). */
-export function ReportView({ body, ...frame }: ReportFrameProps & { body: ReportBody }) {
+export function ReportView({ body, action, ...frame }: ReportFrameProps & { body: ReportBody; action?: EmptyAction }) {
   const empty = body.rows.length === 0;
   let content: React.ReactNode;
-  if (empty) content = <NothingInRange kind={body.kind} chosen={frame.chosen} />;
+  if (empty) content = <NothingInRange kind={body.kind} chosen={frame.chosen} action={action} />;
   else if (body.kind === "job-profitability") content = <JobRows rows={body.rows} />;
   else if (body.kind === "crew") content = <CrewRows rows={body.rows} />;
   else if (body.kind === "productivity") content = <ProductivityRows rows={body.rows} today={frame.today} />;
   else if (body.kind === "pauses") content = <PauseRows rows={body.rows} />;
   else content = <PayHistoryRows rows={draftsLast(body.rows)} today={frame.today} />;
   return (
-    <ReportFrame kind={body.kind} {...frame} empty={empty} open={empty || frame.chosen} figure={empty ? null : <KeyFigure figure={body.keyFigure} />}>
+    <ReportFrame kind={body.kind} {...frame} empty={empty} open={empty && frame.chosen} figure={empty ? null : <KeyFigure figure={body.keyFigure} />}>
       {content}
     </ReportFrame>
   );
@@ -519,7 +530,7 @@ export function ReportView({ body, ...frame }: ReportFrameProps & { body: Report
 
 export function ReportSkeleton({ kind, ...frame }: ReportFrameProps & { kind: ReportKind }) {
   const figure = (
-    <div className="flex flex-col gap-1 py-1 lg:col-span-2 lg:row-start-3">
+    <div className="flex flex-col gap-1 py-1 wide:col-span-2 wide:row-start-3">
       <Skeleton width={160} height={40} />
       <Skeleton width={200} height={14} />
     </div>

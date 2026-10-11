@@ -1318,3 +1318,71 @@ export async function checkTableHeadersOneLine(page: Page): Promise<GuardResult>
   });
   return { name: "table-headers-one-line", ok: failures.length === 0, failures };
 }
+
+/**
+ * Reports iter2 F1/F2 (lesson 34): the first data row (report, hub or history row) starts above `maxTop` px at the top of the
+ * page, so an applied range or a filter is one Change row and the data is in the first screen, also on a phone on its side.
+ */
+export async function checkFirstRowTop(page: Page, maxTop: number): Promise<GuardResult> {
+  await polyfillEsbuildNameHelper(page);
+  const failures = await page.evaluate((limit) => {
+    const row = Array.from(document.querySelectorAll("[data-report-row], [data-report-card], [data-history-row]")).find((el) => el.getBoundingClientRect().width > 0);
+    if (!row) return ["no data row found"];
+    const top = row.getBoundingClientRect().top + window.scrollY;
+    return top < limit ? [] : [`the first row starts at ${top.toFixed(0)}px, expected under ${limit}px`];
+  }, maxTop);
+  return { name: "first-row-top", ok: failures.length === 0, failures };
+}
+
+/**
+ * Reports iter2 F3/F8: nothing in `selector` sits under a fixed bar or under the raised Log circle. Checked at the end of the
+ * page, where the page's own bottom padding has to do its job.
+ */
+export async function checkClearOfFixedBars(page: Page, selector: string): Promise<GuardResult> {
+  await polyfillEsbuildNameHelper(page);
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForTimeout(200);
+  const failures = await page.evaluate((sel) => {
+    const boxes: DOMRect[] = [];
+    for (const bar of Array.from(document.querySelectorAll<HTMLElement>('[data-slot="primary-action"], nav[aria-label="Primary"]'))) {
+      if (getComputedStyle(bar).position !== "fixed" || bar.getBoundingClientRect().height === 0) continue;
+      boxes.push(bar.getBoundingClientRect());
+      for (const child of Array.from(bar.querySelectorAll("*"))) {
+        const r = child.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) boxes.push(r);
+      }
+    }
+    const out: string[] = [];
+    for (const el of Array.from(document.querySelectorAll(sel))) {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) continue;
+      const hit = boxes.find((b) => r.left < b.right - 1 && r.right > b.left + 1 && r.top < b.bottom - 1 && r.bottom > b.top + 1);
+      if (hit) out.push(`"${(el.textContent ?? "").trim().slice(0, 40)}" (${Math.round(r.top)}-${Math.round(r.bottom)}px) is under a fixed element at ${Math.round(hit.top)}-${Math.round(hit.bottom)}px`);
+    }
+    return out.slice(0, 5);
+  }, selector);
+  return { name: "clear-of-fixed-bars", ok: failures.length === 0, failures };
+}
+
+/**
+ * Reports iter2 carry-over (F9): no text in `scope` is cut off by a clipping ancestor (the grouped list is overflow-hidden), so a
+ * long line wraps instead of clipping, also at 200% text zoom.
+ */
+export async function checkNoClippedText(page: Page, scope: string): Promise<GuardResult> {
+  await polyfillEsbuildNameHelper(page);
+  const failures = await page.evaluate((sel) => {
+    const out: string[] = [];
+    for (const el of Array.from(document.querySelectorAll(`${sel} *`))) {
+      if (el.children.length > 0 || !(el.textContent ?? "").trim()) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width === 0) continue;
+      let anc = el.parentElement;
+      while (anc && !/(hidden|clip)/.test(getComputedStyle(anc).overflowX)) anc = anc.parentElement;
+      if (!anc) continue;
+      const a = anc.getBoundingClientRect();
+      if (r.right > a.right + 1 || r.left < a.left - 1) out.push(`"${(el.textContent ?? "").trim().slice(0, 50)}" runs ${Math.round(Math.max(r.right - a.right, a.left - r.left))}px past its clipping box`);
+    }
+    return out.slice(0, 5);
+  }, scope);
+  return { name: "no-clipped-text", ok: failures.length === 0, failures };
+}

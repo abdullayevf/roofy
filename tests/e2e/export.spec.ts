@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
-import { checkBackRow, checkSidebarSpansPage, checkTableEdgeGap, checkTableHeaderAlign, checkTableRowHeight, collectConsole, expectScreenHealthy } from "./guards";
+import { checkBackRow, checkClearOfFixedBars, checkSidebarSpansPage, checkTableEdgeGap, checkTableHeaderAlign, checkTableRowHeight, collectConsole, expectScreenHealthy } from "./guards";
 import { expectNoMoney } from "./money-scan";
 
 const isPhone = (name: string) => name !== "desktop";
@@ -62,6 +62,18 @@ test.describe("Workspace export (screen 26)", () => {
     await expect(status).toHaveText(/is saved to your downloads/);
     const bar = (await page.getByRole("navigation", { name: "Primary" }).filter({ visible: true }).first().boundingBox())!;
     await expect.poll(async () => (await status.boundingBox())!.y + (await status.boundingBox())!.height, { message: "N15: Done is not under the tab bar" }).toBeLessThanOrEqual(bar.y + 1);
+  });
+
+  test("installed on its side the Done message and the page end are clear of the tab bar and the Log circle (F3/F8)", async ({ page }, testInfo) => {
+    test.skip(!isPhone(testInfo.project.name), "the tab bar is phone-only");
+    await page.setViewportSize({ width: 844, height: 390 });
+    await signInAs(page, "owner", "/export");
+    await page.evaluate(() => document.documentElement.style.setProperty("--sab-sim", "21px"));
+    const download = page.waitForEvent("download");
+    await exportButton(page).click();
+    await download;
+    await expect(page.getByRole("status")).toHaveText(/is saved to your downloads/);
+    expect((await checkClearOfFixedBars(page, 'main [role="status"], main a, main button, main p')).failures).toEqual([]);
   });
 
   test("More lists it for the Owner and one tap on Export workspace saves the zip", async ({ page }, testInfo) => {

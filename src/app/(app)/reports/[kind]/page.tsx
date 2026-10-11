@@ -35,5 +35,5 @@ export default async function Page({ params, searchParams }: Props) {
   const result = await loadOne(ctx, kind, range);
   if (result.kind === "forbidden") return <NoPermission backHref={back.href} backLabel={back.label} />;
   if (result.kind === "unavailable") return <ReportError kind={kind} {...frame} />;
-  return <ReportView body={result.value} {...frame} />;
+  return <ReportView body={result.value} {...frame} action={back} />;
 }

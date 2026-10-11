@@ -37,6 +37,7 @@
 
   /* DESIGN.md §8: 600-1023 is the large-phone / tablet band. */
   --breakpoint-tablet: 600px;
+  --breakpoint-wide: 800px; /* a phone on its side and up: Export and Print join the title row on report pages */
 
   --radius-control: 6px;
   --radius-group: 8px;
