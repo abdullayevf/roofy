@@ -43,6 +43,12 @@ function monthRange(month: string): DateRange {
   return { from: `${month}-01`, to: addDays(`${next}-01`, -1) };
 }
 
+/** The part of `r` inside `within`: a month only partly in the range shows the dates it covers. */
+const clampRange = (r: DateRange, within: DateRange): DateRange => ({
+  from: r.from > within.from ? r.from : within.from,
+  to: r.to < within.to ? r.to : within.to,
+});
+
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 const money = (cents: number | null) => (cents === null ? null : formatDecimal(cents));
@@ -101,19 +107,23 @@ export function createReportService(c: FakeContext): ReportService {
       .sort((a, b) => a.m.name.localeCompare(b.m.name))
       .map(({ m, mine }) => {
         const perUnit = mine.filter((l) => l.basis === "per_unit" && l.unit !== null);
+        // One key for labour and quantity: the stage's name and unit. A stage with an unpriced per-unit log has no
+        // known cost, so it is left out (an unpriced stage must not read as a free one, E4.3).
         const groups = new Map<
           string,
-          { stageName: string; unit: Unit; logs: WorkLogRow[]; qty: number[] }
+          { stageName: string; unit: Unit; logs: WorkLogRow[]; qty: number[]; unpriced: boolean }
         >();
-        for (const l of perUnit) {
-          const stageName = c.ix.stages.get(l.stageId)!.name;
-          const key = `${stageName}|${l.unit}`;
-          if (!groups.has(key)) groups.set(key, { stageName, unit: l.unit!, logs: [], qty: [] });
-          groups.get(key)!.qty.push(l.quantity);
-        }
         for (const l of mine) {
           const st = c.ix.stages.get(l.stageId)!;
-          groups.get(`${st.name}|${st.unit}`)?.logs.push(l);
+          if (st.unit === null) continue;
+          const key = `${st.name}|${st.unit}`;
+          if (!groups.has(key)) groups.set(key, { stageName: st.name, unit: st.unit, logs: [], qty: [], unpriced: false });
+          const g = groups.get(key)!;
+          g.logs.push(l);
+          if (l.basis === "per_unit") {
+            g.qty.push(l.quantity);
+            if (l.missingRate || l.rateCents === null) g.unpriced = true;
+          }
         }
         const util = endExclusive > range.from ? c.fig.utilisationOf(m.id, range.from, endExclusive) : null;
         return {
@@ -128,6 +138,7 @@ export function createReportService(c: FakeContext): ReportService {
           })).filter((u) => u.quantity !== 0),
           earningsCents: sum(mine.map((l) => l.amountCents)),
           costPerUnit: [...groups.values()].flatMap((g) => {
+            if (g.unpriced) return [];
             const cents = centsPerUnit(c.fig.labourOf(g.logs), sum(g.qty));
             return cents === null ? [] : [{ stageName: g.stageName, unit: g.unit, centsPerUnit: cents }];
           }),
@@ -139,7 +150,6 @@ export function createReportService(c: FakeContext): ReportService {
 
   /** Rows plus each row's crew-days as person-day keys, so the headline pace counts a shared day once. */
   function productivityWithDays(range: DateRange): { row: ProductivityRow; dayKeys: Set<string> }[] {
-    const oneMonth = range.from.slice(0, 7) === range.to.slice(0, 7);
     const groups = new Map<string, ProductivityRow & { qty: number[]; stageIds: Set<string> }>();
     for (const p of c.t.progressEntries.filter((x) => inRange(x.date, range))) {
       const st = c.ix.stages.get(p.stageId)!;
@@ -149,7 +159,7 @@ export function createReportService(c: FakeContext): ReportService {
       if (!groups.has(key)) {
         groups.set(key, {
           month,
-          period: oneMonth ? { ...range } : monthRange(month),
+          period: clampRange(monthRange(month), range),
           stageName: st.name,
           jobType: project.jobType,
           unit: st.unit!,

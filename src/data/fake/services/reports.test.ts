@@ -259,3 +259,43 @@ describe("reports: design fix 2a (pauses by overlap, drafts in every range, pace
     for (const l of lines) expect(l).toMatch(/,"?\d[\d,]*\.\d{2}"?$/);
   });
 });
+
+describe("reports: review fix (cost per unit, clamped periods)", () => {
+  const WEEK = { from: "2026-09-21", to: "2026-09-27" };
+  const stageOf = (id: string) => seed.stages.find((s) => s.id === id)!;
+
+  it("crew: a stage with an unpriced per-unit log is left out of cost per unit, never shown as $0.00 (E4.3)", async () => {
+    const { data, actor } = fake("manager");
+    const r = await data.reports.crew(actor, WEEK);
+    const jake = r.rows.find((x) => x.name === "Jake")!;
+    expect(live.some((l) => l.crewMemberId === jake.crewMemberId && l.missingRate && l.date >= WEEK.from && l.date <= WEEK.to)).toBe(true);
+    expect(jake.costPerUnit.filter((c) => c.unit === "lm")).toEqual([]);
+    for (const row of r.rows) expect(row.costPerUnit.every((c) => c.centsPerUnit > 0)).toBe(true);
+    const f = await data.reports.csv(actor, "crew", WEEK);
+    expect(f.body).not.toMatch(/ 0\.00\//);
+  });
+
+  it("crew: cost per unit is the stage's labour over its per-unit quantity, grouped by the stage's unit", async () => {
+    const { data, actor } = fake("manager");
+    const r = await data.reports.crew(actor, SEPT);
+    const tom = r.rows.find((x) => x.name === "Tom")!;
+    const sheet = tom.costPerUnit.find((c) => c.stageName === "Sheet install")!;
+    const logs = live.filter((l) => l.crewMemberId === tom.crewMemberId && inSept(l.date) && stageOf(l.stageId).name === "Sheet install" && stageOf(l.stageId).unit === "m2");
+    const cents = sum(logs.map((l) => labourCost(l.amountCents, crew(l.crewMemberId), { workspaceGstRegistered: true, onCostBp: 2500 })));
+    const qty = sum(logs.filter((l) => l.basis === "per_unit").map((l) => l.quantity));
+    expect(sheet).toEqual({ stageName: "Sheet install", unit: "m2", centsPerUnit: Math.round((cents * 100) / qty) });
+  });
+
+  it("productivity: a month only partly inside the range carries the clamped dates", async () => {
+    const { data, actor } = fake("owner");
+    const r = await data.reports.productivity(actor, { from: "2026-07-12", to: "2026-09-27" });
+    const july = r.rows.filter((x) => x.month === "2026-07");
+    expect(july.length).toBeGreaterThan(0);
+    for (const row of july) expect(row.period).toEqual({ from: "2026-07-12", to: "2026-07-31" });
+    for (const row of r.rows.filter((x) => x.month === "2026-08")) expect(row.period).toEqual({ from: "2026-08-01", to: "2026-08-31" });
+    for (const row of r.rows.filter((x) => x.month === "2026-09")) expect(row.period).toEqual({ from: "2026-09-01", to: "2026-09-27" });
+    const f = await data.reports.csv(actor, "productivity", { from: "2026-07-12", to: "2026-09-27" });
+    expect(f.body).toContain("2026-07-12,2026-07-31");
+    expect(f.body).not.toContain("2026-07-01");
+  });
+});

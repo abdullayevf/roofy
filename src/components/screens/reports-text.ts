@@ -41,15 +41,19 @@ export function defaultReportRange(today: string): DateRange {
   return { from: addDays(back, 1), to: today };
 }
 
-/** The range from `?from=&to=`; unreadable dates fall back to the default, a range given back to front is swapped. */
+/**
+ * The range from `?from=&to=`; unreadable dates fall back to the default, a range given back to front is swapped.
+ * With one bound, the other comes from the default, moved to the given bound when it would cross it.
+ */
 export function readReportRange(today: string, params: { from?: string; to?: string }): { range: DateRange; chosen: boolean } {
   const fallback = defaultReportRange(today);
   const from = readDate(params.from);
   const to = readDate(params.to);
   if (!from && !to) return { range: fallback, chosen: false };
-  const a = from ?? fallback.from;
-  const b = to ?? today;
-  return { range: a <= b ? { from: a, to: b } : { from: b, to: a }, chosen: true };
+  if (from && to) return { range: from <= to ? { from, to } : { from: to, to: from }, chosen: true };
+  // One bound: keep it, take the other from the default, and never let the default end cross it.
+  if (from) return { range: { from, to: fallback.to < from ? from : fallback.to }, chosen: true };
+  return { range: { from: fallback.from > to! ? to! : fallback.from, to: to! }, chosen: true };
 }
 
 export const rangeText = (range: DateRange, today: string): string => payRunPeriodText({ start: range.from, end: range.to }, today);

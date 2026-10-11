@@ -19,7 +19,8 @@ const one = (v: string | string[] | undefined): string | undefined => (typeof v 
 
 /**
  * One report (flows.md screen 22): the range filter (last 3 months by default), phone rows or the desktop table, and
- * every row drills down to its source. An unknown kind is not found; a foreman gets no permission and no figures.
+ * job, crew, pause and pay rows open their source (a productivity row merges stages and jobs, so it has none). An
+ * unknown kind is not found; a foreman gets no permission and no figures.
  */
 export default async function Page({ params, searchParams }: Props) {
   const { kind } = await params;

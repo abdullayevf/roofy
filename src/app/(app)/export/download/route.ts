@@ -16,6 +16,7 @@ export async function GET(request: NextRequest): Promise<Response> {
   try {
     const listing = await data.exports.listing(actor);
     const files = await Promise.all(listing.files.map((f) => data.exports.file(actor, f.name)));
+    // TODO(Phase 3): zip the attachment files (receipts, photos) too, not only the CSVs.
     const zip = makeZip(files.map((f) => ({ name: f.filename, body: f.body })));
     return new Response(new Blob([zip as BlobPart], { type: "application/zip" }), {
       status: 200,

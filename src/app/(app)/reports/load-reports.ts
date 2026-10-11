@@ -71,4 +71,5 @@ export function loadOne({ data, actor }: DataContext, kind: ReportKind, range: D
 }
 
 /** Offline, a report reads from the last snapshot and says how old it is (flows.md, Reports drill-down). */
+// TODO(Phase 3): take the age from the real snapshot time, as Crew and Home do, not a fixed 12 minutes.
 export const updatedText = (offline: boolean): string | null => (offline ? "Lists updated 12 minutes ago." : null);

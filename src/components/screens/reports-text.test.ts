@@ -43,6 +43,14 @@ describe("reports text", () => {
     });
   });
 
+  it("with one bound keeps it, takes the other from the default, and never runs back to front", () => {
+    // Default for 28 Sep is 29 Jun to 28 Sep.
+    expect(readReportRange("2026-09-28", { to: "2026-08-15" }).range).toEqual({ from: "2026-06-29", to: "2026-08-15" });
+    expect(readReportRange("2026-09-28", { to: "2026-05-01" }).range).toEqual({ from: "2026-05-01", to: "2026-05-01" });
+    expect(readReportRange("2026-09-28", { from: "2026-07-01" }).range).toEqual({ from: "2026-07-01", to: "2026-09-28" });
+    expect(readReportRange("2026-09-28", { from: "2026-10-05" }).range).toEqual({ from: "2026-10-05", to: "2026-10-05" });
+  });
+
   it("keeps the given end when only the start is given, and swaps a range given back to front", () => {
     expect(readReportRange("2026-09-28", { from: "2026-09-01" }).range).toEqual({ from: "2026-09-01", to: "2026-09-28" });
     expect(readReportRange("2026-09-28", { from: "2026-09-27", to: "2026-09-01" }).range).toEqual({ from: "2026-09-01", to: "2026-09-27" });

@@ -217,6 +217,10 @@ test.describe("Job profitability and Crew reports", () => {
     await signInAs(page, "manager", "/reports/crew?from=2026-09-01&to=2026-09-27");
     const first = page.locator("[data-report-row]:visible [data-cost-per-unit]").first();
     await expect(first).toHaveText(/\s\$[\d,]+\.\d{2}\s(a\s(m²|lm)|each)$/);
+    // An unpriced stage is left out, never shown as free (E4.3): no "$0.00 a lm" line for Jake or anyone.
+    const lines = await page.locator("[data-report-row]:visible [data-cost-per-unit]").allInnerTexts();
+    expect(lines.length).toBeGreaterThan(0);
+    expect(lines.filter((t) => /\$0\.00\s(a\s|each)/.test(t))).toEqual([]);
     expect((await checkOneLine(page, "[data-screen=report]")).failures).toEqual([]);
   });
 
