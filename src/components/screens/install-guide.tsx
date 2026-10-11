@@ -54,9 +54,32 @@ function InstallHeader({ title, backHref, backLabel }: { title: string; backHref
 /** The guide failed to load (`?demo=error`): the back row and title stay, the body says so with Try again as the primary button. */
 export function InstallGuideError({ backHref, backLabel }: { backHref: string; backLabel: string }) {
   return (
-    <div className="flex max-w-150 flex-col gap-6 lg:max-w-none">
+    <div className="flex max-w-prose flex-col gap-6">
       <InstallHeader title="Install guide" backHref={backHref} backLabel={backLabel} />
       <LoadError primary />
+    </div>
+  );
+}
+
+/**
+ * What the guide says under a title: why, then this device's steps and the other devices' behind a link under the
+ * steps box. One column of about 70 characters so a desktop line stays readable. The set-up wizard shows just this
+ * under its own title.
+ */
+export function InstallBody({ platform }: { platform: InstallPlatform }) {
+  const { first, others } = installOrder(platform);
+  return (
+    <div className="flex max-w-prose flex-col gap-6">
+      <p className="text-body text-ink-2">Put Roofy on your home screen to open it like any other app, full screen. Entries you make with no signal are kept on your phone.</p>
+      <Steps platform={first} />
+      <details className="group flex flex-col gap-3">
+        <summary className={cx("flex min-h-12 cursor-pointer items-center self-start text-body-strong text-chalk-link", FOCUS)}>Steps for other devices</summary>
+        <div className="flex flex-col gap-6 pt-3">
+          {others.map((p) => (
+            <Steps key={p} platform={p} />
+          ))}
+        </div>
+      </details>
     </div>
   );
 }
@@ -68,12 +91,11 @@ export function InstallGuideError({ backHref, backLabel }: { backHref: string; b
 export function InstallGuide({ platform, installed: forced, backHref, backLabel }: { platform: InstallPlatform; installed: boolean; backHref: string; backLabel: string }) {
   const standalone = useSyncExternalStore(subscribe, isStandalone, () => false);
   const installed = forced || standalone;
-  const { first, others } = installOrder(platform);
   return (
-    <div className="flex max-w-150 flex-col gap-6 lg:max-w-none">
+    <div className="flex max-w-prose flex-col gap-6">
       <InstallHeader title={installed ? "Roofy is installed" : "Install guide"} backHref={backHref} backLabel={backLabel} />
       {installed ? (
-        <div className="flex flex-col items-start gap-4">
+        <div className="flex flex-col gap-4">
           <p className="flex items-start gap-2 text-body text-ink-2">
             <CheckCircle size={24} aria-hidden="true" className="shrink-0 text-ink" />
             You are using Roofy from your home screen. There is nothing more to do.
@@ -83,20 +105,7 @@ export function InstallGuide({ platform, installed: forced, backHref, backLabel 
           </Button>
         </div>
       ) : (
-        <>
-          <p className="text-body text-ink-2">Put Roofy on your home screen to open it like any other app, full screen. Entries you make with no signal are kept on your phone.</p>
-          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8">
-            <Steps platform={first} />
-            <details className="group flex flex-col gap-3">
-              <summary className={cx("flex min-h-12 cursor-pointer items-center text-body-strong text-chalk-link", FOCUS)}>Steps for other devices</summary>
-              <div className="flex flex-col gap-6 pt-3">
-                {others.map((p) => (
-                  <Steps key={p} platform={p} />
-                ))}
-              </div>
-            </details>
-          </div>
-        </>
+        <InstallBody platform={platform} />
       )}
     </div>
   );

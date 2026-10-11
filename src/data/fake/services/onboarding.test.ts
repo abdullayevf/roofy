@@ -65,7 +65,7 @@ describe("fake onboarding", () => {
     const { onboarding, actor } = fresh();
     await expect(
       onboarding.addCrew(actor, { name: "Sam", type: "employee", levelId: null, basis: "daily", rateCents: 0 }),
-    ).rejects.toMatchObject({ code: "invalid", issues: [{ field: "rate", message: "Add a rate before adding." }] });
+    ).rejects.toMatchObject({ code: "invalid", issues: [{ field: "rate", message: "Add a daily rate." }] });
   });
 
   it("is the owner's alone", async () => {

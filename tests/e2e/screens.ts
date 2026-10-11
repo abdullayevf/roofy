@@ -122,7 +122,7 @@ export type ScreenSpec = {
   lightOnly?: boolean;
   /** Skip the extra installed-mode, landscape, tablet and keyboard captures. */
   noExtras?: boolean;
-  /** Labels of buttons pressed in order once the page has loaded, before the shot (a save, then "Log another stage"); "radio:No work" presses a switch option; "fill:Sam's share=60" types into a field. */
+  /** Labels of buttons pressed in order once the page has loaded, before the shot (a save, then "Log another stage"); "radio:No work" presses a switch option; "fill:Sam's share=60" types into a field; "reload" opens the page again. */
   steps?: string[];
   /** Text that must be on the page once `steps` have run, before the shot: the settled outcome, not the spinner on the way to it. */
   expectStill?: string;
@@ -1076,9 +1076,9 @@ export const SCREENS: ScreenSpec[] = [
   { id: "onboarding-crew", group: "entry-settings", route: "/onboarding?step=crew", states: ["normal", "offline"], roles: ["owner"] },
   { id: "onboarding-install", group: "entry-settings", route: "/onboarding?step=install", states: ["normal"], roles: ["owner"] },
   { id: "onboarding-invalid", group: "entry-settings", route: "/onboarding?step=business", states: ["normal"], roles: ["owner"], steps: ["fill:Business name=", "fill:ABN=123", "Continue"], expectStill: "ABN should be 11 digits." },
-  { id: "onboarding-crew-row-error", group: "entry-settings", route: "/onboarding?step=crew", states: ["normal"], roles: ["owner"], steps: ["Add crew member", "fill:Name=Sam", "Add"], expectStill: "Add a rate before adding." },
-  // Resumed: after sign-up and the business step, the wizard reopens on step 2 (the step is saved, so a reload lands here too).
-  { id: "onboarding-resumed", group: "entry-settings", route: "/sign-up", states: ["normal"], roles: [], steps: ["Continue with Google", "fill:Business name=Smith Roofing", "fill:ABN=51 824 753 556", "Continue"], expectStill: "Step 2 of 5" },
+  { id: "onboarding-crew-row-error", group: "entry-settings", route: "/onboarding?step=crew", states: ["normal"], roles: ["owner"], steps: ["Add crew member", "fill:Name=Sam", "Add"], expectStill: "Add Sam's rate, or cancel." },
+  // Resumed: after sign-up and the business step, a reload reopens the wizard on step 2 with "Picking up where you left off." (the step is saved).
+  { id: "onboarding-resumed", group: "entry-settings", route: "/sign-up", states: ["normal"], roles: [], steps: ["Continue with Google", "fill:Business name=Smith Roofing", "fill:ABN=51 824 753 556", "Continue", "reload"], expectStill: "Picking up where you left off." },
   // Back keeps what was entered on the step before.
   { id: "onboarding-back-keeps", group: "entry-settings", route: "/sign-up", states: ["normal"], roles: [], steps: ["Continue with Google", "fill:Business name=Smith Roofing", "fill:ABN=51 824 753 556", "Continue", "Back"], expectStill: "Step 1 of 5" },
   { id: "onboarding-no-access", group: "entry-settings", route: "/onboarding", states: ["normal"], roles: ["manager", "foreman"] },

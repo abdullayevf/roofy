@@ -49,7 +49,7 @@
  *   ROOFY_CHROMIUM_EXECUTABLE=<path>  Chromium binary to launch
  */
 
-import { chromium, webkit, type Browser, type Page } from "@playwright/test";
+import { chromium, devices, webkit, type Browser, type Page } from "@playwright/test";
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -65,6 +65,10 @@ type Engine = "chromium" | "webkit";
 
 /** What an Australian phone shows: dd/mm/yyyy dates and the Sydney clock, in every capture context (R8). */
 const AU_PHONE = { locale: "en-AU", timezoneId: "Australia/Sydney" } as const;
+
+/** What a phone's browser says it is, as in the e2e projects: screens that follow the device (the install steps) show that device's. */
+const IPHONE_UA = { userAgent: devices["iPhone 14"].userAgent } as const;
+const ANDROID_UA = { userAgent: devices["Pixel 7"].userAgent } as const;
 
 /**
  * tsx (esbuild keepNames) wraps named inner functions in `__name(...)`. Guards pass such callbacks to page.evaluate,
@@ -202,6 +206,7 @@ async function captureOne(opts: {
     colorScheme: scheme,
     reducedMotion: "reduce",
     ...AU_PHONE,
+    ...(viewport.name === "iphone" ? IPHONE_UA : viewport.name === "android" ? ANDROID_UA : {}),
   });
 
   // state:"foreman" forces the foreman role/DTO for this one capture,
@@ -242,6 +247,12 @@ async function captureOne(opts: {
       // bar is back above the tab bar and the home bar (with a field focused it would sit on the keyboard).
       await box.blur();
       await page.waitForTimeout(450);
+      continue;
+    }
+    // "reload" opens the page again: what a person sees coming back to a saved screen.
+    if (step === "reload") {
+      await page.reload();
+      await page.evaluate(() => document.fonts.ready).catch(() => undefined);
       continue;
     }
     // "radio:No work" presses a segmented choice instead of a button.
@@ -306,6 +317,7 @@ async function captureInstalled(opts: {
     colorScheme: "light",
     reducedMotion: "reduce",
     ...AU_PHONE,
+    ...IPHONE_UA,
   });
   if (role) await context.addCookies([{ name: "roofy_role", value: role, url: base }]);
   const page = await context.newPage();
@@ -413,6 +425,7 @@ async function captureKeyboard(opts: {
     colorScheme: "light",
     reducedMotion: "reduce",
     ...AU_PHONE,
+    ...IPHONE_UA,
   });
   if (role) await context.addCookies([{ name: "roofy_role", value: role, url: base }]);
   const page = await context.newPage();

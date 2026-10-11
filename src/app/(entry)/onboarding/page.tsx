@@ -6,13 +6,14 @@ import type { SearchParams } from "@/data/session";
 import { NoPermission } from "@/components/page-states";
 import { Button } from "@/components/ui/button";
 import { OnboardingWizard } from "@/components/screens/onboarding-wizard";
-import { detectPlatform } from "@/lib/install-platform";
+import { detectPlatform, parsePlatform } from "@/lib/install-platform";
 
 export const metadata: Metadata = { title: "Set up your business" };
 
 /**
  * The set-up wizard after sign-up: business, trade, templates and categories, crew, install, then Home.
- * Each step is saved as it goes, so a reload resumes where it was. `?step=` shows a given step (design loop).
+ * Each step is saved as it goes, so a reload resumes where it was (and says so). `?step=` shows a given step and
+ * `?platform=` another device's install steps (design loop); without it the install step follows the browser, as /install does.
  */
 export default async function Page({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
@@ -34,6 +35,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
   }
   const asked = typeof params.step === "string" && (ONBOARDING_STEPS as readonly string[]).includes(params.step);
   const step = asked ? (params.step as OnboardingStep) : state.step;
-  const platform = detectPlatform((await headers()).get("user-agent"));
-  return <OnboardingWizard initial={{ ...state, step }} platform={platform} offline={demo.offline} />;
+  const platform = parsePlatform(params.platform) ?? detectPlatform((await headers()).get("user-agent"));
+  const resumed = !asked && state.step !== "business";
+  return <OnboardingWizard initial={{ ...state, step }} platform={platform} offline={demo.offline} resumed={resumed} />;
 }

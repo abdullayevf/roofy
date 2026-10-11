@@ -276,6 +276,9 @@ body {
   .entry-main {
     gap: 1rem;
   }
+  main.entry-main {
+    padding-top: 1rem;
+  }
 }
 @media (max-height: 499px) {
   .pin-hint:not(.pin-hint-side) {

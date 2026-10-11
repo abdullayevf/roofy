@@ -37,12 +37,26 @@ test.describe("Install guide (screen 3)", () => {
     });
   }
 
+  test("the steps box is one column of readable lines, with the other devices' link under it", async ({ page }) => {
+    await open(page, "owner", "/install?platform=android");
+    const steps = (await page.getByRole("list").first().boundingBox())!;
+    const link = (await page.getByText("Steps for other devices").boundingBox())!;
+    expect(steps.width).toBeLessThanOrEqual(700);
+    expect(link.y).toBeGreaterThan(steps.y + steps.height);
+    expect(link.x - steps.x).toBeLessThanOrEqual(1);
+    expect((await page.getByText("Put Roofy on your home screen").boundingBox())!.width).toBeLessThanOrEqual(700);
+  });
+
   test("opened from the home screen it says Roofy is installed, with one button to Home", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
     await open(page, "owner", "/install?installed=1");
     await expect(page.getByRole("heading", { level: 1, name: "Roofy is installed" })).toBeVisible();
     await expect(page.locator("details")).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Go to Home" })).toHaveAttribute("href", "/");
+    const home = page.getByRole("link", { name: "Go to Home" });
+    await expect(home).toHaveAttribute("href", "/");
+    // Full width of the guide's column, not a small left-aligned button.
+    const [box, intro] = [(await home.boundingBox())!, (await page.getByText("You are using Roofy").boundingBox())!];
+    expect(box.width).toBeGreaterThanOrEqual(intro.width - 1);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
