@@ -493,3 +493,4 @@ Task 13: complete (commits 565032a..544e9e7; design loop accepted at 75.5 under 
 10-12 00:20 conductor T18 focused e2e after b3f40de: 262 passed, 23 skipped (project-scoped), 0 failed, 3 projects
 10-12 00:26 implementer(opus) T18 review fix 2 bcccf06 tool_uses=6 tokens=19053 (per_unit-only numerator; new all-person test fails before fix 4300≠800; verify 1056 green)
 10-12 00:27 reviewer T18 fix 2 re-check CLEAN tool_uses=3 tokens=12607 | T18 total: 33 runs, ~1202 of 1200 → over ceiling, STOP. T18 done except spec finding 2 (owner)
+10-12 01:55 conductor OWNER DECISION: build stage-scoped forecast breakdown (option b); plan line 178 superseded for stage figures. STOP cleared, loop restarted. Next: opus implementer run + spec re-check, then T18 closes / Task 19.
