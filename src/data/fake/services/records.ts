@@ -11,6 +11,7 @@ import {
   type PushResponse,
   type PushResult,
   AuditService,
+  type AuditFilter,
   type ExportFile,
   type ExportListing,
   type ExportService,
@@ -19,8 +20,10 @@ import {
   type SyncService,
 } from "../../contracts";
 import { parseMutation } from "../../mutations";
+import type { AuditEventRow } from "../rows";
 import type { Seed } from "../seed";
 import { forbidden, notFound, type FakeContext } from "./context";
+import { dateText } from "./writes";
 import { crewRowForeman } from "./crew";
 import { createExpenseService } from "./expenses";
 import { createLogService, createNoWorkService, createProgressService } from "./logs";
@@ -157,21 +160,82 @@ export function createSyncService(c: FakeContext): SyncService {
   };
 }
 
+/** The job, person and plain name an audit row is about, read from the live row (or the change itself for a removed one). */
+function aboutRow(c: FakeContext, e: AuditEventRow): { projectId: Id | null; crewMemberId: Id | null; subject: string } {
+  const t = c.t;
+  const data = (e.after ?? e.before ?? {}) as Record<string, unknown>;
+  const str = (k: string): Id | null => (typeof data[k] === "string" ? (data[k] as string) : null);
+  const crewName = (id: Id | null) => (id === null ? "Someone" : (t.crewMembers.find((m) => m.id === id)?.name ?? "Someone"));
+  const first = (id: Id | null) => crewName(id).split(" ")[0]!;
+  const none = { projectId: null, crewMemberId: null };
+  switch (e.tableName) {
+    case "project": {
+      const p = t.projects.find((x) => x.id === e.rowId);
+      return { ...none, projectId: e.rowId, subject: p?.nickname ?? "A job" };
+    }
+    case "stage": {
+      const st = t.stages.find((x) => x.id === e.rowId);
+      return { ...none, projectId: st?.projectId ?? str("projectId"), subject: st?.name ?? "A stage" };
+    }
+    case "expense": {
+      const x = t.expenses.find((r) => r.id === e.rowId);
+      return { projectId: x?.projectId ?? str("projectId"), crewMemberId: x?.crewMemberId ?? str("crewMemberId"), subject: `${x?.supplier ?? str("supplier") ?? "An"} receipt` };
+    }
+    case "work_log": {
+      const l = t.workLogs.find((r) => r.id === e.rowId);
+      const crewId = l?.crewMemberId ?? str("crewMemberId");
+      const date = l?.date ?? str("date");
+      return { projectId: l?.projectId ?? str("projectId"), crewMemberId: crewId, subject: `${first(crewId)}'s log${date ? ` for ${dateText(c, date)}` : ""}` };
+    }
+    case "rate": {
+      const r = t.rates.find((x) => x.id === e.rowId);
+      const crewId = r?.crewMemberId ?? str("crewMemberId");
+      return { projectId: r?.projectId ?? str("projectId"), crewMemberId: crewId, subject: `${first(crewId)}'s rate` };
+    }
+    case "crew_member":
+      return { ...none, crewMemberId: e.rowId, subject: crewName(e.rowId) };
+    case "ledger_entry": {
+      const l = t.ledgerEntries.find((x) => x.id === e.rowId);
+      const crewId = l?.crewMemberId ?? null;
+      return { ...none, crewMemberId: crewId, subject: `${first(crewId)}'s ${l?.kind ?? str("kind") ?? "payment"}` };
+    }
+    case "no_work": {
+      const n = t.noWork.find((x) => x.id === e.rowId);
+      const crewId = n?.crewMemberId ?? str("crewMemberId");
+      return { ...none, crewMemberId: crewId, subject: `${first(crewId)}'s no-work day` };
+    }
+    case "pay_run": {
+      const run = t.payRuns.find((x) => x.id === e.rowId);
+      return { ...none, subject: run ? `Pay run for ${dateText(c, run.periodStart)} to ${dateText(c, run.periodEnd)}` : "A pay run" };
+    }
+    case "member":
+      return { ...none, subject: str("name") ?? "A team member" };
+    case "crew_level":
+      return { ...none, subject: str("name") ?? "A crew level" };
+    case "stage_template":
+      return { ...none, subject: "A stage template" };
+    default:
+      return { ...none, subject: "Workspace settings" };
+  }
+}
+
 export function createAuditService(c: FakeContext): AuditService {
   return {
-    async history(
-      actor: Actor,
-      filter?: { table?: string; rowId?: Id; limit?: number },
-    ): Promise<AuditRow[]> {
-      c.access(actor);
+    async history(actor: Actor, filter?: AuditFilter): Promise<AuditRow[]> {
+      // Owner and Manager only: an Accountant reads reports and exports, not who changed what.
+      if (c.access(actor).role === "accountant") throw forbidden();
+      const payRunCrew = (runId: Id) => c.t.payRunLines.some((l) => l.payRunId === runId && l.crewMemberId === filter?.crewMemberId);
       return c.t.auditEvents
+        .filter((e) => (!filter?.table || e.tableName === filter.table) && (!filter?.rowId || e.rowId === filter.rowId))
+        .map((e) => ({ e, about: aboutRow(c, e) }))
         .filter(
-          (e) =>
-            (!filter?.table || e.tableName === filter.table) && (!filter?.rowId || e.rowId === filter.rowId),
+          ({ e, about }) =>
+            (!filter?.projectId || about.projectId === filter.projectId) &&
+            (!filter?.crewMemberId || about.crewMemberId === filter.crewMemberId || (e.tableName === "pay_run" && payRunCrew(e.rowId))),
         )
-        .sort((a, b) => b.at.localeCompare(a.at))
+        .sort((a, b) => b.e.at.localeCompare(a.e.at))
         .slice(0, filter?.limit ?? 50)
-        .map((e) => {
+        .map(({ e, about }) => {
           const keys = new Set([...Object.keys(e.before ?? {}), ...Object.keys(e.after ?? {})]);
           return {
             id: e.id,
@@ -183,6 +247,10 @@ export function createAuditService(c: FakeContext): AuditService {
             fields: [...keys].filter((k) => JSON.stringify(e.before?.[k]) !== JSON.stringify(e.after?.[k])),
             before: e.before,
             after: e.after,
+            subject: about.subject,
+            projectId: about.projectId,
+            projectName: about.projectId === null ? null : (c.ix.projects.get(about.projectId)?.nickname ?? null),
+            crewMemberId: about.crewMemberId,
           };
         });
     },

@@ -1334,6 +1334,22 @@ export interface AuditRow {
   fields: string[];
   before: Record<string, unknown> | null;
   after: Record<string, unknown> | null;
+  /** What was changed in plain words, e.g. "Bunnings receipt", "Dima's advance", "Sheet install". */
+  subject: string;
+  /** The job the change belongs to, when it belongs to one (the `?job=` filter matches this). */
+  projectId: Id | null;
+  projectName: string | null;
+  /** The person the change belongs to, when it belongs to one (the `?crew=` filter matches this). */
+  crewMemberId: Id | null;
+}
+
+/** Record history filter: a row (Expense detail), a job (`?job=`) or a person (`?crew=`); newest first. */
+export interface AuditFilter {
+  table?: string;
+  rowId?: Id;
+  projectId?: Id;
+  crewMemberId?: Id;
+  limit?: number;
 }
 
 export interface ExportListing {
@@ -1663,7 +1679,8 @@ export interface SyncService {
 }
 
 export interface AuditService {
-  history(actor: Actor, filter?: { table?: string; rowId?: Id; limit?: number }): Promise<AuditRow[]>;
+  /** Owner and Manager only; Accountant and Foreman are forbidden. */
+  history(actor: Actor, filter?: AuditFilter): Promise<AuditRow[]>;
 }
 
 export interface ExportService {

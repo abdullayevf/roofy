@@ -176,7 +176,7 @@ describe("workspace settings", () => {
 
 describe("record history, workspace export and the snapshot", () => {
   it("history: newest first with changed fields; filtered by row", async () => {
-    const { data, actor } = fake("accountant");
+    const { data, actor } = fake("manager");
     const rows = await data.audit.history(actor, { table: "expense", rowId: meta.expenses.smithSheets });
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({

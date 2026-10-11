@@ -970,13 +970,20 @@ export const SCREENS: ScreenSpec[] = [
     { id: `reports-${kind}-filtered`, group: "reports" as const, route: `/reports/${kind}?from=2026-09-21&to=2026-09-27`, states: ["normal" as const], roles: [] },
     { id: `reports-${kind}-empty-range`, group: "reports" as const, route: `/reports/${kind}?from=2020-01-01&to=2020-01-31`, states: ["normal" as const], roles: [] },
   ]),
+  // Record history (Task 18 run C): Owner and Manager. `?job=` and `?crew=` narrow it; an Accountant and a Foreman
+  // are told they have no permission.
   {
     id: "record-history",
     group: "reports",
     route: "/history",
-    states: READ_STATES,
-    roles: ["owner", "manager"],
+    states: [...READ_STATES, "noperm"],
+    roles: ["manager"],
   },
+  { id: "record-history-job", group: "reports", route: `/history?job=${meta.projects.smith}`, states: ["normal"], roles: [] },
+  { id: "record-history-crew", group: "reports", route: `/history?crew=${meta.crew.dima}`, states: ["normal"], roles: [] },
+  // A job with long names: the sentence and the job name wrap, nothing is cut.
+  { id: "record-history-long-names", group: "reports", route: `/history?job=${meta.fixtures.longNames}`, states: ["normal"], roles: [] },
+  { id: "record-history-no-access", group: "reports", route: "/history", states: ["normal"], roles: ["accountant", "foreman"] },
   { id: "workspace-export", group: "reports", route: "/export", states: ADMIN_STATES, roles: ["owner"] },
 
   // --- entry-settings (Task 19) -----------------------------------------
