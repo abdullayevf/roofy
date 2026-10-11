@@ -31,3 +31,8 @@
 - On tablet and landscape, fixed bars (pinned action bar, tab bar) never cover content: bar spans the content column, content pads its bottom by every fixed bar's height.
 - Inline links in pinned bars and blocker rows still need a 48x48 px hit area (padding or ::after), and the test measures it; checkTouchTargets exempts inline links.
 - No divider directly on an indented sub-line (Includes, meta): the sub-line belongs to the row above, or it gets 8 px clear above its text.
+- Report and list detail pages: data starts in the first phone viewport; the range or filter is one "Change" row, actions sit in the title row.
+- With nothing to show, disable Export CSV and Print, and give the empty sentence one action button.
+- Hub and index pages use one grouped list surface, not a grid of identical bordered cards.
+- File names and unit words ("crew-day", ".zip" names) never break at a hyphen: nowrap or non-breaking hyphen.
+- `nowrap` only on a short figure or name run that still fits at 200% text zoom; let it wrap (break-words) past the column, never widen the page (export zip name, report figures).

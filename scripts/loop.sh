@@ -27,7 +27,7 @@ for ((i = 1; i <= MAX; i++)); do
       --model opus --permission-mode bypassPermissions < /dev/null > "$log" 2>&1
   tail -5 "$log"
 
-  if grep -qiE 'usage limit|rate limit|limit reached|resets at' "$log"; then
+  if grep -qiE 'usage limit|rate limit|limit reached|session limit|resets' "$log"; then
     echo "Usage limit. Sleeping 1 hour."; sleep 3600; ((i--)); continue
   fi
 

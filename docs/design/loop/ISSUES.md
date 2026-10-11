@@ -656,3 +656,33 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | pay/i3-F6 | pay | P3 | pay-run-review draft iphone | Pinned bar + tab bar ~270 of 844 px | Blocker one line, link in button row | open (accepted at cap) | 3 |
 | pay/r-N2 | pay | P3 | pay-run-review 844x390 manager two-factor + offline | Combination untested; bar estimated ~96 px (offline+blocked measured 76, cap 80) | Add a measured height check | open (assessor 3, deferred) | 3 |
 | pay/r-F4c | pay | P3 | guards checkPinnedBarCompact | No button height/gap check in the compact bar guard | Assert 48 px buttons and gap | open (assessor 3, deferred) | 3 |
+| reports/i1-N1+D1 | reports | P0 | reports-job-profitability empty-range, filtered | Range ignored: Jan 2020 and 21–27 Sep show the same jobs and figures | Filter by range in the data layer; guard: empty range 0 rows, range change changes figures | open | 1 |
+| reports/i1-D2 | reports | P1 | reports-*-offline, record-history-offline | Read-only admin screens show the "will send automatically" outbox banner (lessons 3, 20) | Only "Lists updated 12 minutes ago" + "Export CSV needs a connection."; guard: no outbox banner on admin routes | open | 1 |
+| reports/i1-N2 | reports | P1 | reports hub Pay history card | "Paid in 14 pay runs" total counts Draft runs | Sum Approved and Exported only; unit test | open | 1 |
+| reports/i1-N3+D3+D8 | reports | P1 | every report detail, phone + landscape | No figure-xl key figure; range form and Export/Print fill ~650 px before any data (lesson 5) | Key figure under title; range as one "Change" row; actions in title row; guard: first data row in first viewport, one figure-xl | open | 1 |
+| reports/i1-N4 | reports | P1 | reports-job-profitability | Losing job is the last of 18 rows | Sort lowest margin first; guard: first row lowest margin | open | 1 |
+| reports/i1-N5 | reports | P1 | *-no-access installed landscape | Content at x=16 ignores safe-area inset (others x=62) | Shared content column; guard: left inset ≥ safe-area | open | 1 |
+| reports/i1-D4+N17 | reports | P2 | reports hub desktop + phone | Grid of five identical bordered cards; figures in two fonts | One grouped list surface, figure in right column, figure style | open | 1 |
+| reports/i1-D5+N7 | reports | P2 | productivity, pauses, job-profitability phone/tablet | Right column wraps ("crew-/day", "working/days", "No contract/price") (lessons 6, 23) | nb-hyphen + nbsp, units on meta line; guard: right column one line | open | 1 |
+| reports/i1-D6 | reports | P2 | workspace-export desktop | Rows ~29 px; Export workspace button 1168 px wide (lesson 21) | 48 px rows; content-width button; guard: row ≥ 48 | open | 1 |
+| reports/i1-D7 | reports | P2 | workspace-export-done iphone-light | Capture shows "Exporting" spinner, not done | expectStill before capture | open | 1 |
+| reports/i1-D9+N9 | reports | P2 | pay-history + job rows phone/tablet | Breakdown figures as large as the total; labels split from figures | Total in right column; breakdown as meta lines | open | 1 |
+| reports/i1-D10 | reports | P2 | job-profitability desktop | Negatives styled two ways (ink vs red) | One negative rule; guard: negative colour token | open | 1 |
+| reports/i1-D11 | reports | P2 | workspace-export-offline | Dash chain "Needs connection — try again…" (lesson 3) | "Export needs a connection." | open | 1 |
+| reports/i1-D14+N8 | reports | P2 | every report empty/error/empty-range | Export CSV/Print enabled with 0 rows; empty sentence has no action | Disable at 0 rows; "Show the last 3 months" button; guard | open | 1 |
+| reports/i1-N6 | reports | P2 | record-history-noperm-manager, workspace-export no-access manager, noperm-owner | Manager told "Ask your manager"; owner no-access on an Owner-only screen | "Ask the owner."; drop owner noperm state | open | 1 |
+| reports/i1-N10 | reports | P2 | job-profitability rows | "margin No contract price" mid-sentence capital | Own line | open | 1 |
+| reports/i1-N11+D20 | reports | P2 | record history rows | Clunky change sentences ("…and pause reason to materials…", "on Pay run for…") | Plain sentences ("Paused Coat / paint, waiting on materials") | open | 1 |
+| reports/i1-N12 | reports | P2 | hub, crew report | Productivity hub figure "6 stages"; Crew report lacks cost per m² by stage type (spec §5.10) | Add the figure | open | 1 |
+| reports/i1-N13 | reports | P2 | productivity filtered weekly | Weekly range shows month labels | Label rows with the selected range | open | 1 |
+| reports/i1-N14 | reports | P2 | record history | No visible job/crew/date filter on main page; "Clear" small link; gap | Filters in view; Clear 48 px; guard | open | 1 |
+| reports/i1-N15 | reports | P2 | workspace-export done installed landscape | Done message under the tab bar (lesson 31) | Pad by tab bar height; guard | open | 1 |
+| reports/i1-D12 | reports | P3 | margin %, utilisation %, pace, history amounts | Figures not in figure style (lesson 26) | Figure style everywhere | open | 1 |
+| reports/i1-D13 | reports | P3 | reports desktop | Actions on own row; "Margin to date"/"Forecast margin" headers wrap | Title-row actions; "To date"/"Forecast" | open | 1 |
+| reports/i1-D15 | reports | P3 | reports-empty desktop | Empty sentence above five cards repeating it | One sentence + action | open | 1 |
+| reports/i1-D16 | reports | P3 | long names; history long-name empty | Hyphen break; name shown twice | nb-hyphen; name once | open | 1 |
+| reports/i1-D17+N16 | reports | P3 | workspace-export | "roofy-workspace-export.zip" breaks at hyphen | nowrap | open | 1 |
+| reports/i1-D18 | reports | P3 | tall desktop captures | Sidebar background stops at 900 px | min-height 100%; guard | open | 1 |
+| reports/i1-D19 | reports | P3 | workspace-export phone/tablet | 16 file rows ~90 px; skeleton ~64 px | 64 px rows, count in right column | open | 1 |
+| reports/i1-D21 | reports | P3 | pauses, pay-history phone | Unlabelled "Materials" reason; $0.00 draft at top | "Waiting on materials"; drafts below | open | 1 |
+| reports/i1-D22 | reports | P3 | desktop report tables | Drillable rows have no chevron | Trailing chevron | open | 1 |
