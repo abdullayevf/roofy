@@ -87,6 +87,8 @@ export interface SeedMeta {
   expenses: { dimaScrews: Id; smithSheets: Id };
   statementTokens: { payRunId: Id; crewMemberId: Id; token: string }[];
   scenarios: string[];
+  /** A workspace being set up (sign-up): where its wizard is. Absent for the seeded workspace. */
+  onboarding?: { step: import("../contracts").OnboardingStep; trade: "roofing" | null };
 }
 
 export interface Seed extends SeedTables {

@@ -1062,7 +1062,21 @@ export const SCREENS: ScreenSpec[] = [
     steps: ["fill:Email=karen@harbourroofing.example", "fill:Password=a-long-password", "Create account"],
     expectStill: "already exists",
   },
+  // Set-up wizard: each step, its refusals, offline (admin steps need connection), the done state and the wrong role.
+  // An owner already set up sees the done state (You're set up, then Add your first job, on to the first log).
   { id: "onboarding", group: "entry-settings", route: "/onboarding", states: ENTRY_STATES, roles: ["owner"] },
+  { id: "onboarding-business", group: "entry-settings", route: "/onboarding?step=business", states: ["normal", "offline"], roles: ["owner"] },
+  { id: "onboarding-trade", group: "entry-settings", route: "/onboarding?step=trade", states: ["normal"], roles: ["owner"] },
+  { id: "onboarding-defaults", group: "entry-settings", route: "/onboarding?step=defaults", states: ["normal"], roles: ["owner"] },
+  { id: "onboarding-crew", group: "entry-settings", route: "/onboarding?step=crew", states: ["normal", "offline"], roles: ["owner"] },
+  { id: "onboarding-install", group: "entry-settings", route: "/onboarding?step=install", states: ["normal"], roles: ["owner"] },
+  { id: "onboarding-invalid", group: "entry-settings", route: "/onboarding?step=business", states: ["normal"], roles: ["owner"], steps: ["fill:Business name=", "fill:ABN=123", "Continue"], expectStill: "ABN should be 11 digits." },
+  { id: "onboarding-crew-row-error", group: "entry-settings", route: "/onboarding?step=crew", states: ["normal"], roles: ["owner"], steps: ["Add crew member", "fill:Name=Sam", "Add"], expectStill: "Add a rate before adding." },
+  // Resumed: after sign-up and the business step, the wizard reopens on step 2 (the step is saved, so a reload lands here too).
+  { id: "onboarding-resumed", group: "entry-settings", route: "/sign-up", states: ["normal"], roles: [], steps: ["Continue with Google", "fill:Business name=Smith Roofing", "fill:ABN=51 824 753 556", "Continue"], expectStill: "Step 2 of 5" },
+  // Back keeps what was entered on the step before.
+  { id: "onboarding-back-keeps", group: "entry-settings", route: "/sign-up", states: ["normal"], roles: [], steps: ["Continue with Google", "fill:Business name=Smith Roofing", "fill:ABN=51 824 753 556", "Continue", "Back"], expectStill: "Step 1 of 5" },
+  { id: "onboarding-no-access", group: "entry-settings", route: "/onboarding", states: ["normal"], roles: ["manager", "foreman"] },
   // Install guide: the steps for the device it is opened on come first; the others sit behind a disclosure.
   { id: "install-guide", group: "entry-settings", route: "/install", states: ["normal", "error"], roles: ["owner", "manager", "foreman", "accountant"] },
   { id: "install-guide-ios", group: "entry-settings", route: "/install?platform=ios", states: ["normal"], roles: ["owner"] },

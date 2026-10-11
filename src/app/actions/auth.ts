@@ -2,7 +2,7 @@
 /** Sign in and sign up (prototype): the fake auth service says who, this sets the session cookies and names where to go. */
 import { cookies, headers } from "next/headers";
 import { z } from "zod";
-import { getAuth } from "@/data";
+import { getAuth, startNewWorkspace } from "@/data";
 import { isDataError, type ActionResult, type AuthService, type AuthSession } from "@/data/contracts";
 import { fieldIssues, firstIssue } from "@/data/mutations";
 import { SIGN_IN_FAILED } from "@/lib/auth-input";
@@ -15,6 +15,7 @@ async function enter(work: (auth: AuthService) => Promise<AuthSession>): Promise
   try {
     const session = await work(getAuth());
     await ensureDemoSession();
+    if (session.next === "/onboarding") await startNewWorkspace();
     (await cookies()).set(ROLE_COOKIE, session.role, { ...SESSION_COOKIE_OPTIONS, secure: isHttps("", await headers()) });
     return { ok: true, next: session.next };
   } catch (e) {

@@ -28,13 +28,14 @@
  */
 import { todayIn } from "@/domain/dates";
 import type { LocalDate } from "@/domain/types";
-import type { Actor, AuthService, DataServices, Role } from "./contracts";
+import type { Actor, AuthService, DataServices, OnboardingService, Role } from "./contracts";
 import { fakeNow } from "./fake/clock";
 import { demoFlags, parseDemoState, type DemoFlags } from "./fake/demo";
 import { createFakeServices } from "./fake/services";
 import { createFakeAuth } from "./fake/services/auth";
 import { actorFor } from "./fake/services/context";
-import { emptyStore, sessionStore, sharedStore } from "./fake/store";
+import { createFakeOnboarding, newWorkspaceTables } from "./fake/services/onboarding";
+import { emptyStore, FakeStore, getSeed, replaceSessionStore, sessionStore, sharedStore } from "./fake/store";
 import { ensureDemoSession, readDemoParam, readSession, type SearchParamsInput } from "./session";
 
 export type { DemoFlags } from "./fake/demo";
@@ -143,4 +144,51 @@ export async function getWriteData(): Promise<WriteContext> {
 export function getAuth(): AuthService {
   dataMode();
   return createFakeAuth();
+}
+
+export interface OnboardingContext {
+  onboarding: OnboardingService;
+  actor: Actor;
+  demo: DemoFlags;
+}
+
+function onboardingOn(store: FakeStore, role: Role, demo: ReturnType<typeof parseDemoState>): OnboardingContext {
+  const now = fakeNow();
+  const data = createFakeServices(store, { now: () => now, demo: null });
+  const onboarding = createFakeOnboarding(store, data, todayIn(store.tables.workspace.timezone, now));
+  return { onboarding, actor: actorFor(store.tables, role), demo: demoFlags(demo, store.tables, now) };
+}
+
+/**
+ * The set-up wizard for a page render: the demo session's workspace, or (no session yet) a new one that is
+ * shown but never written. `?demo=error|noperm` refuse every call as elsewhere.
+ */
+export async function getOnboarding(options: { searchParams?: SearchParamsInput } = {}): Promise<OnboardingContext> {
+  dataMode();
+  const session = await readSession();
+  const state = parseDemoState(await readDemoParam(options.searchParams));
+  const store =
+    session.demoSessionId === null
+      ? new FakeStore(newWorkspaceTables(getSeed()), { readOnly: true })
+      : sessionStore(session.demoSessionId);
+  const ctx = onboardingOn(store, session.role, state);
+  if (state === "error" || state === "noperm") {
+    const refusal = createFakeServices(store, { now: fakeNow, demo: state }).workspace.settings;
+    const refuse = () => refusal(ctx.actor) as never;
+    ctx.onboarding = Object.fromEntries(Object.keys(ctx.onboarding).map((k) => [k, refuse])) as unknown as OnboardingService;
+  }
+  return ctx;
+}
+
+/** The set-up wizard for a Server Function: always the demo session's own, writable workspace. */
+export async function getOnboardingWrite(): Promise<OnboardingContext> {
+  dataMode();
+  const session = await readSession();
+  const id = await ensureDemoSession();
+  return onboardingOn(sessionStore(id), session.role, null);
+}
+
+/** Sign-up: the demo session becomes a new, empty workspace whose set-up wizard starts at the beginning. */
+export async function startNewWorkspace(): Promise<void> {
+  replaceSessionStore(await ensureDemoSession(), newWorkspaceTables(getSeed()));
 }

@@ -1767,3 +1767,52 @@ export interface AuthService {
   /** Google's own screens are out of scope for the prototype: it goes straight on. */
   continueWithGoogle(mode: "sign-in" | "sign-up"): Promise<AuthSession>;
 }
+
+// ─── Set-up wizard (onboarding) ─────────────────────────────────────────────
+
+/** Where the set-up wizard is: business, trade, the preloaded templates and categories, crew, install, then done. */
+export type OnboardingStep = "business" | "trade" | "defaults" | "crew" | "install" | "done";
+export const ONBOARDING_STEPS: readonly OnboardingStep[] = ["business", "trade", "defaults", "crew", "install"];
+
+export interface OnboardingBusinessInput {
+  name: string;
+  abn: string;
+  gstRegistered: boolean;
+}
+
+export interface OnboardingCrewInput {
+  name: string;
+  type: WorkerType;
+  levelId: Id | null;
+  basis: Exclude<RateBasis, "per_unit">;
+  rateCents: Cents;
+}
+
+export interface OnboardingCrewRow extends Omit<OnboardingCrewInput, "levelId"> {
+  id: Id;
+  levelName: string | null;
+}
+
+/** Everything the wizard shows, saved as it goes so a reload resumes at the same step with the same entries. */
+export interface OnboardingState {
+  step: OnboardingStep;
+  business: OnboardingBusinessInput;
+  trade: "roofing" | null;
+  /** What "Use these" adds: the roofing stage templates and expense categories. */
+  defaults: { templates: { jobType: JobType; name: string; stages: number }[]; categories: string[] };
+  levels: { id: Id; name: string }[];
+  crew: OnboardingCrewRow[];
+}
+
+/** Owner only. Refusals are `DataError("invalid")` with per-field `issues` ("name", "abn", "rate"). */
+export interface OnboardingService {
+  state(actor: Actor): Promise<OnboardingState>;
+  saveBusiness(actor: Actor, input: OnboardingBusinessInput): Promise<OnboardingState>;
+  chooseTrade(actor: Actor, trade: "roofing"): Promise<OnboardingState>;
+  acceptDefaults(actor: Actor): Promise<OnboardingState>;
+  addCrew(actor: Actor, input: OnboardingCrewInput): Promise<OnboardingState>;
+  finishCrew(actor: Actor): Promise<OnboardingState>;
+  /** One step back; entries already saved stay. */
+  back(actor: Actor): Promise<OnboardingState>;
+  finish(actor: Actor): Promise<OnboardingState>;
+}

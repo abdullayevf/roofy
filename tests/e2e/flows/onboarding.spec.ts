@@ -1,0 +1,44 @@
+import { expect, test } from "@playwright/test";
+import { Taps } from "../taps";
+
+/** flows.md "Onboarding to first log": sign up, set up, one crew member, one job, the first day logged in ≤ 25 taps. */
+test("Onboarding to first log: sign-up to the first day saved within 25 taps (typing not counted)", async ({ page }) => {
+  await page.goto("/sign-up");
+  const taps = new Taps("Onboarding to first log");
+  await taps.tap(page.getByRole("button", { name: "Continue with Google" }));
+  await expect(page.getByRole("heading", { name: "Your business" })).toBeVisible();
+  await taps.tap(page.getByLabel("Business name"));
+  await page.getByLabel("Business name").fill("Smith Roofing");
+  await taps.tap(page.getByLabel("ABN"));
+  await page.getByLabel("ABN").fill("51 824 753 556");
+  await taps.tap(page.getByRole("checkbox", { name: "GST registered" }));
+  await taps.tap(page.getByRole("button", { name: "Continue" }));
+  await taps.tap(page.getByRole("radio", { name: "Roofing" }));
+  await taps.tap(page.getByRole("button", { name: "Use these" }));
+  await taps.tap(page.getByRole("button", { name: "Add crew member" }));
+  await taps.tap(page.getByLabel("Name", { exact: true }));
+  await page.getByLabel("Name", { exact: true }).fill("Sam");
+  await taps.tap(page.getByRole("radio", { name: "Daily" }));
+  await taps.tap(page.getByLabel("Daily rate"));
+  await page.getByLabel("Daily rate").fill("320.00");
+  await taps.tap(page.getByRole("button", { name: "Add", exact: true }));
+  await expect(page.getByRole("list", { name: "Crew added" })).toContainText("Sam");
+  await taps.tap(page.getByRole("button", { name: "Continue" }));
+  await expect(page.getByRole("heading", { name: "Put Roofy on your phone" })).toBeVisible();
+  await taps.tap(page.getByRole("button", { name: "Continue" }));
+  await taps.tap(page.getByRole("link", { name: "Add your first job" }).first());
+  await taps.tap(page.getByRole("button", { name: "Quick-add client" }));
+  await taps.tap(page.getByLabel("Client name"));
+  await page.getByLabel("Client name").fill("Smith");
+  await taps.tap(page.getByRole("button", { name: "Save client" }));
+  await taps.tap(page.getByRole("radio", { name: "Metal re-roof" }));
+  await taps.tap(page.getByLabel("Site address"));
+  await page.getByLabel("Site address").fill("12 Pitt St, Ryde");
+  await taps.tap(page.getByRole("button", { name: "Accept stages" }).first());
+  await taps.tap(page.getByRole("button", { name: "Create job" }));
+  await taps.tap(page.getByRole("link", { name: "Log today on this job" }));
+  await taps.tap(page.getByRole("button", { name: /^Sam/ }));
+  await taps.tap(page.getByRole("button", { name: "Save day" }));
+  await expect(page.getByRole("status").filter({ hasText: "Logged" })).toContainText("Sam");
+  taps.assertWithin(25);
+});

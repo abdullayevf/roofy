@@ -196,6 +196,14 @@ export function sessionStore(id: string): FakeStore {
   return created;
 }
 
+/** Sign-up: the demo session starts again as a new workspace (`tables`), replacing whatever it held. */
+export function replaceSessionStore(id: string, tables: Seed): FakeStore {
+  const created = new FakeStore(tables, { readOnly: false });
+  stores.sessions.delete(id);
+  stores.sessions.set(id, created);
+  return created;
+}
+
 /** Test and diagnostics helpers. */
 export function sessionStoreIds(): string[] {
   return [...stores.sessions.keys()];
