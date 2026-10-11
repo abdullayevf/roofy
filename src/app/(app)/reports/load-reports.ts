@@ -1,5 +1,5 @@
 import type { DataContext } from "@/data";
-import { isDataError, type DateRange, type ReportKind } from "@/data/contracts";
+import { isDataError, type DateRange, type ReportKeyFigure, type ReportKind } from "@/data/contracts";
 import type { ReportBody } from "@/components/screens/reports";
 
 export type Loaded<T> = { kind: "ok"; value: T } | { kind: "forbidden" } | { kind: "unavailable" };
@@ -25,24 +25,47 @@ export function loadAll({ data, actor }: DataContext, range: DateRange) {
       data.reports.pauses(actor, range),
       data.reports.payHistory(actor, range),
     ]);
-    return { jobs: jobs.rows, crew: crew.rows, productivity: productivity.rows, pauses: pauses.rows, pay: pay.rows };
+    return {
+      jobs: jobs.rows,
+      crew: crew.rows,
+      productivity: productivity.rows,
+      pauses: pauses.rows,
+      pay: pay.rows,
+      figures: {
+        "job-profitability": jobs.keyFigure,
+        crew: crew.keyFigure,
+        productivity: productivity.keyFigure,
+        pauses: pauses.keyFigure,
+        "pay-history": pay.keyFigure,
+      } satisfies Record<ReportKind, ReportKeyFigure>,
+    };
   });
 }
 
-/** One report's rows. */
+/** One report's rows and its key figure. */
 export function loadOne({ data, actor }: DataContext, kind: ReportKind, range: DateRange) {
   return load<ReportBody>(async () => {
     switch (kind) {
-      case "job-profitability":
-        return { kind, rows: (await data.reports.jobProfitability(actor, range)).rows };
-      case "crew":
-        return { kind, rows: (await data.reports.crew(actor, range)).rows };
-      case "productivity":
-        return { kind, rows: (await data.reports.productivity(actor, range)).rows };
-      case "pauses":
-        return { kind, rows: (await data.reports.pauses(actor, range)).rows };
-      case "pay-history":
-        return { kind, rows: (await data.reports.payHistory(actor, range)).rows };
+      case "job-profitability": {
+        const r = await data.reports.jobProfitability(actor, range);
+        return { kind, rows: r.rows, keyFigure: r.keyFigure };
+      }
+      case "crew": {
+        const r = await data.reports.crew(actor, range);
+        return { kind, rows: r.rows, keyFigure: r.keyFigure };
+      }
+      case "productivity": {
+        const r = await data.reports.productivity(actor, range);
+        return { kind, rows: r.rows, keyFigure: r.keyFigure };
+      }
+      case "pauses": {
+        const r = await data.reports.pauses(actor, range);
+        return { kind, rows: r.rows, keyFigure: r.keyFigure };
+      }
+      case "pay-history": {
+        const r = await data.reports.payHistory(actor, range);
+        return { kind, rows: r.rows, keyFigure: r.keyFigure };
+      }
     }
   });
 }

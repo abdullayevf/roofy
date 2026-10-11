@@ -11,6 +11,8 @@ async function signInAs(page: Page, role: string, next: string) {
   await page.goto(`/prototype/role?as=${role}&next=${encodeURIComponent(next)}`);
 }
 const rows = (page: Page) => page.locator("[data-report-row]:visible");
+/** "−$1,234.56" → -123456 cents. */
+const cents = (t: string) => Math.round(Number(t.replace("−", "-").replace(/[$,]/g, "")) * 100);
 
 test.describe("Reports index (screen 22)", () => {
   test("shows the five report cards, each with its key figure, and opens Job profitability", async ({ page }, testInfo) => {
@@ -27,6 +29,19 @@ test.describe("Reports index (screen 22)", () => {
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
     await cards.getByRole("link", { name: /^Job profitability/ }).click();
     await expect(page).toHaveURL(/\/reports\/job-profitability$/);
+  });
+
+  test("hub figures are real: pace for productivity, pay counts only approved and exported runs", async ({ page }) => {
+    await signInAs(page, "manager", "/reports");
+    const card = (name: string) => page.locator("[data-report-card]").filter({ has: page.getByRole("link", { name: new RegExp(`^${name}`) }) });
+    await expect(card("Productivity").locator("[data-figure]")).toHaveText(/a crew-day$/);
+    const paidLine = (await card("Pay history").innerText()).match(/Paid in (\d+) pay runs?/);
+    expect(paidLine).not.toBeNull();
+    await signInAs(page, "manager", "/reports/pay-history");
+    const all = await rows(page).count();
+    const drafts = await rows(page).filter({ hasText: "Draft" }).count();
+    expect(drafts).toBeGreaterThan(0);
+    expect(Number(paidLine![1])).toBe(all - drafts);
   });
 
   for (const state of ["loading", "error", "offline", "empty"] as const) {
@@ -111,6 +126,35 @@ test.describe("Job profitability and Crew reports", () => {
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
   });
 
+  test("job profitability follows the range: empty range has no rows, another range other figures", async ({ page }, testInfo) => {
+    await signInAs(page, "manager", "/reports/job-profitability?from=2020-01-01&to=2020-01-31");
+    await expect(page.getByText("Nothing in this range. Try a longer range.")).toBeVisible();
+    await expect(rows(page)).toHaveCount(0);
+    await expect(page.locator("[data-key-figure]")).toHaveCount(0);
+    await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
+    await signInAs(page, "manager", "/reports/job-profitability?from=2026-09-21&to=2026-09-27");
+    const week = await page.locator("[data-key-figure]").innerText();
+    const weekRows = await rows(page).count();
+    await signInAs(page, "manager", "/reports/job-profitability?from=2026-01-01&to=2026-09-27");
+    await expect(page.locator("[data-key-figure]")).toHaveCount(1);
+    expect(await page.locator("[data-key-figure]").innerText()).not.toBe(week);
+    expect(await rows(page).count()).toBeGreaterThan(weekRows);
+  });
+
+  test("job profitability puts the lowest margin first", async ({ page }) => {
+    await signInAs(page, "manager", "/reports/job-profitability?from=2026-01-01&to=2026-09-27");
+    const margins = (await page.locator("[data-report-row]:visible [data-margin]").allInnerTexts()).map(cents);
+    expect(margins.length).toBeGreaterThan(1);
+    expect(margins[0]).toBe(Math.min(...margins));
+    expect(margins).toEqual([...margins].sort((a, b) => a - b));
+  });
+
+  test("crew shows labour cost per unit by stage", async ({ page }) => {
+    await signInAs(page, "manager", "/reports/crew?from=2026-09-01&to=2026-09-27");
+    const first = page.locator("[data-report-row]:visible [data-cost-per-unit]").first();
+    await expect(first).toHaveText(/ \$[\d,]+\.\d{2} (a m²|a lm|each)$/);
+  });
+
   test("a range with nothing in it says so and keeps the filter", async ({ page }, testInfo) => {
     await signInAs(page, "manager", "/reports/crew?from=2020-01-01&to=2020-01-31");
     await expect(page.getByText("Nothing in this range. Try a longer range.")).toBeVisible();
@@ -143,6 +187,15 @@ test.describe("Productivity, Pauses and Pay history reports; Export CSV and Prin
     await expect(page.getByRole("heading", { level: 1, name: "Productivity" })).toBeVisible();
     expect(await rows(page).count()).toBeGreaterThan(0);
     for (const f of await page.locator("[data-report-row]:visible [data-pace]").all()) await expect(f).toHaveText(/a crew-day$/);
+    await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
+  });
+
+  test("productivity over one week labels rows with the week, not the month, under one key figure", async ({ page }, testInfo) => {
+    await signInAs(page, "manager", "/reports/productivity?from=2026-09-21&to=2026-09-27");
+    expect(await rows(page).count()).toBeGreaterThan(0);
+    await expect(page.locator("[data-report-row]:visible", { hasText: "September 2026" })).toHaveCount(0);
+    await expect(page.locator("[data-key-figure]")).toHaveCount(1);
+    await expect(page.locator("[data-key-figure]")).toContainText(/a crew-day/);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name) });
   });
 

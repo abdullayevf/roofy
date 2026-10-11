@@ -1175,6 +1175,8 @@ export interface CrewReportRow {
 export interface ProductivityRow {
   /** "YYYY-MM". */
   month: string;
+  /** The days this row covers: the chosen range when it sits inside one month, else the calendar month. */
+  period: DateRange;
   stageName: string;
   jobType: JobType;
   unit: Unit;
@@ -1201,11 +1203,20 @@ export interface PayHistoryRow extends PayRunTotals {
   status: PayRunStatus;
 }
 
+/**
+ * A report's one headline number. `value` is cents for "money", a count of working days for "days", and
+ * hundredths of `unit` per crew-day for "per-crew-day". `label` says what it is in plain words.
+ */
+export type ReportKeyFigure =
+  | { format: "money" | "days"; value: number; label: string }
+  | { format: "per-crew-day"; value: Hundredths; unit: Unit; label: string };
+
 export interface Report<Row> {
   view: "manager";
   access: Access;
   range: DateRange;
   rows: Row[];
+  keyFigure: ReportKeyFigure;
 }
 
 // ─── Sync (field entries through the outbox, architecture §7) ───────────────

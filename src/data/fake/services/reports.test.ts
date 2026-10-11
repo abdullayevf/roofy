@@ -131,3 +131,80 @@ describe("reports: every total equals its summed source lines", () => {
     }
   });
 });
+
+describe("reports: range, order and key figure (design fix 1a)", () => {
+  const EMPTY = { from: "2020-01-01", to: "2020-01-31" };
+  const WEEK = { from: "2026-09-21", to: "2026-09-27" };
+
+  it("job profitability lists only jobs with a log or expense in the range", async () => {
+    const { data, actor } = fake("owner");
+    expect((await data.reports.jobProfitability(actor, EMPTY)).rows).toEqual([]);
+    const week = await data.reports.jobProfitability(actor, WEEK);
+    for (const row of week.rows) {
+      const touched =
+        live.some((l) => l.projectId === row.projectId && l.date >= WEEK.from && l.date <= WEEK.to) ||
+        seed.expenses.some((e) => e.projectId === row.projectId && e.date >= WEEK.from && e.date <= WEEK.to);
+      expect(touched, row.name).toBe(true);
+    }
+    const sept = await data.reports.jobProfitability(actor, SEPT);
+    expect(week.keyFigure.value).not.toBe(sept.keyFigure.value);
+  });
+
+  it("job profitability puts the lowest forecast margin first", async () => {
+    const { data, actor } = fake("owner");
+    const { rows } = await data.reports.jobProfitability(actor, { from: "2026-01-01", to: "2026-09-27" });
+    const margins = rows.map((r) => r.forecastMarginCents);
+    expect(margins).toEqual([...margins].sort((a, b) => a - b));
+  });
+
+  it("each report has one key figure: forecast margin, earned, pace, days lost", async () => {
+    const { data, actor } = fake("owner");
+    const jobs = await data.reports.jobProfitability(actor, SEPT);
+    expect(jobs.keyFigure).toEqual({
+      format: "money",
+      value: sum(jobs.rows.map((r) => r.forecastMarginCents)),
+      label: "Forecast margin on 6 jobs",
+    });
+    const crewR = await data.reports.crew(actor, SEPT);
+    expect(crewR.keyFigure.format).toBe("money");
+    expect(crewR.keyFigure.value).toBe(sum(crewR.rows.map((r) => r.earningsCents)));
+    expect(crewR.keyFigure.label).toBe(`Earned by ${crewR.rows.length} people`);
+    const pausesR = await data.reports.pauses(actor, SEPT);
+    expect(pausesR.keyFigure).toMatchObject({ format: "days", value: sum(pausesR.rows.map((r) => r.workingDays)) });
+    expect(pausesR.keyFigure.label).toMatch(/^Working days lost across \d+ jobs?$/);
+    const prod = await data.reports.productivity(actor, SEPT);
+    expect(prod.keyFigure).toMatchObject({ format: "per-crew-day", unit: "m2" });
+    expect(prod.keyFigure.value).toBeGreaterThan(0);
+    expect(prod.keyFigure.label).toMatch(/^Average across \d+ stages?$/);
+    expect((await data.reports.crew(actor, EMPTY)).keyFigure.value).toBe(0);
+  });
+
+  it("pay history's key figure counts only approved and exported runs, never drafts", async () => {
+    const { data, actor } = fake("owner");
+    const r = await data.reports.payHistory(actor, SEPT);
+    expect(r.rows.some((x) => x.status === "draft")).toBe(true);
+    const paid = r.rows.filter((x) => x.status !== "draft");
+    expect(r.keyFigure).toEqual({
+      format: "money",
+      value: sum(paid.map((x) => x.totalCents)),
+      label: `Paid in ${paid.length} pay runs`,
+    });
+  });
+
+  it("productivity rows for a range inside one month carry that range as their period", async () => {
+    const { data, actor } = fake("owner");
+    const week = await data.reports.productivity(actor, WEEK);
+    expect(week.rows.length).toBeGreaterThan(0);
+    for (const row of week.rows) expect(row.period).toEqual(WEEK);
+    const long = await data.reports.productivity(actor, { from: "2026-07-01", to: "2026-09-27" });
+    expect(long.rows.find((x) => x.month === "2026-08")?.period).toEqual({ from: "2026-08-01", to: "2026-08-31" });
+  });
+
+  it("crew CSV carries cost per unit by stage", async () => {
+    const { data, actor } = fake("owner");
+    const f = await data.reports.csv(actor, "crew", SEPT);
+    const [header, ...lines] = f.body.trim().split("\r\n");
+    expect(header).toContain("Cost per unit by stage");
+    expect(lines.some((l) => /Sheet install [\d.]+\/m2/.test(l))).toBe(true);
+  });
+});

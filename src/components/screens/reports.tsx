@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { CaretLeft, CaretRight } from "@phosphor-icons/react/dist/ssr";
-import type { CrewReportRow, DateRange, JobProfitRow, PauseReportRow, PayHistoryRow, ProductivityRow, ReportKind } from "@/data/contracts";
+import type { CrewReportRow, DateRange, JobProfitRow, PauseReportRow, PayHistoryRow, ProductivityRow, ReportKeyFigure, ReportKind } from "@/data/contracts";
 import { KeepTogether } from "@/components/keep-together";
 import { StatusChip } from "@/components/ui/status-chip";
 import { cx } from "@/lib/cx";
@@ -190,6 +190,10 @@ function JobRows({ rows }: { rows: JobProfitRow[] }) {
   );
 }
 
+const PER_UNIT = { m2: "a\u00a0m²", lm: "a\u00a0lm", each: "each" } as const;
+/** "Sheet install $12.40 a m²": labour cost per unit by stage (product spec §5.10). */
+const costPerUnitText = (u: CrewReportRow["costPerUnit"][number]): string => `${u.stageName} ${formatMoney(u.centsPerUnit)} ${PER_UNIT[u.unit]}`;
+
 function CrewRows({ rows }: { rows: CrewReportRow[] }) {
   return (
     <div className={cx(GROUP, "overflow-hidden")}>
@@ -201,6 +205,9 @@ function CrewRows({ rows }: { rows: CrewReportRow[] }) {
                 <span className="text-body-strong text-ink">{r.name}</span>
                 <span className="text-meta text-ink">{crewWorkText(r.days, r.hours)}</span>
                 <span className="text-meta text-ink">{countText(r.jobs, "job")}</span>
+                {r.costPerUnit.map((u) => (
+                  <span key={`${u.stageName}|${u.unit}`} data-cost-per-unit="" className="text-meta text-ink">{costPerUnitText(u)}</span>
+                ))}
               </span>
               <span data-earned="" className={cx(FIG, "text-right")}>{formatMoney(r.earningsCents)}</span>
             </span>
@@ -215,6 +222,7 @@ function CrewRows({ rows }: { rows: CrewReportRow[] }) {
             <th scope="col" className={TH}>Worked</th>
             <th scope="col" className={cx(TH, "text-right")}>Jobs</th>
             <th scope="col" className={cx(TH, "text-right")}>Utilisation</th>
+            <th scope="col" className={TH}>Cost per unit</th>
             <th scope="col" className={cx(TH, "text-right")}>Earned</th>
           </tr>
         </thead>
@@ -227,6 +235,9 @@ function CrewRows({ rows }: { rows: CrewReportRow[] }) {
               <td className={cx(TD, "text-body text-ink")}>{crewWorkText(r.days, r.hours)}</td>
               <td className={cx(TD, "text-right text-body text-ink")}>{r.jobs}</td>
               <td className={cx(TD, "text-right text-body text-ink")}>{r.utilisationBp === null ? "None" : marginText(r.utilisationBp)}</td>
+              <td className={cx(TD, "text-meta text-ink")}>
+                {r.costPerUnit.length === 0 ? "None" : r.costPerUnit.map((u) => <span key={`${u.stageName}|${u.unit}`} data-cost-per-unit="" className="block">{costPerUnitText(u)}</span>)}
+              </td>
               <td className={cx(TD, "text-right")}><span data-earned="" className={FIG}>{formatMoney(r.earningsCents)}</span></td>
             </tr>
           ))}
@@ -242,7 +253,7 @@ const ROW_LINK = cx("block text-body-strong text-ink after:absolute after:inset-
 const Caret = () => <CaretRight size={24} aria-hidden="true" className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-2" />;
 
 /** Productivity: stages finished per crew-day by month. A row sums many stages, so it has no single source to open. */
-function ProductivityRows({ rows }: { rows: ProductivityRow[] }) {
+function ProductivityRows({ rows, today }: { rows: ProductivityRow[]; today: string }) {
   const key = (r: ProductivityRow) => `${r.month}|${r.stageName}|${r.jobType}|${r.unit}`;
   return (
     <div className={cx(GROUP, "overflow-hidden")}>
@@ -252,7 +263,7 @@ function ProductivityRows({ rows }: { rows: ProductivityRow[] }) {
             <span className={ROW_GRID}>
               <span className="flex flex-col">
                 <span className="text-body-strong text-ink"><KeepTogether text={r.stageName} /></span>
-                <span className="text-meta text-ink">{monthText(r.month)}</span>
+                <span className="text-meta text-ink">{periodText(r, today)}</span>
                 <span className="text-meta text-ink">{jobTypeLabel(r.jobType)}</span>
                 <span className="text-meta text-ink">{formatQuantity(r.quantity, r.unit)} in {countText(r.crewDays, "crew-day")}</span>
               </span>
@@ -264,14 +275,14 @@ function ProductivityRows({ rows }: { rows: ProductivityRow[] }) {
       <table className="hidden w-full lg:table">
         <thead>
           <tr>
-            {["Month", "Stage", "Job type"].map((h) => <th key={h} scope="col" className={TH}>{h}</th>)}
+            {["When", "Stage", "Job type"].map((h) => <th key={h} scope="col" className={TH}>{h}</th>)}
             {["Done", "Crew-days", "Pace"].map((h) => <th key={h} scope="col" className={cx(TH, "text-right")}>{h}</th>)}
           </tr>
         </thead>
         <tbody className="divide-y divide-line">
           {rows.map((r) => (
             <tr key={key(r)} data-report-row="" className="h-14">
-              <td className={cx(TD, "text-body text-ink whitespace-nowrap")}>{monthText(r.month)}</td>
+              <td className={cx(TD, "text-body text-ink whitespace-nowrap")}>{periodText(r, today)}</td>
               <td className={cx(TD, "text-body-strong text-ink")}><KeepTogether text={r.stageName} /></td>
               <td className={cx(TD, "text-body text-ink")}>{jobTypeLabel(r.jobType)}</td>
               <td className={cx(TD, "num text-right text-body text-ink whitespace-nowrap")}>{formatQuantity(r.quantity, r.unit)}</td>
@@ -380,12 +391,36 @@ function PayHistoryRows({ rows, today }: { rows: PayHistoryRow[]; today: string 
   );
 }
 
-export type ReportBody =
+export type ReportBody = (
   | { kind: "job-profitability"; rows: JobProfitRow[] }
   | { kind: "crew"; rows: CrewReportRow[] }
   | { kind: "productivity"; rows: ProductivityRow[] }
   | { kind: "pauses"; rows: PauseReportRow[] }
-  | { kind: "pay-history"; rows: PayHistoryRow[] };
+  | { kind: "pay-history"; rows: PayHistoryRow[] }
+) & { keyFigure: ReportKeyFigure };
+
+/** A report's key figure as text: money, working days, or a pace per crew-day. */
+export function keyFigureText(f: ReportKeyFigure): string {
+  if (f.format === "per-crew-day") return perCrewDayText(f.value, f.unit);
+  return f.format === "money" ? formatMoney(f.value) : workingDaysText(f.value);
+}
+
+/** The key figure and its label (run 1b places it under the title). */
+function KeyFigure({ figure }: { figure: ReportKeyFigure }) {
+  return (
+    <p data-key-figure="" className="flex flex-col">
+      <span className={cx(figure.format === "money" ? "num text-figure" : "num text-body-strong", "text-ink whitespace-nowrap")}>{keyFigureText(figure)}</span>
+      <span className="text-meta text-ink">{figure.label}.</span>
+    </p>
+  );
+}
+
+/** A productivity row's label: the month, or the chosen range when it sits inside one month. */
+function periodText(r: ProductivityRow, today: string): string {
+  const whole = r.period.from === `${r.month}-01` && r.period.to.slice(0, 7) === r.month && addOneDay(r.period.to).slice(0, 7) !== r.month;
+  return whole ? monthText(r.month) : rangeText(r.period, today);
+}
+const addOneDay = (d: string): string => new Date(Date.parse(`${d}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
 
 export type ReportFrameProps = { range: DateRange; chosen: boolean; today: string; updated: string | null };
 
@@ -395,10 +430,15 @@ export function ReportView({ body, ...frame }: ReportFrameProps & { body: Report
   if (body.rows.length === 0) content = <NothingInRange />;
   else if (body.kind === "job-profitability") content = <JobRows rows={body.rows} />;
   else if (body.kind === "crew") content = <CrewRows rows={body.rows} />;
-  else if (body.kind === "productivity") content = <ProductivityRows rows={body.rows} />;
+  else if (body.kind === "productivity") content = <ProductivityRows rows={body.rows} today={frame.today} />;
   else if (body.kind === "pauses") content = <PauseRows rows={body.rows} />;
   else content = <PayHistoryRows rows={body.rows} today={frame.today} />;
-  return <ReportFrame kind={body.kind} {...frame}>{content}</ReportFrame>;
+  return (
+    <ReportFrame kind={body.kind} {...frame}>
+      {body.rows.length > 0 && <KeyFigure figure={body.keyFigure} />}
+      {content}
+    </ReportFrame>
+  );
 }
 
 export function ReportSkeleton({ kind, ...frame }: ReportFrameProps & { kind: ReportKind }) {

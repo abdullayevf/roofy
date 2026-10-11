@@ -15,6 +15,7 @@ import type {
   PayHistoryRow,
   ProductivityRow,
   Report,
+  ReportKeyFigure,
   ReportKind,
   ReportService,
 } from "../../contracts";
@@ -34,19 +35,35 @@ export function toCsv(header: string[], rows: (string | number | null)[][]): str
   return [header, ...rows].map((r) => r.map(cell).join(",")).join("\r\n") + "\r\n";
 }
 
+/** The calendar month "YYYY-MM" as a range. */
+function monthRange(month: string): DateRange {
+  const y = Number(month.slice(0, 4));
+  const m = Number(month.slice(5, 7));
+  const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
+  return { from: `${month}-01`, to: addDays(`${next}-01`, -1) };
+}
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
 const money = (cents: number | null) => (cents === null ? null : formatDecimal(cents));
 
 export function createReportService(c: FakeContext): ReportService {
   const logsIn = (r: DateRange): WorkLogRow[] => c.ix.liveLogs.filter((l) => inRange(l.date, r));
 
-  function report<Row>(actor: Actor, range: DateRange, rows: () => Row[]): Report<Row> {
+  function report<Row>(
+    actor: Actor,
+    range: DateRange,
+    rows: () => Row[],
+    keyFigure: (rows: Row[]) => ReportKeyFigure,
+  ): Report<Row> {
     const access = c.access(actor);
-    return { view: "manager", access, range, rows: rows() };
+    const list = rows();
+    return { view: "manager", access, range, rows: list, keyFigure: keyFigure(list) };
   }
 
   /**
-   * Jobs with a log or expense in the range, or active now. Figures are each job's to date (pay
-   * rules §12 margins), so a row always reconciles with its Job detail page.
+   * Jobs with a log or expense in the range, lowest forecast margin first so a losing job leads. Figures are
+   * each job's to date (pay rules §12 margins), so a row always reconciles with its Job detail page.
    */
   function jobProfitability(range: DateRange): JobProfitRow[] {
     const touched = new Set([
@@ -54,11 +71,7 @@ export function createReportService(c: FakeContext): ReportService {
       ...c.t.expenses.filter((e) => inRange(e.date, range)).map((e) => e.projectId),
     ]);
     return c.t.projects
-      .filter((p) => p.status === "active" || touched.has(p.id))
-      .sort(
-        (a, b) =>
-          (b.startDate ?? "").localeCompare(a.startDate ?? "") || a.nickname.localeCompare(b.nickname),
-      )
+      .filter((p) => touched.has(p.id))
       .map((p) => {
         const f = c.fig.project(p.id);
         return {
@@ -75,7 +88,8 @@ export function createReportService(c: FakeContext): ReportService {
           marginBp: ratioBp(f.margins.forecastMarginCents, p.contractValueCents),
           href: `/jobs/${p.id}`,
         };
-      });
+      })
+      .sort((a, b) => a.forecastMarginCents - b.forecastMarginCents || a.name.localeCompare(b.name));
   }
 
   function crew(range: DateRange): CrewReportRow[] {
@@ -123,7 +137,9 @@ export function createReportService(c: FakeContext): ReportService {
       });
   }
 
-  function productivity(range: DateRange): ProductivityRow[] {
+  /** Rows plus each row's crew-days as person-day keys, so the headline pace counts a shared day once. */
+  function productivityWithDays(range: DateRange): { row: ProductivityRow; dayKeys: Set<string> }[] {
+    const oneMonth = range.from.slice(0, 7) === range.to.slice(0, 7);
     const groups = new Map<string, ProductivityRow & { qty: number[]; stageIds: Set<string> }>();
     for (const p of c.t.progressEntries.filter((x) => inRange(x.date, range))) {
       const st = c.ix.stages.get(p.stageId)!;
@@ -133,6 +149,7 @@ export function createReportService(c: FakeContext): ReportService {
       if (!groups.has(key)) {
         groups.set(key, {
           month,
+          period: oneMonth ? { ...range } : monthRange(month),
           stageName: st.name,
           jobType: project.jobType,
           unit: st.unit!,
@@ -149,18 +166,36 @@ export function createReportService(c: FakeContext): ReportService {
     }
     return [...groups.values()]
       .map(({ qty, stageIds, ...row }) => {
-        const days = new Set(
+        const dayKeys = new Set(
           [...stageIds].flatMap((id) =>
             c.ix
               .logsOfStage(id)
               .filter((l) => l.date.startsWith(row.month) && inRange(l.date, range))
               .map((l) => dayKey(l.crewMemberId, l.date)),
           ),
-        ).size;
+        );
         const quantity = sum(qty);
-        return { ...row, quantity, crewDays: days, perCrewDay: quantityPerDay(quantity, days) ?? 0 };
+        const days = dayKeys.size;
+        return { row: { ...row, quantity, crewDays: days, perCrewDay: quantityPerDay(quantity, days) ?? 0 }, dayKeys };
       })
-      .sort((a, b) => b.month.localeCompare(a.month) || a.stageName.localeCompare(b.stageName));
+      .sort((a, b) => b.row.month.localeCompare(a.row.month) || a.row.stageName.localeCompare(b.row.stageName));
+  }
+
+  const productivity = (range: DateRange): ProductivityRow[] => productivityWithDays(range).map((x) => x.row);
+
+  /** Headline pace: m² (or the first row's unit) per crew-day over the whole range. */
+  function productivityFigure(range: DateRange): ReportKeyFigure {
+    const all = productivityWithDays(range);
+    const unit: Unit = all.some((x) => x.row.unit === "m2") ? "m2" : (all[0]?.row.unit ?? "m2");
+    const mine = all.filter((x) => x.row.unit === unit);
+    const days = new Set(mine.flatMap((x) => [...x.dayKeys])).size;
+    const stages = new Set(mine.map((x) => x.row.stageName)).size;
+    return {
+      format: "per-crew-day",
+      unit,
+      value: quantityPerDay(sum(mine.map((x) => x.row.quantity)), days) ?? 0,
+      label: `Average across ${plural(stages, "stage")}`,
+    };
   }
 
   function pauses(range: DateRange): PauseReportRow[] {
@@ -233,7 +268,19 @@ export function createReportService(c: FakeContext): ReportService {
         };
       case "crew":
         return {
-          header: ["Name", "Type", "Days", "Hours", "m2", "lm", "each", "Earnings", "Jobs", "Utilisation %"],
+          header: [
+            "Name",
+            "Type",
+            "Days",
+            "Hours",
+            "m2",
+            "lm",
+            "each",
+            "Earnings",
+            "Cost per unit by stage",
+            "Jobs",
+            "Utilisation %",
+          ],
           rows: crew(range).map((r) => [
             r.name,
             r.type,
@@ -241,15 +288,17 @@ export function createReportService(c: FakeContext): ReportService {
             formatDecimal(r.hours),
             ...UNITS.map((u) => formatDecimal(r.units.find((x) => x.unit === u)?.quantity ?? 0)),
             money(r.earningsCents),
+            r.costPerUnit.map((u) => `${u.stageName} ${formatDecimal(u.centsPerUnit)}/${u.unit}`).join("; "),
             r.jobs,
             r.utilisationBp === null ? null : formatDecimal(r.utilisationBp),
           ]),
         };
       case "productivity":
         return {
-          header: ["Month", "Stage", "Job type", "Unit", "Quantity", "Crew-days", "Per crew-day"],
+          header: ["From", "To", "Stage", "Job type", "Unit", "Quantity", "Crew-days", "Per crew-day"],
           rows: productivity(range).map((r) => [
-            r.month,
+            r.period.from,
+            r.period.to,
             r.stageName,
             r.jobType,
             r.unit,
@@ -291,19 +340,38 @@ export function createReportService(c: FakeContext): ReportService {
 
   return {
     async jobProfitability(actor, range) {
-      return report(actor, range, () => jobProfitability(range));
+      return report(actor, range, () => jobProfitability(range), (rows) => ({
+        format: "money",
+        value: sum(rows.map((r) => r.forecastMarginCents)),
+        label: `Forecast margin on ${plural(rows.length, "job")}`,
+      }));
     },
     async crew(actor, range) {
-      return report(actor, range, () => crew(range));
+      return report(actor, range, () => crew(range), (rows) => ({
+        format: "money",
+        value: sum(rows.map((r) => r.earningsCents)),
+        label: `Earned by ${plural(rows.length, "person", "people")}`,
+      }));
     },
     async productivity(actor, range) {
-      return report(actor, range, () => productivity(range));
+      return report(actor, range, () => productivity(range), () => productivityFigure(range));
     },
     async pauses(actor, range) {
-      return report(actor, range, () => pauses(range));
+      return report(actor, range, () => pauses(range), (rows) => ({
+        format: "days",
+        value: sum(rows.map((r) => r.workingDays)),
+        label: `Working days lost across ${plural(new Set(rows.map((r) => r.projectId)).size, "job")}`,
+      }));
     },
     async payHistory(actor, range) {
-      return report(actor, range, () => payHistory(range));
+      return report(actor, range, () => payHistory(range), (rows) => {
+        const paid = rows.filter((r) => r.status === "approved" || r.status === "exported");
+        return {
+          format: "money",
+          value: sum(paid.map((r) => r.totalCents)),
+          label: `Paid in ${plural(paid.length, "pay run")}`,
+        };
+      });
     },
     async csv(actor: Actor, kind: ReportKind, range: DateRange): Promise<ExportFile> {
       c.access(actor);
