@@ -144,13 +144,18 @@ function KeyFigure({ figure, draftRuns = 0 }: { figure: ReportKeyFigure; draftRu
           </>
         ) : null}
       </p>
-      <p className="text-meta text-ink">{figure.label}.</p>
-      {figure.format === "money" && figure.draftCents ? (
-        <p data-draft-caption="" className="text-meta text-ink">
-          <span className={META_FIG}>{formatMoney(figure.draftCents)}</span>
-          {" "}in {draftCaptionTail(draftRuns)}.
-        </p>
-      ) : null}
+      <p className="text-meta text-ink">
+        {figure.label}.
+        {figure.format === "money" && figure.draftCents ? (
+          <>
+            {" "}
+            <span data-draft-caption="" className="inline-block">
+              <span className={META_FIG}>{formatMoney(figure.draftCents)}</span>
+              {" "}in {draftCaptionTail(draftRuns)}.
+            </span>
+          </>
+        ) : null}
+      </p>
     </div>
   );
 }
