@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SegmentDto, StageActions } from "@/data/contracts";
-import { forecastStateText, labourLineText, forecastWorkingText, lostDaysRows, materialsMeta, NOT_STARTED_TIMELINE, PAUSE_CHOICES, progressRowText, segmentsShown, segmentText, timelineRows, stageActionsNow, stageButtons, stageChipFor } from "./stage-detail-text";
+import { forecastStateText, labourLineText, triggerMetaText, forecastWorkingText, lostDaysRows, materialsMeta, NOT_STARTED_TIMELINE, PAUSE_CHOICES, progressRowText, segmentsShown, segmentText, timelineRows, stageActionsNow, stageButtons, stageChipFor } from "./stage-detail-text";
 
 const none: StageActions = { canStart: false, canPause: false, canResume: false, canMarkDone: false, canReopen: false, canSetManualPct: false };
 const TODAY = "2026-09-28";
@@ -176,19 +176,37 @@ describe("timeline and materials words", () => {
 });
 
 describe("labourLineText (forecast breakdown lines)", () => {
-  const base = { crewName: "Sam", date: "2026-09-25", basis: "per_unit" as const, unit: "m2" as const, quantity: 6000, hours: 0, rateCents: 950, amountCents: 57_000, labourCostCents: 71_250, adjustsLogId: null };
-  it("E11.1 Sam's per-unit line: who, the day, quantity at the rate, and the on-cost on top", () => {
-    expect(labourLineText(base, TODAY)).toEqual({ primary: "Sam, Fri 25 Sep", meta: "60 m² at $9.50 = $570.00, plus on-cost" });
+  const onCost = { kind: "on_cost" as const, onCostBp: 2500 };
+  const base = { crewName: "Sam", date: "2026-09-25", basis: "per_unit" as const, unit: "m2" as const, quantity: 6000, hours: 0, multiplier: null, rateCents: 950, amountCents: 57_000, labourCostCents: 71_250, costExtra: onCost, adjustsLogId: null };
+  it("E11.1 Sam's per-unit line: who, the day, quantity at the rate, and the on-cost percent on top", () => {
+    expect(labourLineText(base, TODAY)).toEqual({ primary: "Sam, Fri 25 Sep", meta: "60 m² at $9.50 = $570.00, plus 25% on-cost = $712.50" });
   });
   it("E11.1 Dima's contractor line costs what he is paid", () => {
-    expect(labourLineText({ ...base, crewName: "Dima", rateCents: 1200, amountCents: 72_000, labourCostCents: 72_000 }, TODAY).meta).toBe("60 m² at $12.00 = $720.00");
+    expect(labourLineText({ ...base, crewName: "Dima", rateCents: 1200, amountCents: 72_000, labourCostCents: 72_000, costExtra: null }, TODAY).meta).toBe("60 m² at $12.00 = $720.00");
+  });
+  it("E11.2 Dima in an unregistered workspace: the extra is GST, not on-cost", () => {
+    expect(labourLineText({ ...base, crewName: "Dima", rateCents: 1200, amountCents: 72_000, labourCostCents: 79_200, costExtra: { kind: "gst" } }, TODAY).meta).toBe("60 m² at $12.00 = $720.00, plus GST = $792.00");
+  });
+  it("E8 a negative adjustment still shows its on-cost", () => {
+    expect(labourLineText({ ...base, adjustsLogId: "x", amountCents: -1_200, labourCostCents: -1_500 }, TODAY).meta).toBe("Pay adjustment, −$12.00, plus 25% on-cost = −$15.00");
+  });
+  it("hourly lines show the multiplier so the line adds up by hand", () => {
+    expect(labourLineText({ ...base, basis: "hourly", unit: null, quantity: 800, multiplier: 150, rateCents: 4500, amountCents: 54_000, labourCostCents: 67_500 }, TODAY).meta).toBe("8 h at $45.00 an hour × 1.5 = $540.00, plus 25% on-cost = $675.00");
+    expect(labourLineText({ ...base, basis: "hourly", unit: null, quantity: 800, multiplier: 100, rateCents: 4500, amountCents: 36_000, labourCostCents: 36_000, costExtra: null }, TODAY).meta).toBe("8 h at $45.00 an hour = $360.00");
   });
   it("hours, days, lump sums, adjustments and a missing rate each say how the pay was worked out", () => {
-    expect(labourLineText({ ...base, basis: "hourly", unit: null, quantity: 800, rateCents: 4500, amountCents: 36_000, labourCostCents: 36_000 }, TODAY).meta).toBe("8 h at $45.00 an hour = $360.00");
-    expect(labourLineText({ ...base, basis: "daily", unit: null, quantity: 100, rateCents: 40_000, amountCents: 40_000, labourCostCents: 40_000 }, TODAY).meta).toBe("1 day at $400.00 a day = $400.00");
-    expect(labourLineText({ ...base, basis: "lump_sum", amountCents: 50_000, labourCostCents: 50_000 }, TODAY).meta).toBe("Share of the lump sum, $500.00");
-    expect(labourLineText({ ...base, adjustsLogId: "x", amountCents: 1_200, labourCostCents: 1_200 }, TODAY).meta).toBe("Pay adjustment, $12.00");
+    const plain = { ...base, costExtra: null };
+    expect(labourLineText({ ...plain, basis: "hourly", unit: null, quantity: 800, rateCents: 4500, amountCents: 36_000, labourCostCents: 36_000 }, TODAY).meta).toBe("8 h at $45.00 an hour = $360.00");
+    expect(labourLineText({ ...plain, basis: "daily", unit: null, quantity: 100, rateCents: 40_000, amountCents: 40_000, labourCostCents: 40_000 }, TODAY).meta).toBe("1 day at $400.00 a day = $400.00");
+    expect(labourLineText({ ...plain, basis: "lump_sum", amountCents: 50_000, labourCostCents: 50_000 }, TODAY).meta).toBe("Share of the lump sum, $500.00");
+    expect(labourLineText({ ...plain, adjustsLogId: "x", amountCents: 1_200, labourCostCents: 1_200 }, TODAY).meta).toBe("Pay adjustment, $12.00");
     expect(labourLineText({ ...base, rateCents: null, amountCents: 0, labourCostCents: 0 }, TODAY).meta).toBe("60 m², no rate set yet");
+  });
+});
+
+describe("triggerMetaText", () => {
+  it("states the tolerance from the domain constant and the trigger point", () => {
+    expect(triggerMetaText(420_000)).toBe("Budget plus 5%, so a forecast over $4,200.00 shows as trending over");
   });
 });
 

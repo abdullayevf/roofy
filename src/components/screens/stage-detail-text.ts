@@ -1,6 +1,7 @@
 import type { LogRowManager, SegmentDto, StageActions, StageDetail } from "@/data/contracts";
 import type { PauseReason } from "@/domain/segments";
 import { addDays } from "@/domain/dates";
+import { TRENDING_TOLERANCE_BP } from "@/domain/progress";
 import type { Status } from "@/components/ui/status-chip";
 import { formatDate, formatDays, formatHours, formatMoney, formatQuantity } from "@/lib/format";
 import { hundredthsText } from "./field-input";
@@ -75,22 +76,34 @@ export function forecastWorkingText(w: { actualCents: number; pctBp: number; for
 }
 
 /** The fields of a log line the forecast breakdown shows (a manager's log row). */
-type LabourLine = Pick<LogRowManager, "crewName" | "date" | "basis" | "unit" | "quantity" | "rateCents" | "amountCents" | "labourCostCents" | "adjustsLogId">;
+type LabourLine = Pick<LogRowManager, "crewName" | "date" | "basis" | "unit" | "quantity" | "multiplier" | "rateCents" | "amountCents" | "labourCostCents" | "costExtra" | "adjustsLogId">;
 
-/** How a line's pay was worked out, before on-cost: "60 m² at $9.50 = $570.00". */
+/** How a line's pay was worked out, before on-cost or GST: "60 m² at $9.50 = $570.00", "8 h at $45.00 an hour × 1.5 = $540.00". */
 function payWorking(l: LabourLine): string {
   if (l.adjustsLogId !== null) return `Pay adjustment, ${formatMoney(l.amountCents)}`;
   if (l.basis === "lump_sum") return `Share of the lump sum, ${formatMoney(l.amountCents)}`;
   const qty = l.basis === "per_unit" && l.unit ? formatQuantity(l.quantity, l.unit) : l.basis === "daily" ? formatDays(l.quantity) : formatHours(l.quantity);
   if (l.rateCents === null) return `${qty}, no rate set yet`;
   const per = l.basis === "daily" ? " a day" : l.basis === "hourly" ? " an hour" : "";
-  return `${qty} at ${formatMoney(l.rateCents)}${per} = ${formatMoney(l.amountCents)}`;
+  const times = l.basis === "hourly" && l.multiplier !== null && l.multiplier !== 100 ? ` × ${hundredthsText(l.multiplier)}` : "";
+  return `${qty} at ${formatMoney(l.rateCents)}${per}${times} = ${formatMoney(l.amountCents)}`;
 }
 
-/** A labour line behind a stage's forecast: who and the day, then how its pay was worked out; on-cost noted when the job pays more than the person gets. */
+/** What the job pays on top of the pay, and the line's cost: ", plus 25% on-cost = $712.50" or ", plus GST = $792.00"; nothing when they match. */
+function costExtraWorking(l: LabourLine): string {
+  if (l.costExtra === null || l.labourCostCents === l.amountCents) return "";
+  const what = l.costExtra.kind === "gst" ? "GST" : `${hundredthsText(l.costExtra.onCostBp)}% on-cost`;
+  return `, plus ${what} = ${formatMoney(l.labourCostCents)}`;
+}
+
+/** A labour line behind a stage's forecast: who and the day, then how its pay was worked out and what the job pays on top, so it adds up by hand. */
 export function labourLineText(l: LabourLine, today: string): { primary: string; meta: string } {
-  const onCost = l.labourCostCents > l.amountCents ? ", plus on-cost" : "";
-  return { primary: `${l.crewName}, ${formatDate(l.date, today)}`, meta: `${payWorking(l)}${onCost}` };
+  return { primary: `${l.crewName}, ${formatDate(l.date, today)}`, meta: `${payWorking(l)}${costExtraWorking(l)}` };
+}
+
+/** The warning point in words, the tolerance read from pay rules §12 (TRENDING_TOLERANCE_BP), not typed in. */
+export function triggerMetaText(triggerCents: number): string {
+  return `Budget plus ${hundredthsText(TRENDING_TOLERANCE_BP)}%, so a forecast over ${formatMoney(triggerCents)} shows as trending over`;
 }
 
 /** The forecast in one line: the division while open, the cost once done, or why there is none yet (pay rules §12). */

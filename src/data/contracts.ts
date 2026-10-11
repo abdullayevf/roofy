@@ -13,6 +13,7 @@
  * the manager view with `access.canEdit === false`. Reads a foreman can never reach return the
  * manager type only and throw `DataError("forbidden")` for a foreman.
  */
+import type { LabourCostExtra } from "@/domain/costing";
 import type { PersonTotals } from "@/domain/gst";
 import type { LedgerKind } from "@/domain/ledger";
 import type { LineLabel } from "@/domain/payrun";
@@ -224,6 +225,8 @@ export interface LogRowManager extends LogRowForeman {
   amountCents: Cents;
   /** Job cost of this line (pay rules §11: on-cost for employees, GST if applicable). */
   labourCostCents: Cents;
+  /** Why labourCostCents differs from amountCents: on-cost (with its percent) or GST; null when it doesn't. */
+  costExtra: LabourCostExtra;
   missingRate: boolean;
   /** Set when the log belongs to an approved pay run (locked). */
   payRunId: Id | null;

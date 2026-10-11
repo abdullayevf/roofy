@@ -1,5 +1,4 @@
 import type { StageDetailManager } from "@/data/contracts";
-import { formatMoney } from "@/lib/format";
 import { KeepTogether } from "@/components/keep-together";
 import { Button } from "@/components/ui/button";
 import { List, type ListRow } from "@/components/ui/list";
@@ -8,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { COLUMN, Section } from "./home-parts";
 import { LoadError } from "./field-entry";
 import { stageAlertNote } from "./job-detail-text";
-import { forecastStateText, labourLineText } from "./stage-detail-text";
+import { forecastStateText, labourLineText, triggerMetaText } from "./stage-detail-text";
 
 const stageHref = (s: { projectId: string; id: string }) => `/jobs/${s.projectId}/stages/${s.id}`;
 
@@ -17,6 +16,21 @@ function BackToStage({ href }: { href: string }) {
     <Button variant="link" href={href} className="self-start">
       Back to stage
     </Button>
+  );
+}
+
+const AMOUNT = /([−-]?\$[\d,]+\.\d{2})/;
+
+/** A sentence of plain body text whose money values use the figure style (lessons.md: money is never bold body text). */
+function FigureText({ text }: { text: string }) {
+  return text.split(AMOUNT).map((part, i) =>
+    i % 2 === 1 ? (
+      <span key={i} className="whitespace-nowrap text-figure num">
+        {part}
+      </span>
+    ) : (
+      part
+    ),
   );
 }
 
@@ -79,7 +93,7 @@ export function StageForecastBody({ stage, today }: { stage: StageDetailManager;
           {
             key: "trigger",
             primary: "Warning from",
-            meta: `Budget plus 5%, so a forecast over ${formatMoney(stage.labourTriggerCents)} shows as trending over`,
+            meta: triggerMetaText(stage.labourTriggerCents),
             figure: <MoneyCell cents={stage.labourTriggerCents} />,
           },
         ]
@@ -103,13 +117,15 @@ export function StageForecastBody({ stage, today }: { stage: StageDetailManager;
         </div>
       </Section>
       <Section title="How the forecast is worked out">
-        <p data-forecast-working="" className="text-body-strong text-ink [overflow-wrap:anywhere]">
-          {forecastStateText({
-            status: stage.status,
-            actualCents: stage.labourActualCents,
-            pctBp: stage.pctBp,
-            forecastCents: stage.forecastLabourCents,
-          })}
+        <p data-forecast-working="" className="text-body text-ink [overflow-wrap:anywhere]">
+          <FigureText
+            text={forecastStateText({
+              status: stage.status,
+              actualCents: stage.labourActualCents,
+              pctBp: stage.pctBp,
+              forecastCents: stage.forecastLabourCents,
+            })}
+          />
         </p>
         <List rows={working} />
       </Section>

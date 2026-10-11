@@ -36,8 +36,15 @@ test("from Home, a manager finds the Smith job trending over and the lines behin
   const linesText = (await page.locator("[data-forecast-lines]").innerText()).replace(/\u00a0/g, " ");
   expect(linesText).toContain("Sam, Fri 25 Sep");
   expect(linesText).toContain("Dima, Fri 25 Sep");
+  // Each line adds up by hand: the pay, then what the job pays on top and the line's cost (review P2-1, P3-2).
+  expect(linesText).toContain("60 m² at $9.50 = $570.00, plus 25% on-cost = $712.50");
+  expect(linesText).toContain("60 m² at $12.00 = $720.00");
   expect(linesText).toMatch(/Labour so far[\s\S]*\$1,432\.50/);
   await expect(page.locator("[data-forecast-working]")).toHaveText("$1,432.50 ÷ 30% done = $4,775.00");
+  // lessons.md: money values use the figure style, never bold body text.
+  const working = page.locator("[data-forecast-working]");
+  expect(Number(await working.evaluate((e) => getComputedStyle(e).fontWeight)), "working sentence is not bold").toBeLessThan(600);
+  await expect(working.locator(".text-figure")).toHaveText(["$1,432.50", "$4,775.00"]);
   const main = (await page.locator('[data-screen="stage-forecast"]').innerText()).replace(/\u00a0/g, " ");
   for (const t of ["$4,000.00", "$4,200.00", "Trending $775.00 over budget"]) expect(main).toContain(t);
 });

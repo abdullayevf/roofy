@@ -151,8 +151,16 @@ describe("trending trigger point (pay rules §12 alerts)", () => {
   it("E12.1 the warning starts above budget × 1.05: $4,000.00 → $4,200.00", () => {
     expect(trendingTriggerCents(400_000)).toBe(420_000);
   });
-  it("rounds to the cent and stays $0 for no budget", () => {
+  it("is the last forecast that is not trending (rounds down) and stays $0 for no budget", () => {
     expect(trendingTriggerCents(1_001)).toBe(1_051);
+    expect(trendingTriggerCents(400_050)).toBe(420_052);
     expect(trendingTriggerCents(0)).toBe(0);
+  });
+  it("matches budgetAlert exactly: the trigger is not trending, one cent more is", () => {
+    for (const budget of [400_050, 400_000, 1_001, 1_010, 99_990, 123_457]) {
+      const at = trendingTriggerCents(budget);
+      expect(budgetAlert(0, at, budget)).toBeNull();
+      expect(budgetAlert(0, at + 1, budget)?.level).toBe("trending");
+    }
   });
 });

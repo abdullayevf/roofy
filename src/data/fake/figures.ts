@@ -4,7 +4,7 @@
  * `sum` over cents the domain already computed; nothing here multiplies or divides money.
  */
 import { findGaps, utilisation, type AttendanceInput, type CrewActive } from "@/domain/attendance";
-import { expenseCost, labourCost, type CostContext } from "@/domain/costing";
+import { expenseCost, labourCost, labourCostExtra, type CostContext, type LabourCostExtra } from "@/domain/costing";
 import { addDays, countWorkingDays, daysBetween } from "@/domain/dates";
 import { doublePayFlags, duplicateFlags, pausedStageFlags, type FlagLog } from "@/domain/flags";
 import { floorCheck, type FloorResult } from "@/domain/floor";
@@ -179,6 +179,10 @@ export class Figures {
 
   labourCostOf(log: WorkLogRow): Cents {
     return labourCost(log.amountCents, this.crewOf(log.crewMemberId), this.ctx);
+  }
+
+  labourCostExtraOf(log: WorkLogRow): LabourCostExtra {
+    return labourCostExtra(this.crewOf(log.crewMemberId), this.ctx);
   }
 
   labourOf(logs: readonly WorkLogRow[]): Cents {

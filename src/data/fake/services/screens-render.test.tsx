@@ -112,14 +112,20 @@ describe("forecast breakdown (flows find the job losing money, tap 2)", () => {
     if (d.view !== "manager") throw new Error("expected the money view");
     return renderToStaticMarkup(<StageForecastBody stage={d} today={TODAY} />).replace(/\u00a0/g, " ");
   }
+  /** The words a reader sees, tags removed (the working's money values sit in figure-style spans). */
+  const words = (html: string) => html.replace(/<[^>]+>/g, "");
   it("E11.1/E12.1 Smith sheet install: Sam and Dima per-unit lines, $1,432.50 so far, ÷ 30% = $4,775.00 against $4,000.00 and $4,200.00", async () => {
     const html = await manager("manager", meta.stages.smithSheetInstall);
-    for (const t of ["Sam, Fri 25 Sep", "60 m² at $9.50 = $570.00, plus on-cost", "$712.50", "Dima, Fri 25 Sep", "60 m² at $12.00 = $720.00", "$720.00", "$1,432.50", "6 time-only lines cost nothing on their own", "$1,432.50 ÷ 30% done = $4,775.00", "$4,000.00", "$4,200.00", "Trending $775.00 over budget"]) {
-      expect(html).toContain(t);
+    // lessons.md: money in the working uses the figure style, never bold body text.
+    expect(html).toContain('<p data-forecast-working="" class="text-body text-ink [overflow-wrap:anywhere]">');
+    expect(html).toContain('<span class="whitespace-nowrap text-figure num">$4,775.00</span>');
+    expect(words(html)).toContain("Budget plus 5%, so a forecast over $4,200.00 shows as trending over");
+    for (const t of ["Sam, Fri 25 Sep", "60 m² at $9.50 = $570.00, plus 25% on-cost = $712.50", "Dima, Fri 25 Sep", "60 m² at $12.00 = $720.00", "$720.00", "$1,432.50", "6 time-only lines cost nothing on their own", "$1,432.50 ÷ 30% done = $4,775.00", "$4,000.00", "$4,200.00", "Trending $775.00 over budget"]) {
+      expect(words(html)).toContain(t);
     }
   });
   it("the accountant and owner see the same breakdown", async () => {
-    for (const role of ["accountant", "owner"] as const) expect(await manager(role, meta.stages.smithSheetInstall)).toContain("$1,432.50 ÷ 30% done = $4,775.00");
+    for (const role of ["accountant", "owner"] as const) expect(words(await manager(role, meta.stages.smithSheetInstall))).toContain("$1,432.50 ÷ 30% done = $4,775.00");
   });
   it("a done stage says the forecast is what it cost, with no trigger", async () => {
     const id = getSeed().stages.find((st) => st.projectId === meta.projects.smith && st.name === "Site setup & safety")!.id;

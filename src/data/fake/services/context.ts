@@ -156,6 +156,7 @@ export class FakeContext {
       rateCents: l.rateCents,
       amountCents: l.amountCents,
       labourCostCents: this.fig.labourCostOf(l),
+      costExtra: this.fig.labourCostExtraOf(l),
       missingRate: l.missingRate,
       payRunId: l.payRunId,
       adjustsLogId: l.adjustsLogId,

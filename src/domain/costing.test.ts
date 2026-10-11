@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expenseCost, labourCost } from "./costing";
+import { expenseCost, labourCost, labourCostExtra } from "./costing";
 
 const employee = { type: "employee", gstRegistered: false } as const;
 const gstContractor = { type: "contractor", gstRegistered: true } as const;
@@ -29,6 +29,20 @@ describe("labourCost", () => {
     expect(labourCost(-72_000, gstContractor, unregistered)).toBe(-79_200);
     expect(labourCost(-1_005, employee, registered)).toBe(-labourCost(1_005, employee, registered));
     expect(Object.is(labourCost(0, employee, registered), 0)).toBe(true);
+  });
+});
+
+describe("labourCostExtra (why a line costs the job more than the pay)", () => {
+  it("employees carry the on-cost percent", () => {
+    expect(labourCostExtra(employee, registered)).toEqual({ kind: "on_cost", onCostBp: 2500 });
+  });
+  it("E11.2 a GST-registered contractor in an unregistered workspace adds GST", () => {
+    expect(labourCostExtra(gstContractor, unregistered)).toEqual({ kind: "gst" });
+  });
+  it("nothing extra for registered workspaces' contractors, plain contractors, or a 0% on-cost", () => {
+    expect(labourCostExtra(gstContractor, registered)).toBeNull();
+    expect(labourCostExtra({ type: "contractor", gstRegistered: false }, unregistered)).toBeNull();
+    expect(labourCostExtra(employee, { workspaceGstRegistered: true, onCostBp: 0 })).toBeNull();
   });
 });
 
