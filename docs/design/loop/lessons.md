@@ -38,3 +38,5 @@
 - `nowrap` only on a short figure or name run that still fits at 200% text zoom; let it wrap (break-words) past the column, never widen the page (export zip name, report figures).
 - The collapsed range/filter row stays collapsed after it is applied: Show range closes the form again (reports iter2, all five kinds).
 - In a row's right column only the total is figure-sized; breakdown amounts are meta lines (pay iter, reports iter1 and iter2).
+- A per-unit rate with no units in the range is not "$0.00 a <unit>": hide the line or say "No units this week" (reports i3, design + field).
+- An empty state's button is the verb that fills it ("Log today"), not "Go to Home" (reports i2 F12, i3 D40).
