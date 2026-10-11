@@ -23,7 +23,7 @@ export type Section =
   | "export"
   | "install";
 
-const FOREMAN: readonly Section[] = ["home", "jobs", "log", "outbox", "expenses", "install"];
+const FOREMAN: readonly Section[] = ["home", "jobs", "log", "outbox", "expenses", "more", "install"];
 const ACCOUNTANT: readonly Section[] = ["home", "jobs", "pay", "reports", "expenses", "more", "install"];
 
 /**
@@ -47,15 +47,14 @@ const ALL_MORE: (MoreItem & { section: Section })[] = [
   { section: "expenses", key: "expenses", label: "Expenses", href: "/expenses", meta: "Receipts and who paid" },
   { section: "pay", key: "pay", label: "Pay runs", href: "/pay", meta: "Review, approve and export" },
   { section: "reports", key: "reports", label: "Reports", href: "/reports", meta: "How each job is tracking" },
-  { section: "settings", key: "settings", label: "Settings", href: "/settings", meta: "Business, rates and theme" },
+  { section: "settings", key: "settings", label: "Settings", href: "/settings", meta: "Business, pay and people" },
   { section: "history", key: "history", label: "Record history", href: "/history", meta: "Who changed what, and when" },
   { section: "export", key: "export", label: "Workspace export", href: "/export", meta: "Download your data" },
   { section: "install", key: "install", label: "Install guide", href: "/install", meta: "Put Roofy on your home screen" },
 ];
 
-/** Rows of the More menu for a role: only pages it can open (foreman has no More). */
+/** Rows of the More menu for a role: only pages it can open. The foreman's short More has Expenses and the install guide: no settings, no money. */
 export function moreItems(role: ShellRole): MoreItem[] {
-  if (role === "foreman") return [];
   // The accountant's tab bar already has Pay and Reports.
   const inTabs: Section[] = role === "accountant" ? ["pay", "reports"] : [];
   return ALL_MORE.filter((i) => canOpen(role, i.section) && !inTabs.includes(i.section)).map((i) => ({ key: i.key, label: i.label, href: i.href, meta: i.meta }));

@@ -25,7 +25,7 @@ import {
 } from "./settings-input";
 import { NEEDS_CONNECTION, useOnline } from "./use-online";
 
-type Errors = Record<string, string | undefined>;
+export type Errors = Record<string, string | undefined>;
 const SAVED = "Changes saved.";
 const FAILED = "Couldn't save this. Try again.";
 /** Fields sit two to a row from 1024 px, so the form uses the width (lesson: desktop uses the width). */
@@ -35,7 +35,7 @@ const issuesOf = (r: ActionResult): Errors =>
   r.ok ? {} : Object.fromEntries(r.issues.map((i) => [i.field, i.message]));
 
 /** One save flow for every settings form: busy button, per-field errors, saved toast, offline Needs connection. */
-function useSave(demoOffline: boolean) {
+export function useSave(demoOffline: boolean) {
   const router = useRouter();
   const online = useOnline(demoOffline);
   const [busy, setBusy] = useState(false);
@@ -68,9 +68,9 @@ function useSave(demoOffline: boolean) {
   return { online, busy, saved, setSaved, savedMessage, failed, errors, setErrors, run };
 }
 
-type Save = ReturnType<typeof useSave>;
+export type Save = ReturnType<typeof useSave>;
 
-function SettingsForm({
+export function SettingsForm({
   s,
   onSubmit,
   label = "Save changes",

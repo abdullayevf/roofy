@@ -20,9 +20,9 @@ describe("canOpen", () => {
     expect(canOpen("manager", "export")).toBe(false);
   });
   it("keeps money and admin pages from the foreman", () => {
-    for (const s of ["crew", "pay", "reports", "settings", "history", "export", "more"] as const)
+    for (const s of ["crew", "pay", "reports", "settings", "history", "export"] as const)
       expect(canOpen("foreman", s)).toBe(false);
-    for (const s of ["home", "log", "jobs", "outbox", "expenses", "install"] as const) expect(canOpen("foreman", s)).toBe(true);
+    for (const s of ["home", "log", "jobs", "outbox", "expenses", "more", "install"] as const) expect(canOpen("foreman", s)).toBe(true);
   });
   it("gives the accountant the read-only money pages only", () => {
     for (const s of ["home", "pay", "reports", "expenses", "more", "install"] as const)
@@ -38,7 +38,7 @@ describe("moreItems", () => {
     expect(moreItems("manager").map((i) => i.label)).toEqual([...shared, "Install guide"]);
     expect(moreItems("owner").map((i) => i.label)).toEqual([...shared, "Workspace export", "Install guide"]);
     expect(moreItems("accountant").map((i) => i.label)).toEqual(["Expenses", "Install guide"]);
-    expect(moreItems("foreman")).toEqual([]);
+    expect(moreItems("foreman").map((i) => i.label)).toEqual(["Expenses", "Install guide"]);
   });
 });
 

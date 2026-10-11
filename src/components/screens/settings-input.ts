@@ -67,3 +67,29 @@ export function anchorOn(anchor: string, weekday: number): string {
   d.setUTCDate(d.getUTCDate() - back);
   return d.toISOString().slice(0, 10);
 }
+
+const SHARE_BLANK = "Add a share, or 0 if the stage has none.";
+
+/** A template share as percent text to basis points; blank or unreadable is never 0%. */
+export function readShare(text: string): { bp: number } | { error: string } {
+  const raw = text.replace(/[%\s]/g, "");
+  if (raw === "") return { error: SHARE_BLANK };
+  let bp: number;
+  try {
+    bp = parseDecimal(raw, 2);
+  } catch {
+    return { error: "Enter a percent, like 25." };
+  }
+  if (bp < 0 || bp > 10_000) return { error: "A share is between 0% and 100%." };
+  return { bp };
+}
+
+/** The two totals a template must reach: labour 100%; materials 100% or every stage 0%. Messages name the total they got. */
+export function shareErrors(labour: number[], materials: number[]): { labour?: string; materials?: string } {
+  const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+  const out: { labour?: string; materials?: string } = {};
+  if (sum(labour) !== 10_000) out.labour = `Labour shares must add up to 100%. They add up to ${bpText(sum(labour))}%.`;
+  if (![0, 10_000].includes(sum(materials)))
+    out.materials = `Materials shares must add up to 100%, or all be 0%. They add up to ${bpText(sum(materials))}%.`;
+  return out;
+}
