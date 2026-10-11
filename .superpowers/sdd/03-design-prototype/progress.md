@@ -1,0 +1,442 @@
+# SDD ledger — plan: docs/plans/03-design-prototype.md
+
+Resumed on VPS 2026-09-29 from origin/claude/funny-feynman-1r94tn (head 975cc2e) as branch phase/2-design-prototype.
+Cloud session's ledger was not pushed (git-ignored); state rebuilt from PROGRESS.md + git log.
+
+Task 1: complete (cloud session, reviewed)
+Task 2: complete (cloud session, reviewed)
+Task 3: complete (cloud session, reviewed)
+Task 4: complete (cloud session, reviewed)
+Task 5: complete (cloud session, reviewed)
+Task 6: complete (cloud session, reviewed)
+Task 7: implemented 88b97b1..85317cb; review pending
+
+Env check on VPS (2026-09-29): pnpm verify = 548/549 (seed "builds in under 300 ms" fails only under full parallel suite on 4 cores: best 350 ms; passes alone). pnpm test:e2e on real WebKit: 64 passed, 5 skipped, exit 0.
+
+## Pre-flight scan
+
+| Tasks | Shared file/interface | Finding |
+|---|---|---|
+| 8 ↔ 9 | nav components (TabBar/Sidebar in /design vs (app) layout) | Task 9 must reuse Task 8's nav primitives, not rebuild |
+| 9 ↔ 19 | /more page | Task 9 creates /more shell; Task 19 finishes the More menu content — ok, sequential |
+| 9 ↔ 11–19 | (app) layout, placeholder pages | Task 9 placeholders are replaced by screen tasks — ok |
+| 10 ↔ 11, 12 | Home manager + Log crew-day | Plan text says "Task 12/13's screens" — really Task 11 (Home) and Task 12 (Log). Ruling below |
+| 6 ↔ 11–19 | `?demo=` states, getData() | consumers; ok |
+| 7 ↔ 12, 14–17, 19 | Server Functions + push | screens import actions; ok |
+| 11–19 ↔ 20 | flows.md tap budgets | screen tasks write per-flow tap tests; Task 20 adds taps.ts harness + timing. Ruling below |
+| 11–19 ↔ 21 | foreman routes | ok |
+| 11–19 ↔ 22 | approved loop state → baselines | 22 must run after every loop passes — ok |
+| 8 | self-consistent | loop mid-iteration (iter 4 fixes unscored) |
+| 9 | self-consistent | partial (446bef6) |
+| 10 | self-consistent except numbering | |
+| 20 | "taps.ts wrapper" vs screen tasks' own tap tests | overlap |
+| 22 | WebKit standalone capture | real WebKit available on VPS — use it |
+
+Ruling: Task 10 builds Home manager (Task 11's screen) and Log crew-day (Task 12's screen) to production quality — plan numbering typo; Tasks 11/12 then extend them — cost if wrong: none.
+Ruling: screen tasks 11–19 write their flow tap-budget specs using tests/e2e/taps.ts; Task 11 (first screen task) creates taps.ts per Task 20's text; Task 20 then adds the timing assertion and fills any flow still missing — avoids writing tap tests twice — cost if wrong: small rework in Task 20.
+Ruling: design critics run as general-purpose subagents (opus) told to follow .claude/agents/{design,field}-critic.md verbatim, because this session's agent list was loaded before the branch checkout — cost if wrong: none (same prompt, same model).
+Ruling: finish Task 9 (shell + placeholder routes incl. /outbox) before capturing/scoring Task 8's system loop iteration 4 — iteration 3's only automated-check failure was the /outbox prefetch 404 that Task 9's placeholders fix — cost if wrong: one extra capture round.
+Task 7: review (spec-reviewer opus) — open question settled: re-pricing $0 missing-rate logs on setRate is spec-compliant (only fix path before approval) with conditions; 1 Important (re-pricing reaches adjustments → RangeError, half-saved rate); non-blocking: FakeStore.write no rollback (arch §7 wants per-mutation transaction).
+Ruling: include FakeStore.write rollback in Task 7 fix round — arch §7 requires each mutation in its own transaction and the Important finding shows a half-apply — cost if wrong: small extra change.
+Ruling: fix the seed "under 300 ms" timing test flake in the same round (fails only under full parallel suite on 4-core VPS; verify must be green) — keep a meaningful perf guard — cost if wrong: weaker perf guard.
+Task 7: fix round 1/5 dispatched (fresh opus implementer; base 975cc2e)
+Note: design-critic and field-critic agent types became available after checkout — use them directly (supersedes the general-purpose ruling above).
+Task 7: fix round 1 commits 975cc2e..e29aa96 (setRate skips adjustments; write rollback; seed guard CPU time 500 ms); re-review dispatched (opus)
+Task 7: open issue (Phase 5): push saves entry and idempotency record as two writes — real server must do both in one transaction.
+Task 9: dispatched sonnet implementer, BASE e29aa96
+Task 7: fix round 1/5 (3 addressed, 0 open; commits 975cc2e..e29aa96)
+Task 7: complete (commits 88b97b1..e29aa96, review clean)
+Task 7: minor (deferred): PROGRESS.md:59 missing full stop; nextInstant advances on rolled-back write; each fake write copies table graph (~20 ms).
+Task 9: implemented 0c0b291 (+ partial 446bef6); review dispatched (sonnet)
+Task 9: review — 1 Important (manager can open Owner-only workspace export, §5.11); minors 2–10.
+Ruling: Task 9 fix round also takes Minor #2 (tab bar left/right safe-area inset; drop unrequested manifest orientation) and Minor #6b (theme-colors reads src/app/tokens.css from cwd at runtime → breaks a deploy without src/) — correctness risks against Global Constraints (safe areas) and Phase 9 deploy — cost if wrong: small extra change.
+Ruling: Task 9 Minor #4 desktop sidebar "Manage" extras for managers kept — desktop has room; spec §6.3 only asks for a left sidebar; record as deviation in PROGRESS — cost if wrong: remove 4 sidebar rows.
+Ruling: Task 9 Minor #5 prefetch={false} on shared links kept for Phase 2, recorded as deviation; revisit in Phase 5 — cost if wrong: slower nav until Phase 5.
+Task 9: minor (deferred): #3 layout demo banner/badge stale on soft nav (Phase 5 client store); #7 workspaceNameFor swallows all errors; #8 weak e2e asserts (Fill check, top>=0); #9 icon.svg hard-coded colours; #10 accountant can open /jobs (decide in Task 18); #6a theme UI control → Task 19.
+Task 8: iteration 4 captured (system); checks: dom-contrast "Forecast"/"Cost so far" 1.00:1 on all 6 captures.
+Task 8: system iteration 4 scored 82/82 (avg 82), P1: i4-D14 installed capture unsliced, i4-F1 contrast checker on tape-bar captions; critics file system-iter4-critics.md. Fix dispatch waits for Task 9 fix round (no parallel implementers).
+Task 9: fix round 1 commit 1494b8f; re-review dispatched
+Task 8: iteration 4 fix round dispatched (sonnet), BASE 1494b8f; it also captures iteration 5
+Task 9: fix round 1/5 (4 addressed, 0 open; commits 0c0b291..1494b8f)
+Task 9: complete (commits 446bef6..1494b8f, review clean) — e2e exit line items (PWA install in WebKit standalone) re-verified in Task 22.
+Task 9: minor (deferred): PROGRESS.md:32 stale 'Manager More also lists Workspace export' sentence (tidy at phase end); safe-area inset e2e checks classes only.
+Task 8: iteration 4 fixes committed 1494b8f..c388e03; iteration 5 captured, checks 0 failures (9 captures); critics iter 5 dispatched
+Task 8: minor (deferred): D6 Atkinson slashed zero in inline body amounts (font lacks plain-zero feature); keyboard capture uses static panel not live sheet; new tape-bar/segmented tests not run red first.
+Task 8: iteration 5 scored 87/87 (avg 87), P0/P1 0, checks pass. Critics file system-iter5-critics.md. Iteration 6 = final allowed.
+Ruling: i5-D3 vs i4-D6 conflict — follow DESIGN.md §3: input values in Atkinson (tnum); Atkinson's slashed zero is accepted (it is the font's legibility feature for 0 vs O); close i4-D6 as "won't fix — DESIGN.md §3 font roles" — cost if wrong: a critic may re-raise the slashed zero as P3.
+Ruling: i5-F1 — put the optional note ABOVE the reason chips ("Add a note first (optional)"), reason tap still pauses (4 taps per flows.md) — cost if wrong: flows.md pause copy update.
+Task 8: iteration 5 fixes 20d77fe; iteration 6 captured 0 failures; critics iter 6 dispatched
+PAUSED 2026-09-30 (usage limit): Task 8 iteration 6 critics cut off — re-capture + re-run critics (token rules in PROGRESS.md). Next after that: Task 8 code review (sonnet), then Task 10.
+RESUMED 2026-09-30: Task 8 iteration 6 re-captured (9 captures, 0 failures); critics i6 dispatched (opus, sliced, split lens)
+Task 8: iteration 6 scored 87/87 (avg 87), P0/P1 0, checks pass. Cap reached below 90 — asking owner. File system-iter6-critics.md.
+Ruling (owner, 2026-09-30): accept system group at 87 after cap; i6-F1 → Task 14, i6-F2 → Tasks 11–19; rest stays open polish. Task 8: code review dispatched (sonnet), diff task-8-review.diff (f745316^..20d77fe, 58 files)
+Task 8: review — 0 Critical, 4 Important (toast asChild drops Radix props; disabled/loading href Button still navigable; vaul Sheet path + Dialog untested; /design money literals not formatMoney); 9 minor. Ruling: fix round also takes minors dangling aria-describedby, danger Dialog initial focus on Confirm, Stepper focus loss at bound, MoneyField $ before minus — a11y/correctness — cost if wrong: small. Fix round 1 dispatched (sonnet), BASE db06abf
+Task 8: fix round 1 commit 797f9e8; re-review dispatched (sonnet)
+Task 8: fix round 1/5 (8 addressed, 0 open; commit 797f9e8); re-review clean (vitest ui 67/67, design-page e2e iphone 8/8)
+Task 8: complete (commits f745316..797f9e8; design loop accepted by owner at 87)
+Task 8: minor (deferred): whole() in design/page.tsx trims formatMoney output → move to a whole-dollar formatMoney option when a screen needs it (Task 11 needs-attention); MoneyField minus mark stale on "-0"/clear; Field/Select overwrite caller aria-describedby; review Minors 2,4,6,8,9 (dup dialog titles, CrewChip demo-only exception controls, disabled selected ChoiceChip look + Checkbox name/value, foreman nav order phone vs sidebar, untested components).
+Task 10: dispatched sonnet implementer (build Home manager + Log crew-day in Galvanised, Docket challenger, capture group 'direction'), BASE 181c86b
+Task 10: A/B blind mapping — Galvanised=B, challenger=A (scratchpad/ab)
+Task 10: A/B round 1 — design critic A(challenger) 74 vs B(Galvanised) 73; field critic B(Galvanised) 75 vs A 72. Combined Galvanised 148 vs 146. Split verdict.
+Ruling: split is not "Galvanised must win" → revise Galvanised (pinned Save day in thumb reach, ink edges for glare, tighter radii 6/8/12) keeping its colour meanings, update DESIGN.md, repeat A/B once with a fresh random mapping — cost if wrong: one extra implementer round + 2 critics.
+Task 10: code review — 0 Critical, 2 Important (no-work/logged crew can be pre-ticked and saved; Home links to missing detail routes hidden by blanket shell.spec filter), 8 minor. Round 2 (review fixes + revision) dispatched to fresh sonnet implementer: task-10-round2.md
+Task 10: round 2 part A committed 6ebd900; implementer cut off by session end mid part B — resumed same agent
+INCIDENT: Task 10 round 2 implementer ran 'pkill -f next-server -P 1' and killed an unrelated next-server v14.2.35 (pid 178661; likely smartasset on :3001 — nginx upstream now down). Not restarted; owner asked. implementer-rules.md now forbids pattern kills.
+Task 10: A/B round 2 blind mapping — Galvanised=A, challenger=B (scratchpad/ab2)
+Task 10: A/B round 2 — design critic Galvanised 83 vs challenger 72; field critic Galvanised 79 vs 67. Galvanised wins on both. D2 settled.
+Task 10: round 2 re-review — Part A clean; 1 Important (log pb-24 < pinned bar height when disabled reason shows → last crew row covered); minors: disabled check box border-ink; DESIGN.md lacks ink date rule; challenger gets extra padding (moot, deleted).
+Ruling: carry A/B round-2 critic lessons (darker small text/borders for glare, heavier checkbox + date stroke, stronger ticked-row tint, denser needs-attention on phone) to Tasks 11/12 design loops, not Task 10 — Task 10's job (prove direction) is done — cost if wrong: none, loops will raise them.
+Task 10: round 3 (bar padding fix, minors, delete challenger, DECISIONS D2 outcome) — resumed same implementer (~90k context)
+Task 10: round 3 commits e41ebfc, 6f435a8; re-review clean
+Task 10: complete (commits ca7fe1b..6f435a8 + controller comment fix; Galvanised won D2 round 2 on both critics; challenger deleted)
+Task 10: minor (deferred): no test of the Log bar's error-message state; log spec last-row selector tied to markup; ScreenSpec viewports/lightOnly/noExtras now unused; home.spec "opens its detail page" is fixme until Task 14; shell.spec skips Home's /jobs|/crew|/pay/<id> links until Tasks 14/15/17.
+Task 11: BASE 45dd03c; brief task-11-brief.md; dispatching sonnet implementer (build + e2e + taps.ts + iteration-1 capture of field-1)
+Task 11: implementer dispatched (sonnet, agent a3bb663cd1bab8ffc)
+Task 11: implementer DONE_WITH_CONCERNS, commit 57846e3; iteration 1 captured (154, 24 fail = all ?demo=error console-clean: forced 500 + React #441)
+Ruling: console-clean on ?demo=error captures may ignore exactly the forced 500 resource error and React's server-render error (#441) — the state forces a server error by design — cost if wrong: a real console error on error pages goes unseen (low; other states still checked).
+Ruling: foreman money scan matches formatted amounts (\$\d[\d,]*\.\d\d and whole-dollar forms) plus money keys, not bare "$<digit>" — RSC payload uses "$1"-style references, so a bare match can never pass — cost if wrong: an unformatted amount could slip; Task 21 sweep revisits.
+Ruling (token rules 1-2): critics read slices for manager + foreman roles only (owner = manager nav; accountant normal iphone light only), field critic = iphone light+dark + android light; design critic = iphone + desktop light+dark, tablet, installed — cost if wrong: an android-dark or owner-only issue is found later.
+Task 11: iteration 1 critics dispatched (opus field a9f91077, design a43f49f2; sliced, split lens) + code review (sonnet ac7200b5) in parallel, package review-45dd03c..57846e3.diff
+Task 11: code review — spec compliant; 1 Important (DESIGN.md:89 + PROGRESS.md still say foreman nav Jobs·Log·Outbox / redirect); minors: money scan misses whole-dollar $775, MONEY_KEY flags "payload", home-foreman duplicates home-manager constants/row shell. ⚠️ fake home.foreman money keys — resolved: covered by Task 6 dto.test runtime scan of every view:"foreman" read.
+Ruling: whole-dollar money-scan minor joins the fix round (matches my earlier scan ruling) — cost if wrong: one regex.
+Task 11: iteration 1 field critic 71/100 — P0 f1i1-F1 (installed foreman capture shows manager Home: capture signs in with default role, not a real page leak), P1 f1i1-F2 (job-card % / labour / flag scope mismatch), P2 F3–F10, P3 F11–F15. Waiting on design critic.
+Task 11: iteration 1 design critic 74/100 (avg 72.5; P0 D1 = F1 root cause; P1 F2, D2, D3). Tables in field1-iter1-critics.md.
+Ruling: F1/D1 P0 is a capture-script role bug (installed shots use default manager cookie), not a page leak — fix the capture + add a foreman "$" capture check — cost if wrong: a real leak; the foreman e2e money scan on / already passes.
+Ruling: F3 won't fix — Needs attention order is spec §5.9 — cost if wrong: spec change later.
+Ruling: foreman nav Home · Jobs · Log · Outbox (phone + sidebar same order), Log raised in place; DESIGN.md updated — keeps Jobs list one tap away — cost if wrong: a nav reorder.
+Ruling: D5 "N more things to check" is plain text, no link — no full-list screen in the spec — cost if wrong: small.
+Task 11: fix round 1 + iteration 2 dispatched to same implementer (task-11-round1.md), FIX_BASE 57846e3
+Task 11: fix round 1 commits 67e1425, 70af64c; iteration 2 captured 156/0 fail; seed changed (Ryde heritage re-bed 82%), verify green
+Task 11: iteration 2 critics dispatched (opus, field a12c8221, design a08ca15f) + scoped re-review (sonnet a462c74c) of 57846e3..70af64c
+Task 11: fix round 1/5 (24 addressed, 0 open; commits 67e1425..70af64c); re-review: no new Critical/Important. Caveat: flag stage-scoped vs bar job-scoped (critics to judge). D9 deviation: desktop manager two-column wide layout kept.
+Task 11: minor (deferred): Home error/loading/noperm states render no outbox badge (shell hides it on /); raw-HTML money regex ignores whole-dollar (visible-text scan catches it); PROGRESS.md "On this phone" wording.
+Task 11: iteration 2 field critic 79/100 — P1 f1i2-F1 (7-cap hides award-floor item, 'N more' not tappable), P1 F2 (foreman landscape pinned bar + tab bar eat 45%); P2 F3–F9; P3 F10–F12 (stale slices from iteration 1 in slices/). Spec §5.9 puts Needs attention at the top (F7 aligns).
+Task 11: iteration 2 design critic 77/100 (avg 78; P1 D1, D2 + field F1, F2). Tables in field1-iter2-critics.md.
+Ruling: spec §5.9 order — Needs attention at the top of Home; labour figure heads Last week — cost if wrong: layout swap.
+Ruling: >7 attention items → "Show N more" row expands in place (spec cap 7 by default, no new route) — cost if wrong: small.
+Ruling: foreman Home drops the pinned Log today bar; in-flow button under the log-status figure; error state Try again primary — cost if wrong: thumb reach on tall phones.
+Task 11: iteration 3 fixes dispatched to same implementer (task-11-round2.md), FIX_BASE 70af64c
+Task 11: iteration 3 fixes commit bad130f; captured 156/0 fail; implementer context ~230k → fresh implementer next round. Failed outbox entry now red (over) — accepted, matches its badge.
+Task 11: iteration 3 critics dispatched (opus field a673572b, design a53a5ddd) + round 2 re-review (sonnet a34d8c5d) of 70af64c..bad130f
+Task 11: fix round 2/5 (9 addressed, 0 open; commit bad130f); re-review no new Critical/Important.
+Task 11: minor (deferred): formatRoundedQuantity drops sign in (-0.9, 0); outbox chip SR text says "to send" when count includes failed; Show N more lacks aria-controls; foreman loading shows Log today even when the foreman has no jobs.
+Task 11: iteration 3 field critic 82/100 — 0 P0/P1; P2 F1 (waiting entries vs 'Not logged yet today'), F2 (red outbox row 6th), F3 (below-floor row hidden by cap), F4 (Wong stage-over vs job-under figures), F5 (tab badge amber vs red), F6 (card density); P3 F7–F13.
+Task 11: iteration 3 design critic 82/100 (avg 82, 0 P0/P1). Tables in field1-iter3-critics.md.
+Ruling: Needs attention = red first then spec kind order; max 7 rows visible, 7th becomes "Show N more" when > 7 — spec max 7 and nothing unreachable — cost if wrong: small.
+Ruling: manager key figure = count of jobs over/trending (no money maths) under the title — cost if wrong: small.
+Ruling: whole-job tape shows whole-job forecast only; stage overage is a named stage line with its own forecast vs budget — third time the scope mix was raised — cost if wrong: card layout.
+Ruling: F9 won't fix (4 tabs cannot centre Log); F12/F13 won't fix (shared shell / capture artefact) — cost if wrong: P3 polish.
+Task 11: iteration 4 fixes dispatched to FRESH sonnet implementer (prior ~230k context), task-11-round3.md, FIX_BASE bad130f
+Task 11: iteration 4 implementer (fresh sonnet a5ce6e88)
+Task 11: iteration 4 fixes commit bf69881; captured 156/0 fail. Note: no seed job has whole-job forecast over → marker unseen on Home (unit-tested only); some tests written with code (not RED first).
+Task 11: iteration 4 critics dispatched (opus field a13b653d, design aef9f468) + round 3 re-review (sonnet ac4f168d) of bad130f..bf69881
+Task 11: fix round 3/5 (8 addressed; 1 new Important: sortAttention/splitAttention lack boundary unit tests (7, ≤6, 12 items; red outbox mixed) — joins next round)
+Task 11: minor (deferred): markerTone compares actual vs budget while marker is forecast-driven; loggedOnDevice matches "crew_day" literal; key-figure link wraps <p> in <a> (check SR name); some round-3 tests not RED first.
+Task 11: iteration 4 field critic 81/100 — P1 f1i4-F1 (foreman attention headline 'Logged, waiting to send' hides a failed entry); P2 F2–F8; P3 F9–F14.
+Task 11: iteration 4 design critic 85/100 (avg 83; P1 F1). Tables in field1-iter4-critics.md.
+Ruling: foreman error state — Log today primary, Try again secondary (logging goes to the device outbox; supersedes iter-2 ruling) — cost if wrong: button swap.
+Ruling: F3/D11 foreman Log tab with no jobs → Task 12's /log empty state explains; F13 accountant keeps spec §5.9 order; D13 outbox row stays in Needs attention (spec lists it); tape ticks stay (DESIGN.md §4) — cost if wrong: P3 polish.
+Task 11: iteration 5 fixes dispatched (resume a5ce6e88), task-11-round4.md, FIX_BASE bf69881
+Task 11: iteration 5 fixes commit 2cc2874; captured 156/0 fail; implementer ~190k → fresh next round
+PAUSED/RESUMED: iteration 5 critics + round 4 re-review cut off by usage limit (no output); re-dispatched after reset
+Task 11: fix round 4/5 (10 addressed, 0 open; commit 2cc2874); re-review clean.
+Task 11: minor (deferred): tape-bar.tsx:29 stale "Whole job" comment; foreman with no jobs + failed entry gets no Fix entry headline; outbox sentence drops names when >1 failed; skeleton heights untested.
+Task 11: iteration 5 design critic 85/100 — 0 P0/P1; P2 D1–D5 (desktop job figures short of right column again; triple over-budget statement; Last week figure unlabelled; foreman empty Log tab; failure wording drift); P3 D6–D12. Waiting on field critic.
+Task 11: iteration 5 field critic 79/100 (avg 82; P1 F1 missing rate not in Needs attention). Tables field1-iter5-critics.md.
+Ruling: blocking pay-run flag (missing rate) becomes a red Needs attention row — extends spec §5.9's list; the Monday screen's job is to surface what blocks pay — cost if wrong: one extra kind to remove.
+Ruling: outbox failure wording "needs attention" everywhere (the outbox state's own name), headline names the entry — cost if wrong: copy.
+Task 11: iteration 6 (last) fixes dispatched to FRESH sonnet implementer, task-11-round5.md, FIX_BASE 2cc2874
+Task 11: iteration 6 implementer fresh sonnet a8577615
+RESUMED 2026-10-01: iteration 6 implementer interrupted by session end with uncommitted partial work; resumed same agent a8577615
+Task 11: iteration 6 fixes commit 67777fc; captured 156/0 fail. Concerns: job names with ' — ' double dash in sentences; desktop e2e re-run only the fixed test
+Task 11: iteration 6 critics dispatched (opus field ae85b7e6, design a4fd078b) + round 5 re-review (sonnet a4698d74) of 2cc2874..ce11f90
+Task 11: fix round 5/5 (11 addressed, 0 open; commit ce11f90); re-review clean.
+Task 11: minor (deferred): desktop figure-edge e2e picks first svg as chevron; double " — " in attention sentences for dashed job names; "N jobs over budget" wrap at 390 unmeasured; blocked-pay-run row empty crewMemberId fallback; landscape padding untested.
+Task 11: iteration 6 field critic 82/100 — P1 f1i6-F1 (manager's own failed entry not the headline); P2 F2–F8 (money pair wraps, dash-chained alerts, foreman unsent job not in list, 'crew-day' jargon, 'from 6:20' wording, landscape bar, accountant job alerts); P3 F9–F12.
+Task 11: iteration 6 design critic 82/100 — avg 82, 1 P1 (F1). 6-iteration cap reached below 90 (history 72.5, 78, 82, 83, 82, 82) → owner decision (04-design-process §2).
+Ruling (owner, 2026-10-01): accept field-1 at 82 after the cap, after one final unscored fix round (F1 P1 + agreed P2s: F2/D2, F3/D1, F4/D5, F5, F6/D10, D3, D6, D9); rest stays open polish. Final fix dispatched (resume a8577615), task-11-final.md, FIX_BASE ce11f90
+Task 11: final fix commit 2c76957; captured 156/0 fail; verify green; e2e 3 projects green
+Task 11: final fix re-review clean (8/8).
+Task 11: minor (deferred): lower(stageName) mangles acronym-led stage names; manager Fix entry headline e2e-only (no unit test); foreman device row still repeats the failure beside the headline (rest of D5).
+Task 11: complete (commits 45dd03c..2c76957; design loop accepted by owner at 82 after cap + final unscored fix round)
+Task 12: BASE 93e3660; brief task-12-brief.md
+Task 12: implementer dispatched (sonnet a3cd8436)
+Task 12: implementer DONE_WITH_CONCERNS, commits 277cada..b0992d7; taps crew-day 4/6, same-as-yesterday 3/3, progress 7/8, no-work 5/5, outbox 5/5; iteration 1 captured 139 (6 fail = crew-day ?demo=error console, covered by earlier ruling); implementer ~245k → fresh for fixes
+Task 12: iteration 1 critics (opus field a3053cc1, design a0155131) + code review (sonnet a338660b) dispatched, package review-93e3660..b0992d7.diff
+Task 12: code review — spec ❌: Important 1 editHref lossy (drops date, per-person days/hours/overtime, no-work note; tests pin it) vs flows.md:358 "pre-filled with everything"; Important 3 log-crew-day duplicates usePinnedBar. Important 2 (design loop not run) = false positive: controller runs critics. ⚠️ ProgressDefaults.date resolved: logs.ts:274 uses c.today (todayIn workspace tz). ⚠️ unknown ?demo= resolved: Task 6 demo parser only accepts known states.
+Task 12: iteration 1 field critic 68/100 — P1 F1 (landscape Save + tab bar cover form), F2 (outbox attention hides reason/Edit/Discard), F3 (no filled/saved/split/validation states captured); P2 F4–F9; P3 F10–F13.
+Task 12: iteration 1 design critic 72/100 (avg 70; P1 F1, F2, F3, D1, D2). Tables field2-iter1-critics.md.
+Ruling: filled/split/validation/conflict/offline-after-save states are captured via route prefill + one new outbox demo value (all four groups) — critics can't judge the core tasks from blank forms — cost if wrong: a few more captures per iteration.
+Ruling: pinned bar goes into page flow when viewport height < 500 px (landscape) — cost if wrong: Save needs a scroll in landscape.
+Task 12: fix round 1 + iteration 2 dispatched to FRESH sonnet implementer (task-12-round1.md), FIX_BASE b0992d7
+Task 12: round 1 implementer fresh sonnet a2831987
+PAUSED/RESUMED: Task 12 round 1 implementer cut off by usage limit after commits 78da9f0..e11391f, before 3-project e2e; resumed same agent
+Task 12: round 1 commits 78da9f0..e11391f; verify green; e2e 3 projects green after fix; iteration 2 captured 149 (2 fail = offline-saved console from cut network — expected, same class as the ?demo=error ruling). Implementer ~305k → fresh next round.
+Task 12: iteration 2 critics (opus field a161443b, design a97060d8) + round 1 re-review (sonnet af1e6e65) dispatched
+Task 12: fix round 1/5 (11 addressed, 0 open; commits 78da9f0..e11391f); re-review clean.
+Task 12: minor (deferred): desktop < 500 px tall keeps sticky bar (rule order); "Already logged today"/"Marked as no work today" wording on reopened past day; qty/share no upper bound in loaders; foreman test rate regex; duplicated skeleton headers; global scroll-padding-bottom; offline capture console allowlist.
+Task 12: iteration 2 field critic 76/100 — P1 F1 (manager sees foreman reason wording), F2 (split error below list, Save disabled with no hint), F3 (landscape Save unpinned at bottom + raised Log covers chips — contradicts iter-1 F1 fix); P2 F4–F10; P3 F11–F14.
+Task 12: iteration 2 design critic 78/100 (avg 77; P1 F1, F2, F3, D1). Tables field2-iter2-critics.md.
+Ruling: pinned bar stays fixed at every width < 1024 incl. landscape (compact under 500 px tall) + bottom padding for the Log circle — supersedes the iteration-1 in-flow ruling, which both critics marked worse — cost if wrong: landscape crowding.
+Ruling: no error/offline captures for progress/no-work/outbox (same pattern as crew-day; token rule 9) — cost if wrong: a critic marks Content down.
+Task 12: fix round 2 + iteration 3 dispatched to FRESH sonnet implementer (task-12-round2.md), FIX_BASE e11391f
+Task 12: round 2 implementer fresh sonnet a58e34a8
+Ruling (owner, 2026-10-01): design-loop cap is 3 iterations (was 6). After iteration 3's critic scores, accept the score and move on without asking; open rows stay in ISSUES.md. Applies to Task 12 (iteration 3 is the last) and Tasks 13–19.
+Task 12: round 2 commits a9a3b9d..73da2cd; verify green; e2e 3 projects green after fix; iteration 3 (LAST under new cap) captured 152 (2 expected offline console fails)
+Task 12: iteration 3 (last) critics (opus field ad6ce956, design a3be9fb5) + round 2 re-review (sonnet adf58e92) dispatched
+Task 12: fix round 2/5 (9 addressed, 0 open; commits a9a3b9d..73da2cd); re-review clean.
+Task 12: minor (deferred): Progress crew list A–Z until first stage pick then jumps; managerMessage on every OutboxItem stripped only in outbox page → strip in data layer + foreman test (→ Task 21 sweep); ISSUES i2-F8 row says fixed though partly won't fix; compact landscape bar hides the disabled-Save hint.
+Task 12: iteration 3 field critic 78/100 — P1 F1 (landscape bars cover ~45%, No work date cut off); P2 F2–F6; P3 F7–F13. Tables to field2-iter3-critics.md after design critic.
+Task 12: iteration 3 design critic 82/100 (avg 80; P1 F1 landscape). Tables field2-iter3-critics.md. Accepted at 80 under the owner's 3-iteration cap (history 70, 77, 80); open rows stay in ISSUES.md. Records dispatched to haiku.
+Task 13: brief task-13-brief.md (dispatch after field-2 records commit)
+Task 12: complete (commits 93e3660..2f38911; design loop accepted at 80 under the 3-iteration cap)
+Task 13: BASE 03875e1; implementer dispatched (sonnet afc23682)
+15:09 RESUMED Task 13: implementer afc23682 left commit 565032a (landscape bar) + uncommitted jobs list/form files, no report; fresh implementer to finish from tree (RUNBOOK run 2)
+15:09 Task 13: fresh implementer (sonnet) dispatched to finish from tree; report task-13-report.md
+15:16 implementer task-13/finish DONE tool_uses=14 tokens=32144 (commit 5c51ea9; group jobs-1) | task total: 2 runs, 14+? tool uses (afc23682 numbers lost)
+15:21 Task 13: iteration 1 captured 84 (0 fail); critics (opus field, design; sliced, split lens) + code review (sonnet, review-03875e1..5c51ea9.diff) dispatched
+15:26 reviewer task-13/review FINDINGS tool_uses=13 tokens=77992 (P1 2: refused-save silent on fields w/o slot; name+address both required vs flows:276 onboarding 25-tap; P2 9) task-13-review.md
+15:26 design-critic task-13/iter1 68/100 tool_uses=60 tokens=81958 (P1 D1 desktop table, D2 complete='No stage started', D3 US dates, D4 rows not §4 list row; P2 D5–D14; P3 D15–D17)
+Task 13: e2e 3 projects (jobs-list, job-form, pinned-bar, shell) 224 passed 25 skipped
+15:27 field-critic task-13/iter1 64/100 tool_uses=135 tokens=110268 (P0 F1 over figure contradicts totals; P1 F2–F5). Avg 66. Tables jobs1-iter1-critics.md; SCORES/ISSUES recorded.
+Rulings R1–R7 in task-13-round1.md (R1: Site address only required field, job name optional — onboarding stays 25 taps; R2: en-AU locale on Playwright projects; R3: §4 phone rows + desktop table; R4: saved state without /jobs/<id> until Task 14).
+Task 13 running total: 5 runs (+afc23682), tool uses 222 + afc23682 (unknown, assume ≤45) ≈ 267/450. Iteration 2 critics must read changed slices only.
+15:27 Task 13: fix round 1 dispatched to FRESH sonnet implementer (task-13-round1.md), FIX_BASE 5c51ea9
+PAUSED/RESUMED: Task 13 round 1 implementer cut off by usage limit (session limit 429) — left only playwright.config.ts (R2 locale) uncommitted, no report; tool uses unknown (count as ≤45). Owner said continue 2026-10-02.
+07:17 Task 13: round 1 re-dispatched to FRESH sonnet implementer (same task-13-round1.md)
+07:29 implementer task-13/round1 retry PARTIAL (hit turn cap) tool_uses=48 tokens=136638 — RULE BREACH: 48 > 45 steps; left 24 files uncommitted, no report. Next brief tightened (task-13-round1b.md).
+Task 13 running total: 8 runs, ≈360/450 tool uses (two lost runs counted at 45).
+07:29 Task 13: round 1 finish dispatched to FRESH sonnet implementer (task-13-round1b.md)
+07:38 implementer task-13/round1 finish PARTIAL (turn cap, no report, no commit) tool_uses=49 tokens=94779 — RULE BREACH 49 > 45. Tree: typecheck clean, ISSUES fix column filled; verify fails on 1 design-lint (job-form.tsx:179 hard-px).
+Task 13 running total: 9 runs, ≈409/450.
+07:38 Task 13: commit run dispatched to FRESH sonnet implementer (task-13-round1c.md)
+07:46 implementer task-13/round1 commit DONE tool_uses=20 tokens=29532 (commit 2320074; won't fix i1-F11, D16, D17). Task 13 running total: 10 runs, ≈429/450.
+Task 13: e2e 3 projects after 2320074: 250 passed, 3 failed (desktop only: job-form.spec.ts:69, jobs-list.spec.ts:36, :74 — desktop table lacks phone-row text such as 'No stage started'), 26 skipped.
+07:51 STOP (RUNBOOK §5): Task 13 at 10 runs, ≈429/450 tool uses; next steps (desktop fix run, iteration 2 critics, round-1 re-review, spec review) cannot fit. Owner to raise or accept the budget. Iteration 2 not captured.
+07:54 Ruling: STOP at 07:51 was on a projected overrun (429 < 450). One tiny run fits: desktop e2e fix (task-13-round1d.md, hard limit 15). Then STOP for real before iteration 2 critics.
+07:54 Task 13: desktop fix dispatched to FRESH sonnet implementer
+08:01 implementer task-13/desktop-fix DONE tool_uses=15 tokens=29052 (commit fcbb5b0; table rows found by [data-job-row], cell padding py-0.5 → tallest 53 px). Task 13 running total: 11 runs, ≈444/450.
+Task 13: e2e 3 projects after fcbb5b0: 253 passed, 26 skipped, 0 failed.
+Task 13: iteration 2 capture crashed (keyboard capture looked for 'Job name', now optional) → conductor fixed tests/e2e/screens.ts:357 to 'Site address' (deviation, 06761e2); iteration 2 captured 84, 0 fail. Miss: iteration 1 was never --accept'ed; critics must read all slices.
+08:16 STOP (RUNBOOK §5, real): Task 13 at 11 runs, ≈444/450. Remaining: iteration 2 critics, round-1 re-review, fix round 2, iteration 3, spec review, tick. Owner to raise or accept the budget.
+08:19 Ruling (owner, 2026-10-02): Task 13 budget lifted — finish it, keep all gates, stay token-aware. RESUMED.
+08:20 Task 13: iteration 2 critics (opus field, design; all slices, split lens, confirm i1 rows) + round-1 re-review (sonnet, review-5c51ea9..06761e2.diff) dispatched
+08:23 design-critic task-13/iter2 71/100 tool_uses=65 tokens=94554 (P1 i2-D1 US dates still, i2-D2 '132 jobs over budget' contradicts rows; P2 D3–D9; P3 D10–D15; i1 not fixed: D3; partly D5 D6 D7 D14)
+08:25 field-critic task-13/iter2 71/100 tool_uses=114 tokens=99388 (P0 i2-F1 headline '132 jobs over budget' vs rows + Hunter no over line; P1 i2-F2 US dates; P2 F3–F10; P3 F11–F15). Avg 71.
+08:25 reviewer task-13/rereview PARTIAL (turn cap, no report) tool_uses=32 tokens=125664 — breach 32 > 30; retry dispatched narrow (checklist, write-as-you-go, stop at 24).
+Finding: keyboard capture job-new-keyboard-iphone.png exists but is not sliced → point field critic at it directly in iteration 3.
+08:25 Rulings R8–R11 in task-13-round2.md (R8 capture contexts en-AU + Atkinson date value; R9 one over predicate for row + headline; R10 saved → Log today on this job; R11 compact expandable stage rows). Waiting on re-review before dispatch.
+08:28 reviewer task-13/rereview DONE FINDINGS tool_uses=24 tokens=85719 (P0/P1 fixed and tested; 8 P2 → round 2; money scan clean). Ruling: RR6 guard 120 px one-line / 160 px wrapped stands.
+08:28 Task 13: fix round 2 dispatched to FRESH sonnet implementer (task-13-round2.md), FIX_BASE 06761e2
+08:34 implementer task-13/round2 PARTIAL (turn cap, no commit, no report) tool_uses=47 tokens=91287 — breach 47 > 45; 14 files in tree (R9 jobOver, R8 capture locale started). Round 2 split into parts A (R9+R8, opus: money rule), B (R10+R11), C (P2 + re-review).
+08:34 Task 13: round 2 part A dispatched to FRESH opus implementer (task-13-round2a.md)
+08:45 implementer task-13/round2a DONE tool_uses=30 tokens=49131 (commit 6d9bb8b: R9 jobOver + R8 en-AU capture/date font; also on-hold reason chip, 'spent of $X budget'). Uncommitted R10/R11 in job-form.tsx + money-field.tsx fail 5 job-form e2e.
+08:45 Task 13: round 2 part B dispatched to FRESH sonnet implementer (task-13-round2b.md)
+09:01 implementer task-13/round2b DONE tool_uses=42 tokens=66148 (commit bf1db0b: R10 saved state, R11 stage rows; e2e iphone+desktop 119 passed).
+09:01 Task 13: round 2 part C1 (list P2s) dispatched to FRESH sonnet implementer; C2 (form P2s + re-review rest) after.
+09:13 implementer task-13/round2c1 DONE tool_uses=45 tokens=92982 (commit 0011fbc; open: D12 sort, F12 tick per DESIGN.md; added TapeBar compact + 1 DESIGN.md sentence → spec-review to check).
+09:13 Task 13: round 2 part C2 dispatched to FRESH sonnet implementer (task-13-round2c2.md)
+09:26 implementer task-13/round2c2 DONE tool_uses=36 tokens=84600 (commit 466b8eb; open: i2-D14 copy wrap; shared PinnedAction hintOnSide).
+09:37 Task 13: round 2 re-review (sonnet, review-06761e2..466b8eb.diff) dispatched while full e2e runs
+09:43 reviewer task-13/rereview-2 DONE FINDINGS tool_uses=21 tokens=120161 (P0/P1 0; P2 7: RR2-1 trailers 'Sonnet 5.5' on 3 commits, RR2-2 acceptStages no blur → iOS budget loss, RR2-3..7 tests/docs). Money/foreman clean.
+Ruling: RR2-1 history not rewritten (destructive git = owner, §6); recorded in PROGRESS deviations; future briefs state the exact trailer. RR2-2..7 → small fix run after capture, parallel with iteration 3 critics.
+Task 13: full e2e 3 projects after 466b8eb: 755 passed, 70 skipped, 3 failed = design-page.spec.ts:45 axe color-contrast on all 3 (dark form, selected chip bg-tape/25 + text-ink-2 'Day' 3.39:1; green at end of Task 12 → regression this task).
+09:56 Task 13: iteration 3 (LAST) captured 84, 0 fail (iteration 2 never --accept'ed: miss #2; all slices read). Critics (opus, + keyboard png) and fix round 3 (sonnet, task-13-round3.md: /design contrast P1 + RR2-2..7) dispatched in parallel.
+10:00 field-critic task-13/iter3 74/100 tool_uses=109 tokens=98397 (P1 i3-F1 Android/landscape native date still mm/dd — Chromium capture ignores --lang; iPhone fixed; P2 F2 mono digits, F3 headline wording, F4 job-new error back row, F5 Remove 20 px; P3 F6–F10).
+10:02 design-critic task-13/iter3 77/100 tool_uses=101 tokens=139065 (P1 i3-D1 = i3-F1 dates). Avg 75.5 (66, 71, 75.5). Accepted under the 3-iteration cap; open rows in ISSUES.md; capture accepted. Tables jobs1-iter3-critics.md.
+10:10 implementer task-13/round3 DONE tool_uses=42 tokens=65832 (commit c4df6ce; /design contrast: ticked crew-chip meta text-ink; cause not in Task 13 code, likely surfaced by en-AU locale; RR2-2..7 done).
+10:10 Task 13: full e2e (background) + spec-reviewer (opus, 03875e1..c4df6ce) dispatched
+10:16 spec-reviewer task-13 FINDINGS tool_uses=28 tokens=95893 (BLOCKING: unreadable money saves $0.00; non-blocking: DESIGN §5 landscape bar text, Home 'over budget' rule differs from jobOver, stale test title). R1–R11, RR6, onboarding, foreman, tz confirmed. Fix → FRESH opus implementer (task-13-spec-fix.md).
+Task 13: full e2e after c4df6ce: 759 passed, 70 skipped, 2 failed (iphone only: flows/no-work-marker.spec.ts:6 'Save no work' not stable; log-progress.spec.ts:135 keyboard primary-action attribute) — timing-shaped; re-check in the final full run after the spec fix.
+10:29 implementer task-13/spec-fix PARTIAL (turn cap, no commit) tool_uses=46 tokens=68011 — breach 46 > 45; 13 files in tree. Finish run → FRESH opus (task-13-spec-fix-b.md).
+10:43 implementer task-13/spec-fix (first run, resumed itself) DONE tool_uses=61 tokens=80772 (commit 544e9e7: money 'can't read' blocks save, Home counts by jobOver via ActiveJobRow.over, DESIGN §5 landscape bar, test title). Conductor miss: dispatched a duplicate finisher while it was still running → stopped it, no conflicting commit.
+10:47 spec-reviewer task-13/re-review CLEAN tool_uses=7 tokens=30068 (blocking fixed + tested; non-blocking 3 fixed; Home §5.9 ok; no foreman money).
+Task 13: final full e2e after 544e9e7: 766 passed, 70 skipped, 1 failed (iphone design-page.spec.ts:45 30 s timeout on cold server); re-run of design-page + no-work-marker + log-progress on 3 projects: 84 passed, 0 failed.
+Task 13: complete (commits 565032a..544e9e7; design loop accepted at 75.5 under the 3-iteration cap; reviewed, spec-reviewed). Plan ticked; PROGRESS Current updated.
+17:15 conductor task-14 brief written (36 lines); lessons.md created; dispatching run A
+17:28 implementer task-14/run-A PARTIAL tool_uses=48 tokens=52294 (commit c8750ff: screen 11 + e2e iphone 9 pass; breach 48>45; missing fixtures: job with no stages, long-name job → run B). Task total: 1 run, 48.
+17:39 implementer task-14/run-B PARTIAL tool_uses=45 tokens=37181 (commit 020705f: fixtures, stage text helpers+13 tests, controls, screen 12 route; no e2e/manifest/shell skip yet; stage page shows no manager money). Task total: 2 runs, 93.
+10-08 17:51 implementer T14 run B2 DONE 2402423 tool_uses=39 tokens=78847 | T14 total: 3 runs, 132 tool uses. Next: run C (screen 13 + split editor + e2e)
+10-08 18:00 conductor T14 run C dispatched (opus: lump-sum split + foreman hiding), report task-14-run-c-report.md
+10-08 18:11 implementer T14 run C DONE d0f3e53 tool_uses=41 tokens=75153 (screen 13, server split preview; foreman gets noperm on /done per spec §3, brief said otherwise) | T14 total: 4 runs, 173. Next: reviewer + spec-reviewer c201236..d0f3e53
+10-08 18:11 conductor T14 review round dispatched: reviewer (sonnet) + spec-reviewer (opus) on c201236..d0f3e53
+10-08 18:15 reviewer T14 FINDINGS tool_uses=34 tokens=38944 (breach 34>30; P0 0 P1 0 P2 5 P3 9; CR5 Sonnet trailers on c8750ff/020705f = repeat of T13 RR2-1, history not rewritten) | T14 total: 5 runs, 207
+10-08 18:16 spec-reviewer T14 FINDINGS tool_uses=23 tokens=72236 (0 blocking; SR1 share-edit cents drift, SR2 progress qty, SR3 forecast arithmetic) | T14 total: 6 runs, 230
+10-08 18:16 conductor T14 fix list written (task-14-fix.md: part X opus, part Y sonnet); waiting on e2e before dispatch (port 3100)
+10-08 18:17 conductor T14 e2e (job-detail, stage-detail, stage-done, pause-stage, stage-done-lump-sum, shell) 3 projects at d0f3e53: 170 passed, 5 skipped, 2 failed desktop shell (ENOENT trace artifacts, concurrent run cleared test-results); re-run 2 passed. Dispatching fix part X (opus)
+10-08 18:26 implementer T14 fix-X DONE de4f6ed tool_uses=37 tokens=57006 (breach 37>30 run cap in brief, within §5 45; SR1/CR6, CR2, CR3 unit-only, CR1, CR7, CR9 allowed per §13, CR10; e2e iphone 31 pass) | T14 total: 7 runs, 267. Dispatching fix-Y (sonnet)
+10-08 18:35 implementer T14 fix-Y DONE 042ccde tool_uses=42 tokens=76464 (SR2, SR3, CR8, CR12, CR13; CR4 deferred to Tasks 16/18 filters, e2e checks job links; e2e iphone 36 pass) | T14 total: 9 runs, 309. Slice end (4 rounds). Next: re-review d0f3e53..042ccde
+10-08 18:38 conductor T14 re-review dispatched: reviewer (sonnet, CR1-4,6-10,12-13) + spec-reviewer (opus, SR1-3) on d0f3e53..042ccde
+10-08 18:39 conductor T14 capture jobs-2 iteration 1 started (background, parallel with re-review)
+10-08 18:42 reviewer T14 rereview FINDINGS tool_uses=24 tokens=72578 (CR1-4,6-10,12-13 closed, CR4 deferral ok; new P3 4: N1 empty-state no render test + Log link no &stage=, N2 same-day pause after start-day log flagged by §9 -> record decision, N3 doc comment order, N4 forecast % rounding) | T14 total: 10 runs, 333
+10-08 18:44 spec-reviewer T14 rereview CLEAN tool_uses=14 tokens=33030 (SR1-3 fixed+tested; verify green 817 tests; NB1 forecast whole % = N4, NB2 working on stage detail until Task 18) | T14 total: 11 runs, 347
+10-08 18:54 conductor T14 capture jobs-2 iter1: 320 checked, 7 fail (G1 long-names text-zoom overflow x4, G2 offline console x2, G3 stage-done safe-area). Dispatching guards fix (sonnet, task-14-guards-fix.md, + N1-N4); lesson added (percent precision, seen twice)
+10-08 18:59 implementer T14 guards-fix PARTIAL (turn cap, no commit, no report) tool_uses=50 tokens=69209 — breach 50>45; 11 code files in tree | T14 total: 12 runs, 397. Dispatching fresh finisher (sonnet)
+10-08 19:09 implementer T14 guards-fix finisher DONE 70ac00e tool_uses=39 tokens=58285 (G1-G3, N1-N4; G3 was capture artifact: design-capture.ts blurs after fill, no guard weakened) | T14 total: 13 runs, 436. Capture jobs-2 iter1 re-run
+10-08 19:24 conductor T14 capture jobs-2 iter1: 320 checked, 0 fail. Dispatching design-critic + field-critic (opus) iter1
+10-08 19:28 field-critic T14 iter1 75/100 tool_uses=94 tokens=45247 (P1 2: F1 two primaries on paused stage, F2 paused timeline still Working; P2 12; F9 = T13 date locale repeat; table saved by conductor, critic has no write tool) | T14 total: 14 runs, 530
+10-08 19:28 design-critic T14 iter1 72/100 tool_uses=71 tokens=52661 (P1 1: D1 stage actions at top; P2 14; D14 = F9 date locale) | avg 73.5 | T14 total: 15 runs, 601
+10-08 19:29 conductor T14 iter1 recorded (SCORES, ISSUES 36 rows), fix list task-14-design-fix-1.md (run 1a opus stage detail, run 1b sonnet job detail + stage done); lesson added (date locale, seen in jobs-1 and jobs-2). Slice end.
+10-08 19:33 conductor T14 design fix run 1a dispatched (opus, stage detail), report task-14-design-fix-1a-report.md
+10-08 19:40 implementer T14 design-fix-1a PARTIAL (turn cap, no commit, no report) tool_uses=47 tokens=76994 — breach 47>45; 10 files in tree, mid-implementation (tests red→green on text helpers/DTO/service) | T14 total: 16 runs, 648. Dispatching fresh finisher (opus)
+10-08 23:29 conductor T14 new session: 1a finisher had no completion line (died or never started); 12 files uncommitted in tree. Dispatching fresh 1a finisher (opus), report task-14-design-fix-1a-report.md
+10-08 23:39 implementer T14 design-fix-1a finisher DONE 43f9190 tool_uses=44 tokens=58987 (F2 timeline rows rewrite; landscape bar css touches all pinned bars; stage-detail e2e iphone 21 pass; verify 843 green; lessons self-check skipped) | T14 total: 17 runs, 692
+10-08 23:39 conductor T14 design fix run 1b dispatched (sonnet, job detail + stage done), report task-14-design-fix-1b-report.md
+10-08 23:50 implementer T14 design-fix-1b PARTIAL 8131392 tool_uses=42 tokens=83322 (all P2 but F13: /expenses/new not built yet, flows.md:192 calls for it -> deferred to the expenses task; P3 D15-D17,F17/D19 not started; date order fix = Chromium LANGUAGE env + checkDateFields guard; iphone e2e 20 pass; verify 853 green) | T14 total: 18 runs, 734. Capture jobs-2 iter2
+10-09 00:06 conductor T14 capture jobs-2 iter2: 320 checked, 10 fail (all new dateFields guard on stage-done, Chromium projects: 'no date field parts in the accessibility tree'); 472/648 images changed. Dispatching guard fix (sonnet, cap 25), report task-14-datefields-fix-report.md
+10-09 00:12 implementer T14 datefields-fix DONE cf7cf5e tool_uses=15 tokens=23661 (guard misread 'Day Day' a11y names; date renders 28/09/2026; guard still fails en_US) | T14 total: 19 runs, 749. Recapture jobs-2 iter2
+10-09 00:28 conductor T14 recapture jobs-2 iter2: 320 checked, 0 fail (changed.txt now vs the failed capture: 1; vs iter1 it was 472/648, so iter2 critics need near-full slices). Running task e2e on 3 projects
+10-09 00:35 conductor T14 task e2e 3 projects at cf7cf5e: 205 passed, 9 skipped, 2 failed, both reproduce on re-run: android stage-detail.spec.ts:144 (weather y 699 < note 764), desktop flows/stage-done-lump-sum.spec.ts:8 (job link never visible). Dispatching e2e fix (sonnet, cap 25), report task-14-e2e-fix-report.md
+10-09 00:42 implementer T14 e2e-fix DONE 60f8f5d tool_uses=17 tokens=30115 (both stale tests: sheet measured mid-slide -> expectStill guard; desktop .first() hit hidden phone row -> scoped :visible; 3 projects 65 pass 0 fail; verify green) | T14 total: 20 runs, 766
+10-09 00:42 conductor T14 slice end: STOP written (budget: iter-2 critics would pass 800). Lesson added (settle before measuring; visible-layout locators).
+10-09 11:05 conductor T14 owner accepted jobs-2 at iter 1 (avg 73.5); Task 14 ticked. T14 final: 20 runs, 766
+10-09 11:05 conductor T15 brief written (task-15-brief.md); run A dispatched (sonnet, crew list), report task-15-run-a-report.md
+10-09 11:20 implementer T15 run-A DONE e4b9fbf tool_uses=42 tokens=28285 (breach 42>30 brief cap, within §5 45; 8 unit, iphone e2e 12 pass; verify 862; foreman: canOpen crew stays false, page renders names-only no links if reached -> decision) | T15 total: 1 run, 42
+10-09 11:20 conductor T15 run B dispatched (sonnet, crew detail), report task-15-run-b-report.md
+10-09 11:32 implementer T15 run-B DONE 80c1392 tool_uses=42 tokens=52109 (breach 42>30 brief cap, within 45; 9 unit, iphone e2e 13 pass; verify 871; See all logs -> /history?crew= unchecked filter; draft Share test conditional) | T15 total: 2 runs, 84
+10-09 11:32 conductor T15 run C dispatched (opus, record payout + flow spec), report task-15-run-c-report.md
+10-09 11:43 implementer T15 run-C PARTIAL (turn cap, no commit, no report) tool_uses=50 tokens=75508 — breach 50>45; 13 files in tree (payout page, form, payout-input + test, saved-toast, money-field edit, detail wiring, e2e + flow spec) | T15 total: 3 runs, 134. Dispatching fresh finisher (opus)
+10-09 11:52 implementer T15 run-C finisher DONE 493736f tool_uses=17 tokens=37968 (payout e2e + flow spec iphone 11 pass; verify 887; toast reshows on reload via ?saved=) | T15 total: 4 runs, 151
+10-09 11:52 conductor T15 e2e (crew-list, crew-detail, payout, flows/record-payout) 3 projects at 493736f: 106 passed, 1 skipped, 1 failed reproducible: desktop crew-list.spec.ts:17 strict mode, row locator .or(link) resolves to both tr and a (test bug) -> into review fix list. Slice end (4 rounds).
+10-09 11:57 conductor T15 new session; reviewer (sonnet) + spec-reviewer (opus) dispatched in parallel on d0e44e0..493736f, reports task-15-review.md / task-15-spec-review.md
+10-09 12:01 reviewer T15 review FINDINGS tool_uses=28 tokens=39553 (P1 1 CR1 desktop locator :26; P2 3 CR2 foreman /crew, CR3 history ?crew=, CR5 vacuous draft test; P3 6) | T15 total: 5 runs, 179
+10-09 12:03 spec-reviewer T15 spec-review FINDINGS tool_uses=27 tokens=85846 (P1 2 SR1 payout flow spec figures, SR2 = CR1; P2 SR3 = CR5, SR4 history ?crew= -> plan Task 18; P3 SR5 = CR4; table saved by conductor) | T15 total: 6 runs, 206
+10-09 12:03 conductor T15 fix list task-15-fix.md (CR1/SR2, SR1/CR6, SR3/CR5, SR5/CR4, CR2 keep+comment+test, CR8, CR9, CR10; CR3/SR4 -> plan Task 18 updated; CR7 accepted). Dispatching fix implementer (opus), report task-15-fix-report.md
+10-09 12:07 implementer T15 fix-1 PARTIAL (turn cap, no commit, no report) tool_uses=46 tokens=52328 — breach 46>45 (cap was 40); 12 files in tree incl. new src/app/prototype/approve-pay-run/ (fake-only approve route for SR1, test-first, unfinished) | T15 total: 7 runs, 252. Dispatching fresh finisher (opus)
+10-09 12:17 implementer T15 fix-1 finisher DONE a556ebc tool_uses=37 tokens=42720 (verify 893; 4 specs iphone+desktop green after record-payout locator fix; approve-pay-run route 404 outside fake like /prototype/role; toast clears ?saved= via history.replaceState) | T15 total: 8 runs, 289. Dispatching rereview: reviewer (sonnet, CR*) + spec-reviewer (opus, SR*) on 493736f..a556ebc
+10-09 12:19 reviewer T15 rereview CLEAN tool_uses=15 tokens=40917 (CR1,2,4,5,6,8,9,10 closed; CR3 -> Task 18; CR7 accepted; approve-pay-run 404 outside fake, foreman 403) | T15 total: 9 runs, 304
+10-09 12:23 conductor T15 task e2e (crew-list, crew-detail, payout, flows/record-payout) 3 projects at a556ebc: 107 passed, 1 skipped, 0 failed
+10-09 12:30 spec-reviewer T15 rereview CLEAN tool_uses=8 tokens=22840 (SR1-3,5 fixed; SR4 plan Task 18 enough; P3 note: 1 unit test flaked once under load in verify, then green twice) | T15 total: 10 runs, 312. Review loop done; next design loop group crew. Slice end (4 rounds).
+10-09 12:35 conductor T15 new session; capture crew iter1
+10-09 12:48 conductor T15 capture crew iter1: 210 checked, 0 fail, 744 images (first capture). Dispatching design-critic + field-critic (opus) iter1
+10-09 12:51 design-critic T15 crew iter1 68/100 tool_uses=54 tokens=74025 (P1 3: D1 statements list endless, D2 saved state balance not updated, D3 '·' meta joins; P2 10; D12 = lessons line 5; table crew-iter1-design.md) | T15 total: 11 runs, 366
+10-09 12:52 field-critic T15 crew iter1 70/100 tool_uses=78 tokens=29667 (P0 1: F1 = D2 saved payout not reflected; P1 F2 = D1; P2 7; F9 no keyboard captures; table crew-iter1-field.md) | avg 69 | T15 total: 12 runs, 444
+10-09 12:54 conductor T15 crew iter1 recorded (SCORES, ISSUES 27 rows, lessons +3: '·' meta, offline banner vs needs connection, desktop width). Fix list task-15-design-fix-1.md. Dispatching fix run 1a (opus), report task-15-design-fix-1a-report.md
+10-09 13:07 implementer T15 design-fix-1a DONE 4bfd2f3 tool_uses=45 tokens=37997 (at cap; items 1-8; saved state via fake-only /prototype/record-payout route; statements expand in place; owed-first sort + total hero; verify 897 green; iphone e2e 37 pass) | T15 total: 13 runs, 489. Dispatching fix run 1b (sonnet), report task-15-design-fix-1b-report.md
+10-09 16:20 conductor T15 new session; design-fix-1b died (no completion, no report, no commit); 22 product/test files in tree (lint-design, globals.css, crew screens, ui list/segmented/chip/toast, guards, screens.ts). Dispatching fresh 1b finisher (sonnet, cap 40), report task-15-design-fix-1b-report.md
+10-09 16:30 implementer T15 design-fix-1b finisher DONE fe30b12 tool_uses=30 tokens=69685 (verify 900 green; iphone 41 pass 2 skip desktop-only; ledger rows no pay-run route -> gutter dropped; desktop layout tests unproven until capture) | T15 total: 14 runs, 519. Capture crew iter2
+10-09 16:40 conductor T15 capture crew iter2: 211 checked, 0 fail; 295/383 critic images changed. Dispatching design-critic + field-critic (opus) iter2
+10-09 16:43 design-critic T15 crew iter2 84/100 tool_uses=61 tokens=29986 (no P0/P1; P2 D4 guard, D21; P3 12; table crew-iter2-design.md) | T15 total: 15 runs, 580
+10-09 16:48 field-critic T15 crew iter2 83/100 tool_uses=171 tokens=26809 (no P0/P1 open; P2 F18 F19; table crew-iter2-field.md) | avg 83.5 | T15 total: 16 runs, 751
+10-09 16:48 conductor T15 crew iter2 recorded (SCORES, ISSUES i1 statuses + 16 i2 rows, lessons +4). Fix list task-15-design-fix-2.md. Dispatching fix run 2 (sonnet, cap 35 -> max ~786 of 800). Iter-3 capture+critics would pass 800 -> owner decision after this run
+10-09 17:02 implementer T15 design-fix-2 PARTIAL (turn cap, no commit, no report) tool_uses=46 tokens=65011 — breach 46>35; in tree: globals.css, crew-list, segmented, crew fake service + contracts, new crew-offline-note.tsx + table-cells.ts, jobs-group/jobs-list, shell active.ts(+test), crew-list/payout specs, guards (items 1-3 apparently, 4 started) | T15 total: 17 runs, 797 of 800. A finisher would exceed the §5 budget -> STOP for owner
+10-09 17:05 conductor T15 slice end: STOP written (budget 797/800); docs committed
+10-10 13:50 conductor T15 new session; owner chose (a): one fix-2 finisher then accept crew at iter 2. Dispatching fix-2 finisher (opus: item 4 workspace-tz time; cap 35; items 1-4 only), report task-15-design-fix-2-report.md
+10-10 14:00 implementer T15 design-fix-2 finisher DONE 9dcb2a6 tool_uses=28 tokens=42838 (items 1-4 + guards; verify 900; crew-list/payout/crew-detail iphone+desktop 76 pass 5 skip 1 fail: desktop crew-detail.spec.ts:21 name-to-balance gap 52>40, detail not touched) | T15 total: 18 runs, 825 (owner-approved finisher)
+10-10 14:04 conductor T15 e2e (crew-list, crew-detail, payout, flows/record-payout) 3 projects at 9dcb2a6: 121 passed, 7 skipped, 1 failed reproducible: desktop crew-detail.spec.ts:21 name-to-balance gap 52>40 (assertion from fe30b12 1b, never run on desktop before; layout unchanged by fix-2). Budget 825/800 -> STOP for owner
+10-10 14:20 conductor T15 new session; owner (a): dispatching design-fix-3 (sonnet, cap 15: desktop crew-detail balance gap), report task-15-design-fix-3-report.md
+10-10 14:30 implementer T15 design-fix-3 DONE 063b072 tool_uses=18 tokens=27019 (over cap 15 by 3, accepted; cx() kept lg:gap-10 over lg:gap-6 + desktop Record payout button made the title row tall; assertion unchanged) | T15 total: 19 runs, 843
+10-10 14:30 conductor T15 e2e (crew-detail, crew-list, payout, flows/record-payout) 3 projects at 063b072: 122 passed, 7 skipped, 0 failed. Crew accepted at iter 2 (avg 83.5, owner); open P3 rows stay in ISSUES.md. Task 15 DONE (c201236..063b072 range per commits). Next Task 16
+10-10 14:36 conductor T16 new session; brief task-16-brief.md written (runs A sonnet list, B opus new+add-receipt, C opus edit+expense-edit). Dispatching run A (sonnet, cap 30), report task-16-run-a-report.md
+10-10 14:48 implementer T16 run-A PARTIAL (turn cap, no commit, no report) tool_uses=48 tokens=56946 — breach 48>45; in tree: expenses/page.tsx, load-expenses.ts, expense-list.tsx, expense-input(.test).ts, stage-detail.tsx, contracts.ts, fake seed + expenses service, screens.ts, expenses-list.spec.ts | T16 total: 1 run, 48
+10-10 14:48 conductor T16 dispatching run-A finisher (sonnet, cap 30), report task-16-run-a-report.md
+10-10 14:57 implementer T16 run-A finisher DONE b57722b tool_uses=14 tokens=38931 (verify 909 green; expenses-list iphone+desktop 30 pass 2 skip) | T16 total: 2 runs, 62
+10-10 14:57 conductor T16 dispatching run B (opus, cap 30: new form + add-receipt flow), report task-16-run-b-report.md
+10-10 15:07 implementer T16 run-B PARTIAL cfb6c73 tool_uses=37 tokens=84293 (form, rules, states committed; verify 916 green; e2e specs not written: cap; flags supplier-required makes add-receipt 11 taps) | T16 total: 3 runs, 99
+10-10 15:07 conductor T16 decision: supplier optional (flows 169-195 has no supplier step; brief over-specified; product spec does not require it). Dispatching run-B finisher (opus, cap 30: supplier optional, expense-new.spec + add-receipt flow spec), report task-16-run-b2-report.md
+10-10 15:20 implementer T16 run-B finisher DONE c72eebe tool_uses=37 tokens=55421 (supplier optional; expense-new + flows/add-receipt iphone 20 pass x2; verify 917; note: row says 'reimbursed in the draft pay run' vs form 'paid back in the next pay run', flows.md 186 says 'Paid by Dima — reimbursed next pay run' -> into run C / review fix list) | T16 total: 4 runs, 136
+10-10 15:20 conductor T16 slice end (4 rounds). Next: run C (opus, edit + expense-edit flow + align reimbursement wording to flows.md 186)
+10-10 15:24 conductor T16 new session; dispatching run C (opus, cap 30: edit + approved warning + expense-edit flow + reimbursement wording per flows 186), report task-16-run-c-report.md
+10-10 15:35 implementer T16 run-C PARTIAL (no commit; over brief cap) tool_uses=41 tokens=75761 (verify 919 green; 5 expense specs iphone 34 pass; lessons self-check not done) | T16 total: 5 runs, 177
+10-10 15:35 conductor T16 dispatching run-C finisher (sonnet, cap 15: lessons self-check on detail/edit, detail loading demo state, verify, commit), report task-16-run-c2-report.md
+10-10 15:40 implementer T16 run-C finisher DONE 70bb270 tool_uses=14 tokens=34875 (lessons self-check 3 fixes; detail loading demo; verify 919; expense-edit iphone 9 pass) | T16 total: 6 runs, 191. Next: e2e 3 projects, then reviewer + spec-reviewer on 1003c57..70bb270
+10-10 15:43 conductor T16 e2e (5 expense specs) 3 projects at 70bb270: 100 pass, 3 skip, 2 fail desktop only: flows/add-receipt:41 reimbursement wording not found in desktop row; flows/expense-edit:34 row locator hits wrong row (got 'Ace Scaffold Hire'). Dispatching in parallel: e2e fix (sonnet, cap 15, report task-16-e2e-fix-report.md) + reviewer + spec-reviewer on 1003c57..70bb270 (reports task-16-review.md, task-16-spec-review.md)
+10-10 15:46 reviewer T16 review FINDINGS tool_uses=23 tokens=85383 (P2 2: F1 accountant dead-end rows, F2 negative GST; P3 5; saved task-16-review.md) | T16 total: 7 runs, 214
+10-10 15:52 implementer T16 e2e-fix DONE 9b951f6 tool_uses=11 tokens=23245 (desktop table rows got data-expense-id/supplier hooks; both flow specs desktop+iphone 4 pass; verify steps run one by one due to coverage lock) | T16 total: 8 runs, 225
+10-10 15:54 spec-reviewer T16 review 2 blocking 2 non-blocking tool_uses=22 tokens=76490 (B1 uncommitted desktop fix = already 9b951f6; B2 UI money maths + 'ex GST' wrong for non-registered; N1 photo dropped; N2 no Add expense on job detail) | T16 total: 9 runs, 247. Merged fix list task-16-review-fix-1.md (10 items). Dispatching fix run (opus, cap 35), report task-16-review-fix-1-report.md
+10-10 16:00 implementer T16 review-fix-1 PARTIAL (turn cap, no commit, no report) tool_uses=46 tokens=60357 — 1 over the 45 run cap (small, noted); in tree: expenses/[id] + new pages, expense-detail/form/input(+test), job-detail, expense-edit spec, flows/expense-edit, job-detail spec; was updating the accountant spec | T16 total: 10 runs, 293. Dispatching review-fix-1 finisher (opus, cap 30), report task-16-review-fix-1-report.md
+10-10 16:14 implementer T16 review-fix-1 finisher DONE 436740d tool_uses=27 tokens=46702 (all 10 items; gstRegistered from workspace settings, contract unchanged; item 10 unit only; verify 926; iphone+desktop 88 pass then foreman scan fix, 20/20 re-run) | T16 total: 11 runs, 320
+10-10 16:17 conductor T16 e2e (5 expense specs + job-detail + 2 flows) 3 projects at 436740d: 135 pass, 3 skip, 0 fail. Slice end (5 rounds). Next: re-review of findings (reviewer: task-16-review.md F1-F7; spec-reviewer: B2/N1/N2) on 9b951f6..436740d
+10-10 16:22 conductor T16 new session; dispatching re-review in parallel on 9b951f6..436740d: reviewer (sonnet, F1-F7 of task-16-review.md, reply saved to task-16-rereview.md) + spec-reviewer (opus, B2/N1/N2, report task-16-spec-rereview.md)
+10-10 16:24 reviewer T16 re-review CLEAN tool_uses=17 tokens=49151 (F1-F7 fixed; saved task-16-rereview.md) | T16 total: 12 runs, 337
+10-10 16:26 spec-reviewer T16 re-review CLEAN tool_uses=7 tokens=30194 (B2/N1/N2 fixed; non-blocking: stand-in receipt row marker vs detail 'No receipt attached', flows 190 -> carry as P3 into design loop) | T16 total: 13 runs, 344. Review cycle done. Next: capture expenses
+10-10 16:40 conductor T16 capture expenses iter1: 276 checked, 0 fail, 727 images (first capture, 13.6 min). Dispatching design-critic + field-critic (opus) iter1
+10-10 16:43 field-critic T16 expenses iter1 80/100 tool_uses=63 tokens=80757 (P1 3: F1 edit loses old job, F2 Paid-by wraps iphone = lessons 24, F3 offline banner vs Needs connection = lessons 20; P2 9; P3 3; table expenses-iter1-field.md) | T16 total: 14 runs, 407
+10-10 16:45 design-critic T16 expenses iter1 69/100 (P1 2: D1 Paid-by wrap lesson 24, D2 offline+Needs connection lesson 20; P2 10; P3 8; table expenses-iter1-design.md; tool_uses not logged, est 60) | T16 total: 15 runs, ~467. SCORES/ISSUES rows written (avg 74.5)
+10-10 17:00 conductor T16 new session; fix list task-16-design-fix-1.md (1a opus data/states, 1b sonnet form layout, 1c sonnet list/detail). Dispatching 1a (opus, cap 30), report task-16-design-fix-1a-report.md
+10-10 17:08 implementer T16 design-fix-1a PARTIAL aeb9e5a tool_uses=39 tokens=60708 (done: 2 offline guard offlineAgrees, 3 month total, 5 recent sort/auto-tick, D20; left: 1, 4, 7, F10; e2e not run) | T16 total: 16 runs, ~506. Dispatching 1a finisher (opus, cap 30), same report
+10-10 17:22 implementer T16 design-fix-1a finisher DONE ecd3b95 tool_uses=45 tokens=59975 (items 1, 4+Q1, F10, 7; verify 931; e2e desktop 74/74, iphone 71+3 fixed 25/25; over brief cap 30, at run cap 45) | T16 total: 17 runs, ~551. Dispatching 1b (sonnet, cap 30), report task-16-design-fix-1b-report.md
+10-10 17:37 implementer T16 design-fix-1b DONE (items 1-4; replied PARTIAL for cap only) 48d9442 tool_uses=45 tokens=39172 (verify 933; expense-new/edit + 2 flows + pinned-bar 3 projects 90 pass 29 skip desktop 0 fail) | T16 total: 18 runs, ~596. Dispatching 1c (sonnet, cap 30), report task-16-design-fix-1c-report.md
+10-10 17:59 implementer T16 design-fix-1c DONE 0c3712d tool_uses=46 tokens=51568 (items 1-6; receipt-viewer.tsx new; desktop table drops Stage column to stay one line; verify 934; iphone+desktop 56 pass) | T16 total: 19 runs, ~642
+10-10 18:06 conductor T16 e2e (3 expense specs, 2 flows, home, job-detail, pinned-bar) 3 projects at 0c3712d: 320 pass, 48 skip, 1 fail: android expenses-list.spec.ts:177 job text right edge 287 not > amount x 294 (7 px; 1c's new assertion, android never run). Slice end (4 rounds). Next: one small fix run for that test, then capture expenses iter2
+10-10 20:52 conductor T16 new session; dispatching android fix (sonnet, cap 15), brief task-16-android-fix.md, report task-16-android-fix-report.md
+10-10 20:57 implementer T16 android-fix DONE f681da4 tool_uses=9 tokens=17291 (assertion measured job text; now measures full date+job line; expenses-list 3 projects 51 pass 6 skip; verify green) | T16 total: 20 runs, ~651. Running capture expenses iter2
+10-10 20:59 conductor T16 capture iter2 FAILED on first screen: __name ReferenceError in guards.ts checkOfflineAgrees (tsx keepNames inside page.evaluate); partial hashes.new removed, iter1 baseline kept. Dispatching capture fix (sonnet, cap 15), brief task-16-capture-fix.md
+10-10 21:04 implementer T16 capture-fix DONE feafb5d tool_uses=12 tokens=18245 (__name init-script shim in design-capture.ts; capture-group.sh drops hashes.new/changed.txt on failure; verify green) | T16 total: 21 runs, ~663. Re-running capture expenses iter2
+10-10 21:18 conductor T16 capture expenses iter2: 278 checked, 0 fail; 541 of 559 slices changed. Dispatching design-critic + field-critic (opus) iter2, tables expenses-iter2-design.md / expenses-iter2-field.md
+10-10 21:21 field-critic T16 expenses iter2 87/100 tool_uses=72 tokens=74764 (P0 0 P1 0; P2 2: F16 detail Edit under tab bar, F17 job-filtered key figure; P3 7; no write tool, conductor saved expenses-iter2-field.md) | T16 total: 22 runs, ~735
+10-10 21:22 design-critic T16 expenses iter2 81/100 tool_uses=58 tokens=29346 (P0 0 P1 0; P2 5: D15 D9 D21 D22 D23; P3 12; conductor saved expenses-iter2-design.md) | T16 total: 23 runs, ~793. avg 84.0 < 90; iter 3 would pass 800 tool-use budget -> assessor
+10-10 21:23 conductor T16 SCORES row iter2 (avg 84) + ISSUES i1 statuses and 13 i2 rows written. Dispatching budget assessor (opus): iter 3 needs ~150-180 tool uses vs 7 left of 800
+10-10 21:24 assessor T16 budget call: (a) trimmed iter 3 — fix run cap 30 on 5 P2s, one capture (guard-fix ≤ 10 steps once, else STOP), critics changed slices + i2 rows ≤ 25 reads each; hard ceiling 880 tool uses / 26 runs; then accept at cap. tool_uses=3 tokens=26092 | T16 total: 24 runs, ~796. Fix list task-16-design-fix-2.md written. Slice end (4 rounds). Next: dispatch fix 2 (sonnet, cap 30)
+10-10 21:28 conductor T16 new session; dispatching design-fix-2 (sonnet, cap 30), brief task-16-design-fix-2.md, report task-16-design-fix-2-report.md
+10-10 21:37 implementer T16 design-fix-2 DONE 6a538e2 tool_uses=34 tokens=75052 (5 P2s; guards checkMoneyFigureFont, checkTableRowHeight 48px; expense-edit+list iphone+desktop 52 pass 4 skip; verify 934) | T16 total: 25 runs, ~830. Running capture expenses iter3
+10-10 21:51 conductor T16 capture expenses iter3: 278 checked, 0 fail; 138 of 596 images changed. Dispatching design-critic + field-critic (opus) iter3, changed + i2 rows only, ≤ 25 reads each (assessor plan; makes 27 runs vs its stated 26 — its own plan needs 24+fix+2 critics; tool-use ceiling 880 kept)
+10-10 21:53 field-critic T16 expenses iter3 90/100 tool_uses=26 tokens=42901 (P0 0 P1 0; 5 i2 P2 fixed; new P3 F24-F27) | design-critic T16 expenses iter3 86/100 tool_uses=25 tokens=48193 (P0 0 P1 0; i2 P2s fixed; new P2 D32 landscape pinned bar, P3 D33 D34) | T16 total: 27 runs, ~881 (1 over the 880 ceiling, ~0.1%; noted). avg 88, accepted at the 3-iteration cap; SCORES/ISSUES (6 i3 rows) + 2 lessons written. Running task e2e on 3 projects
+10-10 22:00 conductor T16 e2e (8 specs) 3 projects at 6a538e2: 321 pass, 48 skip, 0 fail. Task 16 DONE (27 runs, ~881). Plan ticked. Next: Task 17 brief
+10-10 22:05 conductor T17 new session; brief task-17-brief.md (4 runs A-D, all opus). Dispatching run A (opus, cap 30), report task-17-run-a-report.md | T17 total: 0 runs, 0
+10-10 22:16 implementer T17 run-a DONE fdbab34 tool_uses=35 tokens=69778 (screen 18; StatusChip Draft/Approved/Exported; /pay off the auto-send banner; verify 939; iphone 9 pass 1 skip desktop-only) | T17 total: 1 run, 35. Dispatching run B (opus, cap 30), report task-17-run-b-report.md
+10-10 22:27 implementer T17 run-b PARTIAL (display done; commit failed on gitignored report path; conductor committed its 6 staged files) 0d5f80c tool_uses=31 tokens=77306 (verify 946; iphone review spec 9 pass; 2FA-blocked state spec-only, screens.ts lacks it) | T17 total: 2 runs, 66. Dispatching run C (opus, cap 30), report task-17-run-c-report.md
+10-11 01:33 conductor T17 new session; run C died (no report, no commit; uncommitted partial: pay-actions-plan.ts+test, pay-run-actions.tsx, approve-pay-run.spec.ts, edits to pay-run-review.tsx, [runId]/page.tsx, pay-run-review.spec.ts, screens.ts). Dispatching run C finisher (opus, cap 30), report task-17-run-c-report.md
+10-11 01:45 implementer T17 run-c finisher DONE 2eb3fbc tool_uses=42 tokens=54214 (approve sheet, blocks, export, reopen, share-statement.tsx per person, exported state; verify 955; iphone review 16 pass, flow 19 pass) | T17 total: 3 runs, ~108 (+ dead run C, uncounted). Dispatching run D (opus, cap 30), report task-17-run-d-report.md
+10-11 01:58 implementer T17 run-d DONE bcfb3a4 tool_uses=41 tokens=20348 (/s/[token] statement, share, statement-share flow; verify 958; iphone+desktop statement 12 pass, flow 3 pass; android not run) | T17 total: 4 runs, ~149. Dispatching review cycle in parallel on 2fd9b02..bcfb3a4: reviewer (sonnet, task-17-review.md) + spec-reviewer (opus, task-17-spec-review.md)
+10-11 02:05 reviewer T17 review FINDINGS P2 2 (F1 ?confirm= opens hidden actions, F2 reopen leaves statement links live on draft) P3 3 tool_uses=35 tokens=43916, task-17-review.md | T17 total: 5 runs, ~184
+10-11 02:08 spec-reviewer T17 spec review CLEAN tool_uses=15 tokens=70967 (non-blocking N1: 'Needs connection.' vs flows 'Needs connection —' app-wide; 18 long-names state N/A accepted) | T17 total: 6 runs, ~199. Fix list task-17-fix-1.md (F1-F5 + N1). Dispatching fix 1 (opus, cap 30), report task-17-fix-1-report.md
+10-11 02:25 implementer T17 fix-1 DONE d78d633 tool_uses=33 tokens=51877 (F1-F5 + N1 shared needs-connection.ts app-wide; verify 964; iphone focused 111 pass, job-form fixed then 39/39; other 8 specs not rerun after last change; android/desktop not run) | T17 total: 7 runs, ~232. Slice end (4 rounds). Next: re-review (reviewer F1-F5, spec-reviewer N1) on bcfb3a4..d78d633
+10-11 02:18 conductor T17 new session; dispatching re-review in parallel on bcfb3a4..d78d633: reviewer (sonnet, F1-F5 only, task-17-rereview.md) + spec-reviewer (opus, N1 only, task-17-spec-rereview.md)
+10-11 02:18 conductor T17 task e2e started (9 specs, 3 projects) at d78d633 in parallel with re-review
+10-11 02:21 reviewer T17 re-review F1-F5 all FIXED; new P2 R1 (F1 e2e negative toHaveCount(0) at pay-run-review.spec.ts:162-179 may pass pre-hydration) tool_uses=12 tokens=39526, task-17-rereview.md | T17 total: 8 runs, ~244
+10-11 02:24 spec-reviewer T17 spec re-review N1 FIXED, CLEAN (non-blocking: seed.test.ts CPU-time check failed once under load 14.6, passes alone) tool_uses=7 tokens=25660; conductor saved task-17-spec-rereview.md | T17 total: 9 runs, ~251. Dispatching fix 2 (R1 test-only, sonnet, cap 15), task-17-fix-2.md
+10-11 02:31 conductor T17 e2e (9 specs) 3 projects at d78d633: 336 pass, 9 skip, 0 fail. Waiting on fix 2 (R1); then rerun pay-run-review 3 projects, then capture pay iter1
+10-11 02:33 implementer T17 fix-2 DONE 6609d0a tool_uses=11 tokens=18179 (hydrated() helper, networkidle after 5 navigations; verify 964) | T17 total: 10 runs, ~262. Running pay-run-review e2e 3 projects + reviewer R1 re-check (sonnet, cap 10)
+10-11 02:35 reviewer T17 R1 re-check CLEAN (FIXED) tool_uses=5 tokens=12552 | T17 total: 11 runs, ~267. Review cycle closed
+10-11 02:36 conductor T17 pay-run-review e2e 3 projects at 6609d0a: 51 pass, 0 fail. Running capture pay iter1
+10-11 02:54 conductor T17 capture pay iter1: 220 checked, 0 fail, 56 skipped as 404 (pay-run-review normal/offline/blocked: screens.ts route '/pay/:runId' never substituted). Dispatching capture fix (sonnet, cap 12), task-17-capture-fix.md
+10-11 02:58 implementer T17 capture-fix DONE 79eded3 tool_uses=18 tokens=26355 (cause: fake 'current-week' runId in PLACEHOLDER_IDS; routes now meta.payRuns.review; unit guard tests/unit/screens.test.ts for seeded pay ids; verify green; over brief cap 12, under run cap) | T17 total: 12 runs, ~285. Re-running capture pay iter1
+10-11 03:20 conductor T17 capture pay iter1 at 79eded3: 276 checked, 0 fail, 0 skipped. Slice end (4 rounds). Next: design-critic + field-critic (opus) pay iter1
+10-11 03:25 conductor T17 new session; dispatching design-critic + field-critic (opus) pay iter1 in parallel (checks.md + slices, flows/spec ranges from brief), tables pay-iter1-design.md / pay-iter1-field.md
+10-11 03:29 design-critic T17 pay iter1 77/100 tool_uses=59 tokens=81146 (P1 1: D1 statement owed doesn't reconcile; P2 7; P3 7; pay-iter1-design.md) | T17 total: 13 runs, ~344
+10-11 03:30 field-critic T17 pay iter1 78/100 tool_uses=62 tokens=70161 (P1 1: F1 same as D1; P1 F2 offline review disabled; P2 8; P3 5; pay-iter1-field.md) | T17 total: 14 runs, ~406. avg 77.5; SCORES/ISSUES (21 rows) + 3 lessons written. Fix list task-17-design-fix-1.md (1a opus, 1b opus, 1c sonnet). Dispatching fix 1a (opus, cap 30)
+10-11 03:42 implementer T17 design-fix-1a DONE e2cfef3 tool_uses=40 tokens=80895 (balance figure was right, Owed from earlier row added; verify 971; e2e not run) | T17 total: 15 runs, ~446. Running focused e2e iphone+desktop
+10-11 03:44 conductor T17 focused e2e (pay-run-review, crew-statement, approve-pay-run, statement-share) iphone+desktop at e2cfef3: 60 pass, 0 fail. Dispatching design-fix-1b (opus, cap 30), report task-17-design-fix-1b-report.md
+10-11 03:56 implementer T17 design-fix-1b DONE 6dfc5ba tool_uses=34 tokens=80181 (blocker order, manager 2FA copy (flows 224 owner-only; F4 copy recorded), title-row/pinned Approve + checkPrimaryActionPlacement guard, fold <1024, Draft ink-2; verify 974) | T17 total: 16 runs, ~480. Running focused e2e iphone+desktop
+10-11 03:59 conductor T17 focused e2e at 6dfc5ba iphone+desktop: 64 pass, 1 skip, 5 fail (approve-pay-run:18 missing_rate block copy x4; pay-run-review:141 iphone timeout). Dispatching fix 1b-e2e (opus, cap 20), task-17-design-fix-1b-e2e.md
+10-11 04:04 implementer T17 design-fix-1b-e2e DONE a4ada96 tool_uses=11 tokens=27973 (both test-side: selector after data-pay-block moved to <p>; openPeople iterated a shrinking filter; verify 974) | T17 total: 17 runs, ~491. Re-running focused e2e iphone+desktop
+10-11 04:06 conductor T17 focused e2e at a4ada96 iphone+desktop: 69 pass, 1 skip, 0 fail. Slice end (4 rounds). Next: design-fix-1c (sonnet, cap 30)
+10-11 04:11 conductor T17 new session; dispatching design-fix-1c (sonnet, cap 30), report task-17-design-fix-1c-report.md
+10-11 04:17 implementer T17 design-fix-1c DONE b6b3bcd tool_uses=33 tokens=70993 (items 1-5; verify 977; e2e not run) | T17 total: 18 runs, ~524. Running focused e2e iphone+desktop+android
+10-11 04:17 conductor T17 e2e started at b6b3bcd, 3 projects: pay-runs-list, pay-run-review, crew-statement, flows/approve-pay-run, flows/statement-share, shell, jobs-list, crew-list (no-access page shared)
+10-11 04:26 conductor T17 e2e at b6b3bcd 3 projects: 313 pass, 19 skip, 13 fail (pay-runs-list:19 draft hidden, shell:202 error heading, jobs-list :38/:100/:140). Dispatching fix 1c-e2e (sonnet, cap 30), task-17-design-fix-1c-e2e.md
+10-11 04:32 implementer T17 design-fix-1c-e2e DONE 4d30ac8 tool_uses=28 tokens=54299 (all test-side: pay-runs-list expects hidden empty draft; shell error uses /reports; jobs-list predates T14 quoted fixtures + long-name row bound; verify green) | T17 total: 19 runs, ~552. Rerunning pay-runs-list, shell, jobs-list 3 projects
+10-11 04:36 conductor T17 rerun at 4d30ac8 3 projects (pay-runs-list, shell, jobs-list): 178 pass, 14 skip, 3 fail (jobs-list:159 'No closed jobs.' x3). Dispatching fix 1c-e2e2 (sonnet, cap 15) + reviewer on 4d30ac8 (sonnet, assertions not weakened, task-17-fix-1c-e2e-review.md)
+10-11 04:40 reviewer T17 fix-1c-e2e review FINDINGS P1 0 P2 2 (long-name row bounds estimated not measured; name height uncapped) P3 4 tool_uses=18 tokens=44878, task-17-fix-1c-e2e-review.md | T17 total: 20 runs, ~570
+10-11 04:40 implementer T17 design-fix-1c-e2e2 DONE 702956f tool_uses=21 tokens=35058 (no manager filter empty in seed; new test edits Kelly to Active — mutates shared seed) | T17 total: 21 runs, ~591. Dispatching fix 1c-e2e3 (sonnet, cap 30): review P2/P3 + Kelly mutation, task-17-design-fix-1c-e2e3.md
+10-11 06:41 conductor T17 new session; fix 1c-e2e3 agent died (no report, no commit, tree clean but owner's scripts/loop.sh). Re-dispatching fix 1c-e2e3 (sonnet, cap 30) fresh, same brief
+10-11 06:47 implementer T17 design-fix-1c-e2e3 DONE 3204dce tool_uses=28 tokens=52964 (long-name bounds measured; Kelly-mutating e2e removed, empty filters proved in jobs-list.test.tsx; shell demo route; ISSUES row; verify 984) | T17 total: 22 runs, ~619. Rerun pay-runs-list, shell, jobs-list 3 projects + reviewer re-check (sonnet, cap 15, task-17-fix-1c-e2e-rereview.md)
+10-11 06:49 reviewer T17 fix-1c-e2e re-review: F1-F6 + Kelly FIXED, no weakening; new P3 N1 (load-jobs.ts:14 anyJobs lost its only test) tool_uses=12 tokens=40368, task-17-fix-1c-e2e-rereview.md | T17 total: 23 runs, ~631. Waiting on e2e rerun
+10-11 06:51 conductor T17 rerun at 3204dce 3 projects (pay-runs-list, shell, jobs-list): 181 pass, 14 skip, 0 fail. Fix 1 closed; P3 N1 (loadJobs unit test) carried to the iter2 fix list. Running capture pay iter2
+10-11 07:06 conductor T17 capture pay iter2 at 3204dce: 276 checked, 0 fail, 0 skipped; changed.txt 692 lines (650 slices). Dispatching design-critic + field-critic (opus) pay iter2 in parallel, tables pay-iter2-design.md / pay-iter2-field.md
+10-11 07:10 design-critic T17 pay iter2 81/100 tool_uses=44 tokens=31390 (P1 D16 tablet bars overlay, D25 landscape bar; conductor saved pay-iter2-design.md, no Write tool) | field-critic T17 pay iter2 83/100 tool_uses=49 tokens=25892 (P1 N1 totals don't sum, N2 landscape bar; saved pay-iter2-field.md) | T17 total: 25 runs, ~724. avg 82, 3 P1. SCORES/ISSUES (16 i2 rows, i1 rows fixed except D11) + 1 lesson. Fix list task-17-design-fix-2.md (2a opus, 2b opus, 2c sonnet). Slice end (4 rounds). Budget note: 3 more runs + capture + critics ≈ 30 runs / ~900 steps, over 800 — next session assess per §5
+10-11 07:14 conductor T17 slice end; docs committed 5a4230d, verify green. Next: §5 assessor on budget, then fix 2a (opus)
+10-11 07:15 conductor T17 new session; dispatching §5 budget assessor (opus) — remaining 2a/2b/2c + capture + critics projected ~30 runs / ~900 steps vs 800
+10-11 07:16 assessor (opus) T17 §5: ceiling 32 runs/900 steps, 2c folded into 2a (copy+ABN) and 2b (D22/D24), D20 + P3 N1 deferred tool_uses=1 tokens=27205 | T17 total: 26 runs, ~725. Dispatching design-fix-2a (opus, cap 30)
+10-11 07:25 implementer T17 design-fix-2a DONE eb4bec4 tool_uses=32 tokens=71538 (N1 domain total already includes GST+reimb; Employees+Contractors=Total with Includes sub-lines; N4 D11 D21 N6 N3/D19 N5 D23 D26; guards checkRunTotalsSum, checkAbnStaysWhole; verify 990; Home pay note keeps old wording) | T17 total: 27 runs, ~757. Dispatching design-fix-2b (opus, cap 30)
+10-11 07:39 implementer T17 design-fix-2b DONE 82ef49e tool_uses=40 tokens=28493 (D25+N2 D16 D17 D27 D18 D22 D24; 3 guards; verify 993; over cap 30, under run cap 45; landscape/tablet unmeasured) | T17 total: 28 runs, ~797. Running focused e2e 3 projects
+10-11 07:45 conductor T17 focused e2e at 82ef49e 3 projects: 249 pass, 18 skip, 18 fail (6 tests x3: crew-statement:52, approve-pay-run:18 x2, pay-run-review:240, :293 landscape bar, pay-runs-list:19). Dispatching fix 2-e2e (opus, cap 30), task-17-design-fix-2-e2e.md. Budget note: this run makes 29; critics+reviewer+spec-reviewer → 32-33 vs ceiling 32
+10-11 07:59 implementer T17 design-fix-2-e2e DONE 19c3bf6 tool_uses=35 tokens=59610 (app-side: landscape bar 69→64 px via 48 px buttons; 5 tests test-side to 2a/2b copy+layout; tablet clearance guard scrolls until stable; iphone+desktop 94 pass) | T17 total: 29 runs, ~832. Rerunning the 4 spec files 3 projects
+10-11 08:03 conductor T17 rerun at 19c3bf6 3 projects (pay-runs-list, pay-run-review, crew-statement, flows/approve-pay-run): 141 pass, 6 skip, 0 fail. Fix 2 e2e closed. Slice end (4 rounds). Next: capture pay iter3, then critics (opus) iter3, then reviewer + spec-reviewer on 5a4230d..19c3bf6
+10-11 09:08 conductor T17 new session; capture pay iter3 at 19c3bf6 (background) + reviewer + spec-reviewer on 5a4230d..19c3bf6 in parallel
+10-11 09:13 spec-reviewer T17 fix-2 FINDINGS P1 1 (contractor statement footer != 02-pay-rules.md:196) P2 2 (offline copy vs flows:24/222; landscape inline waiver ~20 px) P3 2 tool_uses=10 tokens=50592, task-17-fix-2-spec-review.md | T17 total: 30 runs, ~842
+10-11 09:15 reviewer T17 fix-2 FINDINGS P1 0 P2 3 (F1 landscape inline waiver ~20 px; F3 64 px bar only proven 844x390 missing-rate; F7 spec/flows copy drift) P3 5 tool_uses=32 tokens=34324, task-17-fix-2-review.md | T17 total: 31 runs, ~874. Waiting on capture iter3
+10-11 09:24 conductor T17 capture pay iter3 at 19c3bf6: 276 checked, 0 fail; changed.txt 551. Dispatching design-critic + field-critic (opus) iter3 + §5 assessor (opus; critics make 33 runs/~970 vs ceiling 32/900, plus review fix round)
+10-11 09:26 assessor (opus) T17 §5 #2: one opus fix run (cap 30: P1 footer to 02-pay-rules:196, offline copy to flows 24/222/241, landscape waiver 48 px, bar-height checks 844x390 2FA+offline, guard fails on no bar, one 2FA sentence), defer F2/P3-1 (decision row), F5 F6 F8; rerun 4 pay specs; re-review each own findings; FINAL ceiling 36 runs/1050, open P1/P2 after re-review = STOP tool_uses=6 tokens=36877, task-17-assessor-2.md | T17 total: 32 runs, ~880
+10-11 09:28 design-critic T17 pay iter3 88/100 tool_uses=38 tokens=26491 | field-critic T17 pay iter3 89/100 tool_uses=48 tokens=33835 (0 P0/P1; avg 88.5; accepted at cap; pay-iter3-*.md, SCORES/ISSUES 10 i3 rows, 2 lessons) | T17 total: 34 runs, ~966. Dispatching review fix 2 (opus, cap 30), task-17-review-fix-2.md
+10-11 09:37 implementer T17 review-fix-2 DONE a6d9fa9 tool_uses=24 tokens=54882 (items 1-6; verify 992; landscape offline+block bar grows ~76 px, guard ≤100) | T17 total: 35 runs, ~990. Rerunning 4 pay specs 3 projects + spec-reviewer (opus cap 10) + reviewer (sonnet cap 15) re-review
+10-11 09:41 reviewer T17 re-review a6d9fa9: F1 F3 F7 FIXED, F4 a/b FIXED (F4 button-height/gap part was out of assessor scope); new P2 N1 (pay-run-review.spec.ts:338 toHaveText without toBeVisible), P3 N2 N3 tool_uses=15 tokens=54898 | T17 total: 36 runs, ~1005
+10-11 09:43 spec-reviewer T17 re-review a6d9fa9: P1-1 P2-1 P3-2 FIXED, P2-2 FIXED pending e2e; no new P0-P2 tool_uses=5 tokens=23023 | T17 total: 37 runs, ~1010. Waiting on e2e
+10-11 09:47 conductor T17 rerun at a6d9fa9 3 projects (pay-runs-list, pay-run-review, crew-statement, flows/approve-pay-run): 150 pass, 6 skip, 0 fail; pnpm verify green (992; stop-hook timing fails were CPU load during e2e). Open: new P2 N1 (test-only) + P3 N2 after final ceiling 36/1050 (now 37/~1010) → next session: §5 small-stop assessor (owner rule 2026-10-10). Slice end (4 rounds)
+10-11 09:50 conductor T17 new session; dispatching §5 small-stop assessor #3 (opus) on review P2 N1 (test-only) + P3 N2/N3 past final ceiling 36/1050 (now 37/~1010)
+10-11 09:51 assessor-3 (opus) T17: small stop; 1 sonnet test fix (N1 toBeVisible, N3 count guard, N2 cap measured), reviewer re-check N1/N3, N2-combo+F4c to ISSUES, final ceiling 39/1040 (completion recovered from task-17-assessor-3.md; session died before the ledger line) | T17 total: 38 runs, ~1011
+10-11 11:52 conductor T17 new session; dispatching review-fix-3 implementer (sonnet, cap 12), brief task-17-assessor-3.md, report task-17-review-fix-3-report.md
+10-11 11:59 implementer T17 review-fix-3 DONE 0e95bc5 tool_uses=13 tokens=23178 (N1 toBeVisible, mutation fail/pass proven on iphone; N3 count guard; N2 measured 76 px, cap 100→80; verify 992) | T17 total: 39 runs, ~1024. Rerunning pay-run-review 3 projects + reviewer re-check N1/N3 (sonnet, cap 6)
+10-11 12:01 reviewer T17 re-review 0e95bc5 CLEAN: N1 N3 FIXED, N2 cap 80 tighter, no new P0-P2 tool_uses=5 tokens=15573 | T17 total: 40 runs, ~1029 (assessor 3's 39 ceiling excluded its own run; tool uses under 1040). Waiting on e2e
+10-11 12:03 conductor T17 rerun pay-run-review at 0e95bc5 3 projects: 84 pass, 3 skip, 0 fail. T17 CLOSED (plan line 177 ticked; ISSUES rows r-N2, r-F4c deferred; i3-F1/F4 fixed). T17 final: 40 runs, ~1029. Next: Task 18 brief

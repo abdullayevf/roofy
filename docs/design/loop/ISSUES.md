@@ -649,8 +649,10 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | pay/i3-D20 | pay | P3 | pay-run-review desktop | Empty left column beside People | Sticky left column | open (accepted at cap) | 3 |
 | pay/i3-N2 | pay | P3 | pay-run-review bar tablet/iphone | ~40 px empty below waiver link | Bottom padding 16 px | open (accepted at cap) | 3 |
 | pay/i3-N3 | pay | P3 | statement Work rows | Em dash joins job and site | Two meta lines or comma | open (accepted at cap) | 3 |
-| pay/i3-F1 | pay | P2 | pay-run-review landscape blocked | Waiver link ~20 px tap height | 48 px hit area | fixing (review fix 2) | 3 |
+| pay/i3-F1 | pay | P2 | pay-run-review landscape blocked | Waiver link ~20 px tap height | 48 px hit area | fixed a6d9fa9 (re-reviewed) | 3 |
 | pay/i3-F2 | pay | P3 | pay-run-review blocked iphone/tablet | Waiver link centred | Left-align to button row | open (accepted at cap) | 3 |
 | pay/i3-F3 | pay | P3 | pay-run-review confirm sheet | Three sentences | Cut to two | open (accepted at cap) | 3 |
-| pay/i3-F4 | pay | P3 | pay-run-review offline | Not the flows.md Needs connection line | flows.md 24 line | fixing (review fix 2) | 3 |
+| pay/i3-F4 | pay | P3 | pay-run-review offline | Not the flows.md Needs connection line | flows.md 24 line | fixed a6d9fa9 (re-reviewed) | 3 |
 | pay/i3-F6 | pay | P3 | pay-run-review draft iphone | Pinned bar + tab bar ~270 of 844 px | Blocker one line, link in button row | open (accepted at cap) | 3 |
+| pay/r-N2 | pay | P3 | pay-run-review 844x390 manager two-factor + offline | Combination untested; bar estimated ~96 px (offline+blocked measured 76, cap 80) | Add a measured height check | open (assessor 3, deferred) | 3 |
+| pay/r-F4c | pay | P3 | guards checkPinnedBarCompact | No button height/gap check in the compact bar guard | Assert 48 px buttons and gap | open (assessor 3, deferred) | 3 |
