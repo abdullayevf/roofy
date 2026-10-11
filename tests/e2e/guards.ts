@@ -1170,7 +1170,8 @@ export async function checkPinnedBarCompact(page: Page, max = 64): Promise<Guard
   const box = await bar.boundingBox();
   if (!box) failures.push("the pinned bar has no box");
   else if (box.height > max + 0.5) failures.push(`pinned bar is ${Math.round(box.height)} px tall (max ${max})`);
-  const circle = await page.locator("nav .rounded-full.bg-chalk:visible").first().boundingBox();
+  const circleLoc = page.locator("nav .rounded-full.bg-chalk:visible").first();
+  const circle = (await circleLoc.count()) === 0 ? null : await circleLoc.boundingBox();
   if (!circle) failures.push("no Log circle in the tab bar to measure against");
   const parts: { label: string; b: { x: number; y: number; width: number; height: number } }[] = [];
   for (const el of await bar.locator(":scope > *:visible").all()) {

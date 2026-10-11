@@ -335,10 +335,11 @@ test.describe("pay run review layout (pay iter2 D16, D17, D25)", () => {
   test("a phone on its side offline and blocked: Needs connection is the sentence's second line, clear of the Log circle", async ({ page }) => {
     await page.setViewportSize({ width: 844, height: 390 });
     await signInAs(page, "manager", `${PATH}?demo=offline`);
+    await expect(page.locator("[data-pay-needs-connection-inline]")).toBeVisible();
     await expect(page.locator("[data-pay-needs-connection-inline]")).toHaveText(NEEDS_CONNECTION);
     await expect(page.locator("[data-pay-needs-connection]")).toBeHidden();
-    // Two sentences in one column can't fit 64 px; the bar grows (recorded in the fix report), still one row.
-    expect((await checkPinnedBarCompact(page, 100)).failures).toEqual([]);
+    // Two sentences in one column can't fit 64 px; the bar grows to 76 px measured here, still one row. Cap is measured + 4.
+    expect((await checkPinnedBarCompact(page, 80)).failures).toEqual([]);
   });
 
   test("a tablet: the bar spans the review column on a full-width strip and nothing ends under it", async ({ page }) => {
