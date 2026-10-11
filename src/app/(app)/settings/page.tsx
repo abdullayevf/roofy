@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Settings" };
 
 /** Settings hub (flows.md screen 23). Reads stay available offline; each page's Save says Needs connection. */
 export default async function Page({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  return settingsPage(searchParams, { title: "Settings", rows: 6 }, async ({ data, actor, settings, ownerTwoFactor, owner }) => {
+  return settingsPage(searchParams, { title: "Settings", rows: 3, list: true, groups: 2 }, async ({ data, actor, settings, ownerTwoFactor, owner }) => {
     const levels = await data.workspace.levels(actor);
     return <SettingsIndex owner={owner} settings={settings} ownerTwoFactor={ownerTwoFactor} levelCount={levels.length} />;
   });

@@ -107,12 +107,12 @@ test.describe("Settings (screen 23)", () => {
     await go(page, "owner", "/settings/levels?demo=empty");
     await expect(page.getByText("No levels yet.", { exact: false })).toBeVisible();
   });
+  // Categories have no page-level Save: each one saves from its own edit sheet (settings-lists.spec.ts).
   // Entry-settings iter1 D8 + F2 (P1): a settings form taller than the first screen pins its Save bar, so Save and its
   // error or Needs connection line are on screen without scrolling; a saved toast sits above the bars.
   for (const [path, role] of [
     ["/settings/levels", "owner"],
     ["/settings/pay-period", "owner"],
-    ["/settings/categories", "owner"],
     ["/settings/templates?type=metal_reroof", "owner"],
     ["/settings/assignments", "owner"],
   ] as const)

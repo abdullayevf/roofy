@@ -12,9 +12,12 @@ import {
 } from "@/app/actions/settings";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog } from "@/components/ui/dialog";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { Field } from "@/components/ui/field";
+import { List } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
+import { Sheet } from "@/components/ui/sheet";
 import { Toast } from "@/components/ui/toast";
 import { bpText, CATEGORY_NAME_MAX, nameLengthError, readShare, shareErrors } from "./settings-input";
 import { FORM_GRID, SettingsForm, useSave, type Errors } from "./settings-forms";
@@ -28,8 +31,20 @@ const UNITS: { value: Unit | ""; label: string }[] = [
 ];
 
 type Row = { key: number; name: string; unit: Unit | ""; labour: string; materials: string };
+/** A stage open in the edit sheet. It joins the list only when Done is pressed. */
+type Draft = Row & { isNew: boolean };
 
-/** One job type's stage list: name, unit and the labour and materials share of each stage. */
+const unitName = (u: Unit | "") => UNITS.find((x) => x.value === u)?.label ?? "No unit";
+/** A share as the list shows it: tidied when it reads, as typed when it does not. */
+const shareText = (text: string) => {
+  const r = readShare(text);
+  return "bp" in r ? bpText(r.bp) : text;
+};
+
+/**
+ * One job type's stage list: a row per stage (name, unit, shares) that opens an edit sheet, with the running
+ * Labour and Materials totals above it. Edits stay on the page until Save changes; Remove sits in the sheet, behind a confirm.
+ */
 export function TemplateForm({
   jobType,
   items,
@@ -50,24 +65,40 @@ export function TemplateForm({
       materials: bpText(i.materialsShareBp),
     })),
   );
-  const patch = (key: number, p: Partial<Row>) =>
-    setRows((all) => all.map((r) => (r.key === key ? { ...r, ...p } : r)));
-  const read = () => rows.map((r) => ({ labour: readShare(r.labour), materials: readShare(r.materials) }));
-  const bps = (which: "labour" | "materials") => read().map((r) => ("bp" in r[which] ? r[which].bp : 0));
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [draftErrors, setDraftErrors] = useState<Errors>({});
+  const [removing, setRemoving] = useState<Row | null>(null);
+  const bps = (which: "labour" | "materials") =>
+    rows.map((r) => {
+      const v = readShare(r[which]);
+      return "bp" in v ? v.bp : 0;
+    });
   const labourTotal = bps("labour").reduce((a, b) => a + b, 0);
   const materialsTotal = bps("materials").reduce((a, b) => a + b, 0);
+  const open = (d: Draft) => {
+    setDraftErrors({});
+    setDraft(d);
+  };
+  const patchDraft = (p: Partial<Row>) => setDraft((d) => (d ? { ...d, ...p } : d));
+  const done = () => {
+    if (!draft) return;
+    const found: Errors = {};
+    if (!draft.name.trim()) found.name = "Add a name for the stage.";
+    const l = readShare(draft.labour);
+    const m = readShare(draft.materials);
+    if ("error" in l) found.labour = l.error;
+    if ("error" in m) found.materials = m.error;
+    setDraftErrors(found);
+    if (Object.keys(found).length) return;
+    const { isNew, ...row } = draft;
+    setRows((all) => (isNew ? [...all, row] : all.map((r) => (r.key === row.key ? row : r))));
+    if (isNew) setNext((n) => n + 1);
+    setDraft(null);
+  };
   const submit = () => {
     const found: Errors = {};
-    const parsed = read();
-    rows.forEach((r, k) => {
-      if (!r.name.trim()) found[`name-${r.key}`] = "Add a name for the stage.";
-      const l = parsed[k]!.labour;
-      const m = parsed[k]!.materials;
-      if ("error" in l) found[`labour-${r.key}`] = l.error;
-      if ("error" in m) found[`materials-${r.key}`] = m.error;
-    });
     if (!rows.length) found.rows = "Add at least one stage.";
-    else if (!Object.keys(found).length) Object.assign(found, shareErrors(bps("labour"), bps("materials")));
+    else Object.assign(found, shareErrors(bps("labour"), bps("materials")));
     return s.run(
       () => found,
       () =>
@@ -84,80 +115,117 @@ export function TemplateForm({
     );
   };
   return (
-    <SettingsForm s={s} onSubmit={submit} pinned>
-      <ol className="flex flex-col gap-4">
-        {rows.map((r, k) => (
-          <li key={r.key} className="flex flex-col gap-4 rounded-md border border-line p-4">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-body-strong text-ink">Stage {k + 1}</h2>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setRows((all) => all.filter((x) => x.key !== r.key))}
-              >
-                Remove stage {k + 1}
-              </Button>
-            </div>
-            <div className={FORM_GRID}>
-              <Field
-                label={`Stage ${k + 1} name`}
-                inputMode="text"
-                value={r.name}
-                onChange={(e) => patch(r.key, { name: e.target.value })}
-                error={s.errors[`name-${r.key}`]}
-              />
-              <Select
-                label={`Stage ${k + 1} unit`}
-                options={UNITS}
-                value={r.unit}
-                onChange={(e) => patch(r.key, { unit: e.target.value as Unit | "" })}
-              />
-              <Field
-                label={`Stage ${k + 1} labour share`}
-                inputMode="decimal"
-                suffix="%"
-                value={r.labour}
-                onChange={(e) => patch(r.key, { labour: e.target.value })}
-                error={s.errors[`labour-${r.key}`]}
-              />
-              <Field
-                label={`Stage ${k + 1} materials share`}
-                inputMode="decimal"
-                suffix="%"
-                value={r.materials}
-                onChange={(e) => patch(r.key, { materials: e.target.value })}
-                error={s.errors[`materials-${r.key}`]}
-              />
-            </div>
-          </li>
-        ))}
-      </ol>
-      {s.errors.rows ? <ErrorMessage>{s.errors.rows}</ErrorMessage> : null}
-      <div className="flex flex-col gap-1">
-        <p className="text-body text-ink-2">
-          Labour adds up to {bpText(labourTotal)}%. Materials add up to {bpText(materialsTotal)}%.
-        </p>
-        {s.errors.labour ? <ErrorMessage>{s.errors.labour}</ErrorMessage> : null}
-        {s.errors.materials ? <ErrorMessage>{s.errors.materials}</ErrorMessage> : null}
-      </div>
-      <Button
-        type="button"
-        variant="secondary"
-        className="w-full sm:w-auto sm:self-start"
-        onClick={() => {
-          setRows((all) => [...all, { key: next, name: "", unit: "", labour: "0", materials: "0" }]);
-          setNext(next + 1);
+    <>
+      <SettingsForm s={s} onSubmit={submit} pinned>
+        <div className="flex flex-col gap-1">
+          <p className="text-body-strong text-ink">
+            Labour {bpText(labourTotal)}%. Materials {bpText(materialsTotal)}%.
+          </p>
+          {s.errors.labour ? <ErrorMessage>{s.errors.labour}</ErrorMessage> : null}
+          {s.errors.materials ? <ErrorMessage>{s.errors.materials}</ErrorMessage> : null}
+        </div>
+        {rows.length ? (
+          <List
+            className="lg:max-w-3xl"
+            rows={rows.map((r) => ({
+              key: String(r.key),
+              primary: r.name,
+              meta: [r.unit ? unitName(r.unit) : "", `Labour ${shareText(r.labour)}%, materials ${shareText(r.materials)}%`]
+                .filter(Boolean)
+                .join("\n"),
+              onClick: () => open({ ...r, isNew: false }),
+            }))}
+          />
+        ) : null}
+        {s.errors.rows ? <ErrorMessage>{s.errors.rows}</ErrorMessage> : null}
+        <Button
+          type="button"
+          variant="secondary"
+          className="w-full sm:w-auto sm:self-start"
+          onClick={() => open({ key: next, name: "", unit: "", labour: "0", materials: "0", isNew: true })}
+        >
+          Add stage
+        </Button>
+      </SettingsForm>
+      <Sheet
+        open={draft !== null}
+        onOpenChange={(o) => {
+          if (!o) setDraft(null);
         }}
+        title={draft?.isNew ? "Add a stage" : "Edit stage"}
+        primaryAction={
+          <Button type="button" onClick={done} className="w-full">
+            Done
+          </Button>
+        }
       >
-        Add stage
-      </Button>
-    </SettingsForm>
+        <div className="flex flex-col gap-4">
+          <Field
+            label="Stage name"
+            inputMode="text"
+            autoComplete="off"
+            value={draft?.name ?? ""}
+            onChange={(e) => patchDraft({ name: e.target.value })}
+            error={draftErrors.name}
+          />
+          <Select
+            label="Unit"
+            options={UNITS}
+            value={draft?.unit ?? ""}
+            onChange={(e) => patchDraft({ unit: e.target.value as Unit | "" })}
+          />
+          <Field
+            label="Labour share"
+            inputMode="decimal"
+            suffix="%"
+            value={draft?.labour ?? ""}
+            onChange={(e) => patchDraft({ labour: e.target.value })}
+            error={draftErrors.labour}
+          />
+          <Field
+            label="Materials share"
+            inputMode="decimal"
+            suffix="%"
+            value={draft?.materials ?? ""}
+            onChange={(e) => patchDraft({ materials: e.target.value })}
+            error={draftErrors.materials}
+          />
+          {draft && !draft.isNew ? (
+            <Button
+              type="button"
+              variant="ghost"
+              tone="danger"
+              className="w-full sm:w-auto sm:self-start"
+              onClick={() => {
+                setRemoving(rows.find((r) => r.key === draft.key) ?? null);
+                setDraft(null);
+              }}
+            >
+              Remove stage
+            </Button>
+          ) : null}
+        </div>
+      </Sheet>
+      <Dialog
+        open={removing !== null}
+        onOpenChange={(o) => {
+          if (!o) setRemoving(null);
+        }}
+        title={`Remove ${removing?.name ?? "this stage"}?`}
+        description="The stage leaves this list when you save changes. Jobs you have already made keep their stages."
+        confirmLabel="Remove stage"
+        tone="danger"
+        onConfirm={() => {
+          if (removing) setRows((all) => all.filter((x) => x.key !== removing.key));
+        }}
+      />
+    </>
   );
 }
 
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
-/** Rename the categories and add a new one; the names show in the expense form. */
+/** The expense categories as a list of names. A row opens a sheet to rename it; Add category opens the same sheet. */
 export function CategoriesForm({
   categories,
   demoOffline,
@@ -166,64 +234,93 @@ export function CategoriesForm({
   demoOffline: boolean;
 }) {
   const s = useSave(demoOffline);
-  const [names, setNames] = useState<Record<string, string>>(() =>
-    Object.fromEntries(categories.map((c) => [c.id, c.name])),
-  );
-  const [added, setAdded] = useState("");
+  const [edit, setEdit] = useState<{ id: Id | null; name: string } | null>(null);
+  const open = (id: Id | null, name: string) => {
+    s.setErrors({});
+    setEdit({ id, name });
+  };
   const submit = () => {
+    if (!edit) return;
     const found: Errors = {};
-    const all = [
-      ...categories.map((c) => ({ key: c.id, name: names[c.id] ?? c.name })),
-      ...(added.trim() ? [{ key: "new", name: added }] : []),
-    ];
-    all.forEach((c, i) => {
-      if (!c.name.trim()) found[c.key] = "Add a name for the category.";
-      else if (nameLengthError(c.name, CATEGORY_NAME_MAX)) found[c.key] = nameLengthError(c.name, CATEGORY_NAME_MAX);
-      else if (all.some((o, j) => j < i && sameName(o.name, c.name)))
-        found[c.key] = `There's already a category called ${c.name.trim()}.`;
-    });
+    const lengthError = nameLengthError(edit.name, CATEGORY_NAME_MAX);
+    if (!edit.name.trim()) found.name = "Add a name for the category.";
+    else if (lengthError) found.name = lengthError;
+    else if (categories.some((c) => c.id !== edit.id && sameName(c.name, edit.name)))
+      found.name = `There's already a category called ${edit.name.trim()}.`;
+    const existing = categories.find((c) => c.id === edit.id);
     return s.run(
       () => found,
       async () => {
-        for (const c of categories) {
-          const name = (names[c.id] ?? c.name).trim();
-          if (name === c.name) continue;
-          const r = await saveCategory({ id: c.id, name, position: c.position });
-          if (!r.ok) return r;
+        const name = edit.name.trim();
+        if (existing?.name === name) {
+          setEdit(null);
+          return { ok: true } as const;
         }
-        if (added.trim()) {
-          const position = Math.max(0, ...categories.map((c) => c.position)) + 1;
-          const r = await saveCategory({ id: null, name: added.trim(), position });
-          if (!r.ok) return r;
-          setAdded("");
-        }
-        return { ok: true } as const;
+        const position = existing?.position ?? Math.max(0, ...categories.map((c) => c.position)) + 1;
+        const r = await saveCategory({ id: edit.id, name, position });
+        if (r.ok) setEdit(null);
+        return r;
       },
     );
   };
   return (
-    <SettingsForm s={s} onSubmit={submit} pinned>
-      <div className={FORM_GRID}>
-        {categories.map((c) => (
-          <Field
-            key={c.id}
-            label={`Rename ${c.name}`}
-            inputMode="text"
-            value={names[c.id] ?? c.name}
-            onChange={(e) => setNames({ ...names, [c.id]: e.target.value })}
-            error={s.errors[c.id]}
-          />
-        ))}
-        <Field
-          label="New category"
-          inputMode="text"
-          value={added}
-          onChange={(e) => setAdded(e.target.value)}
-          error={s.errors.new}
-          hint="Optional. Add a name to create it when you save."
-        />
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={!s.online}
+          className="w-full sm:w-auto sm:self-start"
+          onClick={() => open(null, "")}
+        >
+          Add category
+        </Button>
+        {s.online ? null : (
+          <p role="status" className="text-body text-ink">
+            {NEEDS_CONNECTION}
+          </p>
+        )}
       </div>
-    </SettingsForm>
+      {categories.length ? (
+        <List
+          className="lg:max-w-3xl"
+          rows={categories.map((c) => ({ key: c.id, primary: c.name, onClick: () => open(c.id, c.name) }))}
+        />
+      ) : null}
+      <Sheet
+        open={edit !== null}
+        onOpenChange={(o) => {
+          if (!o) setEdit(null);
+        }}
+        title={edit?.id ? "Rename category" : "Add a category"}
+        primaryAction={
+          <Button
+            type="button"
+            onClick={submit}
+            loading={s.busy}
+            loadingLabel="Saving category"
+            disabled={!s.online}
+            reason={s.online ? undefined : NEEDS_CONNECTION}
+            className="w-full"
+          >
+            Save category
+          </Button>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <Field
+            label="Category name"
+            inputMode="text"
+            autoComplete="off"
+            value={edit?.name ?? ""}
+            onChange={(e) => setEdit((d) => (d ? { ...d, name: e.target.value } : d))}
+            error={s.errors.name}
+          />
+          {s.failed ? <ErrorMessage>{s.failed}</ErrorMessage> : null}
+        </div>
+      </Sheet>
+      <Toast open={s.saved} onOpenChange={s.setSaved} message={s.savedMessage} viewportClassName="toast-above-tabs" />
+    </div>
   );
 }
 

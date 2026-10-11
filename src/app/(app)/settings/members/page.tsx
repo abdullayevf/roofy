@@ -7,7 +7,7 @@ import { settingsPage } from "../load-settings";
 export const metadata: Metadata = { title: "Members & roles" };
 
 export default async function Page({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  return settingsPage(searchParams, { title: "Members & roles", ownerOnly: true }, async ({ data, actor, offline, empty }) => {
+  return settingsPage(searchParams, { title: "Members & roles", ownerOnly: true, rows: 4, list: true }, async ({ data, actor, offline, empty }) => {
     const members = empty ? [] : await data.workspace.members(actor);
     return (
       <SettingsPageFrame title="Members & roles" intro="Managers run jobs, crew and pay. Foremen log work on the jobs you give them. Accountants read pay, expenses and reports.">

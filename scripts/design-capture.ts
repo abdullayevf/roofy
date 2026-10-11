@@ -255,6 +255,12 @@ async function captureOne(opts: {
       await page.evaluate(() => document.fonts.ready).catch(() => undefined);
       continue;
     }
+    // "row:Site setup" opens a list row (a button whose name is the row's whole text, so it matches on a part).
+    if (step.startsWith("row:")) {
+      await page.getByRole("button", { name: step.slice(4) }).first().click();
+      await page.waitForTimeout(600);
+      continue;
+    }
     // "radio:No work" presses a segmented choice instead of a button.
     const radio = step.startsWith("radio:");
     await page.getByRole(radio ? "radio" : "button", { name: radio ? step.slice(6) : step, exact: true }).click();

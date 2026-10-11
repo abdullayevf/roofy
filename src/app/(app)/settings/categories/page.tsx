@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Expense categories" };
 const INTRO = "Expenses are filed under these names. Renaming a category renames it on every expense.";
 
 export default async function Page({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  return settingsPage(searchParams, { title: "Expense categories" }, async ({ data, actor, offline, empty }) => {
+  return settingsPage(searchParams, { title: "Expense categories", rows: 9, list: true }, async ({ data, actor, offline, empty }) => {
     const categories = empty ? [] : await data.workspace.categories(actor);
     return (
       <SettingsPageFrame title="Expense categories" intro={categories.length ? INTRO : "No expense categories yet. Add the first one below."}>

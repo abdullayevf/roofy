@@ -350,10 +350,12 @@ export function LevelsForm({ levels, demoOffline }: { levels: CrewLevel[]; demoO
     );
   return (
     <SettingsForm s={s} onSubmit={submit} pinned>
-      <div className={FORM_GRID}>
+      {/* From 1024 px a level is a row: name and crew count on the left, a narrow right-aligned rate on the right. */}
+      <div className="grid grid-cols-1 gap-6 lg:flex lg:max-w-3xl lg:flex-col lg:gap-0 lg:divide-y lg:divide-line lg:rounded-group lg:border-group lg:bg-surface">
         {levels.map((l) => (
           <MoneyField
             key={l.id}
+            className="lg:grid lg:min-h-16 lg:grid-cols-[1fr_12rem] lg:items-center lg:gap-x-6 lg:px-4 lg:py-2 lg:[&>:nth-child(2)]:row-span-2 lg:[&>:nth-child(2)]:self-center lg:[&_input]:text-right"
             label={l.name}
             ariaLabel={`Floor rate for ${l.name}`}
             hint={`An hour. ${l.crewCount}\u00a0crew on this level.`}

@@ -36,7 +36,42 @@ export function SettingsPageFrame({ title, intro, children }: { title: string; i
   );
 }
 
-export function SettingsSkeleton({ title, rows = 4 }: { title: string; rows?: number }) {
+export function SettingsSkeleton({
+  title,
+  rows = 4,
+  list = false,
+  groups = 1,
+}: {
+  title: string;
+  rows?: number;
+  /** A list page (the index, templates, categories, members): grouped 64 px rows, not label and input pairs. */
+  list?: boolean;
+  groups?: number;
+}) {
+  if (list)
+    return (
+      <div className={SETTINGS_WIDE} aria-busy="true">
+        <SettingsHead title={title} />
+        <div className="flex flex-col gap-6">
+          {Array.from({ length: groups }, (_, g) => (
+            <div key={g} className="flex flex-col gap-2">
+              {groups > 1 ? <Skeleton width={160} height={24} /> : null}
+              <div className={`divide-y divide-line rounded-group border-group bg-surface ${groups > 1 ? "" : "lg:max-w-3xl"}`}>
+                {Array.from({ length: rows }, (_, i) => (
+                  <div key={i} className="flex min-h-[64px] items-center justify-between gap-4 px-4 lg:min-h-12">
+                    <div className="flex flex-col gap-2">
+                      <Skeleton width={160} height={20} />
+                      <Skeleton width={96} height={16} />
+                    </div>
+                    <Skeleton width={24} height={24} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   return (
     <div className={SETTINGS_WIDE} aria-busy="true">
       <SettingsHead title={title} />

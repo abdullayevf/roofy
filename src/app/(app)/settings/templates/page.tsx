@@ -14,7 +14,7 @@ const INTRO = "New jobs start from the stage list for their job type, unless you
 export default async function Page({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const type = (await searchParams).type;
   const picked = JOB_TYPES.find((t) => t.value === type)?.value;
-  return settingsPage(searchParams, { title: "Templates", rows: 5 }, async ({ data, actor, offline, empty }) => {
+  return settingsPage(searchParams, { title: "Templates", rows: 5, list: true }, async ({ data, actor, offline, empty }) => {
     const templates = empty ? [] : await data.workspace.templates(actor);
     if (picked) {
       const items = templates.find((t) => t.jobType === picked)?.items ?? [];

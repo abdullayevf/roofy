@@ -16,7 +16,7 @@ export type SettingsCtx = { data: DataContext["data"]; actor: DataContext["actor
  */
 export async function settingsPage(
   searchParams: Promise<SearchParams>,
-  opts: { title: string; ownerOnly?: boolean; rows?: number },
+  opts: { title: string; ownerOnly?: boolean; rows?: number; list?: boolean; groups?: number },
   render: (ctx: SettingsCtx) => Promise<ReactNode> | ReactNode,
 ): Promise<ReactNode> {
   const { data, actor, demo } = await getData({ searchParams });
@@ -24,7 +24,7 @@ export async function settingsPage(
   const owner = actor.role === "owner";
   const refused = !canOpen(actor.role, "settings") || demo.state === "noperm" || (opts.ownerOnly && !owner);
   if (refused) return <NoPermission backHref={back.href} backLabel={back.label} ask={whoToAsk(actor.role)} />;
-  if (demo.loading) return <SettingsSkeleton title={opts.title} rows={opts.rows} />;
+  if (demo.loading) return <SettingsSkeleton title={opts.title} rows={opts.rows} list={opts.list} groups={opts.groups} />;
   const view = await load(() => data.workspace.settings(actor));
   if (view.kind === "forbidden" || (view.kind === "ok" && view.value.view !== "manager"))
     return <NoPermission backHref={back.href} backLabel={back.label} ask={whoToAsk(actor.role)} />;

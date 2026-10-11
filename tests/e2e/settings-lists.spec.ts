@@ -29,6 +29,17 @@ async function settleKeyboardBar(page: Page) {
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await expect(page.locator('[data-slot="primary-action"]')).not.toHaveAttribute("data-keyboard", "true");
 }
+/** A list row (a stage, a category) is a button named by its whole text. */
+const row = (page: Page, name: string | RegExp) => page.locator("main").getByRole("button", { name });
+const rows = (page: Page) => page.locator("main .divide-y button");
+const done = (page: Page) => page.getByRole("button", { name: "Done", exact: true });
+const stageName = (page: Page) => page.getByLabel("Stage name", { exact: true });
+const share = (page: Page, which: "Labour" | "Materials") => page.getByLabel(`${which} share`, { exact: true });
+async function addCategory(page: Page, name: string) {
+  await page.getByRole("button", { name: "Add category", exact: true }).click();
+  await page.getByLabel("Category name", { exact: true }).fill(name);
+  await page.getByRole("button", { name: "Save category", exact: true }).click();
+}
 const LONG_NAME =
   "Scaffolding hire, safety rails and edge protection for the Harbour View Apartments re-roof";
 
@@ -57,9 +68,9 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
       await go(page, "owner", `${p.path}${sep}demo=offline`);
       await expect(h1(page, p.title)).toBeVisible();
       await expect(page.getByText(NEEDS_CONNECTION)).toHaveCount(1);
-      const button = page.getByRole("button", { name: /^(Save changes|Send invite)$/ });
+      const button = page.getByRole("button", { name: /^(Save changes|Send invite|Add category)$/ });
       await expect(button.first()).toBeDisabled();
-      await expect(page.locator("input, select").first(), "reading stays available offline").toBeVisible();
+      await expect(page.locator("main input, main select, main .divide-y button").first(), "reading stays available offline").toBeVisible();
     });
 
   for (const role of ["accountant", "foreman"])
@@ -104,43 +115,66 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
     expect(await page.getByRole("link", { name: /\d+ stages|No stages yet/ }).count()).toBe(5);
     await page.getByRole("link", { name: /^Metal re-roof/ }).click();
     await expect(h1(page, "Metal re-roof stages")).toBeVisible();
-    await expect(page.getByLabel("Stage 1 name", { exact: true })).toHaveValue("Site setup & safety");
-    await expect(page.getByText("Labour adds up to 100%. Materials add up to 100%.")).toBeVisible();
+    // One row per stage, not a field per stage; the running totals sit above the list.
+    await expect(row(page, /^Site setup & safety/)).toBeVisible();
+    await expect(page.getByLabel(/name$/)).toHaveCount(0);
+    await expect(page.getByText("Labour 100%. Materials 100%.")).toBeVisible();
   });
 
   test("templates: shares that do not add up are named per group and nothing saves", async ({ page }) => {
     await go(page, "owner", "/settings/templates?type=metal_reroof");
-    await page.getByLabel("Stage 1 labour share", { exact: true }).fill("1");
-    await expect(page.getByText("Labour adds up to 96%.", { exact: false })).toBeVisible();
+    await row(page, /^Site setup & safety/).click();
+    await share(page, "Labour").fill("1");
+    await done(page).click();
+    await expect(page.getByText("Labour 96%. Materials 100%.")).toBeVisible();
     await save(page).click();
     await expect(page.getByText("Labour shares must add up to 100%. They add up to 96%.")).toBeVisible();
-    await page.getByLabel("Stage 1 name", { exact: true }).fill("");
-    await save(page).click();
+    // Done refuses a blank name, an unreadable share and a share over 100 inside the sheet.
+    await row(page, /^Site setup & safety/).click();
+    await stageName(page).fill("");
+    await done(page).click();
     await expect(page.getByText("Add a name for the stage.")).toBeVisible();
-    await page.getByLabel("Stage 1 labour share", { exact: true }).fill("abc");
-    await save(page).click();
+    await stageName(page).fill("Site setup & safety");
+    await share(page, "Labour").fill("abc");
+    await done(page).click();
     await expect(page.getByText("Enter a percent, like 25.")).toBeVisible();
-    await page.getByLabel("Stage 1 labour share", { exact: true }).fill("101");
-    await save(page).click();
+    await share(page, "Labour").fill("101");
+    await done(page).click();
     await expect(page.getByText("A share is between 0% and 100%.")).toBeVisible();
     await expect(saved(page)).toHaveCount(0);
   });
 
-  test("templates: a balanced edit saves, and a stage can be added then removed", async ({ page }) => {
+  test("templates: a balanced edit saves, a stage is added, and removing one asks first", async ({ page }) => {
     await go(page, "manager", "/settings/templates?type=repair");
     await save(page).click();
     await expect(saved(page)).toBeVisible();
+    await toastGone(page, "Changes saved.");
     await go(page, "manager", "/settings/templates?type=repair");
-    const before = await page.getByLabel(/^Stage \d+ name$/).count();
-    await page.getByRole("button", { name: "Add stage" }).click();
-    await expect(page.getByLabel(/^Stage \d+ name$/)).toHaveCount(before + 1);
-    await page.getByRole("button", { name: `Remove stage ${before + 1}` }).click();
-    await expect(page.getByLabel(/^Stage \d+ name$/)).toHaveCount(before);
+    const before = await rows(page).count();
+    await page.getByRole("button", { name: "Add stage", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Add a stage" })).toBeVisible();
+    await stageName(page).fill("Extra flashing");
+    await done(page).click();
+    await expect(rows(page)).toHaveCount(before + 1);
+    // Remove is not on the row: it is in the edit sheet, and a confirm comes first.
+    await expect(page.getByRole("button", { name: /^Remove/ })).toHaveCount(0);
+    await row(page, /^Extra flashing/).click();
+    await page.getByRole("button", { name: "Remove stage", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Remove Extra flashing?" })).toBeVisible();
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(rows(page)).toHaveCount(before + 1);
+    await row(page, /^Extra flashing/).click();
+    await page.getByRole("button", { name: "Remove stage", exact: true }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Remove stage", exact: true }).click();
+    await expect(rows(page)).toHaveCount(before);
   });
 
   test("templates: a long stage name wraps inside the screen", async ({ page }, info) => {
     await go(page, "owner", "/settings/templates?type=metal_reroof");
-    await page.getByLabel("Stage 1 name", { exact: true }).fill(LONG_NAME);
+    await row(page, /^Site setup & safety/).click();
+    await stageName(page).fill(LONG_NAME);
+    await done(page).click();
+    await expect(row(page, new RegExp(`^${LONG_NAME.slice(0, 20)}`))).toBeVisible();
     await settleKeyboardBar(page);
     const log = collectConsole(page);
     await expectScreenHealthy(page, { phone: isPhone(info.project.name), console: log });
@@ -163,32 +197,49 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
   }, info) => {
     const name = unique("Skip bins");
     await go(page, "manager", "/settings/categories");
-    await page.getByLabel("New category", { exact: true }).fill(name);
-    await save(page).click();
+    await addCategory(page, name);
     await expect(saved(page)).toBeVisible();
-    await expect(page.getByLabel(`Rename ${name}`, { exact: true })).toBeVisible();
-    await page.getByLabel("New category", { exact: true }).fill(name.toUpperCase());
-    await save(page).click();
+    await expect(row(page, name)).toBeVisible();
+    await toastGone(page, "Changes saved.");
+    await addCategory(page, name.toUpperCase());
     await expect(page.getByText(`There's already a category called ${name.toUpperCase()}.`)).toBeVisible();
     // A name over 60 characters is refused on the field, not dropped without a word.
-    await page.getByLabel("New category", { exact: true }).fill(LONG_NAME);
-    await save(page).click();
+    await page.getByLabel("Category name", { exact: true }).fill(LONG_NAME);
+    await page.getByRole("button", { name: "Save category", exact: true }).click();
     await expect(page.getByText("Keep it under 60 characters.")).toBeVisible();
     await expect(saved(page)).toHaveCount(0);
     const long = unique(LONG_NAME).slice(0, 58);
     await page.waitForLoadState("networkidle");
     await go(page, "owner", "/settings/categories");
-    await page.getByLabel("New category", { exact: true }).fill(long);
-    await save(page).click();
+    await addCategory(page, long);
     await expect(saved(page)).toBeVisible();
+    await toastGone(page, "Changes saved.");
     const log = collectConsole(page);
     await expectScreenHealthy(page, { phone: isPhone(info.project.name), console: log });
   });
 
+  test("categories: a row opens a sheet that renames it", async ({ page }) => {
+    const first = unique("Gutter");
+    const second = unique("Downpipe");
+    await go(page, "owner", "/settings/categories");
+    await addCategory(page, first);
+    await expect(saved(page)).toBeVisible();
+    await toastGone(page, "Changes saved.");
+    await row(page, first).click();
+    await expect(page.getByRole("dialog", { name: "Rename category" })).toBeVisible();
+    await expect(page.getByLabel("Category name", { exact: true })).toHaveValue(first);
+    await page.getByLabel("Category name", { exact: true }).fill(second);
+    await page.getByRole("button", { name: "Save category", exact: true }).click();
+    await expect(saved(page)).toBeVisible();
+    await expect(row(page, second)).toBeVisible();
+    await expect(row(page, first)).toHaveCount(0);
+  });
+
   test("categories: a blank rename is refused", async ({ page }) => {
     await go(page, "owner", "/settings/categories");
-    await page.getByLabel("Rename Permits", { exact: true }).fill("");
-    await save(page).click();
+    await row(page, /^Permits/).click();
+    await page.getByLabel("Category name", { exact: true }).fill("");
+    await page.getByRole("button", { name: "Save category", exact: true }).click();
     await expect(page.getByText("Add a name for the category.")).toBeVisible();
     await expect(saved(page)).toHaveCount(0);
   });
@@ -379,6 +430,7 @@ test.describe("Settings capture entries reach their settled sentence", () => {
       for (const step of entry.steps!) {
         const fill = /^fill:(.+?)=(.*)$/.exec(step);
         if (fill) await page.getByLabel(fill[1]!, { exact: true }).fill(fill[2]!);
+        else if (step.startsWith("row:")) await page.getByRole("button", { name: step.slice(4) }).first().click();
         else await page.getByRole("button", { name: step, exact: true }).click();
       }
       await expect(page.getByText(entry.expectStill!).first()).toBeVisible();
