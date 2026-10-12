@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { checkKeyboard, collectConsole, expectScreenHealthy } from "./guards";
+import { checkKeyboard, checkSafeAreas, collectConsole, expectScreenHealthy } from "./guards";
 import { SCREENS } from "./screens";
 
 const isPhone = (name: string) => name !== "desktop";
@@ -154,6 +154,32 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
     await done(page).click();
     await expect(page.getByText("A share is between 0% and 100%.")).toBeVisible();
     await expect(saved(page)).toHaveCount(0);
+  });
+
+  test("templates: the stage sheet on a phone on its side keeps Done and the visible fields out of the home-indicator inset", async ({ page }, info) => {
+    test.skip(!isPhone(info.project.name), "a phone on its side");
+    // 844 x 390: the sheet's body (name, unit, two shares, Remove) is taller than the room above Done, so it scrolls.
+    await page.setViewportSize({ width: 844, height: 390 });
+    await go(page, "owner", "/settings/templates?type=metal_reroof");
+    await row(page, /^Site setup & safety/).click();
+    await expect(stageName(page)).toBeVisible();
+    await page.evaluate(() => document.documentElement.style.setProperty("--sab-sim", "34px"));
+    // The sheet has slid in once Done sits above the simulated home indicator.
+    await expect.poll(async () => {
+      const box = await done(page).boundingBox();
+      return box ? box.y + box.height : 9999;
+    }).toBeLessThanOrEqual(390 - 34 + 0.5);
+    const first = await checkSafeAreas(page);
+    expect(first.ok, JSON.stringify(first.failures)).toBe(true);
+    // Scrolled to the last share, and with the blank-name message pushing the fields down, the same holds.
+    await share(page, "Materials").scrollIntoViewIfNeeded();
+    const scrolled = await checkSafeAreas(page);
+    expect(scrolled.ok, JSON.stringify(scrolled.failures)).toBe(true);
+    await stageName(page).fill("");
+    await done(page).click();
+    await expect(page.getByText("Add a name for the stage.")).toBeVisible();
+    const blank = await checkSafeAreas(page);
+    expect(blank.ok, JSON.stringify(blank.failures)).toBe(true);
   });
 
   test("templates: a balanced edit saves, a stage is added, and removing one asks first", async ({ page }) => {

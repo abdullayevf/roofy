@@ -389,6 +389,54 @@ test.describe("guards ignore scrolling content and supplementary labels", () => 
   });
 });
 
+/**
+ * A sheet on a phone on its side (844x390): a fixed panel whose body scrolls above a pinned action. The body holds
+ * more fields than fit, so some have a rect under the bottom edge of the screen that the body clips away.
+ */
+function sheetHtml(footerBottomPad: number, withFooter: boolean) {
+  return `<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Guards fixture (sheet)</title>
+<style>
+  body { margin: 0; font: 17px/24px sans-serif; }
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; height: 330px; display: flex; flex-direction: column; background: #fff; }
+  .body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 16px; }
+  .body input { display: block; width: 100%; height: 56px; margin-bottom: 24px; box-sizing: border-box; }
+  .foot { padding: 16px 16px ${footerBottomPad}px; }
+  .foot button { width: 100%; height: 48px; }
+</style></head>
+<body><div class="sheet"><div class="body">${Array.from({ length: 6 }, (_, i) => `<input aria-label="Field ${i + 1}" />`).join("")}</div>${
+    withFooter ? '<div class="foot"><button type="button">Done</button></div>' : ""
+  }</div></body></html>`;
+}
+
+test.describe("safe areas inside a pinned sheet with a scrolling body", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 844, height: 390 });
+  });
+
+  test("a field the body clips away above a pinned action that clears the inset passes", async ({ page }) => {
+    await page.setContent(sheetHtml(50, true));
+    const safe = await checkSafeAreas(page);
+    expect(safe.ok, JSON.stringify(safe.failures)).toBe(true);
+  });
+
+  test("a pinned action in the inset still fails", async ({ page }) => {
+    await page.setContent(sheetHtml(0, true));
+    const safe = await checkSafeAreas(page);
+    expect(safe.ok).toBe(false);
+    expect(safe.failures.some((f) => f.includes("Done") && f.includes("(pinned)"))).toBe(true);
+  });
+
+  test("a field of the scrolling body that is really visible in the inset still fails", async ({ page }) => {
+    await page.setContent(sheetHtml(0, false));
+    const safe = await checkSafeAreas(page);
+    expect(safe.ok).toBe(false);
+    expect(safe.failures.some((f) => f.includes("bottom safe-area inset"))).toBe(true);
+  });
+});
+
 test("checkNoMoney fails on a whole-dollar or cents amount and passes on money-free text", async ({ page }) => {
   await page.setContent("<body><p>Tom is $32.03 under</p><p>Job $775 over</p><p>$1,200 of it</p><p>Price in AUD</p></body>");
   const bad = await checkNoMoney(page);

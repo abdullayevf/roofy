@@ -107,6 +107,14 @@ type RawInteractiveElement = {
   inlineTextLink: boolean;
   /** Element (or an ancestor) is position: fixed/sticky, so it stays put while the page scrolls. */
   pinned: boolean;
+  /**
+   * The part of the box a person can see and touch: the rect cut down to every scrolling or clipping ancestor
+   * between it and the page (a sheet's scrolling body, a card with `overflow: hidden`). A scrolled-out field of a
+   * pinned sheet still has a rect under the bottom edge, but the body clips it above the pinned action, so it is
+   * not under the home indicator. `visibleBottom <= visibleTop` means it is clipped away entirely.
+   */
+  visibleTop: number;
+  visibleBottom: number;
 };
 
 /**
@@ -166,6 +174,17 @@ function collectInteractiveElements(): {
       }
     }
 
+    // Cut the box down to each clipping ancestor below the page (the page's own scroll is what the guards scroll).
+    let visibleTop = rect.top;
+    let visibleBottom = rect.bottom;
+    for (let a: Element | null = el.parentElement; a && a !== document.body && a !== document.documentElement; a = a.parentElement) {
+      if (/(auto|scroll|hidden|clip)/.test(getComputedStyle(a).overflowY)) {
+        const ar = a.getBoundingClientRect();
+        visibleTop = Math.max(visibleTop, ar.top);
+        visibleBottom = Math.min(visibleBottom, ar.bottom);
+      }
+    }
+
     let inlineTextLink = false;
     if (tag === "a") {
       const parent = el.parentElement;
@@ -191,6 +210,8 @@ function collectInteractiveElements(): {
       },
       inlineTextLink,
       pinned,
+      visibleTop,
+      visibleBottom,
     });
   }
 
@@ -408,15 +429,17 @@ export async function checkSafeAreas(page: Page): Promise<GuardResult> {
   await scrollTo(0);
   const atTop = await page.evaluate(collectInteractiveElements);
   for (const el of atTop.elements) {
-    if (el.rect.bottom > 0 && el.rect.top < SAFE_AREA_TOP_PX) {
+    // A control a scrolling body clips away entirely is not on the screen, so it is not under an inset either.
+    if (el.visibleBottom <= el.visibleTop) continue;
+    if (el.visibleBottom > 0 && el.visibleTop < SAFE_AREA_TOP_PX) {
       failures.push(
         `${describe(el)} top ${el.rect.top.toFixed(0)}px is within the ${SAFE_AREA_TOP_PX}px top safe-area inset`,
       );
     }
     if (
       el.pinned &&
-      el.rect.top < atTop.viewportHeight &&
-      el.rect.bottom > atTop.viewportHeight - SAFE_AREA_BOTTOM_PX
+      el.visibleTop < atTop.viewportHeight &&
+      el.visibleBottom > atTop.viewportHeight - SAFE_AREA_BOTTOM_PX
     ) {
       failures.push(
         `${describe(el)} (pinned) bottom ${el.rect.bottom.toFixed(0)}px is within the ${SAFE_AREA_BOTTOM_PX}px bottom safe-area inset`,
@@ -427,9 +450,9 @@ export async function checkSafeAreas(page: Page): Promise<GuardResult> {
   await scrollTo(1e9);
   const atBottom = await page.evaluate(collectInteractiveElements);
   for (const el of atBottom.elements) {
-    if (el.pinned) continue;
+    if (el.pinned || el.visibleBottom <= el.visibleTop) continue;
     const vh = atBottom.viewportHeight;
-    if (el.rect.top < vh && el.rect.bottom > vh - SAFE_AREA_BOTTOM_PX) {
+    if (el.visibleTop < vh && el.visibleBottom > vh - SAFE_AREA_BOTTOM_PX) {
       failures.push(
         `${describe(el)} bottom ${el.rect.bottom.toFixed(0)}px (scrolled to the end) is within the ${SAFE_AREA_BOTTOM_PX}px bottom safe-area inset`,
       );
