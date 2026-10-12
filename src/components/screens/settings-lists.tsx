@@ -16,12 +16,15 @@ import { Dialog } from "@/components/ui/dialog";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { Field } from "@/components/ui/field";
 import { List } from "@/components/ui/list";
+import { Segmented } from "@/components/ui/segmented";
 import { Select } from "@/components/ui/select";
 import { Sheet } from "@/components/ui/sheet";
 import { Toast } from "@/components/ui/toast";
 import { bpText, CATEGORY_NAME_MAX, nameLengthError, readShare, shareErrors } from "./settings-input";
 import { FORM_GRID, SettingsForm, useSave, type Errors } from "./settings-forms";
 import { NEEDS_CONNECTION } from "./use-online";
+
+const COULD_NOT_SAVE = "Couldn't save this. Try again.";
 
 const UNITS: { value: Unit | ""; label: string }[] = [
   { value: "", label: "No unit" },
@@ -330,61 +333,100 @@ const ROLES: { value: Role; label: string }[] = [
   { value: "accountant", label: "Accountant" },
 ];
 
+const roleLabel = (role: Role | "owner") => (role === "owner" ? "Owner" : (ROLES.find((r) => r.value === role)?.label ?? role));
+
 /**
- * Who is in the workspace and what each person can do. The Owner's role is fixed. Picking a role saves it at once
- * (there is no Save button here, so Send invite below is the one primary action on the page).
+ * Who is in the workspace and what each person can do: a grouped list, one row per person (name, email, role), and a row
+ * opens a sheet to change that person's role. The Owner's role is fixed, so that row opens nothing. Saving a role is the
+ * sheet's own action (there is no page-level Save, so Send invite below is the one primary action on the page).
  */
 export function MembersForm({ members, demoOffline }: { members: Member[]; demoOffline: boolean }) {
   const s = useSave(demoOffline);
   const [roles, setRoles] = useState<Record<string, Role>>(() =>
     Object.fromEntries(members.map((m) => [m.id, m.role])),
   );
-  const pick = (m: Member, role: Role) => {
-    const before = roles[m.id] ?? m.role;
-    setRoles((r) => ({ ...r, [m.id]: role }));
-    void s.run(
+  const [edit, setEdit] = useState<{ member: Member; role: Role } | null>(null);
+  // The sheet's own refusal sentence, so one person's refusal never shows on the next person's sheet.
+  const [problem, setProblem] = useState<string | null>(null);
+  const current = (m: Member): Role => roles[m.id] ?? m.role;
+  const open = (m: Member) => {
+    setProblem(null);
+    setEdit({ member: m, role: current(m) });
+  };
+  const submit = () => {
+    if (!edit) return;
+    const { member, role } = edit;
+    if (role === current(member)) {
+      setEdit(null);
+      return;
+    }
+    return s.run(
       () => ({}),
       async () => {
-        const r = await setMemberRole(m.id, role);
-        if (!r.ok) setRoles((x) => ({ ...x, [m.id]: before }));
-        return r;
+        try {
+          const r = await setMemberRole(member.id, role);
+          if (r.ok) {
+            setRoles((x) => ({ ...x, [member.id]: role }));
+            setEdit(null);
+          } else setProblem(r.message);
+          return r;
+        } catch (e) {
+          setProblem(COULD_NOT_SAVE);
+          throw e;
+        }
       },
       "Role changed.",
     );
   };
   return (
     <div className="flex flex-col gap-3">
-      <ul className="divide-y divide-line overflow-hidden rounded-group border-group bg-surface">
-        {members.map((m) => (
-          <li
-            key={m.id}
-            className="flex min-h-[64px] flex-col justify-center gap-2 px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6"
-          >
-            <div className="min-w-0 flex-1">
-              <p className="break-words text-body-strong text-ink">{m.name}</p>
-              <p className="break-all text-body text-ink-2">{m.email}</p>
-            </div>
-            {m.role === "owner" ? (
-              <p className="text-body text-ink">Owner</p>
-            ) : (
-              <Select
-                label={`Role for ${m.name}`}
-                options={ROLES}
-                value={roles[m.id] ?? m.role}
-                disabled={!s.online || s.busy}
-                onChange={(e) => pick(m, e.target.value as Role)}
-                className="[&>label]:sr-only lg:w-56"
-              />
-            )}
-          </li>
-        ))}
-      </ul>
+      <List
+        rows={members.map((m) => ({
+          key: m.id,
+          primary: m.name,
+          meta: `${m.email}\n${roleLabel(current(m))}`,
+          onClick: m.role === "owner" ? undefined : () => open(m),
+        }))}
+      />
       {s.online ? null : (
         <p role="status" className="text-body text-ink">
           {NEEDS_CONNECTION}
         </p>
       )}
-      {s.failed ? <ErrorMessage>{s.failed}</ErrorMessage> : null}
+      <Sheet
+        open={edit !== null}
+        onOpenChange={(o) => {
+          if (!o) setEdit(null);
+        }}
+        title="Change role"
+        primaryAction={
+          <Button
+            type="button"
+            onClick={submit}
+            loading={s.busy}
+            loadingLabel="Saving role"
+            disabled={!s.online}
+            reason={s.online ? undefined : NEEDS_CONNECTION}
+            className="w-full"
+          >
+            Save role
+          </Button>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <p className="break-words text-body text-ink-2">{edit?.member.name}</p>
+          <Segmented
+            legend="Role"
+            name="member-role"
+            fill
+            equal
+            options={ROLES}
+            value={edit?.role ?? "foreman"}
+            onChange={(v) => setEdit((d) => (d ? { ...d, role: v as Role } : d))}
+          />
+          {problem ? <ErrorMessage>{problem}</ErrorMessage> : null}
+        </div>
+      </Sheet>
       <Toast open={s.saved} onOpenChange={s.setSaved} message={s.savedMessage} viewportClassName="toast-above-tabs" />
     </div>
   );

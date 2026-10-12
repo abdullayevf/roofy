@@ -110,6 +110,19 @@ test.describe("Settings (screen 23)", () => {
     await expect(page.getByText("Two-factor is on.", { exact: true })).toBeVisible();
   });
 
+  test("two-factor on: a green On chip with its icon sits 16 px under the title, and there is nothing to tap", async ({ page }) => {
+    await go(page, "owner", "/settings/two-factor");
+    await expect(page.getByText(/^Two-factor is on\. When you sign in/)).toBeVisible();
+    const chip = page.locator("main").getByText("On", { exact: true }).locator("xpath=..");
+    await expect(chip.locator("svg"), "the chip carries an icon, not only a colour").toHaveCount(1);
+    const title = (await h1(page, "Two-factor").boundingBox())!;
+    const box = (await chip.boundingBox())!;
+    const gap = box.y - (title.y + title.height);
+    expect(gap, "the chip is not stuck to the title").toBeGreaterThanOrEqual(12);
+    expect(gap, "and not the old 40 px below it").toBeLessThanOrEqual(20);
+    await expect(page.locator("main").getByRole("button"), "no spec names an action for the on state").toHaveCount(0);
+  });
+
   test("levels empty state", async ({ page }) => {
     await go(page, "owner", "/settings/levels?demo=empty");
     await expect(page.getByText("No levels yet.", { exact: false })).toBeVisible();

@@ -12,7 +12,7 @@ import { bpText, payPeriodText } from "./settings-input";
 export const SETTINGS_WIDE = cx(COLUMN, "lg:max-w-none");
 
 /** Back row, title and an optional plain sentence under it. */
-export function SettingsHead({ title, intro, back = { href: "/settings", label: "Back to Settings" } }: { title: string; intro?: string; back?: { href: string; label: string } }) {
+export function SettingsHead({ title, intro, back = { href: "/settings", label: "Back to Settings" } }: { title: string; intro?: React.ReactNode; back?: { href: string; label: string } }) {
   return (
     <div className="flex flex-col gap-1">
       <Link href={back.href} prefetch={false} className={cx("flex min-h-12 items-center gap-1 self-start text-body-strong text-chalk-link", FOCUS)}>
@@ -22,12 +22,13 @@ export function SettingsHead({ title, intro, back = { href: "/settings", label: 
       <div className="flex min-h-12 items-center">
         <h1 className="text-title text-ink">{title}</h1>
       </div>
-      {intro ? <p className="max-w-180 text-body text-ink-2">{intro}</p> : null}
+      {typeof intro === "string" && intro ? <p className="max-w-180 text-body text-ink-2">{intro}</p> : null}
+      {intro && typeof intro !== "string" ? <div className="mt-1 flex max-w-180 flex-col items-start gap-3">{intro}</div> : null}
     </div>
   );
 }
 
-export function SettingsPageFrame({ title, intro, children }: { title: string; intro?: string; children: React.ReactNode }) {
+export function SettingsPageFrame({ title, intro, children }: { title: string; intro?: React.ReactNode; children?: React.ReactNode }) {
   return (
     <div className={SETTINGS_WIDE}>
       <SettingsHead title={title} intro={intro} />

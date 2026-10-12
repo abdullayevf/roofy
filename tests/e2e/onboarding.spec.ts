@@ -94,7 +94,12 @@ test.describe("Set-up wizard (screen 2)", () => {
     expect(b.y - (a.y + a.height)).toBeGreaterThanOrEqual(0);
     expect(b.y - (a.y + a.height)).toBeLessThanOrEqual(24);
     expect(await why.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16);
-    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    // Cancel is a real button with a 48 x 48 hit area, not a small underlined link (lesson 32).
+    const cancel = page.getByRole("button", { name: "Cancel", exact: true });
+    const cancelBox = (await cancel.boundingBox())!;
+    expect(cancelBox.width, "Cancel is at least 48 px wide").toBeGreaterThanOrEqual(48);
+    expect(cancelBox.height, "Cancel is at least 48 px tall").toBeGreaterThanOrEqual(48);
+    await cancel.click();
     await expect(page.getByRole("button", { name: "Continue", exact: true })).toBeEnabled();
     await expect(page.getByRole("status")).toHaveCount(0);
   });
@@ -125,6 +130,7 @@ test.describe("Set-up wizard (screen 2)", () => {
     await expect(page.getByText("Picking up where you left off.")).toHaveCount(0);
     await page.reload();
     await expect(page.getByRole("heading", { level: 1, name: "Your trade" })).toBeVisible();
+    await expect(page.getByText("Pick your trade to load its stages.")).toBeVisible();
     await expect(page.getByText("Picking up where you left off.")).toBeVisible();
     // Back is a left-aligned row at the top, not a centred button.
     const back = page.getByRole("button", { name: "Back" });

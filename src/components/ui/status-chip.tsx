@@ -32,6 +32,8 @@ export type Status =
   | "sending"
   | "sent"
   | "needs-attention"
+  // A setting that is switched on (two-factor)
+  | "on"
   // Crew
   | "inactive"
   // Pay run
@@ -85,6 +87,8 @@ const CONFIG: Record<Status, { word: string; icon: PhosphorIcon; className: stri
     icon: WarningCircle,
     className: "bg-surface text-over border-[1.5px] border-edge",
   },
+
+  on: { word: "On", icon: CheckCircle, className: "bg-surface text-good border-[1.5px] border-edge" },
 
   inactive: { word: "Inactive", icon: MinusCircle, className: "bg-surface text-ink-2 border-[1.5px] border-edge" },
 

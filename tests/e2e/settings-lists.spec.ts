@@ -321,24 +321,45 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
     await expect(page.getByText(/already/i).first()).toBeVisible();
   });
 
-  test("members: a role picked in the list saves at once and sticks", async ({ page }) => {
+  test("members: a row opens a sheet that changes the role, and the Owner's row opens nothing", async ({ page }) => {
     await go(page, "owner", "/settings/members");
-    await expect(save(page), "a role saves on pick: the page has no Save button").toHaveCount(0);
-    // The Owner has no role picker (the role is fixed); the accountant is the member nothing else depends on.
-    const role = () => page.getByLabel("Role for Priya Shah", { exact: true });
-    await expect(role()).toHaveValue("accountant");
-    await role().selectOption("manager");
+    await expect(save(page), "a role saves in its sheet: the page has no Save button").toHaveCount(0);
+    await expect(page.locator("main select"), "the only dropdown is the invite form's Role").toHaveCount(1);
+    // The Owner's role is fixed: the row names it and opens nothing.
+    await expect(row(page, /^Karen Holt/)).toHaveCount(0);
+    await expect(page.locator("main .divide-y > div").filter({ hasText: "Karen Holt" })).toContainText("Owner");
+    // The accountant is the member nothing else depends on.
+    const priya = () => row(page, /^Priya Shah/);
+    await expect(priya()).toContainText("Accountant");
+    await priya().click();
+    const sheet = page.getByRole("dialog", { name: "Change role" });
+    await expect(sheet).toBeVisible();
+    await expect(sheet.getByRole("radio", { name: /Accountant/ })).toBeChecked();
+    await sheet.getByText("Manager", { exact: true }).click();
+    await sheet.getByRole("button", { name: "Save role", exact: true }).click();
     await expect(saved(page, "Role changed.")).toBeVisible();
+    await expect(sheet).toHaveCount(0);
+    await expect(priya()).toContainText("Manager");
     await page.waitForLoadState("networkidle"); // the refresh after a save must finish before the next navigation
     await toastGone(page, "Role changed.");
     await go(page, "owner", "/settings/members");
-    await expect(role()).toHaveValue("manager");
+    await expect(priya()).toContainText("Manager");
     // Put it back so later tests see the seeded roles.
-    await role().selectOption("accountant");
+    await priya().click();
+    await page.getByRole("dialog", { name: "Change role" }).getByText("Accountant", { exact: true }).click();
+    await page.getByRole("button", { name: "Save role", exact: true }).click();
     await expect(saved(page, "Role changed.")).toBeVisible();
     await page.waitForLoadState("networkidle");
     await go(page, "owner", "/settings/members");
-    await expect(role()).toHaveValue("accountant");
+    await expect(priya()).toContainText("Accountant");
+  });
+
+  test("members: a person's row is one compact tap target, not the old 130 px dropdown row", async ({ page }) => {
+    await go(page, "owner", "/settings/members");
+    const priya = row(page, /^Priya Shah/);
+    const box = (await priya.boundingBox())!;
+    expect(box.height, "a row with name, email and role is about 90 px, not the old 130 px dropdown row").toBeLessThanOrEqual(104);
+    expect(box.height).toBeGreaterThanOrEqual(48);
   });
 
   test("a long-name foreman fits on members and on foreman assignments", async ({ page }, info) => {
@@ -370,7 +391,7 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
   test("assignments: ticking a job saves and sticks", async ({ page }) => {
     await go(page, "owner", "/settings/assignments");
     await expect(
-      page.getByText("A foreman sees and logs to the jobs ticked here, and no others."),
+      page.getByText("A foreman sees and logs only the jobs ticked here."),
     ).toBeVisible();
     const first = page.getByRole("group").first().getByRole("checkbox").first();
     const was = await first.isChecked();
@@ -387,6 +408,43 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
     await page.getByRole("group").first().getByRole("checkbox").first().click();
     await save(page).click();
     await expect(saved(page)).toBeVisible();
+  });
+
+  test("assignments: an empty tick box has a 2px ink border and sits beside the first line of its job name", async ({ page }) => {
+    await go(page, "owner", "/settings/assignments");
+    const labels = page.locator("main label").filter({ has: page.getByRole("checkbox") });
+    await expect(labels.first()).toBeVisible();
+    const rowsSeen = await labels.evaluateAll((els) =>
+      els.map((label) => {
+        const root = label.querySelector('[role="checkbox"]') as HTMLElement;
+        const box = root.querySelector("span") as HTMLElement;
+        const text = label.querySelector(":scope > span") as HTMLElement;
+        const l = label.getBoundingClientRect();
+        const b = box.getBoundingClientRect();
+        const css = getComputedStyle(box);
+        return {
+          checked: root.getAttribute("aria-checked") === "true",
+          border: css.borderTopWidth,
+          borderColour: css.borderTopColor,
+          ink: getComputedStyle(text).color,
+          // How far the middle of the visible box is below the top of its row.
+          boxMid: b.top + b.height / 2 - l.top,
+          rowHeight: l.height,
+        };
+      }),
+    );
+    expect(rowsSeen.length).toBeGreaterThan(0);
+    for (const r of rowsSeen) {
+      // F18: an empty box is outlined in ink (the crew chip's weight and colour), not a faint grey line.
+      if (!r.checked) {
+        expect(r.border, "an empty tick box has a 2px border").toBe("2px");
+        expect(r.borderColour, "and the border is ink").toBe(r.ink);
+      }
+      // D29: the box stays 20 to 36 px below the row's top (phone 64 px rows centre at 32, desktop 48 px rows at 24), so a
+      // job name that wraps to three lines keeps its tick beside the first line rather than floating mid-row.
+      expect(r.boxMid, "the tick box sits beside the first line of the name").toBeGreaterThanOrEqual(20);
+      expect(r.boxMid).toBeLessThanOrEqual(36);
+    }
   });
 });
 

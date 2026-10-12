@@ -37,7 +37,9 @@ export function Checkbox({
   return (
     <label
       className={cx(
-        "flex min-h-[64px] w-full items-center gap-1 px-2 pr-4 lg:min-h-12",
+        // Items start at the top and the label gets the box's 48 px row to centre in, so a long name that wraps keeps its tick
+        // beside its first line (a one-line name still centres in the row).
+        "flex min-h-[64px] w-full items-start gap-1 py-2 pl-2 pr-4 lg:min-h-12 lg:py-0",
         grouped ? "" : "rounded-group",
         // Disabled keeps a visible row container (a `line` border) on galv pages too.
         disabled
@@ -62,8 +64,9 @@ export function Checkbox({
       >
         <span
           className={cx(
-            "flex h-7 w-7 items-center justify-center rounded-md border-[1.5px] border-edge",
-            disabled ? "bg-galv" : "bg-surface",
+            "flex h-7 w-7 items-center justify-center rounded-md border-2",
+            // Empty, the box is outlined in ink like the crew chip's, so it reads as a tick box at a glance (disabled keeps the quiet edge).
+            disabled ? "border-edge bg-galv" : "border-ink bg-surface",
             "group-data-[state=checked]:border-transparent group-data-[state=checked]:bg-tape",
             focusVisible ? BOX_FOCUS_FORCED : BOX_FOCUS,
           )}
@@ -73,7 +76,7 @@ export function Checkbox({
           </RadixCheckbox.Indicator>
         </span>
       </RadixCheckbox.Root>
-      <span className={cx("min-w-0 break-words text-body", disabled ? "text-ink-2" : "text-ink")}>{label}</span>
+      <span className={cx("min-w-0 break-words py-3 text-body", disabled ? "text-ink-2" : "text-ink")}>{label}</span>
     </label>
   );
 }

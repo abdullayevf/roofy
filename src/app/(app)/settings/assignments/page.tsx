@@ -13,7 +13,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
     const list = empty ? null : await data.projects.list(actor, { status: "all" });
     const jobs = (list?.rows ?? []).map((j) => ({ id: j.id, name: j.name }));
     return (
-      <SettingsPageFrame title="Foreman assignments" intro="A foreman sees and logs to the jobs ticked here, and no others.">
+      <SettingsPageFrame title="Foreman assignments" intro="A foreman sees and logs only the jobs ticked here.">
         {foremen.length === 0 ? (
           <EmptyState message={owner ? "No foremen yet. Invite one to give them jobs." : "No foremen yet. Ask the owner to invite one."} actionLabel={owner ? "Invite a foreman" : undefined} href={owner ? "/settings/members" : undefined} />
         ) : jobs.length === 0 ? (

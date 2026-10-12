@@ -16,6 +16,7 @@ const ALL_STATUSES: Status[] = [
   "sending",
   "sent",
   "needs-attention",
+  "on",
 ];
 
 describe("StatusChip", () => {

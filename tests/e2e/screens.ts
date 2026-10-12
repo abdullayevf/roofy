@@ -1129,6 +1129,7 @@ export const SCREENS: ScreenSpec[] = [
   // Karen Holt, the Owner, already has this address: the refusal shows on the Email field.
   { id: "settings-members-conflict", group: "entry-settings", route: "/settings/members", states: ["normal"], roles: ["owner"], steps: ["fill:Name=Karen Lee", "fill:Email=karen@harbourroofing.example", "Send invite"], expectStill: "Someone with that email is already a member." },
   { id: "settings-members-long", group: "entry-settings", route: "/settings/members", states: ["normal"], roles: ["owner"], steps: [`fill:Name=${LONG_PERSON}`, `fill:Email=${LONG_EMAIL}`, "Send invite"], expectStill: "Invite sent." },
+  { id: "settings-members-role", group: "entry-settings", route: "/settings/members", states: ["normal"], roles: ["owner"], steps: ["row:Priya Shah"], expectStill: "Change role" },
   { id: "settings-members-no-access", group: "entry-settings", route: "/settings/members", states: ["normal"], roles: ["manager", "accountant", "foreman"] },
   { id: "settings-assignments", group: "entry-settings", route: "/settings/assignments", states: ["normal", "empty", "loading", "error", "offline", "noperm"], roles: ["owner", "manager"] },
   { id: "settings-assignments-saved", group: "entry-settings", route: "/settings/assignments", states: ["normal"], roles: ["owner"], steps: ["Save changes"], expectStill: "Changes saved." },

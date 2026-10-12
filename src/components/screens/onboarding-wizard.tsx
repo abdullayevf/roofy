@@ -142,6 +142,7 @@ export function OnboardingWizard({ initial, platform, offline, resumed = false }
         </form>
       ) : null}
 
+      {state.step === "trade" ? <p className="text-meta text-ink-2">Pick your trade to load its stages.</p> : null}
       {state.step === "trade" ? (
         <ChoiceChip legend="Trade" name="trade" options={[{ value: "roofing", label: "Roofing" }]} value={state.trade ?? undefined} disabled={blocked} onChange={() => save(() => chooseTrade())} />
       ) : null}
@@ -196,12 +197,14 @@ export function OnboardingWizard({ initial, platform, offline, resumed = false }
               ) : null}
               <ChoiceChip legend="Paid by" name="basis" options={[{ value: "hourly", label: "Hourly" }, { value: "daily", label: "Daily" }]} value={row.basis} onChange={(v) => setRow({ ...row, basis: v as "hourly" | "daily" })} />
               <MoneyField label={row.basis === "daily" ? "Daily rate" : "Hourly rate"} onCentsChange={(c) => setRate(c)} error={problems.rate} />
-              <Button variant="secondary" type="submit" loading={pending} loadingLabel="Adding" disabled={!online}>
-                Add
-              </Button>
-              <Button variant="link" className="self-start" disabled={pending} onClick={cancelRow}>
-                Cancel
-              </Button>
+              <div className="flex items-center gap-3">
+                <Button variant="secondary" type="submit" loading={pending} loadingLabel="Adding" disabled={!online} className="flex-1">
+                  Add
+                </Button>
+                <Button variant="ghost" disabled={pending} onClick={cancelRow}>
+                  Cancel
+                </Button>
+              </div>
             </form>
           ) : (
             <Button variant="secondary" onClick={() => setAdding(true)}>
