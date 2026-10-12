@@ -454,6 +454,16 @@ body {
   }
 }
 /*
+ * `pin-wide` (the 720 px settings column): from 600 px to 1024 px the bar is exactly the form column wide, the page's
+ * 16 px padding each side and at most 45 rem, centred with it, so no field shows beside the bar and its rule cuts no label
+ * (entry-settings i2 D25). From 1024 px the bar is sticky inside the form, so it is the form's width already.
+ */
+@media (min-width: 600px) and (max-width: 1023px) and (min-height: 500px) {
+  .pin-wide .pin-action {
+    width: min(calc(100% - 2rem), 45rem);
+  }
+}
+/*
  * The expense form's bar on a tablet: edge to edge like the tab bar under it, the button keeping the form column's edges
  * (a 600 px bar over a full-width tab bar left a strip of page showing beside and under it).
  */

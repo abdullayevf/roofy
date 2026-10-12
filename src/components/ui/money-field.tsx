@@ -23,6 +23,8 @@ export type MoneyFieldProps = {
   ariaLabel?: string;
   /** An error from the form around it (a refused save, "Add an amount before saving."); the field's own wins. */
   error?: string;
+  /** A unit shown inside the box after the amount ("an hour" so the field reads "$28.00 an hour"). */
+  suffix?: string;
 };
 
 // The currency mark is drawn as a leading mark inside the field, so the text
@@ -37,7 +39,7 @@ const show = (cents: Cents) => formatMoney(Math.abs(cents)).replace("$", "");
  * blur the text is tidied to `format.ts`'s grouping and cents. Parsing is
  * exact integer cents via `src/domain` — never a float.
  */
-export function MoneyField({ label, hint, defaultCents, defaultText, onCentsChange, className, ariaLabel, error: formError }: MoneyFieldProps) {
+export function MoneyField({ label, hint, defaultCents, defaultText, onCentsChange, className, ariaLabel, error: formError, suffix }: MoneyFieldProps) {
   const [text, setText] = useState(defaultText ?? (defaultCents === undefined ? "" : show(defaultCents)));
   const [negative, setNegative] = useState(defaultText === undefined && (defaultCents ?? 0) < 0);
   const [error, setError] = useState<string | undefined>(defaultText === undefined ? undefined : CANT_READ);
@@ -67,6 +69,7 @@ export function MoneyField({ label, hint, defaultCents, defaultText, onCentsChan
       label={label}
       inputMode="decimal"
       leading={negative ? "\u2212$" : "$"}
+      suffix={suffix}
       hint={hint}
       error={error ?? formError}
       value={text}

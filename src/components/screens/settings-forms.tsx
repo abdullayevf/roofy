@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ActionResult, Cents, CrewLevel, PayFrequency, WorkspaceSettings, WorkspaceSettingsInput } from "@/data/contracts";
 import { saveLevel, turnOnTwoFactor, updateSettings } from "@/app/actions/settings";
 import { businessProblems } from "@/lib/onboarding-input";
+import { cx } from "@/lib/cx";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ErrorMessage } from "@/components/ui/error-message";
@@ -17,7 +18,11 @@ import {
   anchorOn,
   bpText,
   CODE_HINT,
+  crewCountHint,
   floorError,
+  levelsSummary,
+  payPeriodSummary,
+  PIN_SUMMARY,
   readCode,
   readHours,
   readOnCost,
@@ -96,6 +101,10 @@ type SettingsFormProps = {
   quiet?: boolean;
   /** A form taller than the first viewport pins its Save bar above the tab bar (DESIGN.md §5); its error and Needs connection line sit in the bar. */
   pinned?: boolean;
+  /** The bar's line when a pinned save is refused and the failed field has no sentence of its own (default: a general one). */
+  summary?: string;
+  /** Extra classes on the form (a width from 1024 px, so the list and the pinned bar share one column). */
+  className?: string;
   children: ReactNode;
 };
 
@@ -136,17 +145,19 @@ function PlainSettingsForm({ s, onSubmit, label = "Save changes", quiet = false,
   );
 }
 
-function PinnedSettingsForm({ s, onSubmit, label = "Save changes", quiet = false, children }: SettingsFormProps) {
+function PinnedSettingsForm({ s, onSubmit, label = "Save changes", quiet = false, summary, className, children }: SettingsFormProps) {
   const ref = useFocusFirstBad(s);
-  const { style, barProps } = usePinnedBar(`${s.online}${s.failed}${Object.values(s.errors).length}`);
+  // A refused save puts its line in the bar, where it is in view whatever the scroll (entry-settings i2 D8 + F2).
+  const barError = Object.values(s.errors).some(Boolean) ? (summary ?? PIN_SUMMARY) : undefined;
+  const { style, barProps } = usePinnedBar(`${s.online}${s.failed}${barError}`);
   function submit(e: FormEvent) {
     e.preventDefault();
     onSubmit();
   }
   return (
-    <form ref={ref} noValidate onSubmit={submit} style={style} className={`${FORM_CLASS} pin-pad`}>
+    <form ref={ref} noValidate onSubmit={submit} style={style} className={cx(FORM_CLASS, "pin-pad pin-wide", className)}>
       {children}
-      <PinnedAction barProps={barProps} error={s.failed} hintOnSide hint={s.online || quiet ? undefined : NEEDS_CONNECTION}>
+      <PinnedAction barProps={barProps} error={s.failed ?? barError} hintOnSide hint={s.online || quiet ? undefined : NEEDS_CONNECTION}>
         <Button
           type="submit"
           variant="primary"
@@ -250,7 +261,7 @@ export function PayPeriodForm({
     );
   };
   return (
-    <SettingsForm s={s} onSubmit={submit} pinned>
+    <SettingsForm s={s} onSubmit={submit} pinned summary={payPeriodSummary(s.errors)} className="lg:max-w-3xl">
       <div className={FORM_GRID}>
         <Segmented
           legend="Pay period"
@@ -349,16 +360,18 @@ export function LevelsForm({ levels, demoOffline }: { levels: CrewLevel[]; demoO
       },
     );
   return (
-    <SettingsForm s={s} onSubmit={submit} pinned>
-      {/* From 1024 px a level is a row: name and crew count on the left, a narrow right-aligned rate on the right. */}
-      <div className="grid grid-cols-1 gap-6 lg:flex lg:max-w-3xl lg:flex-col lg:gap-0 lg:divide-y lg:divide-line lg:rounded-group lg:border-group lg:bg-surface">
+    <SettingsForm s={s} onSubmit={submit} pinned summary={levelsSummary(levels, s.errors)} className="lg:max-w-3xl">
+      {/* From 600 px (tablet and up) a level is a row: name and crew count on the left, a narrow right-aligned rate on the
+          right, in one 1 px edge outline as wide as the form column (and the pinned bar). */}
+      <div className="grid grid-cols-1 gap-6 tablet:flex tablet:flex-col tablet:gap-0 tablet:divide-y tablet:divide-line tablet:overflow-hidden tablet:rounded-group tablet:border tablet:border-edge tablet:bg-surface">
         {levels.map((l) => (
           <MoneyField
             key={l.id}
-            className="lg:grid lg:min-h-16 lg:grid-cols-[1fr_12rem] lg:items-center lg:gap-x-6 lg:px-4 lg:py-2 lg:[&>:nth-child(2)]:row-span-2 lg:[&>:nth-child(2)]:self-center lg:[&_input]:text-right"
+            className="tablet:grid tablet:min-h-14 tablet:grid-cols-[1fr_14rem] tablet:items-center tablet:gap-x-6 tablet:px-4 tablet:py-1 tablet:[&>:nth-child(2)]:row-span-2 tablet:[&>:nth-child(2)]:self-center tablet:[&_input]:text-right"
             label={l.name}
             ariaLabel={`Floor rate for ${l.name}`}
-            hint={`An hour. ${l.crewCount}\u00a0crew on this level.`}
+            suffix="an hour"
+            hint={crewCountHint(l.crewCount)}
             defaultCents={l.floorRateCents}
             error={s.errors[l.id]}
             onCentsChange={(cents) => setFloors((f) => ({ ...f, [l.id]: cents }))}

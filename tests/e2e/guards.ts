@@ -1441,3 +1441,43 @@ export async function checkNoClippedText(page: Page, scope: string): Promise<Gua
   }, scope);
   return { name: "no-clipped-text", ok: failures.length === 0, failures };
 }
+
+/**
+ * A pinned Save bar is exactly as wide as the form column it belongs to and centred with it (left and right within 1 px),
+ * so no field shows beside the bar and its rule cuts no label (entry-settings i2 D25). `column` is the form column's
+ * selector (default: the pinned screen, `.pin-pad`). No pinned bar on the page fails: the caller named a pinned screen.
+ */
+export async function checkPinnedBarMatchesColumn(page: Page, column = ".pin-pad"): Promise<GuardResult> {
+  const name = "pinned-bar-matches-column";
+  const bar = page.locator('[data-slot="primary-action"]:visible').first();
+  if ((await bar.count()) === 0) return { name, ok: false, failures: ["no pinned bar on the screen"] };
+  const col = page.locator(column).first();
+  const [b, c] = await Promise.all([bar.boundingBox(), col.boundingBox()]);
+  if (!b || !c) return { name, ok: false, failures: [`no box for ${b ? column : "the pinned bar"}`] };
+  const failures: string[] = [];
+  if (Math.abs(b.x - c.x) > 1) failures.push(`the bar starts at ${Math.round(b.x)} px; the form column starts at ${Math.round(c.x)} px`);
+  const [br, cr] = [b.x + b.width, c.x + c.width];
+  if (Math.abs(br - cr) > 1) failures.push(`the bar ends at ${Math.round(br)} px; the form column ends at ${Math.round(cr)} px`);
+  return { name, ok: failures.length === 0, failures };
+}
+
+/**
+ * After a refused save an error line (an icon and a sentence in the error colour) is inside the first viewport and not
+ * covered by anything, wherever the bad field sits in a tall form (entry-settings i2 D8 + F2, lesson 44).
+ */
+export async function checkErrorLineInView(page: Page): Promise<GuardResult> {
+  const name = "error-line-in-view";
+  const failures = await page.evaluate(() => {
+    const lines = Array.from(document.querySelectorAll<HTMLElement>("span.text-over")).filter((el) => el.querySelector("svg"));
+    if (lines.length === 0) return ["no error line on the page"];
+    const h = window.visualViewport?.height ?? window.innerHeight;
+    const seen = lines.some((el) => {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0 || r.top < 0 || r.bottom > h) return false;
+      const top = document.elementFromPoint(r.left + Math.min(r.width / 2, 40), r.top + r.height / 2);
+      return top !== null && el.contains(top);
+    });
+    return seen ? [] : [`${lines.length} error line(s) on the page, none fully inside the first ${Math.round(h)} px and uncovered`];
+  });
+  return { name, ok: failures.length === 0, failures };
+}

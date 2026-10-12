@@ -4,6 +4,10 @@ import {
   bpText,
   CATEGORY_NAME_MAX,
   floorError,
+  levelsSummary,
+  payPeriodSummary,
+  crewCountHint,
+  PIN_SUMMARY,
   nameLengthError,
   payPeriodText,
   readCode,
@@ -94,5 +98,36 @@ describe("template shares", () => {
     expect(shareErrors([2500, 7500], [0, 0])).toEqual({});
     expect(shareErrors([2500, 7000], [0, 0]).labour).toBe("Labour shares must add up to 100%. They add up to 95%.");
     expect(shareErrors([10000], [3000]).materials).toBe("Materials shares must add up to 100%, or all be 0%. They add up to 30%.");
+  });
+});
+
+describe("the pinned Save bar's error line (entry-settings i2 D8 + F2)", () => {
+  const levels = [
+    { id: "a", name: "Leading hand" },
+    { id: "b", name: "Roofer" },
+  ];
+  it("names the first level whose floor rate is refused", () => {
+    expect(levelsSummary(levels, { b: FLOOR_MISSING })).toBe("Add a floor rate for Roofer.");
+    expect(levelsSummary(levels, { a: FLOOR_MISSING, b: FLOOR_MISSING })).toBe("Add a floor rate for Leading hand.");
+  });
+  it("says nothing when no level has an error", () => {
+    expect(levelsSummary(levels, {})).toBeUndefined();
+    expect(levelsSummary(levels, { a: undefined })).toBeUndefined();
+  });
+  it("names the pay-period field that needs fixing", () => {
+    expect(payPeriodSummary({ standardDayHours: "Add the hours in a standard day." })).toBe("Fix the standard day before saving.");
+    expect(payPeriodSummary({ workingDays: "Pick at least one working day." })).toBe("Pick a working day before saving.");
+    expect(payPeriodSummary({})).toBeUndefined();
+  });
+  it("has one plain fallback sentence", () => {
+    expect(PIN_SUMMARY).toBe("Some details need fixing before this saves.");
+  });
+});
+
+describe("the crew count under a level's name (F17)", () => {
+  it("says No crew, not 0 crew", () => {
+    expect(crewCountHint(0)).toBe("No crew on this level.");
+    expect(crewCountHint(1)).toBe("1 crew on this level.");
+    expect(crewCountHint(4)).toBe("4 crew on this level.");
   });
 });

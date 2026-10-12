@@ -101,3 +101,24 @@ export const CATEGORY_NAME_MAX = 60;
 export function nameLengthError(name: string, max: number): string | undefined {
   return name.trim().length > max ? `Keep it under ${max} characters.` : undefined;
 }
+
+/** The pinned Save bar's line when a form has field errors but no sentence of its own (entry-settings i2 D8 + F2). */
+export const PIN_SUMMARY = "Some details need fixing before this saves.";
+
+/** The bar's line for a refused levels save: the first level whose floor rate is refused, by name. */
+export function levelsSummary(levels: { id: string; name: string }[], errors: Record<string, string | undefined>): string | undefined {
+  const bad = levels.find((l) => errors[l.id]);
+  return bad ? `Add a floor rate for ${bad.name}.` : undefined;
+}
+
+/** The bar's line for a refused pay-period save. It never repeats the field's own sentence word for word. */
+export function payPeriodSummary(errors: Record<string, string | undefined>): string | undefined {
+  if (errors.standardDayHours) return "Fix the standard day before saving.";
+  if (errors.workingDays) return "Pick a working day before saving.";
+  return undefined;
+}
+
+/** Under a level's name: how many crew are on it. */
+export function crewCountHint(count: number): string {
+  return count === 0 ? "No crew on this level." : `${count} crew on this level.`;
+}

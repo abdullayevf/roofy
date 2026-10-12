@@ -1,8 +1,10 @@
 import { expect, test } from "@playwright/test";
 import {
   checkAxe,
+  checkErrorLineInView,
   checkKeyboard,
   checkNoMoney,
+  checkPinnedBarMatchesColumn,
   checkSafeAreas,
   checkTouchTargets,
   checkScreenHealthy,
@@ -444,4 +446,36 @@ test("checkNoMoney fails on a whole-dollar or cents amount and passes on money-f
   expect(bad.failures).toHaveLength(3);
   await page.setContent("<body><p>Logged: Smith job, 3 crew</p><p>US$ is not a thing here, and a $ sign alone is fine</p></body>");
   expect((await checkNoMoney(page)).ok).toBe(true);
+});
+
+const barFixture = (barWidth: number) => `<!doctype html><html><body style="margin:0">
+<form class="pin-pad" style="width:720px;margin:0 auto"><p>Leading hand</p></form>
+<div data-slot="primary-action" style="position:fixed;bottom:0;left:50%;width:${barWidth}px;translate:-50% 0;height:60px">Save changes</div>
+</body></html>`;
+
+test.describe("the pinned bar matches its form column", () => {
+  test.use({ viewport: { width: 768, height: 1024 } });
+  test("a bar as wide as the column passes; a 600 px bar over a 720 px column fails", async ({ page }) => {
+    await page.setContent(barFixture(720));
+    expect((await checkPinnedBarMatchesColumn(page)).failures).toEqual([]);
+    await page.setContent(barFixture(600));
+    expect((await checkPinnedBarMatchesColumn(page)).failures[0]).toContain("starts at 84 px");
+  });
+  test("no pinned bar fails", async ({ page }) => {
+    await page.setContent("<body><form class='pin-pad'>x</form></body>");
+    expect((await checkPinnedBarMatchesColumn(page)).ok).toBe(false);
+  });
+});
+
+test.describe("an error line in the first viewport", () => {
+  const html = (top: number) =>
+    `<!doctype html><html><body style="margin:0"><span class="text-over" style="position:absolute;top:${top}px;left:0;display:flex"><svg width="24" height="24"></svg>Add a floor rate for Roofer.</span></body></html>`;
+  test("a line inside the viewport passes; one below the fold fails; none fails", async ({ page }) => {
+    await page.setContent(html(100));
+    expect((await checkErrorLineInView(page)).failures).toEqual([]);
+    await page.setContent(html(5000));
+    expect((await checkErrorLineInView(page)).ok).toBe(false);
+    await page.setContent("<body><p>All fine</p></body>");
+    expect((await checkErrorLineInView(page)).failures).toEqual(["no error line on the page"]);
+  });
 });

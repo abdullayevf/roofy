@@ -28,7 +28,7 @@ export function Input({ invalid, suffix, leading, focusVisible, className, ...pr
         // DESIGN.md §3: input values are Atkinson (its slashed zero is the 0/O legibility feature); numbers stay tabular.
         "text-body",
         (props.inputMode === "decimal" || props.inputMode === "numeric") && "num",
-        suffix && "pr-14",
+        suffix && (suffix.length > 5 ? "pr-20" : "pr-14"),
         leading && (leading.length > 1 ? "pl-11" : "pl-8"),
         invalid ? "border-2 border-over" : "border-[1.5px] border-edge",
         "disabled:border-line disabled:bg-galv disabled:text-ink-2",
