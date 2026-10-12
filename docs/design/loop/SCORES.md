@@ -44,3 +44,4 @@ Score history for every screen group's design loop (`docs/specs/04-design-proces
 | reports | 2 | 79 | 75 | 77 | 0 | yes (836 captures, 0 fail) |
 | reports | 3 | 83 | 80 | 81.5 | 0 | yes (836 captures, 0 fail); accepted at the 3-iteration cap |
 | entry-settings | 1 | 73 | 75 | 74 | 4 | yes (1150 captures, 0 fail) |
+| entry-settings | 2 | 82 | 85 | 83.5 | 1 | yes (1174 captures, 0 fail after guard fix 089e4fe) |
