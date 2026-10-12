@@ -28,4 +28,23 @@ describe("Toast (live Radix path)", () => {
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByText("Day saved")).not.toBeInTheDocument());
   });
+
+  it("closes when a text field takes focus, so it never covers the field being typed in", async () => {
+    const user = userEvent.setup();
+    function WithField() {
+      const [open, setOpen] = useState(true);
+      return (
+        <>
+          <input aria-label="Name" />
+          <input aria-label="Agree" type="checkbox" />
+          <Toast open={open} onOpenChange={setOpen} message="Invite sent." />
+        </>
+      );
+    }
+    render(<WithField />);
+    await user.click(screen.getByLabelText("Agree"));
+    expect(screen.getByText("Invite sent.")).toBeInTheDocument();
+    await user.click(screen.getByLabelText("Name"));
+    await waitFor(() => expect(screen.queryByText("Invite sent.")).not.toBeInTheDocument());
+  });
 });

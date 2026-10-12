@@ -21,3 +21,8 @@ export function focusRing(forced?: boolean): string {
 export function focusRingWithin(forced?: boolean): string {
   return forced ? FOCUS_RING_FORCED : FOCUS_RING_WITHIN;
 }
+
+/** A field a keyboard opens for (not a check box, button or list). */
+export const isTextEntry = (el: Element | null): boolean =>
+  el instanceof HTMLTextAreaElement ||
+  (el instanceof HTMLInputElement && !["checkbox", "radio", "button", "submit", "range", "file"].includes(el.type));

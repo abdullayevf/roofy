@@ -12,6 +12,7 @@ import {
   equalShares,
   groupOutbox,
   keyboardInset,
+  keyboardUp,
   hundredthsText,
   outboxLine,
   parseHundredths,
@@ -152,6 +153,26 @@ describe("the on-screen keyboard", () => {
     expect(keyboardInset(844, { height: 844, offsetTop: 0 })).toBe(0);
     expect(keyboardInset(844, { height: 800, offsetTop: 0 })).toBe(0);
     expect(keyboardInset(844, { height: 900, offsetTop: 0 })).toBe(0);
+  });
+});
+
+describe("whether the on-screen keyboard is up", () => {
+  it("is up when the visual viewport lost the keyboard's strip (the keyboard sits over the page)", () => {
+    expect(keyboardUp(844, 844, { height: 508, offsetTop: 0 })).toBe(true);
+  });
+
+  it("is up when the window itself got shorter than it rested at (the page resizes for the keyboard)", () => {
+    expect(keyboardUp(844, 508, { height: 508, offsetTop: 0 })).toBe(true);
+  });
+
+  it("is not up when a field has focus but the window and the visual viewport are whole (no keyboard opened)", () => {
+    expect(keyboardUp(844, 844, { height: 844, offsetTop: 0 })).toBe(false);
+  });
+
+  it("is not up when only browser chrome came or went", () => {
+    expect(keyboardUp(844, 790, { height: 790, offsetTop: 0 })).toBe(false);
+    expect(keyboardUp(844, 844, { height: 800, offsetTop: 0 })).toBe(false);
+    expect(keyboardUp(500, 844, { height: 844, offsetTop: 0 })).toBe(false);
   });
 });
 

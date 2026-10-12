@@ -135,12 +135,24 @@ test.describe("Progress entry", () => {
   test("with the keyboard up the Save progress bar sits on the visible screen, not mid-page", async ({ page }, testInfo) => {
     test.skip(!isPhone(testInfo.project.name), "the on-screen keyboard is a phone thing");
     await signInAs(page, "manager");
+    const { width, height } = page.viewportSize()!;
     await page.getByLabel("Quantity done").focus();
+    // The keyboard then takes its strip of the window (the way the keyboard-open capture and guard simulate it).
+    await page.setViewportSize({ width, height: height - 336 });
     const bar = page.locator('[data-slot="primary-action"]');
     await expect(bar).toHaveAttribute("data-keyboard", "true");
     const box = (await bar.boundingBox())!;
-    const height = page.viewportSize()!.height;
-    expect(Math.abs(box.y + box.height - height)).toBeLessThanOrEqual(1);
+    expect(Math.abs(box.y + box.height - (height - 336))).toBeLessThanOrEqual(1);
+  });
+
+  test("a focused field with no keyboard open leaves the Save progress bar above the tab bar", async ({ page }, testInfo) => {
+    test.skip(!isPhone(testInfo.project.name), "the on-screen keyboard is a phone thing");
+    await signInAs(page, "manager");
+    await page.getByLabel("Quantity done").focus();
+    const bar = page.locator('[data-slot="primary-action"]');
+    await expect(bar).not.toHaveAttribute("data-keyboard", "true");
+    const box = (await bar.boundingBox())!;
+    expect(box.y + box.height, "the bar stays above the tab bar").toBeLessThan(page.viewportSize()!.height - 40);
   });
 
   test("a quantity that is not a number says how to fix it", async ({ page }) => {

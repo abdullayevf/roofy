@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { RetryButton } from "@/components/retry-button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { keyboardInset } from "./field-input";
+import { isTextEntry } from "@/components/ui/focus";
+import { keyboardInset, keyboardUp } from "./field-input";
 
 /** The widest a field-entry screen grows (grouped rows read badly wider, so landscape phones stop here too). */
 export const ENTRY_WIDTH = "mx-auto w-full max-w-150";
@@ -130,11 +131,6 @@ export function withDemo(path: string, params: Record<string, string | undefined
   return s ? `${path}?${s}` : path;
 }
 
-/** A field a keyboard opens for (not a check box, button or list). */
-const isTextEntry = (el: Element | null): boolean =>
-  el instanceof HTMLTextAreaElement ||
-  (el instanceof HTMLInputElement && !["checkbox", "radio", "button", "submit", "range", "file"].includes(el.type));
-
 /**
  * The pinned action bar. The page pads by the bar's measured height (`--pin-action-height`; the bar's height
  * changes with its reason line and error message). While a text field has focus on a phone the bar sits on the
@@ -157,9 +153,22 @@ export function usePinnedBar(remeasureOn: unknown) {
   useEffect(() => {
     const vv = window.visualViewport;
     let timer: number | undefined;
+    // The window's height with no keyboard (it is taken again when the phone turns or the keyboard is gone).
+    let rest = window.innerHeight;
+    let restWidth = window.innerWidth;
     const update = () => {
-      const typing = isTextEntry(document.activeElement) && window.innerWidth < 1024;
-      setInset(typing ? (vv ? keyboardInset(window.innerHeight, vv) : 0) : null);
+      const { innerWidth: w, innerHeight: h } = window;
+      if (w !== restWidth) {
+        restWidth = w;
+        rest = h;
+      }
+      const typing = isTextEntry(document.activeElement) && w < 1024;
+      if (!typing) rest = h;
+      rest = Math.max(rest, h);
+      // Keyboard mode only while the keyboard is really up: a field focused with nothing opened (a failed save
+      // focuses the first bad field) leaves the bar above the tab bar and clear of the home indicator.
+      const up = typing && keyboardUp(rest, h, vv ?? { height: h, offsetTop: 0 });
+      setInset(up ? (vv ? keyboardInset(h, vv) : 0) : null);
     };
     // Leaving a field waits a beat: a press on the bar itself blurs the field first, and the bar must not move
     // out from under the finger before the press lands.

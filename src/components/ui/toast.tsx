@@ -1,8 +1,9 @@
 "use client";
 
-import type { ComponentPropsWithRef } from "react";
+import { useEffect, type ComponentPropsWithRef } from "react";
 import { Toast as RadixToast } from "radix-ui";
 import { cx } from "@/lib/cx";
+import { isTextEntry } from "./focus";
 
 export type ToastViewProps = ComponentPropsWithRef<"li"> & {
   message: string;
@@ -40,9 +41,19 @@ export type ToastProps = {
 
 /**
  * DESIGN.md §6 level-3 toast: 180 ms, polite live region (Radix Toast
- * announces via its own aria-live viewport).
+ * announces via its own aria-live viewport). It closes when a text field takes focus (it would sit over the
+ * field once the keyboard is up).
  */
 export function Toast({ open, onOpenChange, message, className, viewportClassName }: ToastProps) {
+  // A toast never covers the field being typed in: it has said its piece, so it goes when a text field takes focus.
+  useEffect(() => {
+    if (!open) return;
+    const entered = (e: FocusEvent) => {
+      if (isTextEntry(e.target as Element | null)) onOpenChange(false);
+    };
+    document.addEventListener("focusin", entered);
+    return () => document.removeEventListener("focusin", entered);
+  }, [open, onOpenChange]);
   return (
     <RadixToast.Provider swipeDirection="up" duration={4000}>
       <RadixToast.Root

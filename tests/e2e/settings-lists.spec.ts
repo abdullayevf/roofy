@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { collectConsole, expectScreenHealthy } from "./guards";
+import { checkKeyboard, collectConsole, expectScreenHealthy } from "./guards";
 import { SCREENS } from "./screens";
 
 const isPhone = (name: string) => name !== "desktop";
@@ -33,9 +33,9 @@ async function toastGone(page: Page, text: string) {
 }
 
 /**
- * A focused text field puts a pinned Save bar on the visual viewport (above the on-screen keyboard); with no real
- * keyboard in the test that is the very bottom of the window. Leave the field and wait for the bar to settle back
- * above the tab bar before the layout guards read it.
+ * A focused text field only puts the pinned Save bar in keyboard mode while the keyboard is really up (the window or
+ * visual viewport shrank), which a test never does. Leave the field and check the bar is above the tab bar before the
+ * layout guards read it.
  */
 async function settleKeyboardBar(page: Page) {
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
@@ -254,6 +254,18 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
     await page.getByRole("button", { name: "Save category", exact: true }).click();
     await expect(page.getByText("Add a name for the category.")).toBeVisible();
     await expect(saved(page)).toHaveCount(0);
+  });
+
+  test("members: the Invite sent toast goes when the Name box takes focus, so it never covers it", async ({ page }, info) => {
+    await go(page, "owner", "/settings/members");
+    await page.getByLabel("Name", { exact: true }).fill("Karen Lee");
+    await page.getByLabel("Email", { exact: true }).fill(`${unique("karen").replace(/\s/g, "")}@harbourroofing.example`);
+    await page.getByRole("button", { name: "Send invite" }).click();
+    await expect(saved(page, "Invite sent.")).toBeVisible();
+    await page.getByLabel("Name", { exact: true }).focus();
+    await expect(saved(page, "Invite sent."), "the toast closes at once, not after its few seconds").toHaveCount(0, { timeout: 1_500 });
+    const keyboard = await checkKeyboard(page, { phone: isPhone(info.project.name) });
+    expect(keyboard.failures).toEqual([]);
   });
 
   test("members: inviting needs a name and an email, then lands in the list", async ({ page }) => {

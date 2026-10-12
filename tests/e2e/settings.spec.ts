@@ -1,9 +1,16 @@
 import { expect, test, type Page } from "@playwright/test";
-import { checkPrimaryActionPlacement, checkToastClearsBars, collectConsole, expectScreenHealthy } from "./guards";
+import { checkPrimaryActionPlacement, checkSafeAreas, checkToastClearsBars, collectConsole, expectScreenHealthy } from "./guards";
 
 const isPhone = (name: string) => name !== "desktop";
 const NEEDS_CONNECTION = "Needs connection — try again once you're back online.";
-const go = (page: Page, role: string, next: string) => page.goto(`/prototype/role?as=${role}&next=${encodeURIComponent(next)}`);
+/** Open a page and wait for React to attach to its boxes: a fill made before then shows but never reaches the form's state. */
+async function go(page: Page, role: string, next: string) {
+  await page.goto(`/prototype/role?as=${role}&next=${encodeURIComponent(next)}`);
+  await page.waitForFunction(() => {
+    const controls = [...document.querySelectorAll("main input:not([type=radio]):not([type=checkbox]):not([type=hidden]), main select")];
+    return controls.every((el) => Object.keys(el).some((k) => k.startsWith("__reactProps$")));
+  });
+}
 const h1 = (page: Page, name: string) => page.getByRole("heading", { level: 1, name });
 
 test.describe("Settings (screen 23)", () => {
@@ -136,12 +143,23 @@ test.describe("Settings (screen 23)", () => {
       }
     });
 
-  test("a refused save on a pinned form puts the error in the bar's reach and focuses the first bad field", async ({ page }) => {
-    await go(page, "owner", "/settings/pay-period");
-    await page.getByLabel("Standard day").fill("0");
-    await page.getByRole("button", { name: "Save changes", exact: true }).click();
-    await expect(page.locator('[aria-invalid="true"]').first()).toBeFocused();
-  });
+  for (const [path, label, bad] of [
+    ["/settings/pay-period", "Standard day", "0"],
+    ["/settings/levels", "Floor rate for Roofer", "0.00"],
+  ] as const)
+    test(`${path}: a refused save focuses the first bad field and keeps the Save bar clear of the home indicator`, async ({ page }, info) => {
+      await go(page, "owner", path);
+      await page.getByLabel(label).fill(bad);
+      await page.getByRole("button", { name: "Save changes", exact: true }).click();
+      await expect(page.locator('[aria-invalid="true"]').first()).toBeFocused();
+      const bar = page.locator('[data-slot="primary-action"]');
+      if (isPhone(info.project.name)) {
+        // The focused field has no keyboard open here, so the bar stays above the tab bar (keyboard mode would drop it
+        // into the bottom safe-area inset).
+        await expect(bar).not.toHaveAttribute("data-keyboard", "true");
+        expect((await checkSafeAreas(page)).failures).toEqual([]);
+      }
+    });
 
   test("Members: a role change saves on pick and Send invite is the one primary", async ({ page }) => {
     await go(page, "owner", "/settings/members");

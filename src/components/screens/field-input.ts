@@ -202,3 +202,17 @@ export function keyboardInset(windowHeight: number, viewport: { height: number; 
   const covered = Math.round(windowHeight - viewport.height - viewport.offsetTop);
   return covered >= KEYBOARD_MIN_PX ? covered : 0;
 }
+
+/**
+ * Whether the on-screen keyboard is really up while a field has focus. Two ways it shows: the visual viewport lost the
+ * keyboard's strip (the keyboard sits over the page), or the window itself is shorter than it rested at (the page
+ * resizes for it). A field that has focus with the window and visual viewport whole has no keyboard to clear: a failed
+ * save focuses the first bad field, a hardware keyboard, a test window.
+ */
+export function keyboardUp(
+  restingHeight: number,
+  windowHeight: number,
+  viewport: { height: number; offsetTop: number },
+): boolean {
+  return keyboardInset(windowHeight, viewport) > 0 || restingHeight - windowHeight >= KEYBOARD_MIN_PX;
+}
