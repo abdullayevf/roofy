@@ -313,8 +313,8 @@ Each task is one implementer run of at most 30 steps. A task marked "2 runs" is 
   - `actorFromHeaders(h: Headers): Promise<{ kind: "actor"; actor: Actor; timezone: string; workspaceName: string } | { kind: "signed-out" } | { kind: "no-workspace"; userId: string }>`.
   - `ROLES_AC`: the organization access-control roles `owner | manager | foreman | accountant`.
 
-- [ ] Check the API names below against the installed `better-auth` types first.
-- [ ] Failing integration tests first, calling `auth.api.*` directly against `roofy_test`:
+- [x] Check the API names below against the installed `better-auth` types first.
+- [x] Failing integration tests first, calling `auth.api.*` directly against `roofy_test`:
   - Sign-up with email sends one verification mail (captured by a test mailer), and sign-in before verification is refused.
   - Verifying the token, then signing in, returns a session cookie with `HttpOnly`, `SameSite=Lax`, and `Secure` when `BETTER_AUTH_URL` is https.
   - Password reset sends a mail, and the new password works.
@@ -323,7 +323,7 @@ Each task is one implementer run of at most 30 steps. A task marked "2 runs" is 
   - The 6th wrong password within the window is rate-limited (429).
   - User ids are uuid v7.
   - With Google env unset, the social provider list is empty. With it set, `signInSocial` returns an `accounts.google.com` URL.
-- [ ] Configure:
+- [x] Configure:
   - The Drizzle adapter on `getAuthDb()` with model names mapped (`organization` → `workspace`, `organizationId` → `workspace_id`).
   - Email+password with `requireEmailVerification` and auto sign-in after verification.
   - The organization plugin with custom roles, `sendInvitationEmail` and no creator-limit surprises.
@@ -331,8 +331,8 @@ Each task is one implementer run of at most 30 steps. A task marked "2 runs" is 
   - `rateLimit` with database storage on auth routes.
   - `nextCookies()` last.
   - v7 id generation.
-- [ ] The route handler exports `GET` and `POST` via the Next.js adapter that Better Auth documents for the installed version.
-- [ ] Done when the tests pass, `curl -s localhost:3100/api/auth/ok` answers when `pnpm dev` runs with `ROOFY_DATA=db`, and `pnpm verify` is green.
+- [x] The route handler exports `GET` and `POST` via the Next.js adapter that Better Auth documents for the installed version.
+- [x] Done when the tests pass, `curl -s localhost:3100/api/auth/ok` answers when `pnpm dev` runs with `ROOFY_DATA=db`, and `pnpm verify` is green.
 
 ### Task 9: Permission matrix and role-shaped DTOs (opus)
 
