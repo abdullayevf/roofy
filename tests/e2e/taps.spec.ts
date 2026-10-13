@@ -121,7 +121,7 @@ test.describe("flow specs against flows.md", () => {
         expect(source, `${row.file} sets the limit to ${seconds} s`).toContain(`MAX_MS = ${seconds}_000`);
         expect(source, `${row.file} spends think time on every tap`).toContain("thinkMs: THINK_MS");
       } else {
-        expect(source, `${row.file} is tap-counted only (think time is the crew-day flow's)`).not.toMatch(/thinkMs|maxMs/);
+        expect(source, `${row.file} is tap-counted only (think time is for the crew-day and onboarding flows)`).not.toMatch(/thinkMs|maxMs/);
       }
     }
   });

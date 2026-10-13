@@ -75,9 +75,10 @@ const ALL_STATES = ["normal", ...DEMO_STATES];
 
 /**
  * Query keys that prefill a form with what the person types (the receipt total and GST on Add expense). The foreman
- * (Narrowing ruled justified by the spec review, spec §3 l.49; expense-new.spec.ts:133 scans that prefilled form.)
  * adds expenses, so the amount they type is theirs to see; it is dropped from the scanned URL so the scan catches
  * workspace money only. The rest of the query (who paid, saved, check) is kept, so those states are still scanned.
+ * Accepted narrowing (spec §3 l.49): a total in the URL on first load is not swept; expense-new.spec.ts:133 covers
+ * the foreman typing a total.
  */
 const OWN_INPUT_KEYS = ["total", "gst"];
 function withoutOwnInput(path: string): string {

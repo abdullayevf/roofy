@@ -9,7 +9,7 @@
  * Timing: `new Taps("Log a full crew-day", { thinkMs: 500 })` waits that long before every tap, standing in
  * for a person finding and pressing the control, and `taps.assertWithin(6, { maxMs: 30_000 })` also fails when
  * the scripted wall time (think time included) from construction to the check goes over the limit. Only the
- * crew-day flow uses it (flows.md: "< 30 s"); the other flows are tap-counted only.
+ * crew-day (< 30 s) and onboarding (< 10 min) flows use it (flows.md); the other flows are tap-counted only.
  */
 import { test, type Locator } from "@playwright/test";
 
