@@ -198,9 +198,9 @@ Each group task: build every screen × every state (normal, empty, loading, erro
 
 ### Task 23: Phase gate
 
-- [ ] `pnpm verify` green (paste output).
-- [ ] `pnpm test:e2e` green on iphone, android, desktop (paste summary; note WebKit fallback if used).
-- [ ] Every screen group: design loop passed (scores table in SCORES.md, no open P0/P1 in ISSUES.md).
-- [ ] Exit line: tap budgets pass; baselines committed; PWA installs (manifest, icons, standalone, safe areas).
-- [ ] `spec-reviewer` (opus) on `git diff master...HEAD` against this plan, 04-design-process, DESIGN.md, product spec §3–§6; fix and re-run until "No blocking issues".
+- [x] `pnpm verify` green (paste output).
+- [x] `pnpm test:e2e` green on iphone, android, desktop (paste summary; note WebKit fallback if used).
+- [x] Every screen group: design loop passed (scores table in SCORES.md, no open P0/P1 in ISSUES.md).
+- [x] Exit line: tap budgets pass; baselines committed; PWA installs (manifest, icons, standalone, safe areas).
+- [x] `spec-reviewer` (opus) on `git diff master...HEAD` against this plan, 04-design-process, DESIGN.md, product spec §3–§6; fix and re-run until "No blocking issues".
 - [ ] Update PROGRESS.md (Current, Log, Decisions and deviations, Gate evidence, Open issues with target phases); merge into master.

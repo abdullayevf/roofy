@@ -2,11 +2,11 @@
 
 ## Current
 
-- Phase: 2 — Design system and full prototype. Branch `phase/2-design-prototype` (local on the VPS, not pushed, not merged). Plan: `docs/plans/03-design-prototype.md`.
-- Ledger: `.superpowers/sdd/03-design-prototype/progress.md` (per-run lines; read its tail for where a task stands).
-- Done and reviewed: Tasks 1–22. Task 23 (phase gate) in progress, brief `.superpowers/sdd/03-design-prototype/task-23-brief.md`.
-- Task 23 so far: R1/R2 comments fixed 9f21243. Whole-phase spec review G1/G2 (design-loop records) fixed b341508; re-review "No blocking issues". Cap deviation recorded below. Full `pnpm test:e2e` at 9f21243: 3550 pass, 216 skip, 3 fail. Two were load flakes that passed in isolation (design-page:45, settings-lists:64). The third, visual-iphone `log-no-work-blocked · normal` light, was a capture race (fixed 300 ms pause vs sync push): fixed daf9628, wait step + guards, iphone baseline regenerated, repeat-10 x2 pass, verify 1157 green.
-- **Next (Task 23 finish):** (1) `reviewer` (sonnet) on 3e203c8..daf9628, focus daf9628. It must check whether the visual-android/desktop baselines for log-no-work-blocked also captured the pre-save state, and it must not run playwright. (2) In parallel, the conductor runs `pnpm test:visual` (all projects) and `pnpm test:coverage` with nothing else running. Then `pnpm verify` alone. (3) If all clean: paste the evidence into this file (verify, e2e 3550/3 fail→fixed, visual, coverage, spec review CLEAN), tick plan lines 201–205, write `.superpowers/STOP` "Phase 2 gate done; owner decides merge to master and phase 3 start", commit docs. Do not start phase 3. T23 spend: 5 runs, 129 tool uses (budget 12/300).
+- Phase: 2 — Design system and full prototype. **Phase gate done (2026-10-13).** Branch `phase/2-design-prototype` (local on the VPS, not pushed, not merged). Plan: `docs/plans/03-design-prototype.md`.
+- Ledger: `.superpowers/sdd/03-design-prototype/progress.md`.
+- Done and reviewed: Tasks 1–23. Evidence under "Gate evidence" (Phase 2). T23 spend: 8 runs, 176 tool uses (budget 12/300).
+- `.superpowers/STOP` is written: the owner decides the merge to master and when phase 3 starts.
+- **Next:** owner merges `phase/2-design-prototype` into master (plan line 206, last box), then removes `.superpowers/STOP`. The next session then starts phase 3 at its first task (`docs/plans/00-master-plan.md`). Do not start phase 3 before that.
 - Known flaky (iphone, load): flows/no-work-marker.spec.ts:6, log-progress.spec.ts:135, design-page.spec.ts:45, settings-lists.spec.ts:64; unit "reads fast" timing tests in home.test.ts and seed.test.ts fail at load ≥ 14.
 - Environment: real WebKit works on the VPS. Never stop the server with `pkill -f "next start"`; kill the PID from `ss -ltnp | grep 3100`.
 
@@ -107,6 +107,7 @@
 
 ## Gate evidence
 
+- Phase 2 (2026-10-13, branch `phase/2-design-prototype` at 0f38a0f): `pnpm verify` exits 0 — 117 test files, 1159 unit tests. `pnpm test:coverage` exits 0 with the 100% thresholds on `src/domain`. Full `pnpm test:e2e` (iphone, android, desktop, real WebKit) at 9f21243+b341508: 3550 pass, 216 skip, 3 fail — two load flakes passed in isolation (design-page:45, settings-lists:64), one capture race fixed daf9628 and 0f38a0f (captures after Save wait for the saved text; unit guard). `pnpm test:visual` at daf9628: 1050 pass, 67 skip, 0 diffs; save screens re-run at 0f38a0f: 7 pass, 0 fail. Tap budgets, foreman leakage sweep, baselines (1042) and PWA install checks in that suite. Design loop: every group scored in SCORES.md; groups accepted below 90 or with field-2 i3-F1 open at the 3-iteration cap recorded in DECISIONS.md. Whole-phase `spec-reviewer` (opus): 2 record gaps fixed b341508, re-review "No blocking issues". Code review of daf9628: 1 P2 fixed 0f38a0f, re-review CLEAN.
 - Phase 1: `pnpm verify` exits 0 — 21 test files, 122 tests; coverage 100% statements 283/283, branches 203/203, functions 120/120, lines 210/210; "Every pay-rules example has a named test." `pnpm test:e2e` 3/3. Whole-branch review + phase spec review (opus): every example hand-checked to the cent; every rule in §0–§16 has code or a later-phase owner; its fixes applied and re-reviewed.
 - Phase 0: `pnpm verify` exits 0 (12 unit tests passing).
 - `pnpm test:e2e` 3/3 (iphone, android, desktop).
