@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { ROLES } from "@/data/session";
 import { inviteEmail, resetEmail, verificationEmail } from "./templates";
 
 const URL_WITH_AMP = "https://app.roofy.test/verify?token=abc123&next=%2Fhome";
 const HREF_WITH_AMP = "https://app.roofy.test/verify?token=abc123&amp;next=%2Fhome";
 const MONEY = /\$|\b(dollars?|aud|amounts?|rates?|budgets?|margins?|balances?|prices?|invoices?|wages?|salary)\b/i;
+
+const occurrences = (haystack: string, needle: string) => haystack.split(needle).length - 1;
 
 const invite = (over: Partial<Parameters<typeof inviteEmail>[0]> = {}) =>
   inviteEmail({
@@ -21,6 +24,9 @@ describe("verificationEmail", () => {
     expect(m.text).toContain(URL_WITH_AMP);
     expect(m.html).toContain(`href="${HREF_WITH_AMP}"`);
     expect(m.html).not.toContain(`"${URL_WITH_AMP}"`);
+    // Once in the href, once as the visible "copy this link" line.
+    expect(occurrences(m.html, HREF_WITH_AMP)).toBe(2);
+    expect(m.html).toContain(`<br>${HREF_WITH_AMP}</p>`);
   });
 
   it("carries no money", () => {
@@ -63,6 +69,14 @@ describe("inviteEmail", () => {
     expect(invite({ role: "manager" }).text).toMatch(/as a manager/);
   });
 
+  it("has a role label for every role", () => {
+    for (const role of ROLES) {
+      const m = invite({ role });
+      expect(m.text).toMatch(new RegExp(`as an? ${role}\\.`));
+      expect(m.html).toMatch(new RegExp(`as an? ${role}\\.`));
+    }
+  });
+
   it("escapes interpolated values in the html, and the url in the href", () => {
     const m = invite({
       workspaceName: 'Tom & "Co" <Roofing>',
@@ -72,6 +86,9 @@ describe("inviteEmail", () => {
     expect(m.html).toContain("Tom &amp; &quot;Co&quot; &lt;Roofing&gt;");
     expect(m.html).toContain("&lt;b&gt;Eve&lt;/b&gt; O&#39;Neil");
     expect(m.html).toContain('href="https://app.roofy.test/invite/1?a=1&amp;b=&quot;2&quot;"');
+    // Once in the href, once as the visible "copy this link" line.
+    expect(occurrences(m.html, "https://app.roofy.test/invite/1?a=1&amp;b=&quot;2&quot;")).toBe(2);
+    expect(m.html).toContain("<br>https://app.roofy.test/invite/1?a=1&amp;b=&quot;2&quot;</p>");
     expect(m.html).not.toContain("<b>Eve</b>");
     expect(m.html).not.toContain("<Roofing>");
   });

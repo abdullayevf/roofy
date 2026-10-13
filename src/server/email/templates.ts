@@ -1,5 +1,7 @@
+import type { Role } from "@/data/contracts";
+
 /** What the three emails say. No amounts, rates or budgets in any of them: invitees may be foremen. */
-export type InviteRole = "owner" | "manager" | "foreman" | "accountant";
+export type InviteRole = Role;
 
 export type EmailContent = { subject: string; text: string; html: string };
 

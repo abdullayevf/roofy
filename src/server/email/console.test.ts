@@ -4,10 +4,22 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createConsoleMailer, linksIn } from "./console";
 
+const fsCalls = vi.hoisted(() => ({ appendFile: vi.fn(), mkdir: vi.fn() }));
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
+  return {
+    ...actual,
+    appendFile: (...args: Parameters<typeof actual.appendFile>) => (fsCalls.appendFile(...args), actual.appendFile(...args)),
+    mkdir: (...args: Parameters<typeof actual.mkdir>) => (fsCalls.mkdir(...args), actual.mkdir(...args)),
+  };
+});
+
 let dir: string;
 let log: ReturnType<typeof vi.spyOn>;
 
 beforeEach(async () => {
+  fsCalls.appendFile.mockClear();
+  fsCalls.mkdir.mockClear();
   dir = await mkdtemp(join(tmpdir(), "roofy-mail-"));
   log = vi.spyOn(console, "log").mockImplementation(() => {});
 });
@@ -32,6 +44,12 @@ describe("linksIn", () => {
       "http://y.test/z",
     ]);
     expect(linksIn("no links here")).toEqual([]);
+  });
+
+  it("drops a trailing closing bracket or question mark, but keeps a query string", () => {
+    expect(linksIn("(see https://x.test/a)")).toEqual(["https://x.test/a"]);
+    expect(linksIn("Did you open https://x.test/a?")).toEqual(["https://x.test/a"]);
+    expect(linksIn("Open https://x.test/a?b=1)")).toEqual(["https://x.test/a?b=1"]);
   });
 });
 
@@ -77,6 +95,8 @@ describe("console mailer", () => {
 
   it("writes to no file without a log file", async () => {
     await createConsoleMailer({}).send(message());
+    expect(fsCalls.appendFile).not.toHaveBeenCalled();
+    expect(fsCalls.mkdir).not.toHaveBeenCalled();
     expect(await readdir(dir)).toEqual([]);
   });
 });
