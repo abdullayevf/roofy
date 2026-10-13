@@ -365,16 +365,16 @@ Each task is one implementer run of at most 30 steps. A task marked "2 runs" is 
   - `assertCan(...)`, which throws `DataError("forbidden", "You don't have access to this.")`.
   - `shapeMember(actor, m)` and `shapeAccess(actor): Access`.
 
-- [ ] Failing table test first. One `it.each` row per role × action, with the expected allow/deny from product spec §3. The named rows are:
+- [x] Failing table test first. One `it.each` row per role × action, with the expected allow/deny from product spec §3. The named rows are:
   - Manager is denied `workspace.billing`, `workspace.delete` and `member.changeOwner`.
   - Foreman is denied `stage.markDone`, `money.read`, `rate.read` and `payRun.read`.
   - Foreman `log.write` is allowed only when `ctx.projectId` is in `assignedProjectIds`.
   - Accountant is allowed `payRun.read`, `payRun.export`, `payout.read`, `report.read` and `export.run`, and denied every `*.edit`/`*.write`.
   - Owner without 2FA is denied `payRun.approve`; Owner with 2FA is allowed.
   - Manager `payRun.approve` is allowed.
-- [ ] Exhaustiveness test: every `Action` × every `Role` has a row (built from the union's runtime list).
-- [ ] The shapers return foreman variants that pass `expectNoMoney`. Fixtures that carry every money field prove they are stripped.
-- [ ] Done when the tests pass and `pnpm verify` is green.
+- [x] Exhaustiveness test: every `Action` × every `Role` has a row (built from the union's runtime list).
+- [x] The shapers return foreman variants that pass `expectNoMoney`. Fixtures that carry every money field prove they are stripped.
+- [x] Done when the tests pass and `pnpm verify` is green.
 
 ### Task 10: Data mode `db` and session → actor wiring (opus)
 
