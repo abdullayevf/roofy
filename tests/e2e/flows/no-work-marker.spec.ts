@@ -8,6 +8,10 @@ for (const role of ["manager", "foreman"]) {
     const taps = new Taps("No-work marker");
     await taps.tap(page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Log" }));
     await taps.tap(page.getByRole("radio", { name: "No work" }));
+    // "Today, Mon 28 Sep" is on the crew-day page too, so wait for the no-work page itself: a tap on Jake made before
+    // the switch lands on the old page and is lost when the new one replaces it.
+    await expect(page).toHaveURL(/\/log\/no-work/);
+    await expect(page.getByRole("heading", { name: "Why" })).toBeVisible();
     await expect(page.getByText("Today, Mon 28 Sep")).toBeVisible();
     await page.waitForLoadState("networkidle"); // the page is interactive before the first tap
     await taps.tap(page.getByRole("button", { name: /^Jake\b/ }));

@@ -37,6 +37,7 @@ test("A foreman opens the Outbox tab, and Discard is Discard, Discard entry", as
 
 test("Edit and resend for a foreman reopens the entry with the people ticked", async ({ page }) => {
   await page.goto("/prototype/role?as=foreman&next=%2Foutbox%3Fdemo%3Dattention");
+  // outside the count: the foreman variant checks the reopened entry only; the budget is asserted above.
   await page.getByRole("link", { name: "Edit and resend" }).click();
   await expect(page.getByRole("button", { name: /^Sam\s/ })).toHaveAttribute("aria-pressed", "true");
   expect(await page.locator("main").innerText()).not.toMatch(/\$\d/);

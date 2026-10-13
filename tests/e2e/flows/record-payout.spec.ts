@@ -31,8 +31,7 @@ for (const role of ["manager", "owner"]) {
     const today = meta.today;
     await expect(page.getByLabel("Date paid")).toHaveValue(today);
     const amount = page.getByLabel("Amount", { exact: true });
-    await taps.tap(amount);
-    await amount.fill("1482.00");
+    await taps.fill(amount, "1482.00");
     await taps.tap(page.getByRole("radio", { name: "Payment" }));
     await taps.tap(page.getByRole("button", { name: "Save payout" }).locator("visible=true"));
     await expect(page.getByText("Payment saved.", { exact: true })).toBeVisible();

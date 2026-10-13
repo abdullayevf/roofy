@@ -29,8 +29,7 @@ test("Correct the total on a saved expense in 6 taps", async ({ page }, testInfo
   const total = page.getByLabel("Total paid");
   // A different figure each run, since the fake server keeps the last one.
   const next = (await total.inputValue()) === "123.45" ? "123.40" : "123.45";
-  await taps.tap(total);
-  await total.fill(next);
+  await taps.fill(total, next);
   await taps.tap(page.getByRole("button", { name: "Save changes" }));
   await expect(page).toHaveURL(new RegExp(`/expenses/${target.id}\\?saved=1$`));
   await expect(page.getByRole("status").filter({ hasText: "Changes saved." })).toBeVisible();

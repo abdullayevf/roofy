@@ -13,8 +13,7 @@ test("Settings changes: a level's floor rate saved within 5 taps from Home; $0.0
   await expect(page).toHaveURL(/\/settings\/levels$/);
   await waitForHydrated(page);
   const roofer = page.getByLabel("Floor rate for Roofer");
-  await taps.tap(roofer);
-  await roofer.fill("34.50");
+  await taps.fill(roofer, "34.50");
   await taps.tap(page.getByRole("button", { name: "Save changes" }));
   await expect(page.getByText("Changes saved.", { exact: true })).toBeVisible();
   taps.assertWithin(5);
@@ -24,6 +23,7 @@ test("Settings changes: a level's floor rate saved within 5 taps from Home; $0.0
   await expect(page.getByLabel("Floor rate for Roofer"), "the new floor is kept").toHaveValue("34.50");
 
   for (const bad of ["0.00", ""]) {
+    // outside the count: the refusal check runs after the budget is asserted.
     await page.getByLabel("Floor rate for Roofer").fill(bad);
     await page.getByRole("button", { name: "Save changes" }).click();
     await expect(page.getByText("Add a floor rate before saving.")).toBeVisible();

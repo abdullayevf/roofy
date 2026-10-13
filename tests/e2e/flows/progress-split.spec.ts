@@ -13,8 +13,7 @@ for (const role of ["manager", "foreman"]) {
     await taps.tap(page.getByRole("radiogroup", { name: "Recent stages" }).getByRole("radio", { name: /Sheet install/ }).first());
     await expect(page.getByText("120 of 400 m²")).toBeVisible();
     const quantity = page.getByLabel("Quantity done");
-    await taps.tap(quantity);
-    await quantity.fill("120");
+    await taps.fill(quantity, "120");
     await taps.tap(page.getByRole("button", { name: /^Sam\b/ }));
     await taps.tap(page.getByRole("button", { name: /^Dima\b/ }));
     await expect(page.getByText("60 m²", { exact: true })).toHaveCount(2);

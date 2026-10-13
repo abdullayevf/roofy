@@ -24,6 +24,7 @@ test("Stage done with lump sum as manager: 5 taps, the stage is then Done", asyn
 /** The spec keeps Mark stage done for managers: a foreman sees the stage but is stopped at the done page. */
 test("Stage done as a foreman: no Mark stage done on the stage, and the done page says No access", async ({ page }) => {
   await page.goto(`/prototype/role?as=foreman&next=%2F`);
+  // outside the count: the foreman variant has no budget; it checks that the stage is read-only for a foreman.
   await page.locator(`a[href="/jobs/${meta.projects.smith}"]`).first().click();
   await page.locator("[data-stage-row]").filter({ hasText: "Sheet install" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Sheet install" })).toBeVisible();

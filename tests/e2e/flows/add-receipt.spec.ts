@@ -25,7 +25,8 @@ test("Add a $110.00 receipt paid by Dima in 10 taps", async ({ page }) => {
   await taps.tap(page.getByRole("button", { name: "Take photo" }));
   await (await chooser).setFiles({ name: "receipt.png", mimeType: "image/png", buffer: PHOTO });
   await expect(page.getByRole("img", { name: "Receipt photo" })).toBeVisible();
-  await page.getByLabel("Total paid").fill("110.00");
+  // flows.md step 5: tapping the total field to focus it is a tap; typing the figure is not.
+  await taps.fill(page.getByLabel("Total paid"), "110.00");
   await taps.tap(page.locator('[data-field="expense-job"]').getByRole("radio", { name: smithName, exact: true }));
   await taps.tap(page.locator('[data-field="expense-category"]').getByRole("radio", { name: "Materials", exact: true }));
   await taps.tap(page.locator('[data-field="expense-paid-by"]').getByRole("radio", { name: "Crew", exact: true }));
@@ -41,5 +42,6 @@ test("Add a $110.00 receipt paid by Dima in 10 taps", async ({ page }) => {
   await expect(row.locator("[data-expense-paid-by]")).toHaveText(/^(Paid by Dima — reimbursed next pay run|Dima\s*Reimbursed next pay run)$/);
   // The picked photo stays with the expense: the row shows the receipt marker (a stand-in id until uploads, Phase 5).
   await expect(row.locator("[data-expense-receipt]")).toHaveAttribute("data-expense-receipt", "yes");
+  expect(taps.count).toBe(10);
   taps.assertWithin(10);
 });

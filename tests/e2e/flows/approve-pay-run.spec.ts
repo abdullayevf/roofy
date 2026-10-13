@@ -43,6 +43,7 @@ for (const role of ["manager", "owner"]) {
     taps.assertWithin(5);
     // Below 1024 px people fold to name and total: open the first to see its Share statement (not part of the flow).
     const toggle = page.locator('[data-person-toggle][aria-expanded="false"]').first();
+    // outside the count: runs after the budget is asserted.
     if (await toggle.count()) await toggle.click();
     await expect(page.getByRole("button", { name: "Share statement" }).first()).toBeVisible();
   });
