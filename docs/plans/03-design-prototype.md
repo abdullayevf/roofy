@@ -182,19 +182,19 @@ Each group task: build every screen × every state (normal, empty, loading, erro
 
 **Files:** `tests/e2e/flows/*.spec.ts`, `tests/e2e/taps.ts`.
 
-- [ ] `taps.ts` counts taps via a wrapper (`tap(locator)`), fails when a flow exceeds its budget from flows.md; crew-day flow also asserts < 30 s scripted wall time with a 500 ms human think-time per tap.
-- [ ] Every flow in flows.md has a passing spec on iphone, android and desktop.
+- [x] `taps.ts` counts taps via a wrapper (`tap(locator)`), fails when a flow exceeds its budget from flows.md; crew-day flow also asserts < 30 s scripted wall time with a 500 ms human think-time per tap.
+- [x] Every flow in flows.md has a passing spec on iphone, android and desktop.
 
 ### Task 21: Foreman leakage sweep
 
-- [ ] e2e as foreman visits every foreman-reachable route and every `?demo=` state; asserts the HTML (incl. inlined RSC payload) contains no `$` followed by a digit and no money keys from the Task 5 list; direct navigation to money routes (pay, crew detail rates, reports, settings money) shows the no-permission state with no figures.
+- [x] e2e as foreman visits every foreman-reachable route and every `?demo=` state; asserts the HTML (incl. inlined RSC payload) contains no `$` followed by a digit and no money keys from the Task 5 list; direct navigation to money routes (pay, crew detail rates, reports, settings money) shows the no-permission state with no figures.
 
 ### Task 22: Visual baselines (D7) and PWA verification
 
 **Files:** `tests/visual/screens.spec.ts`, snapshot dirs, `playwright.config.ts` (visual project settings: animations disabled, fonts loaded, fixed clock).
 
-- [ ] One screenshot per screen × state × viewport (light; dark for the core field screens and Home), taken from the approved design-loop state, committed.
-- [ ] PWA: manifest + icons + standalone + safe areas verified in the WebKit (or Chromium fallback, recorded) standalone capture; Lighthouse-style installability checks via Chromium DevTools protocol (`Page.getInstallabilityErrors` returns none).
+- [x] One screenshot per screen × state × viewport (light; dark for the core field screens and Home), taken from the approved design-loop state, committed.
+- [x] PWA: manifest + icons + standalone + safe areas verified in the WebKit (or Chromium fallback, recorded) standalone capture; Lighthouse-style installability checks via Chromium DevTools protocol (`Page.getInstallabilityErrors` returns none).
 
 ### Task 23: Phase gate
 
