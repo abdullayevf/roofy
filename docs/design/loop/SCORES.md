@@ -27,13 +27,13 @@ Score history for every screen group's design loop (`docs/specs/04-design-proces
 | field-1 | 6         | 82           | 82          | 82      | 1           | yes                                                                                                              |
 | field-2 | 1         | 72           | 68          | 70      | 5           | no (6 `log-crew-day` `?demo=error` captures: console 500 and React #441 from the forced error, ruled expected)   |
 | field-2 | 2         | 78           | 76          | 77      | 4           | no (2 `log-crew-day-offline-saved` console errors: ERR_INTERNET_DISCONNECTED from cutting the network, expected) |
-| field-2 | 3         | 82           | 78          | 80      | 0           | yes (152 captures, 2 fail: offline-saved console, expected)                                                      |
+| field-2 | 3         | 82           | 78          | 80      | 1           | yes (152 captures, 2 fail: offline-saved console, expected); 1 open P1 (field-2/i3-F1) accepted under the 3-iteration cap |
 | jobs-1  | 1         | 68           | 64          | 66      | 9           | yes (84 captures, 0 fail)                                                                                        |
 | jobs-1  | 2         | 71           | 71          | 71      | 3           | yes (84 captures, 0 fail)                                                                                        |
 | jobs-1  | 3         | 77           | 74          | 75.5    | 1           | yes (84 captures, 0 fail); accepted under the 3-iteration cap                                                    |
-| jobs-2  | 1         | 72           | 75          | 73.5    | 3           | yes (320 captures, 0 fail after guard fix 70ac00e)                                                               |
+| jobs-2  | 1         | 72           | 75          | 73.5    | 3           | yes (320 captures, 0 fail after guard fix 70ac00e); accepted by the owner at iteration 1 (Task 14 budget)                                                               |
 | crew    | 1         | 68           | 70          | 69      | 4           | yes (210 captures, 0 fail)                                                                                       |
-| crew    | 2         | 84           | 83          | 83.5    | 4           | yes (211 captures, 0 fail); accepted by the owner                                                                                     |
+| crew    | 2         | 84           | 83          | 83.5    | 0           | yes (211 captures, 0 fail); accepted by the owner                                                                                     |
 | expenses | 1         | 69           | 80          | 74.5    | 5           | yes (276 captures, 0 fail)                                                                                       |
 | expenses | 2         | 81           | 87          | 84      | 0           | yes (278 captures, 0 fail after capture fix feafb5d)                                                             |
 | expenses | 3         | 86           | 90          | 88      | 0           | yes (278 captures, 0 fail); accepted at the 3-iteration cap                                                      |

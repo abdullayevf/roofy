@@ -50,6 +50,50 @@ Owner decision (2026-10-01): accept field-1 at 82, after one final unscored fix 
 
 ## 2026-10-01 — field-2 accepted by owner at 80 after the 3-iteration cap
 
-Iteration 3 scored 82/78 (average 80) with zero open P0/P1 and clean automated checks (152 captures, 2 expected offline-console fails), so the loop capped at iteration 3 per the owner's standing rule (design loop capped at 3 iterations, accept and move on). Scores: 70 → 77 → 80.
+Iteration 3 scored 82/78 (average 80) with one open P1 (field-2/i3-F1, the installed-landscape Save bar and nav covering about 45% of the screen; accepted under the cap) and clean automated checks (152 captures, 2 expected offline-console fails), so the loop capped at iteration 3 per the owner's standing rule (design loop capped at 3 iterations, accept and move on). Scores: 70 → 77 → 80.
 
 Owner decision (2026-10-01): accept field-2 at 80 under the 3-iteration cap. Open rows stay in ISSUES.md.
+
+## 2026-10-02 — jobs-1 accepted at 75.5 under the 3-iteration cap
+
+Scores 66 → 71 → 75.5 (iteration 3: design 77, field 74), automated checks clean (84 captures, 0 fail). The loop did not reach 90 (04-design-process §3): each round fixed the rows raised, and the critics then raised a fresh set of layout and wording rows on the jobs list and the job form (iteration 3 added i3-F2 to F10 and i3-D2 to D15) while the score rose 4 to 5 points a round, from a low start (66).
+
+One P1 stood at iteration 3: the date fields read mm/dd/yyyy in the Chromium captures (jobs-1/i3-F1, i3-D1). It was a capture-language fault, not an app fault, and was closed afterwards (8131392, Chromium launched with --lang=en-AU; guard checkDateFields; ruling R8).
+
+Owner decision (2026-10-01, standing rule): accepted under the 3-iteration cap. Open rows left in ISSUES.md, none P0/P1: P2 (12): i2-F10, i2-D7, i3-F2, i3-F3, i3-F4, i3-F5, i3-D2, i3-D3, i3-D4, i3-D5, i3-D6, i3-D7; P3 (17): i2-F12, i2-D12, i2-D14, i3-F6, i3-F7, i3-F8, i3-F9, i3-F10, i3-D8, i3-D9, i3-D10, i3-D11, i3-D12, i3-D13, i3-D14, i3-D15, long-name-clamp.
+
+## 2026-10-09 — jobs-2 accepted by the owner at 73.5 after iteration 1
+
+Iteration 1 scored 72/75 (average 73.5) with three open P1 rows (jobs-2/i1-F1 two primary buttons, i1-F2 paused timeline said Working, i1-D1 actions at the top) and clean automated checks (320 captures, 0 fail after guard fix 70ac00e). Why it stopped below 90 and before the cap: the three P1 rows were fixed in 43f9190 and the iteration 2 capture came back clean (320 captures, 0 fail), but Task 14 had used 766 of its 800 tool uses, so the iteration 2 critics could not be run inside the budget (RUNBOOK §5). No iteration 2 score exists.
+
+Owner decision (2026-10-09): accept jobs-2 at 73.5 and tick Task 14. This is the lowest accepted score; it was accepted at iteration 1, before the 3-iteration cap (owner, 2026-10-01) was reached. All three P1 rows are closed in ISSUES.md. Open rows left in ISSUES.md, none P0/P1: P2 (26): i1-F3 to i1-F14, i1-D2 to i1-D13, i1-D15; P3 (7): i1-F15 to i1-F17, i1-D16 to i1-D19. i1-D14 (date field reads dd/mm/yyyy) is the guard row, covered by checkDateFields.
+
+## 2026-10-10 — crew accepted by the owner at 83.5 after iteration 2
+
+Scores 69 → 83.5 (iteration 2: design 84, field 83), automated checks clean (211 captures, 0 fail). Both critics reported no open P0/P1 at iteration 2 (the three P0/P1 rows from iteration 1 are closed as fixed in iteration 2; the 4 in the SCORES.md row was a mis-entry and is corrected to 0). Why it stopped below 90 and before the cap: Task 15 reached 825 of 800 tool uses after design fixes 1b and 2, so iteration 3 could not be run inside the budget (RUNBOOK §5). One further fix (063b072) closed a desktop crew-detail name-to-balance gap found by the task e2e.
+
+Owner decision (2026-10-10): accepted by the owner at iteration 2; open P3 rows stay in ISSUES.md. Open rows left in ISSUES.md, none P0/P1: P2 (12): i1-D4, i1-D6+F13, i1-D9, i1-D10, i1-D11, i1-D12+F11, i1-D13+F12, i1-F8, i2-D4+F23+D14, i2-D21+F25, i2-F18+D10, i2-F19+D25; P3 (17): i1-D14, i1-D16, i1-D19, i1-F16, i1-F17, i2-F17, i2-F27, i2-D6+D24, i2-D23+F20, i2-F26, i2-D12+F11, i2-D16, i2-F22, i2-D9+D11, i2-D22+F24, i2-F28, i2-D26+F21.
+
+## 2026-10-10 — expenses accepted at 88 under the 3-iteration cap
+
+Scores 74.5 → 84 → 88 (iteration 3: design 86, field 90), zero P0/P1, automated checks clean (278 captures, 0 fail). Below 90 on the average because the design critic held 86: it raised a new P2 for the landscape pinned bar (i3-D32) and P3 wording rows after the iteration 2 P2s were fixed. Iteration 3 ran trimmed (a budget assessor allowed one fix run and one capture).
+
+Accepted under the 3-iteration cap (owner, 2026-10-01). Open rows left in ISSUES.md, none P0/P1: P2 (5): i1-F7+D5, i1-F8+D15, i1-D8+D17, i1-D9, i3-D32+F27; P3 (16): i1-D13+D14+D18, i1-F13, i1-D20, i2-F18, i2-F21, i2-F22+D31, i2-F23, i2-D24+D25, i2-D26+D29, i2-D27, i2-D30, i3-F24+D33, i3-F25+D5, i3-F26, i3-D34, i3-D13+D17.
+
+## 2026-10-11 — pay accepted at 88.5 under the 3-iteration cap
+
+Scores 77.5 → 82 → 88.5 (iteration 3: design 88, field 89), zero P0/P1 at iteration 3 (iteration 2 had 3, all fixed), automated checks clean (276 captures, 0 fail). Short of 90 by 1.5 points: iteration 3 raised one new P2 (i3-N1+F5) and a few P3 rows after the earlier rows were closed.
+
+Accepted under the 3-iteration cap (owner, 2026-10-01). Open rows left in ISSUES.md, none P0/P1: P2 (1): i3-N1+F5; P3 (10): i2-D20, i3-D17, i3-D20, i3-N2, i3-N3, i3-F2, i3-F3, i3-F6, r-N2, r-F4c.
+
+## 2026-10-11 — reports accepted at 81.5 under the 3-iteration cap
+
+Scores 65.5 → 77 → 81.5 (iteration 3: design 83, field 80), zero P0/P1 at iterations 2 and 3, automated checks clean (836 captures, 0 fail). Why it did not converge: iteration 1 started low (65.5, one P0 and five P1 rows on range handling, sort order, no key figure) and five reports plus the hub and history lists gave the critics many screens; the fixes lifted it 11.5 and then 4.5 points, not enough in three iterations. The iteration 1 P1 rows are closed (key figure and Change row in dbca743, guard checkReportFirstScreen).
+
+Accepted under the 3-iteration cap (owner, 2026-10-01). Open rows left in ISSUES.md, none P0/P1: P2 (9): i1-D4+N17, i1-D9+N9, i1-D14+N8, i1-N11+D20, i1-N14, i1-N15, i2-F2+D26, i2-F3, i3-F3; P3 (8): i1-D12, i1-D16, i1-D19, i2-D12+F9, i2-D16, i2-D19, i2-misc, i3-misc.
+
+## 2026-10-13 — entry-settings accepted at 87.5 under the 3-iteration cap
+
+Scores 74 → 83.5 → 87.5 (iteration 3: design 87, field 88), zero P0/P1 at iteration 3 (iteration 2 had 1, fixed), automated checks clean (1182 captures, 0 fail). Short of 90 by 2.5 points: the group is the largest (1182 captures: entry, settings and lists) and iteration 3 raised one new P2 (i3-D33) and seven P3 rows after the iteration 2 rows were closed.
+
+Accepted under the 3-iteration cap (owner, 2026-10-01). Open rows left in ISSUES.md, none P0/P1: P2 (4): i2-D27, i2-F15, i3-D33, i3-F15; P3 (4): i1-misc-P3, i2-misc-P3, i3-D21+F11, i3-misc-P3.
