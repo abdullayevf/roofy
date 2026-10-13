@@ -14,8 +14,9 @@ export const metadata: Metadata = { title: "New job" };
 export default async function Page({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const ctx = await getData({ searchParams });
   const back = backLink(ctx.actor.role);
-  if (ctx.demo.loading) return <JobFormSkeleton mode="new" />;
+  // The role check comes first, so a foreman never sees the job form's skeleton (Task 21).
   if (ctx.actor.role !== "owner" && ctx.actor.role !== "manager") return <NoPermission backHref={back.href} backLabel={back.label} />;
+  if (ctx.demo.loading) return <JobFormSkeleton mode="new" />;
   const form = await loadJobForm(ctx, true);
   if (form.kind === "forbidden") return <NoPermission backHref={back.href} backLabel={back.label} />;
   if (form.kind === "unavailable") return <JobError mode="new" />;

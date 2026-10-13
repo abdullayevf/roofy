@@ -12,9 +12,9 @@ export const metadata: Metadata = { title: "Mark no work" };
 /** No-work marker: who didn't work, on which day, and why. */
 export default async function Page({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const ctx = await getData({ searchParams });
-  if (ctx.demo.loading) return <NoWorkSkeleton />;
   const back = backLink(ctx.actor.role);
   if (!canOpen(ctx.actor.role, "log")) return <NoPermission backHref={back.href} backLabel={back.label} />;
+  if (ctx.demo.loading) return <NoWorkSkeleton />;
   const screen = await loadNoWorkScreen(ctx, await searchParams);
   if (screen.kind === "forbidden") return <NoPermission backHref={back.href} backLabel={back.label} />;
   if (screen.kind === "unavailable") return <EntryError screen="log-no-work" active="no-work" demo={ctx.demo.state ?? undefined} />;

@@ -20,9 +20,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
   const ctx = await getData({ searchParams });
   const { actor, demo } = ctx;
   const manager = actor.role === "owner" || actor.role === "manager";
-  if (demo.loading) return <CrewSkeleton manager={manager} />;
   const back = backLink(actor.role);
   if (actor.role === "accountant") return <NoPermission backHref={back.href} backLabel={back.label} />;
+  if (demo.loading) return <CrewSkeleton manager={manager} />;
   const show = manager && (await searchParams).show === "all" ? "all" : "active";
   const crew = await loadCrew(ctx, show === "all");
   if (crew.kind === "forbidden") return <NoPermission backHref={back.href} backLabel={back.label} />;

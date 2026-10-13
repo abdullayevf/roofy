@@ -12,9 +12,9 @@ export const metadata: Metadata = { title: "Log progress" };
 /** Progress entry: the quantity done on a stage, and who it is split between. */
 export default async function Page({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const ctx = await getData({ searchParams });
-  if (ctx.demo.loading) return <ProgressSkeleton />;
   const back = backLink(ctx.actor.role);
   if (!canOpen(ctx.actor.role, "log")) return <NoPermission backHref={back.href} backLabel={back.label} />;
+  if (ctx.demo.loading) return <ProgressSkeleton />;
   const screen = await loadProgressScreen(ctx, await searchParams);
   if (screen.kind === "forbidden") return <NoPermission backHref={back.href} backLabel={back.label} />;
   if (screen.kind === "unavailable") return <EntryError screen="log-progress" active="progress" demo={ctx.demo.state ?? undefined} />;

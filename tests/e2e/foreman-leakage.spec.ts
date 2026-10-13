@@ -191,7 +191,13 @@ test.describe("Foreman leakage: the route list", () => {
     }
     expect(OPEN.size).toBeGreaterThan(10);
     // The six-plus money pages the brief names are in the refused sweep itself, not only classified.
-    for (const pathname of ["/pay", "/reports", "/settings/on-cost", "/settings/levels", "/settings/pay-period"])
+    for (const pathname of [
+      "/pay",
+      "/reports",
+      "/settings/on-cost",
+      "/settings/levels",
+      "/settings/pay-period",
+    ])
       expect(REFUSED.has(pathname), pathname).toBe(true);
     expect(REFUSED.size).toBeGreaterThan(10);
   });
@@ -227,6 +233,31 @@ test.describe("Foreman leakage: money pages say No access and show no figure", (
       }
     });
   }
+
+  // The role check runs before any demo branch, so no refused role sees a skeleton or error page first (fix 1).
+  test("an accountant's refused pages say No access in every demo state", async ({
+    page,
+    context,
+  }, testInfo) => {
+    test.setTimeout(90_000);
+    await context.addCookies([
+      { name: "roofy_role", value: "accountant", url: testInfo.project.use.baseURL! },
+    ]);
+    for (const base of [
+      "/log",
+      "/log/progress",
+      "/log/no-work",
+      "/outbox",
+      "/crew",
+      "/expenses/new",
+      "/onboarding",
+    ]) {
+      for (const state of ["loading", "error", "offline"]) {
+        await page.goto(`${base}?demo=${state}`);
+        await expect(page.getByRole("heading", { name: "No access" }), `${base}?demo=${state}`).toBeVisible();
+      }
+    }
+  });
 
   test("every report CSV download is refused with no figure", async ({ page }) => {
     for (const kind of REPORT_KINDS) {

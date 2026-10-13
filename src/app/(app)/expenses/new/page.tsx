@@ -16,9 +16,9 @@ export const metadata: Metadata = { title: "Add expense" };
 export default async function Page({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const ctx = await getData({ searchParams });
   const { actor, demo } = ctx;
-  if (demo.loading) return <ExpenseFormSkeleton />;
   const back = backLink(actor.role);
   if (!canOpen(actor.role, "expenses") || actor.role === "accountant") return <NoPermission backHref={back.href} backLabel={back.label} />;
+  if (demo.loading) return <ExpenseFormSkeleton />;
   const sp = await searchParams;
   const job = typeof sp.job === "string" ? sp.job : null;
   let snap;

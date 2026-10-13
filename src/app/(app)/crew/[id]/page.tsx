@@ -17,9 +17,9 @@ export const metadata: Metadata = { title: "Crew member" };
 export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<SearchParams> }) {
   const ctx = await getData({ searchParams });
   const { actor, demo } = ctx;
-  if (demo.loading) return <CrewDetailSkeleton />;
   const back = backLink(actor.role);
   if (actor.role !== "owner" && actor.role !== "manager") return <NoPermission backHref={back.href} backLabel={back.label} />;
+  if (demo.loading) return <CrewDetailSkeleton />;
   const { id } = await params;
   let crew;
   try {

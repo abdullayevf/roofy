@@ -12,9 +12,9 @@ export const metadata: Metadata = { title: "Log" };
 /** Log crew-day grid. The day, job, stage and pre-ticked crew ("Same as yesterday", or an entry reopened from the outbox) come from the address. */
 export default async function Page({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const ctx = await getData({ searchParams });
-  if (ctx.demo.loading) return <LogSkeleton />;
   const back = backLink(ctx.actor.role);
   if (!canOpen(ctx.actor.role, "log")) return <NoPermission backHref={back.href} backLabel={back.label} />;
+  if (ctx.demo.loading) return <LogSkeleton />;
   const screen = await loadLogScreen(ctx, await searchParams);
   if (screen.kind === "forbidden") return <NoPermission backHref={back.href} backLabel={back.label} />;
   if (screen.kind === "unavailable") return <EntryError screen="log" active="crew-day" demo={ctx.demo.state ?? undefined} />;

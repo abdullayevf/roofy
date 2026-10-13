@@ -18,11 +18,15 @@ export const metadata: Metadata = { title: "Set up your business" };
 export default async function Page({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
   const { onboarding, actor, demo } = await getOnboarding({ searchParams: params });
+  // The role check comes first, so a demo error or offline state never shows a non-owner the wizard's error.
+  if (actor.role !== "owner")
+    return <NoPermission backHref="/" backLabel="Go to Home" ask="the business owner" />;
   let state: Awaited<ReturnType<typeof onboarding.state>>;
   try {
     state = await onboarding.state(actor);
   } catch (e) {
-    if (isDataError(e) && e.code === "forbidden") return <NoPermission backHref="/" backLabel="Go to Home" ask="the business owner" />;
+    if (isDataError(e) && e.code === "forbidden")
+      return <NoPermission backHref="/" backLabel="Go to Home" ask="the business owner" />;
     return (
       <div role="alert" className="flex flex-col gap-4">
         <h1 className="font-display text-title text-ink">Couldn&apos;t load this</h1>
@@ -33,9 +37,17 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
       </div>
     );
   }
-  const asked = typeof params.step === "string" && (ONBOARDING_STEPS as readonly string[]).includes(params.step);
+  const asked =
+    typeof params.step === "string" && (ONBOARDING_STEPS as readonly string[]).includes(params.step);
   const step = asked ? (params.step as OnboardingStep) : state.step;
   const platform = parsePlatform(params.platform) ?? detectPlatform((await headers()).get("user-agent"));
   const resumed = !asked && state.step !== "business";
-  return <OnboardingWizard initial={{ ...state, step }} platform={platform} offline={demo.offline} resumed={resumed} />;
+  return (
+    <OnboardingWizard
+      initial={{ ...state, step }}
+      platform={platform}
+      offline={demo.offline}
+      resumed={resumed}
+    />
+  );
 }

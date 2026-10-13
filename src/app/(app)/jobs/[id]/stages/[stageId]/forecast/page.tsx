@@ -14,9 +14,9 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const ctx = await getData({ searchParams });
   const { actor, demo } = ctx;
   const { id, stageId } = await params;
-  if (demo.loading) return <StageForecastSkeleton jobId={id} stageId={stageId} />;
   const back = backLink(actor.role);
   if (actor.role === "foreman" || !canOpen(actor.role, "jobs")) return <NoPermission backHref={back.href} backLabel={back.label} />;
+  if (demo.loading) return <StageForecastSkeleton jobId={id} stageId={stageId} />;
   let stage;
   try {
     stage = await ctx.data.stages.get(actor, stageId);
