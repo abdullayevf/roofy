@@ -28,8 +28,31 @@ const iphone = noWebkit
     }
   : { ...devices["iPhone 14"], viewport: { width: 390, height: 844 } };
 
+const android = {
+  ...devices["Pixel 7"],
+  viewport: { width: 412, height: 915 },
+  launchOptions: chromiumLaunchOptions,
+};
+
+const desktop = {
+  ...devices["Desktop Chrome"],
+  viewport: { width: 1440, height: 900 },
+  launchOptions: chromiumLaunchOptions,
+};
+
+// Visual baselines (tests/visual): the same three viewports, light by default, motion off (the app also honours
+// prefers-reduced-motion). The shots are fonts-loaded, hydrated and on the fake clock; see tests/visual/screens.spec.ts.
+const visual = { reducedMotion: "reduce" as const, colorScheme: "light" as const };
+
 export default defineConfig({
+  // The iphone, android and desktop projects run tests/e2e only; the visual-* projects below set their own testDir.
   testDir: "tests/e2e",
+  expect: {
+    // Animations off (and the caret hidden) for every toHaveScreenshot; a baseline must not catch a frame mid-motion.
+    toHaveScreenshot: { animations: "disabled", caret: "hide" },
+  },
+  // One folder per viewport project, so 1,000+ baselines are not in one directory.
+  snapshotPathTemplate: "{testDir}/__screenshots__/{projectName}/{arg}{-platform}{ext}",
   fullyParallel: true,
   retries: 0,
   reporter: [["list"]],
@@ -42,22 +65,16 @@ export default defineConfig({
   },
   projects: [
     { name: "iphone", use: iphone },
-    {
-      name: "android",
-      use: {
-        ...devices["Pixel 7"],
-        viewport: { width: 412, height: 915 },
-        launchOptions: chromiumLaunchOptions,
-      },
-    },
-    {
-      name: "desktop",
-      use: {
-        ...devices["Desktop Chrome"],
-        viewport: { width: 1440, height: 900 },
-        launchOptions: chromiumLaunchOptions,
-      },
-    },
+    { name: "android", use: android },
+    { name: "desktop", use: desktop },
+    // Visual baselines, one project per viewport: `pnpm test:visual` (all of them) or --project=visual-iphone.
+    { name: "visual-iphone", testDir: "tests/visual", testIgnore: "pwa.spec.ts", use: { ...iphone, ...visual } },
+    { name: "visual-android", testDir: "tests/visual", testIgnore: "pwa.spec.ts", use: { ...android, ...visual } },
+    { name: "visual-desktop", testDir: "tests/visual", testIgnore: "pwa.spec.ts", use: { ...desktop, ...visual } },
+    // Installability (Chromium's DevTools protocol) and the installed-app checks; no screenshots. The second project
+    // runs the same file on the iPhone engine (WebKit) for everything that does not need the protocol.
+    { name: "visual-pwa", testDir: "tests/visual", testMatch: "pwa.spec.ts", use: { ...android, ...visual } },
+    { name: "visual-pwa-iphone", testDir: "tests/visual", testMatch: "pwa.spec.ts", use: { ...iphone, ...visual } },
   ],
   webServer: {
     command: "pnpm build && pnpm start",

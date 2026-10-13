@@ -20,6 +20,7 @@
     "verify": "pnpm typecheck && pnpm lint && pnpm lint:design && pnpm tokens:check && pnpm lint:contrast && pnpm test:coverage && pnpm check:examples",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
+    "test:visual": "playwright test --project=visual-iphone --project=visual-android --project=visual-desktop --project=visual-pwa --project=visual-pwa-iphone",
     "test:coverage": "vitest run --coverage",
     "check:examples": "tsx scripts/check-examples.ts",
     "db:up": "docker compose -f ops/compose.dev.yml up -d --wait",
