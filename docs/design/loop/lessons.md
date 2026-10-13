@@ -50,3 +50,4 @@
 - No secrets in source, not even dev passwords as fallbacks: read every credential from env and fail with a plain "missing VARIABLE" error; tests set their own env (Phase 3 T1, flagged by both reviewers).
 - Implementer reports list every rename, added column or changed export versus the spec under "Deviations", and the conductor copies them into PROGRESS.md before the task is ticked (Phase 3 T1 and T2, spec-reviewer P3 both times).
 - Coverage guards ("every FK has a cross-tenant case", enum lists) derive the expected list from the schema and compare exactly; never a hand count or a `>=` floor (Phase 3 T2 and T3 reviewer).
+- RLS tests cover the UPDATE WITH CHECK case (moving an own row into another workspace) and assert the row-level-security error, not just any 42501 (Phase 3 T4, both reviewers).

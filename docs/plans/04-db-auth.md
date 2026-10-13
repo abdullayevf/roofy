@@ -216,7 +216,7 @@ Each task is one implementer run of at most 30 steps. A task marked "2 runs" is 
   - `type Tx`.
   - Test helper `makeWorkspace(): Promise<{ workspaceId, ownerActor }>`, run through the owner pool.
 
-- [ ] Failing tests first:
+- [x] Failing tests first:
   - **Catalogue test:** every table in `TENANT_TABLES` has `relrowsecurity` and `relforcerowsecurity` true and at least one policy for `roofy_app`.
   - **Ownership test:** `roofy_app` and `roofy_auth` own no tables, and `rolbypassrls` is false for both.
   - **Cross-tenant test:** for every tenant table, as actor A on the app pool,
@@ -225,13 +225,13 @@ Each task is one implementer run of at most 30 steps. A task marked "2 runs" is 
     - updating or deleting B's row affects 0 rows.
   - **Pooled connection:** after a `withActor` transaction, a raw query on the same pool client sees 0 rows from any tenant table.
   - **Auth role scope:** `roofy_auth` has no privileges on any tenant table except `workspace`, `member` and `invitation`.
-- [ ] Migration:
+- [x] Migration:
   - Create the roles if missing (NOLOGIN).
   - Grant `roofy_app` SELECT/INSERT/UPDATE/DELETE on tenant tables, except `audit_event`, which gets SELECT only.
   - Enable and force RLS.
   - One policy per table for `roofy_app`: `USING (workspace_id = nullif(current_setting('app.workspace_id', true), '')::uuid) WITH CHECK (same)`.
   - `roofy_auth` policies on `workspace`, `member` and `invitation`: `USING (true)`, because Better Auth's own queries have no workspace. Record this in a SQL comment.
-- [ ] Done when every table passes the cross-tenant test (the test loops over `TENANT_TABLES`, not a hand list) and `pnpm verify` is green.
+- [x] Done when every table passes the cross-tenant test (the test loops over `TENANT_TABLES`, not a hand list) and `pnpm verify` is green.
 
 ### Task 5: Audit trigger and `audit_event` (opus)
 
