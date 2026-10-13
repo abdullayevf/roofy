@@ -5,37 +5,26 @@ import type { JobType, ProjectStatus } from "@/data/contracts";
 import type { StageStatus } from "@/domain/progress";
 import type { PauseReason } from "@/domain/segments";
 import type { Unit } from "@/domain/types";
-import { bpInRange, cents, centsInRange, hundredths, localDate } from "./columns";
+import { allOf, bpInRange, cents, centsInRange, hundredths, localDate } from "./columns";
 import { member, tenantColumns, tenantKey } from "./workspace";
 
-export const jobTypeEnum = pgEnum("job_type", [
-  "metal_reroof",
-  "tile_reroof",
-  "restoration",
-  "repair",
-  "new_build",
-] as const satisfies readonly JobType[]);
-export const projectStatusEnum = pgEnum("project_status", [
-  "quoted",
-  "active",
-  "on_hold",
-  "complete",
-  "closed",
-] as const satisfies readonly ProjectStatus[]);
-export const stageStatusEnum = pgEnum("stage_status", [
-  "not_started",
-  "active",
-  "paused",
-  "done",
-] as const satisfies readonly StageStatus[]);
-export const unitEnum = pgEnum("unit", ["m2", "lm", "each"] as const satisfies readonly Unit[]);
-export const pauseReasonEnum = pgEnum("pause_reason", [
-  "weather",
-  "materials",
-  "client",
-  "other_job",
-  "other",
-] as const satisfies readonly PauseReason[]);
+export const jobTypeEnum = pgEnum(
+  "job_type",
+  allOf<JobType>()(["metal_reroof", "tile_reroof", "restoration", "repair", "new_build"]),
+);
+export const projectStatusEnum = pgEnum(
+  "project_status",
+  allOf<ProjectStatus>()(["quoted", "active", "on_hold", "complete", "closed"]),
+);
+export const stageStatusEnum = pgEnum(
+  "stage_status",
+  allOf<StageStatus>()(["not_started", "active", "paused", "done"]),
+);
+export const unitEnum = pgEnum("unit", allOf<Unit>()(["m2", "lm", "each"]));
+export const pauseReasonEnum = pgEnum(
+  "pause_reason",
+  allOf<PauseReason>()(["weather", "materials", "client", "other_job", "other"]),
+);
 
 export const client = pgTable(
   "client",
@@ -71,6 +60,7 @@ export const project = pgTable(
     }),
     centsInRange("project_contract_value_cents_range", t.contractValueCents),
     index("project_workspace_id_status_idx").on(t.workspaceId, t.status),
+    index("project_workspace_id_client_id_idx").on(t.workspaceId, t.clientId),
   ],
 );
 
@@ -94,6 +84,7 @@ export const projectAssignment = pgTable(
       columns: [t.workspaceId, t.projectId],
       foreignColumns: [project.workspaceId, project.id],
     }).onDelete("cascade"),
+    index("project_assignment_workspace_id_project_id_idx").on(t.workspaceId, t.projectId),
   ],
 );
 
@@ -127,6 +118,7 @@ export const stageTemplateItem = pgTable(
     }).onDelete("cascade"),
     bpInRange("stage_template_item_labour_share_bp_range", t.labourShareBp),
     bpInRange("stage_template_item_materials_share_bp_range", t.materialsShareBp),
+    index("stage_template_item_workspace_id_template_id_idx").on(t.workspaceId, t.templateId),
   ],
 );
 
@@ -156,7 +148,8 @@ export const stage = pgTable(
     centsInRange("stage_labour_budget_cents_range", t.labourBudgetCents),
     centsInRange("stage_materials_budget_cents_range", t.materialsBudgetCents),
     centsInRange("stage_lump_sum_cents_range", t.lumpSumCents),
-    bpInRange("stage_manual_pct_bp_range", t.manualPctBp),
+    /** ManualPctBp: the 25% steps. */
+    check("stage_manual_pct_bp_step", sql`${t.manualPctBp} in (0, 2500, 5000, 7500, 10000)`),
     check("stage_budget_qty_range", sql`${t.budgetQty} >= 0`),
     index("stage_workspace_id_project_id_idx").on(t.workspaceId, t.projectId),
   ],

@@ -1,5 +1,5 @@
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
+import { Pool, types } from "pg";
 import * as schema from "./schema";
 
 export type DbRole = "app" | "auth" | "owner";
@@ -18,6 +18,18 @@ export type Db = NodePgDatabase<typeof schema>;
 const globalPools = globalThis as { __roofyPools?: Map<DbRole, Pool> };
 const pools = (globalPools.__roofyPools ??= new Map<DbRole, Pool>());
 
+const DATE_OID = 1082;
+
+/** `date` columns come back as the `YYYY-MM-DD` string Postgres sent, never a JS Date at local
+ * midnight (which shifts a day in a UTC+14 process). Drizzle already does this for its own
+ * queries; this covers raw `pool(...).query` too. */
+const poolTypes = {
+  getTypeParser: ((oid: number, format?: "text") =>
+    oid === DATE_OID
+      ? (value: string) => value
+      : types.getTypeParser(oid, format)) as typeof types.getTypeParser,
+};
+
 /** The pool for a role, created on first use. Throws a plain error if its env var is missing. */
 export function pool(role: DbRole): Pool {
   const existing = pools.get(role);
@@ -27,7 +39,7 @@ export function pool(role: DbRole): Pool {
   if (!connectionString) {
     throw new Error(`${name} is not set. Add it to .env (see .env.example).`);
   }
-  const created = new Pool({ connectionString, max: role === "owner" ? 2 : 10 });
+  const created = new Pool({ connectionString, types: poolTypes, max: role === "owner" ? 2 : 10 });
   // An idle client dying (Postgres restarts, `pnpm db:down`) emits "error"; with no listener
   // Node would treat it as uncaught and exit.
   created.on("error", (error) => console.error(`${role} pool: ${error.message}`));

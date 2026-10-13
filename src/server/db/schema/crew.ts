@@ -4,6 +4,7 @@ import {
   boolean,
   check,
   foreignKey,
+  index,
   integer,
   pgEnum,
   pgTable,
@@ -12,19 +13,12 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import type { RateBasis, WorkerType } from "@/domain/types";
-import { bpInRange, cents, centsInRange, localDate } from "./columns";
+import { allOf, bpInRange, cents, centsInRange, localDate } from "./columns";
 import { project, stage, unitEnum } from "./jobs";
 import { tenantColumns, tenantKey } from "./workspace";
 
-export const workerTypeEnum = pgEnum("worker_type", [
-  "employee",
-  "contractor",
-] as const satisfies readonly WorkerType[]);
-export const rateBasisEnum = pgEnum("rate_basis", [
-  "hourly",
-  "daily",
-  "per_unit",
-] as const satisfies readonly RateBasis[]);
+export const workerTypeEnum = pgEnum("worker_type", allOf<WorkerType>()(["employee", "contractor"]));
+export const rateBasisEnum = pgEnum("rate_basis", allOf<RateBasis>()(["hourly", "daily", "per_unit"]));
 
 export const crewLevel = pgTable(
   "crew_level",
@@ -59,6 +53,7 @@ export const crewMember = pgTable(
       columns: [t.workspaceId, t.levelId],
       foreignColumns: [crewLevel.workspaceId, crewLevel.id],
     }),
+    index("crew_member_workspace_id_level_id_idx").on(t.workspaceId, t.levelId),
     check("crew_member_active_range", sql`${t.activeTo} is null or ${t.activeTo} >= ${t.activeFrom}`),
   ],
 );
@@ -91,6 +86,7 @@ export const rate = pgTable(
       foreignColumns: [project.workspaceId, project.id],
     }).onDelete("cascade"),
     centsInRange("rate_amount_cents_range", t.amountCents),
+    index("rate_workspace_id_project_id_idx").on(t.workspaceId, t.projectId),
   ],
 );
 
@@ -117,5 +113,6 @@ export const stageCompletionShare = pgTable(
       foreignColumns: [crewMember.workspaceId, crewMember.id],
     }),
     bpInRange("stage_completion_share_share_bp_range", t.shareBp),
+    index("stage_completion_share_workspace_id_crew_member_id_idx").on(t.workspaceId, t.crewMemberId),
   ],
 );

@@ -17,26 +17,14 @@ import {
 import type { OnboardingStep, Role } from "@/data/contracts";
 import type { PayFrequency } from "@/domain/periods";
 import { user } from "./auth";
-import { hundredths, id, localDate, timestamps, timestamptz } from "./columns";
+import { allOf, hundredths, id, localDate, timestamps, timestamptz } from "./columns";
 
-export const roleEnum = pgEnum("member_role", [
-  "owner",
-  "manager",
-  "foreman",
-  "accountant",
-] as const satisfies readonly Role[]);
-export const payFrequencyEnum = pgEnum("pay_frequency", [
-  "weekly",
-  "fortnightly",
-] as const satisfies readonly PayFrequency[]);
-export const onboardingStepEnum = pgEnum("onboarding_step", [
-  "business",
-  "trade",
-  "defaults",
-  "crew",
-  "install",
-  "done",
-] as const satisfies readonly OnboardingStep[]);
+export const roleEnum = pgEnum("member_role", allOf<Role>()(["owner", "manager", "foreman", "accountant"]));
+export const payFrequencyEnum = pgEnum("pay_frequency", allOf<PayFrequency>()(["weekly", "fortnightly"]));
+export const onboardingStepEnum = pgEnum(
+  "onboarding_step",
+  allOf<OnboardingStep>()(["business", "trade", "defaults", "crew", "install", "done"]),
+);
 export const invitationStatusEnum = pgEnum("invitation_status", [
   "pending",
   "accepted",
@@ -74,7 +62,10 @@ export const workspace = pgTable(
   },
   (t) => [
     check("workspace_pay_week_start_range", sql`${t.payWeekStart} between 0 and 6`),
-    check("workspace_working_days_range", sql`${t.workingDays} <@ '{0,1,2,3,4,5,6}'::smallint[]`),
+    check(
+      "workspace_working_days_range",
+      sql`${t.workingDays} <@ '{0,1,2,3,4,5,6}'::smallint[] and cardinality(${t.workingDays}) between 1 and 7`,
+    ),
     check("workspace_on_cost_bp_range", sql`${t.onCostBp} >= 0`),
     check(
       "workspace_standard_day_hours_range",
@@ -125,5 +116,9 @@ export const invitation = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
   },
-  (t) => [tenantKey("invitation", t), index("invitation_email_idx").on(t.email)],
+  (t) => [
+    tenantKey("invitation", t),
+    index("invitation_email_idx").on(t.email),
+    index("invitation_inviter_id_idx").on(t.inviterId),
+  ],
 );

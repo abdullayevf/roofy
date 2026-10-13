@@ -23,6 +23,9 @@ describe("toHundredths", () => {
 
   it("rejects values outside the safe integer range", () => {
     expect(() => toHundredths("99999999999999999.00")).toThrow(/safe range/);
+    expect(toHundredths("90071992547409.91")).toBe(Number.MAX_SAFE_INTEGER);
+    expect(() => toHundredths("90071992547409.92")).toThrow(/safe range/);
+    expect(fromHundredths(Number.MAX_SAFE_INTEGER)).toBe("90071992547409.91");
   });
 });
 

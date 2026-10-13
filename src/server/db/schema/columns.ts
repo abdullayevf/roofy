@@ -35,3 +35,15 @@ export const centsInRange = (name: string, column: AnyPgColumn) =>
 /** Basis points: 0 … 10000. */
 export const bpInRange = (name: string, column: AnyPgColumn) =>
   check(name, sql`${column} between 0 and 10000`);
+
+/**
+ * The full list of a union's values, checked both ways at build time: a value missing from the
+ * list or not in the union fails `tsc`. Use for every pgEnum that stores a domain or contract type.
+ *   pgEnum("unit", allOf<Unit>()(["m2", "lm", "each"]))
+ */
+export const allOf =
+  <T extends string>() =>
+  <const V extends readonly [T, ...T[]]>(
+    values: V & ([Exclude<T, V[number]>] extends [never] ? unknown : { missing: Exclude<T, V[number]> }),
+  ): V =>
+    values;

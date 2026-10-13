@@ -2,7 +2,11 @@ import { PgDatabase } from "drizzle-orm/pg-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type FakePool = {
-  options: { connectionString: string; max: number };
+  options: {
+    connectionString: string;
+    max: number;
+    types: { getTypeParser: (oid: number) => (value: string) => unknown };
+  };
   handlers: Map<string, (error: Error) => void>;
   ended: boolean;
 };
@@ -10,6 +14,7 @@ type FakePool = {
 // Replaces pg's Pool so these tests can see when a pool is created, without a database.
 const state = vi.hoisted(() => ({ pools: [] as FakePool[] }));
 vi.mock("pg", () => ({
+  types: { getTypeParser: () => (value: string) => `parsed ${value}` },
   Pool: class {
     handlers = new Map<string, (error: Error) => void>();
     ended = false;
@@ -64,10 +69,14 @@ describe("pool", () => {
     const first = pool("app");
     expect(pool("app")).toBe(first);
     expect(state.pools).toHaveLength(1);
-    expect(state.pools[0]?.options).toEqual({
+    expect(state.pools[0]?.options).toMatchObject({
       connectionString: "postgres://app@127.0.0.1:5440/roofy_test",
       max: 10,
     });
+    // date (OID 1082) stays the raw YYYY-MM-DD string; every other type keeps pg's parser.
+    const parser = state.pools[0]!.options.types.getTypeParser;
+    expect(parser(1082)("2026-09-28")).toBe("2026-09-28");
+    expect(parser(1114)("2026-09-28 10:00")).toBe("parsed 2026-09-28 10:00");
     pool("owner");
     expect(state.pools[1]?.options.max).toBe(2);
   });
