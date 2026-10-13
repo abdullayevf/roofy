@@ -264,7 +264,7 @@ Each task is one implementer run of at most 30 steps. A task marked "2 runs" is 
 
 - Produces: `withLockedWrite<T>(tx: Tx, fn: () => Promise<T>): Promise<T>`, which sets `app.locked_write = 'on'` with `set_config(..., true)` and resets it to `''` afterwards. Only the Phase 7 approve/reopen service calls it.
 
-- [ ] Failing tests first. With a `work_log` whose `pay_run_id` is set:
+- [x] Failing tests first. With a `work_log` whose `pay_run_id` is set:
   - UPDATE of `hours` raises SQLSTATE `RF001` with the message "This log is in an approved pay run".
   - Setting `deleted_at` raises.
   - DELETE raises.
@@ -273,8 +273,8 @@ Each task is one implementer run of at most 30 steps. A task marked "2 runs" is 
   - The same changes inside `withLockedWrite` succeed and are audited (Task 5).
   - After `withLockedWrite` returns, an update in the same transaction is rejected again.
   - Unit source scan: the string `app.locked_write` appears only in `locked.ts` and the migration.
-- [ ] Implement a `BEFORE UPDATE OR DELETE` row trigger. It rejects when `OLD.pay_run_id IS NOT NULL` or `NEW.pay_run_id IS DISTINCT FROM OLD.pay_run_id`, unless `current_setting('app.locked_write', true) = 'on'`.
-- [ ] Done when the tests pass and `pnpm verify` is green.
+- [x] Implement a `BEFORE UPDATE OR DELETE` row trigger. It rejects when `OLD.pay_run_id IS NOT NULL` or `NEW.pay_run_id IS DISTINCT FROM OLD.pay_run_id`, unless `current_setting('app.locked_write', true) = 'on'`.
+- [x] Done when the tests pass and `pnpm verify` is green.
 
 ### Task 7: Email adapter (sonnet)
 
