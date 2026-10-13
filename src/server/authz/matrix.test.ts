@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DataError, type Actor, type Role } from "@/data/contracts";
 import { ROLES as SESSION_ROLES } from "@/data/session";
 import { ROLES } from "@/server/auth/role";
-import { ACTIONS, assertCan, can, type Action, type ActorWith2fa } from "./matrix";
+import { ACTIONS, assertCan, can, memberActionFor, type Action, type ActorWith2fa } from "./matrix";
 
 const actor = (role: Role, twoFactorEnabled = true): ActorWith2fa => ({
   userId: `u-${role}`,
@@ -14,21 +14,88 @@ const actor = (role: Role, twoFactorEnabled = true): ActorWith2fa => ({
 
 const ASSIGNED = { projectId: "p-1", assignedProjectIds: ["p-1", "p-2"] } as const;
 
+type Cell = "allow" | "assigned" | "twoFactor" | "deny";
+
 /**
  * The expected matrix, written independently of `matrix.ts` (product spec §3 + plan Task 9 rows).
- * `allow` = always; `assigned` = only on an assigned project; `twoFactor` = only with 2FA on;
- * every other action is denied. The exhaustiveness test below proves each cell is decided.
+ * `allow` = always; `assigned` = only on an assigned project; `twoFactor` = only with 2FA on.
+ * Owner and manager hold almost every power, so their rows are spelled out per action: adding an
+ * Action fails typecheck here until someone decides it for both. Foreman and accountant are
+ * allowlists (anything not listed is denied).
  */
-const EXPECTED: Record<Role, { allow: Action[]; assigned?: Action[]; twoFactor?: Action[] }> = {
-  owner: {
-    allow: ACTIONS.filter((a) => !["payRun.approve", "workspace.delete", "member.changeOwner"].includes(a)),
-    twoFactor: ["payRun.approve", "workspace.delete", "member.changeOwner"],
-  },
-  manager: {
-    allow: ACTIONS.filter(
-      (a) => !["workspace.delete", "workspace.billing", "member.changeOwner"].includes(a),
-    ),
-  },
+const OWNER: Record<Action, Cell> = {
+  "workspace.read": "allow",
+  "workspace.edit": "allow",
+  "workspace.delete": "twoFactor",
+  "workspace.billing": "allow",
+  "member.read": "allow",
+  "member.invite": "allow",
+  "member.setRole": "allow",
+  "member.remove": "allow",
+  "member.changeOwner": "twoFactor",
+  "assignment.edit": "allow",
+  "project.read": "allow",
+  "project.edit": "allow",
+  "stage.edit": "allow",
+  "stage.markDone": "allow",
+  "stage.pauseResume": "allow",
+  "crew.read": "allow",
+  "crew.edit": "allow",
+  "rate.read": "allow",
+  "rate.edit": "allow",
+  "log.write": "allow",
+  "progress.write": "allow",
+  "expense.write": "allow",
+  "expense.readAll": "allow",
+  "payRun.read": "allow",
+  "payRun.edit": "allow",
+  "payRun.approve": "twoFactor",
+  "payRun.export": "allow",
+  "payout.read": "allow",
+  "payout.edit": "allow",
+  "report.read": "allow",
+  "export.run": "allow",
+  "money.read": "allow",
+  "twoFactor.manage": "allow",
+};
+
+const MANAGER: Record<Action, Cell> = {
+  "workspace.read": "allow",
+  "workspace.edit": "allow",
+  "workspace.delete": "deny",
+  "workspace.billing": "deny",
+  "member.read": "allow",
+  "member.invite": "allow",
+  "member.setRole": "allow",
+  "member.remove": "allow",
+  "member.changeOwner": "deny",
+  "assignment.edit": "allow",
+  "project.read": "allow",
+  "project.edit": "allow",
+  "stage.edit": "allow",
+  "stage.markDone": "allow",
+  "stage.pauseResume": "allow",
+  "crew.read": "allow",
+  "crew.edit": "allow",
+  "rate.read": "allow",
+  "rate.edit": "allow",
+  "log.write": "allow",
+  "progress.write": "allow",
+  "expense.write": "allow",
+  "expense.readAll": "allow",
+  "payRun.read": "allow",
+  "payRun.edit": "allow",
+  "payRun.approve": "allow",
+  "payRun.export": "allow",
+  "payout.read": "allow",
+  "payout.edit": "allow",
+  "report.read": "allow",
+  "export.run": "allow",
+  "money.read": "allow",
+  "twoFactor.manage": "allow",
+};
+
+const EXPECTED: Record<"foreman" | "accountant", { allow: Action[]; assigned?: Action[] }> = {
   foreman: {
     allow: ["workspace.read", "crew.read", "twoFactor.manage"],
     assigned: ["project.read", "stage.pauseResume", "log.write", "progress.write", "expense.write"],
@@ -50,12 +117,12 @@ const EXPECTED: Record<Role, { allow: Action[]; assigned?: Action[]; twoFactor?:
   },
 };
 
-type Cell = "allow" | "assigned" | "twoFactor" | "deny";
 const cellOf = (role: Role, action: Action): Cell => {
+  if (role === "owner") return OWNER[action];
+  if (role === "manager") return MANAGER[action];
   const e = EXPECTED[role];
   if (e.allow.includes(action)) return "allow";
   if (e.assigned?.includes(action)) return "assigned";
-  if (e.twoFactor?.includes(action)) return "twoFactor";
   return "deny";
 };
 
@@ -96,9 +163,12 @@ describe("permission matrix — every role × every action", () => {
     expect(ROWS.map((r) => `${r.role}:${r.action}`).sort()).toEqual(
       ROLES.flatMap((role) => ACTIONS.map((a) => `${role}:${a}`)).sort(),
     );
-    for (const role of ROLES) {
+    for (const table of [OWNER, MANAGER]) {
+      expect(Object.keys(table).sort()).toEqual([...ACTIONS].sort());
+    }
+    for (const role of ["foreman", "accountant"] as const) {
       const e = EXPECTED[role];
-      const listed = [...e.allow, ...(e.assigned ?? []), ...(e.twoFactor ?? [])];
+      const listed = [...e.allow, ...(e.assigned ?? [])];
       expect(new Set(listed).size, `${role} lists an action twice`).toBe(listed.length);
       expect(listed.every((a) => (ACTIONS as readonly string[]).includes(a))).toBe(true);
     }
@@ -180,6 +250,18 @@ describe("permission matrix — named rows", () => {
     expect(can(actor("owner", true), "payRun.approve")).toBe(true);
   });
 
+  it.each([undefined, null])("owner with twoFactorEnabled %s is denied payRun.approve", (flag) => {
+    const o = { ...actor("owner"), twoFactorEnabled: flag as unknown as boolean };
+    expect(can(o, "payRun.approve")).toBe(false);
+    expect(can(o, "workspace.delete")).toBe(false);
+    expect(can(o, "member.changeOwner")).toBe(false);
+    expect(() => assertCan(o, "payRun.approve")).toThrow(DataError);
+  });
+
+  it("a truthy non-boolean twoFactorEnabled is denied payRun.approve", () => {
+    expect(can({ ...actor("owner"), twoFactorEnabled: "yes" as unknown as boolean }, "payRun.approve")).toBe(false);
+  });
+
   it("manager payRun.approve is allowed (with or without 2FA)", () => {
     expect(can(actor("manager", false), "payRun.approve")).toBe(true);
     expect(can(actor("manager", true), "payRun.approve")).toBe(true);
@@ -223,5 +305,41 @@ describe("assertCan", () => {
     const a: Actor = { userId: "u", workspaceId: "w", role: "owner", name: "O" };
     expect(() => assertCan({ ...a, twoFactorEnabled: false }, "payRun.approve")).toThrow(DataError);
     expect(() => assertCan({ ...a, twoFactorEnabled: true }, "payRun.approve")).not.toThrow();
+  });
+});
+
+describe("memberActionFor", () => {
+  const others = ROLES.filter((r) => r !== "owner");
+
+  it.each(others)("owner -> %s is member.changeOwner", (next) => {
+    expect(memberActionFor("owner", next)).toBe("member.changeOwner");
+  });
+
+  it.each(others)("%s -> owner is member.changeOwner", (current) => {
+    expect(memberActionFor(current, "owner")).toBe("member.changeOwner");
+  });
+
+  it("owner -> owner is member.changeOwner", () => {
+    expect(memberActionFor("owner", "owner")).toBe("member.changeOwner");
+  });
+
+  it.each(others.flatMap((a) => others.map((b) => [a, b] as const)))(
+    "%s -> %s is member.setRole",
+    (current, next) => {
+      expect(memberActionFor(current, next)).toBe("member.setRole");
+    },
+  );
+
+  it("removing an owner is member.changeOwner; removing anyone else is member.remove", () => {
+    expect(memberActionFor("owner", null)).toBe("member.changeOwner");
+    for (const r of others) expect(memberActionFor(r, null)).toBe("member.remove");
+  });
+
+  it("a manager can never change or remove the owner", () => {
+    const m = actor("manager");
+    expect(can(m, memberActionFor("owner", "manager"))).toBe(false);
+    expect(can(m, memberActionFor("foreman", "owner"))).toBe(false);
+    expect(can(m, memberActionFor("owner", null))).toBe(false);
+    expect(can(m, memberActionFor("foreman", "accountant"))).toBe(true);
   });
 });

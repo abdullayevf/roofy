@@ -8,6 +8,7 @@ import type {
   Role,
 } from "@/data/contracts";
 import { expectNoMoney, scanForMoney } from "@/data/dto";
+import { accessFor } from "@/data/fake/services/context";
 import { ROLES } from "@/server/auth/role";
 import { ACTIONS, can, type ActorWith2fa } from "./matrix";
 import {
@@ -128,6 +129,29 @@ describe("shapeProjectRow", () => {
     expect(out).toEqual(expected);
   });
 
+  it("foreman row copies client and stage chips by allowlist: no planted money, no shared references", () => {
+    const nested: ProjectRowManager = {
+      ...PROJECT,
+      client: { id: "c-1", name: "Smith", ...MONEY_EXTRAS } as ProjectRowManager["client"],
+      currentStages: [
+        { stageId: "s-1", name: "Strip", status: "active", pauseReason: null, ...MONEY_EXTRAS },
+        { stageId: "s-2", name: "Sheet", status: "paused", pauseReason: "weather", ...MONEY_EXTRAS },
+      ] as ProjectRowManager["currentStages"],
+    };
+    expect(scanForMoney(nested.client).length).toBeGreaterThan(0);
+    expect(scanForMoney(nested.currentStages[1]).length).toBeGreaterThan(0);
+    const out = shapeProjectRow(actor("foreman"), nested) as ProjectRowForeman;
+    expectNoMoney(out, "shapeProjectRow(foreman, nested)");
+    expect(out.client).toEqual({ id: "c-1", name: "Smith" });
+    expect(out.currentStages).toEqual([
+      { stageId: "s-1", name: "Strip", status: "active", pauseReason: null },
+      { stageId: "s-2", name: "Sheet", status: "paused", pauseReason: "weather" },
+    ]);
+    expect(out.client).not.toBe(nested.client);
+    expect(out.currentStages).not.toBe(nested.currentStages);
+    out.currentStages.forEach((chip, i) => expect(chip).not.toBe(nested.currentStages[i]));
+  });
+
   it.each(["owner", "manager", "accountant"] as const)("%s keeps every money field", (role) => {
     const out = shapeProjectRow(actor(role), PROJECT);
     expect(out).toEqual(PROJECT);
@@ -163,13 +187,12 @@ describe("shapeAccess", () => {
   );
 
   it.each(cases)(
-    "$role (2FA $twoFactorEnabled): every flag equals can() over its actions",
+    "$role (2FA $twoFactorEnabled): every flag equals the role's can() over its actions (2FA checked on the action)",
     ({ role, twoFactorEnabled }) => {
-      const a = actor(role, twoFactorEnabled);
-      const out = shapeAccess(a) as Access;
+      const out = shapeAccess(actor(role, twoFactorEnabled)) as Access;
       expect(out.role).toBe(role);
       for (const flag of FLAG_KEYS) {
-        expect(out[flag], flag).toBe(ACCESS_FLAGS[flag].every((x) => can(a, x)));
+        expect(out[flag], flag).toBe(ACCESS_FLAGS[flag].every((x) => can(actor(role, true), x)));
       }
     },
   );
@@ -182,9 +205,13 @@ describe("shapeAccess", () => {
       canExport: true,
       canAdminister: true,
     });
-    expect(shapeAccess(actor("owner", false))).toMatchObject({
+    // Owner without 2FA keeps canApprove so the UI shows the turn-on-2FA prompt (flows.md:224);
+    // the approve action itself stays 2FA-gated in the matrix.
+    expect(shapeAccess(actor("owner", false))).toEqual({
+      role: "owner",
       canEdit: true,
-      canApprove: false,
+      canApprove: true,
+      canExport: true,
       canAdminister: true,
     });
     expect(shapeAccess(actor("manager", false))).toEqual({
@@ -201,6 +228,17 @@ describe("shapeAccess", () => {
       canExport: true,
       canAdminister: false,
     });
+  });
+
+  it("owner without 2FA: canApprove equals the fake's accessFor (Record payout stays visible)", () => {
+    const shaped = shapeAccess(actor("owner", false)) as Access;
+    expect(shaped.canApprove).toBe(accessFor("owner").canApprove);
+    expect(can(actor("owner", false), "payRun.approve")).toBe(false);
+  });
+
+  it.each(["owner", "manager", "accountant"] as const)("%s matches the fake's accessFor with and without 2FA", (role) => {
+    expect(shapeAccess(actor(role, false))).toEqual(accessFor(role));
+    expect(shapeAccess(actor(role, true))).toEqual(accessFor(role));
   });
 
   it("foreman gets FieldAccess scoped to the project, never Done", () => {

@@ -5,7 +5,7 @@
  * foreman) the project they are acting on plus their assigned projects, so services and Better
  * Auth hooks can both call it. Better Auth's own access control in `src/server/auth` is separate.
  *
- * Mapping notes for callers (Task 11):
+ * Mapping notes for callers (Task 11; `memberActionFor` encodes the first):
  * - Any member change that touches the Owner role (target is an owner, or the new role is owner)
  *   is `member.changeOwner`, not `member.setRole`/`member.remove`.
  * - A foreman's project-scoped actions need `ctx.projectId` and `ctx.assignedProjectIds`; without
@@ -129,4 +129,17 @@ export function can(actor: ActorWith2fa, action: Action, ctx?: AuthzContext): bo
 /** Throws `DataError("forbidden")` unless `can(actor, action, ctx)`. */
 export function assertCan(actor: ActorWith2fa, action: Action, ctx?: AuthzContext): void {
   if (!can(actor, action, ctx)) throw new DataError("forbidden", "You don't have access to this.");
+}
+
+/**
+ * The action a member change needs. Anything that touches the Owner role (the member is an owner,
+ * or becomes one) is `member.changeOwner`; otherwise a role change is `member.setRole`. Pass
+ * `nextRole: null` for removing the member (`member.remove`, or `member.changeOwner` for an owner).
+ */
+export function memberActionFor(
+  currentRole: Role,
+  nextRole: Role | null,
+): "member.changeOwner" | "member.setRole" | "member.remove" {
+  if (currentRole === "owner" || nextRole === "owner") return "member.changeOwner";
+  return nextRole === null ? "member.remove" : "member.setRole";
 }
