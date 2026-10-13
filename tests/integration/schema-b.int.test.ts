@@ -6,6 +6,7 @@ import { getTableConfig, PgTable } from "drizzle-orm/pg-core";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closePools, pool } from "@/server/db/client";
+import { withLockedWrite } from "@/server/db/locked";
 import * as schema from "@/server/db/schema";
 import { AUTH_TABLES, TENANT_TABLES } from "@/server/db/tenancy";
 
@@ -236,7 +237,13 @@ const crossTenant: [string, (own: Parents, fk: Parents) => Promise<unknown>][] =
   ],
   [
     "work_log.pay_run_id",
-    (own, fk) => db.insert(schema.workLog).values({ ...logValues(wsA, own), payRunId: fk.payRun }),
+    // A log inserted locked must go through withLockedWrite (Task 6), or RF001 fires before the FK check.
+    (own, fk) =>
+      db.transaction((tx) =>
+        withLockedWrite(tx, () =>
+          tx.insert(schema.workLog).values({ ...logValues(wsA, own), payRunId: fk.payRun }),
+        ),
+      ),
   ],
   [
     "no_work.crew_member_id",

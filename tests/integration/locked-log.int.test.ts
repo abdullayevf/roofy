@@ -1,7 +1,8 @@
 // Locked logs (plan 04-db-auth Task 6): a work_log with pay_run_id set cannot be updated, soft-deleted,
-// deleted or unlocked, and no log can be locked, except inside withLockedWrite (the Phase 7 approve
-// and reopen path). Deleting a whole workspace still cascades through its locked logs.
+// deleted or unlocked, and no log can be locked or inserted locked, except inside withLockedWrite (the
+// Phase 7 approve and reopen path). Deleting a whole workspace still cascades through its locked logs.
 import { sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Actor } from "@/data/contracts";
@@ -11,14 +12,22 @@ import { closePools, pool, rows, seedWorkspace } from "./helpers";
 
 const LOCKED = { code: "RF001", message: "This log is in an approved pay run" };
 
-type Ids = { workspace: string; crew_member: string; project: string; stage: string; pay_run: string };
+type Ids = {
+  actor: Actor;
+  workspace: string;
+  crew_member: string;
+  project: string;
+  stage: string;
+  pay_run: string;
+};
 
 let a: Actor;
 let ids: Ids;
 
 /** The seeded parent rows of one workspace, read through the owner pool. */
-async function idsOf(workspaceId: string): Promise<Ids> {
-  const found: Record<string, string> = { workspace: workspaceId };
+async function idsOf(actor: Actor): Promise<Ids> {
+  const workspaceId = actor.workspaceId;
+  const found: Record<string, unknown> = { actor, workspace: workspaceId };
   for (const table of ["crew_member", "project", "stage", "pay_run"]) {
     const [row] = await rows<{ id: string }>(
       "owner",
@@ -30,30 +39,29 @@ async function idsOf(workspaceId: string): Promise<Ids> {
   return found as Ids;
 }
 
-/** Inserts a fresh 8-hour log through the owner pool, locked to `payRunId` when given. */
+/** An insert of a fresh 8-hour log of `of`'s workspace, with pay_run_id set when given. */
+const insertLog = (of: Ids, id: string, payRunId: string | null, adjustsLogId: string | null = null) =>
+  sql`insert into work_log (id, workspace_id, date, crew_member_id, project_id, stage_id, basis, quantity, hours,
+        rate_cents, amount_cents, source, entry_id, adjusts_log_id, pay_run_id, entered_by)
+      values (${id}, ${of.workspace}, '2026-09-28', ${of.crew_member}, ${of.project}, ${of.stage}, 'hourly', 8, 8,
+        4500, 36000, ${adjustsLogId ? "adjustment" : "grid"}, ${uuidv7()}, ${adjustsLogId}, ${payRunId},
+        ${of.actor.userId})`;
+
+/** Inserts a fresh unlocked log as the workspace's actor, then locks it to `payRunId` through withLockedWrite. */
 async function makeLog(
   of: Ids,
   payRunId: string | null,
   adjustsLogId: string | null = null,
 ): Promise<string> {
   const id = uuidv7();
-  await pool("owner").query(
-    `insert into work_log (id, workspace_id, date, crew_member_id, project_id, stage_id, basis, quantity, hours,
-       rate_cents, amount_cents, source, entry_id, adjusts_log_id, pay_run_id, entered_by)
-     values ($1, $2, '2026-09-28', $3, $4, $5, 'hourly', 8, 8, 4500, 36000, $6, $7, $8, $9,
-       (select user_id from member where workspace_id = $2 limit 1))`,
-    [
-      id,
-      of.workspace,
-      of.crew_member,
-      of.project,
-      of.stage,
-      adjustsLogId ? "adjustment" : "grid",
-      uuidv7(),
-      adjustsLogId,
-      payRunId,
-    ],
-  );
+  await withActor(of.actor, async (tx) => {
+    await tx.execute(insertLog(of, id, null, adjustsLogId));
+    if (payRunId) {
+      await withLockedWrite(tx, () =>
+        tx.execute(sql`update work_log set pay_run_id = ${payRunId} where id = ${id}`),
+      );
+    }
+  });
   return id;
 }
 
@@ -88,14 +96,14 @@ const lastAudit = async (id: string) =>
   (
     await rows<Audit>(
       "owner",
-      "select action, before, after from audit_event where table_name = 'work_log' and row_id = $1 and action <> 'insert'",
+      "select action, before, after from audit_event where table_name = 'work_log' and row_id = $1 order by at desc limit 1",
       [id],
     )
   )[0];
 
 beforeAll(async () => {
   a = await seedWorkspace("India Roofing");
-  ids = await idsOf(a.workspaceId);
+  ids = await idsOf(a);
 });
 
 afterAll(async () => {
@@ -143,6 +151,14 @@ describe("a locked log, outside withLockedWrite", () => {
     expect(await logRow(id)).toBeUndefined();
   });
 
+  it("inserting a log with pay_run_id set raises RF001 and writes nothing, for roofy_app and the owner pool", async () => {
+    const id = uuidv7();
+    expect(await pgError(withActor(a, (tx) => tx.execute(insertLog(ids, id, ids.pay_run))))).toEqual(LOCKED);
+    const owner = drizzle(pool("owner"));
+    expect(await pgError(owner.execute(insertLog(ids, id, ids.pay_run)))).toEqual(LOCKED);
+    expect(await logRow(id)).toBeUndefined();
+  });
+
   it("the owner pool (a superuser) is refused too, for update and a direct delete", async () => {
     const id = await makeLog(ids, ids.pay_run);
     expect(await pgError(pool("owner").query("update work_log set hours = 9 where id = $1", [id]))).toEqual(
@@ -174,6 +190,17 @@ describe("inside withLockedWrite", () => {
     };
     expect(audit?.after).toMatchObject({ id, ...expected[name] });
     expect(after?.pay_run_id ?? null).toBe(expected[name]!.pay_run_id);
+  });
+
+  it("inserting a log with pay_run_id set succeeds and is audited", async () => {
+    const id = uuidv7();
+    await withActor(a, (tx) => withLockedWrite(tx, () => tx.execute(insertLog(ids, id, ids.pay_run))));
+    expect((await logRow(id))?.pay_run_id).toBe(ids.pay_run);
+    expect(await lastAudit(id)).toMatchObject({
+      action: "insert",
+      before: null,
+      after: { id, pay_run_id: ids.pay_run },
+    });
   });
 
   it("after it returns, an update in the same transaction is rejected again", async () => {
@@ -229,7 +256,7 @@ describe("inside withLockedWrite", () => {
 describe("foreign keys that touch work_log", () => {
   it("deleting a workspace through the owner pool cascades through its locked logs and adjustments", async () => {
     const owner = await seedWorkspace("Juliet Roofing");
-    const of = await idsOf(owner.workspaceId);
+    const of = await idsOf(owner);
     const locked = await makeLog(of, of.pay_run);
     await makeLog(of, of.pay_run, locked);
     await makeLog(of, null, locked);
@@ -241,7 +268,7 @@ describe("foreign keys that touch work_log", () => {
 
   it("deleting its own workspace as roofy_app cascades through its locked logs", async () => {
     const owner = await seedWorkspace("Kilo Roofing");
-    const of = await idsOf(owner.workspaceId);
+    const of = await idsOf(owner);
     await makeLog(of, of.pay_run);
     await withActor(owner, (tx) => tx.execute(sql`delete from workspace where id = ${owner.workspaceId}`));
     expect(
@@ -249,11 +276,23 @@ describe("foreign keys that touch work_log", () => {
     ).toEqual([]);
   });
 
-  it("a direct delete of a locked log still raises RF001 after a workspace delete elsewhere", async () => {
-    const id = await makeLog(ids, ids.pay_run);
-    expect(
-      await pgError(withActor(a, (tx) => tx.execute(sql`delete from work_log where id = ${id}`))),
-    ).toEqual(LOCKED);
+  it("a direct delete (trigger depth 1) of a locked log raises RF001 even when its workspace row is gone", async () => {
+    const owner = await seedWorkspace("Lima Roofing");
+    const of = await idsOf(owner);
+    const id = await makeLog(of, of.pay_run);
+    const client = await pool("owner").connect();
+    try {
+      await client.query("begin");
+      // Replica mode skips the FK cascade, so the workspace row goes and its locked log stays.
+      await client.query("set local session_replication_role = replica");
+      await client.query("delete from workspace where id = $1", [owner.workspaceId]);
+      await client.query("set local session_replication_role = origin");
+      expect(await pgError(client.query("delete from work_log where id = $1", [id]))).toEqual(LOCKED);
+    } finally {
+      await client.query("rollback");
+      client.release();
+    }
+    expect(await logRow(id)).toBeDefined();
   });
 
   it("deleting a pay run that has locked logs is refused by work_log_pay_run_fk (no action)", async () => {
@@ -279,15 +318,15 @@ describe("foreign keys that touch work_log", () => {
 });
 
 describe("the catalogue", () => {
-  it("one BEFORE UPDATE OR DELETE row trigger on work_log runs the guard, and no other table has it", async () => {
+  it("one BEFORE INSERT OR UPDATE OR DELETE row trigger on work_log runs the guard, and no other table has it", async () => {
     const triggers = await rows<{ table: string; name: string; tgtype: number; enabled: string }>(
       "owner",
       `select c.relname as table, t.tgname as name, t.tgtype, t.tgenabled as enabled
          from pg_trigger t join pg_class c on c.oid = t.tgrelid
         where t.tgfoid = 'public.locked_log_guard()'::regprocedure and not t.tgisinternal`,
     );
-    // ROW (1) + BEFORE (2) + DELETE (8) + UPDATE (16); not INSERT (4), TRUNCATE (32) or INSTEAD (64).
-    expect(triggers).toEqual([{ table: "work_log", name: "work_log_locked", tgtype: 27, enabled: "O" }]);
+    // ROW (1) + BEFORE (2) + INSERT (4) + DELETE (8) + UPDATE (16); not TRUNCATE (32) or INSTEAD (64).
+    expect(triggers).toEqual([{ table: "work_log", name: "work_log_locked", tgtype: 31, enabled: "O" }]);
   });
 
   it("the guard is SECURITY INVOKER, owned by roofy, with search_path pinned and no execute for anyone else", async () => {

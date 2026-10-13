@@ -1,7 +1,8 @@
 -- Task 6: locked logs (hand-written; plan 04-db-auth Task 6). A work_log with pay_run_id set is in
 -- an approved pay run: it cannot be updated, soft-deleted, deleted or unlocked, and no log can be
--- locked, unless app.locked_write is 'on'. Only withLockedWrite in src/server/db/locked.ts sets it
--- (transaction-local), for the Phase 7 approve and reopen service. Inserts are not guarded.
+-- locked or inserted already locked, unless app.locked_write is 'on'. Only withLockedWrite in
+-- src/server/db/locked.ts sets it (transaction-local), for the Phase 7 approve and reopen service.
+-- Inserting an unlocked log (pay_run_id null, adjustments included) is not affected.
 --
 -- Deleting a workspace cascades into work_log; that must not be blocked by its locked logs. A delete
 -- is let through only when both hold:
@@ -27,7 +28,11 @@ BEGIN
   IF current_setting('app.locked_write', true) = 'on' THEN
     RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
   END IF;
-  IF TG_OP = 'DELETE' THEN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.pay_run_id IS NULL THEN
+      RETURN NEW;
+    END IF;
+  ELSIF TG_OP = 'DELETE' THEN
     IF OLD.pay_run_id IS NULL THEN
       RETURN OLD;
     END IF;
@@ -43,4 +48,4 @@ $$;
 ALTER FUNCTION public.locked_log_guard() OWNER TO roofy;
 REVOKE ALL ON FUNCTION public.locked_log_guard() FROM PUBLIC;
 
-CREATE TRIGGER "work_log_locked" BEFORE UPDATE OR DELETE ON "work_log" FOR EACH ROW EXECUTE FUNCTION public.locked_log_guard();
+CREATE TRIGGER "work_log_locked" BEFORE INSERT OR UPDATE OR DELETE ON "work_log" FOR EACH ROW EXECUTE FUNCTION public.locked_log_guard();
