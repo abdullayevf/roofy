@@ -73,11 +73,24 @@ describe("catalogue", () => {
   });
 
   it("each tenant table has one roofy_app policy matching app.workspace_id on its tenant key", async () => {
-    const policies = await rows<{ table: string; roles: string[]; qual: string; check: string | null }>(
+    const all = await rows<{
+      table: string;
+      cmd: string;
+      roles: string[];
+      qual: string | null;
+      check: string | null;
+    }>(
       "owner",
-      `select tablename as table, roles::text[] as roles, qual, with_check as check
+      `select tablename as table, cmd, roles::text[] as roles, qual, with_check as check
        from pg_policies where schemaname = 'public'`,
     );
+    // The one exception: the audit trigger (SECURITY DEFINER, owned by roofy) may insert audit rows
+    // even when roofy is not a superuser. Insert only, nothing readable.
+    const ownerPolicies = all.filter((p) => p.roles.includes("roofy"));
+    expect(ownerPolicies).toEqual([
+      { table: "audit_event", cmd: "INSERT", roles: ["roofy"], qual: null, check: "true" },
+    ]);
+    const policies = all.filter((p) => !p.roles.includes("roofy"));
     for (const p of policies)
       expect(p.roles.length === 1 && ["roofy_app", "roofy_auth"].includes(p.roles[0]!)).toBe(true);
     const app = policies.filter((p) => p.roles[0] === "roofy_app");

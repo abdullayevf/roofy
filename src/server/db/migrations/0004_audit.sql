@@ -5,40 +5,51 @@
 --
 -- SECURITY DEFINER, owned by roofy, because roofy_app may only read audit_event. It writes
 -- nothing but that one row: the values come from NEW/OLD and TG_* only, and there is no dynamic
--- SQL. search_path is pinned so a caller cannot swap in its own objects. Each trigger's arguments
+-- SQL. search_path is pinned (pg_temp last) so a caller cannot swap in its own objects. Each trigger's arguments
 -- are that table's secret columns, which are left out of before/after; they must match
 -- AUDIT_SECRET_COLUMNS in src/server/db/audit.ts, and the trigger list must match AUDITED_TABLES
 -- (tests/integration/audit.int.test.ts checks both against the catalogue exactly).
 CREATE FUNCTION public.audit_row() RETURNS trigger
   LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path = pg_catalog, public
+  SET search_path = pg_catalog, public, pg_temp
 AS $$
 DECLARE
   secret text[] := coalesce(TG_ARGV, '{}'::text[]);
   old_row jsonb := CASE WHEN TG_OP IN ('UPDATE', 'DELETE') THEN to_jsonb(OLD) - secret END;
   new_row jsonb := CASE WHEN TG_OP IN ('INSERT', 'UPDATE') THEN to_jsonb(NEW) - secret END;
   source jsonb := coalesce(new_row, old_row);
+  -- uuid v7: 48-bit unix milliseconds over a random v4 uuid, version bits set to 7.
+  event_id uuid := encode(set_bit(set_bit(overlay(uuid_send(gen_random_uuid())
+    PLACING substring(int8send(floor(extract(epoch FROM clock_timestamp()) * 1000)::bigint) FROM 3)
+    FROM 1 FOR 6), 52, 1), 53, 1), 'hex')::uuid;
+  row_workspace uuid :=
+    CASE WHEN TG_TABLE_NAME = 'workspace' THEN source ->> 'id' ELSE source ->> 'workspace_id' END::uuid;
+  actor uuid := nullif(current_setting('app.user_id', true), '')::uuid;
 BEGIN
-  INSERT INTO public.audit_event (id, workspace_id, table_name, row_id, action, before, after, actor_user_id)
-  VALUES (
-    -- uuid v7: 48-bit unix milliseconds over a random v4 uuid, version bits set to 7.
-    encode(set_bit(set_bit(overlay(uuid_send(gen_random_uuid())
-      PLACING substring(int8send(floor(extract(epoch FROM clock_timestamp()) * 1000)::bigint) FROM 3)
-      FROM 1 FOR 6), 52, 1), 53, 1), 'hex')::uuid,
-    CASE WHEN TG_TABLE_NAME = 'workspace' THEN source ->> 'id' ELSE source ->> 'workspace_id' END::uuid,
-    TG_TABLE_NAME,
-    (source ->> 'id')::uuid,
-    lower(TG_OP)::public.audit_action,
-    old_row,
-    new_row,
-    nullif(current_setting('app.user_id', true), '')::uuid
-  );
+  IF TG_OP = 'DELETE' THEN
+    -- Deleting a workspace cascades to its rows after the workspace itself is gone, so their audit
+    -- rows fail the workspace FK; that trail is deleted with the workspace anyway, so skip it. Only
+    -- deletes take this sub-block: inserts and updates (bulk imports) open no subtransaction per row.
+    BEGIN
+      INSERT INTO public.audit_event (id, workspace_id, table_name, row_id, action, before, after, actor_user_id)
+      VALUES (event_id, row_workspace, TG_TABLE_NAME, (source ->> 'id')::uuid, 'delete', old_row, NULL, actor);
+    EXCEPTION WHEN foreign_key_violation THEN NULL;
+    END;
+  ELSE
+    INSERT INTO public.audit_event (id, workspace_id, table_name, row_id, action, before, after, actor_user_id)
+    VALUES (event_id, row_workspace, TG_TABLE_NAME, (source ->> 'id')::uuid,
+      lower(TG_OP)::public.audit_action, old_row, new_row, actor);
+  END IF;
   RETURN NULL;
 END
 $$;
 ALTER FUNCTION public.audit_row() OWNER TO roofy;
 REVOKE ALL ON FUNCTION public.audit_row() FROM PUBLIC;
+-- FORCE row-level security binds roofy too unless it is a superuser or BYPASSRLS; this lets the
+-- trigger insert audit rows either way. Insert only: roofy still reads, updates and deletes nothing
+-- through RLS, and roofy_app has no INSERT grant, so it cannot use this policy.
+CREATE POLICY "audit_event_trigger_insert" ON "audit_event" FOR INSERT TO roofy WITH CHECK (true);
 
 CREATE TRIGGER "workspace_audit" AFTER INSERT OR UPDATE OR DELETE ON "workspace" FOR EACH ROW EXECUTE FUNCTION public.audit_row();
 CREATE TRIGGER "member_audit" AFTER INSERT OR UPDATE OR DELETE ON "member" FOR EACH ROW EXECUTE FUNCTION public.audit_row();

@@ -8,7 +8,7 @@ import type { Actor } from "@/data/contracts";
 import { AUDIT_SECRET_COLUMNS, AUDITED_TABLES } from "@/server/db/audit";
 import { TENANT_TABLES } from "@/server/db/tenancy";
 import { withActor } from "@/server/db/with-actor";
-import { closePools, rows, seedWorkspace } from "./helpers";
+import { closePools, pool, rows, seedWorkspace } from "./helpers";
 
 type AuditRow = {
   id: string;
@@ -119,7 +119,7 @@ describe("catalogue", () => {
     expect(fn).toEqual({
       definer: true,
       owner: "roofy",
-      config: ["search_path=pg_catalog, public"],
+      config: ["search_path=pg_catalog, public, pg_temp"],
       app: false,
       auth: false,
     });
@@ -230,6 +230,80 @@ describe("audit rows", () => {
     expect(by.update!.after).toEqual(shownAfter);
     expect(by.delete!.before).toEqual(shownAfter);
     expect(JSON.stringify(list)).not.toContain(String(full.token_hash));
+  });
+});
+
+describe("deleting", () => {
+  it("an owner-pool delete of a seeded workspace succeeds and leaves no audit rows for it", async () => {
+    const gone = await seedWorkspace("India Roofing");
+    const before = await rows<{ n: number }>(
+      "owner",
+      "select count(*)::int as n from audit_event where workspace_id = $1",
+      [gone.workspaceId],
+    );
+    expect(before[0]!.n).toBeGreaterThan(0);
+    expect(
+      await pgError(rows("owner", "delete from workspace where id = $1", [gone.workspaceId])),
+    ).toBeUndefined();
+    const left = await rows<{ n: number }>(
+      "owner",
+      "select count(*)::int as n from workspace where id = $1",
+      [gone.workspaceId],
+    );
+    expect(left[0]!.n).toBe(0);
+    const after = await rows<{ n: number }>(
+      "owner",
+      "select count(*)::int as n from audit_event where workspace_id = $1",
+      [gone.workspaceId],
+    );
+    expect(after[0]!.n).toBe(0);
+  });
+
+  it("deleting a single member still writes its delete audit row", async () => {
+    const userId = uuidv7();
+    const memberId = uuidv7();
+    await rows("owner", `insert into "user" (id, name, email) values ($1, 'Leaving', $2)`, [
+      userId,
+      `leaving-${userId}@example.test`,
+    ]);
+    await rows(
+      "owner",
+      `insert into member (id, workspace_id, user_id, role) values ($1, $2, $3, 'manager')`,
+      [memberId, a.workspaceId, userId],
+    );
+    await rows("owner", "delete from member where id = $1", [memberId]);
+    const { by } = await auditOf("member", memberId);
+    expect(by.delete).toEqual(
+      expect.objectContaining({
+        workspace_id: a.workspaceId,
+        after: null,
+        before: expect.objectContaining({ id: memberId }),
+      }),
+    );
+  });
+});
+
+describe("audit_event insert policy for roofy", () => {
+  it("a non-superuser, non-BYPASSRLS member of roofy can insert an audit row but cannot read, update or delete any", async () => {
+    const client = await pool("owner").connect();
+    const probe = `audit_probe_${uuidv7().replaceAll("-", "")}`;
+    try {
+      await client.query("begin");
+      await client.query(`create role ${probe} nologin nosuperuser nobypassrls`);
+      await client.query(`grant roofy to ${probe}`);
+      await client.query(`set local role ${probe}`);
+      const inserted = await client.query(
+        `insert into audit_event (id, workspace_id, table_name, row_id, action) values ($1, $2, 'rate', $3, 'insert')`,
+        [uuidv7(), a.workspaceId, uuidv7()],
+      );
+      expect(inserted.rowCount).toBe(1);
+      expect((await client.query("select count(*)::int as n from audit_event")).rows[0].n).toBe(0);
+      expect((await client.query("update audit_event set action = 'delete'")).rowCount).toBe(0);
+      expect((await client.query("delete from audit_event")).rowCount).toBe(0);
+    } finally {
+      await client.query("rollback");
+      client.release();
+    }
   });
 });
 
