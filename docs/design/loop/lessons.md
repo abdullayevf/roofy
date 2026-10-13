@@ -45,3 +45,4 @@
 - A list of editable items (categories, stages) is grouped rows that open an edit sheet, not one input per item (entry-settings i1 D10, D11, F12).
 - A pinned Save bar never drops into the bottom safe-area inset, including while a field is focused (keyboard mode) after a failed save; a toast never covers the field the keyboard is focused on (entry-settings 1b3 + i2 capture; guard).
 - Conductor/agent bash waits: never `pgrep -f "<pattern>"` when your own shell's command line contains that pattern — the wrapper matches itself and the `until` loop spins forever (T19 session 6 hung on `pgrep -f "playwright test tests/e2e/settings-lists"` after the e2e had already passed). Wait on a PID, a marker file, or exclude the current shell.
+- Inputs show figures like body figures: Atkinson tabular numerals, no letter spacing, also in the error state (entry-settings i2+i3 D19).
