@@ -240,6 +240,7 @@ export function CategoriesForm({
   const [edit, setEdit] = useState<{ id: Id | null; name: string } | null>(null);
   const open = (id: Id | null, name: string) => {
     s.setErrors({});
+    s.setFailed(null);
     setEdit({ id, name });
   };
   const submit = () => {
@@ -251,14 +252,16 @@ export function CategoriesForm({
     else if (categories.some((c) => c.id !== edit.id && sameName(c.name, edit.name)))
       found.name = `There's already a category called ${edit.name.trim()}.`;
     const existing = categories.find((c) => c.id === edit.id);
+    const name = edit.name.trim();
+    // Same name as before: nothing to save, so the sheet just closes, with no "Changes saved." (F3).
+    if (!found.name && existing?.name === name) {
+      s.setErrors({});
+      setEdit(null);
+      return;
+    }
     return s.run(
       () => found,
       async () => {
-        const name = edit.name.trim();
-        if (existing?.name === name) {
-          setEdit(null);
-          return { ok: true } as const;
-        }
         const position = existing?.position ?? Math.max(0, ...categories.map((c) => c.position)) + 1;
         const r = await saveCategory({ id: edit.id, name, position });
         if (r.ok) setEdit(null);
@@ -509,11 +512,17 @@ export function AssignmentsForm({
     s.run(
       () => ({}),
       async () => {
+        let savedAny = false;
         for (const f of foremen) {
           const now = picked[f.memberId] ?? f.projectIds;
           if (now.length === f.projectIds.length && now.every((x) => f.projectIds.includes(x))) continue;
           const r = await setAssignments(f.memberId, now);
-          if (!r.ok) return r;
+          if (!r.ok) {
+            // Earlier foremen are saved: re-read so a retry only sends the rest (F4).
+            if (savedAny) s.refresh();
+            return r;
+          }
+          savedAny = true;
         }
         return { ok: true } as const;
       },

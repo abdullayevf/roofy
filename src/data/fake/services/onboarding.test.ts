@@ -34,6 +34,14 @@ describe("fake onboarding", () => {
     expect((await onboarding.state(actor)).step).toBe("business");
   });
 
+  it("refuses an action whose step is not the saved step, and keeps the step (F6)", async () => {
+    const { onboarding, actor } = fresh();
+    for (const early of [onboarding.chooseTrade(actor, "roofing"), onboarding.acceptDefaults(actor), onboarding.finishCrew(actor), onboarding.finish(actor)])
+      await expect(early).rejects.toMatchObject({ code: "conflict" });
+    await expect(onboarding.addCrew(actor, { name: "Sam", type: "contractor", levelId: null, basis: "hourly", rateCents: 5000 } as never)).rejects.toMatchObject({ code: "conflict" });
+    expect((await onboarding.state(actor)).step).toBe("business");
+  });
+
   it("walks business, trade, defaults, crew and install, saving as it goes (resumable)", async () => {
     const { onboarding, actor, data } = fresh();
     let s = await onboarding.saveBusiness(actor, { name: "Smith Roofing", abn: "51 824 753 556", gstRegistered: true });
@@ -62,7 +70,10 @@ describe("fake onboarding", () => {
   });
 
   it("refuses a crew row with no rate", async () => {
-    const { onboarding, actor } = fresh();
+    const { onboarding, actor, store } = fresh();
+    store.write((t) => {
+      t.meta.onboarding = { step: "crew", trade: "roofing" };
+    });
     await expect(
       onboarding.addCrew(actor, { name: "Sam", type: "employee", levelId: null, basis: "daily", rateCents: 0 }),
     ).rejects.toMatchObject({ code: "invalid", issues: [{ field: "rate", message: "Add a daily rate." }] });

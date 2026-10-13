@@ -1,15 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
-import { checkPrimaryActionPlacement, checkSafeAreas, checkToastClearsBars, collectConsole, expectScreenHealthy } from "./guards";
+import { checkPrimaryActionPlacement, checkSafeAreas, checkToastClearsBars, collectConsole, expectScreenHealthy, waitForHydrated } from "./guards";
 
 const isPhone = (name: string) => name !== "desktop";
 const NEEDS_CONNECTION = "Needs connection — try again once you're back online.";
 /** Open a page and wait for React to attach to its boxes: a fill made before then shows but never reaches the form's state. */
 async function go(page: Page, role: string, next: string) {
   await page.goto(`/prototype/role?as=${role}&next=${encodeURIComponent(next)}`);
-  await page.waitForFunction(() => {
-    const controls = [...document.querySelectorAll("main input:not([type=radio]):not([type=checkbox]):not([type=hidden]), main select")];
-    return controls.every((el) => Object.keys(el).some((k) => k.startsWith("__reactProps$")));
-  });
+  await waitForHydrated(page);
 }
 const h1 = (page: Page, name: string) => page.getByRole("heading", { level: 1, name });
 
@@ -107,7 +104,9 @@ test.describe("Settings (screen 23)", () => {
     await expect(page.getByText("Two-factor is on.", { exact: true })).toHaveCount(0);
     await page.getByLabel("Code").fill("123 456");
     await page.getByRole("button", { name: "Turn on two-factor" }).click();
-    await expect(page.getByText("Two-factor is on.", { exact: true })).toBeVisible();
+    await expect(page.getByText(/^Two-factor is on\. When you sign in/), "the page turns to its on state").toBeVisible();
+    await expect(page.getByRole("button", { name: "Turn on two-factor" })).toHaveCount(0);
+    await expect(page.getByText("Two-factor is on.", { exact: true }), "no toast that would unmount with the form").toHaveCount(0);
   });
 
   test("two-factor on: a green On chip with its icon sits 16 px under the title, and there is nothing to tap", async ({ page }) => {

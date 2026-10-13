@@ -459,6 +459,15 @@ describe("settings", () => {
     expect((await refusal(manager.data.workspace.turnOnTwoFactor(manager.actor, "123456"))).code).toBe("forbidden");
   });
 
+  it("two-factor off (?demo=blocked): once the Owner turns it on, the workspace reads on (F7)", async () => {
+    const { data, actor } = fakeSession("owner", { demo: "blocked" });
+    const off = await data.workspace.settings(actor);
+    expect(off.view === "manager" && off.ownerTwoFactor).toBe(false);
+    await data.workspace.turnOnTwoFactor(actor, "123456");
+    const on = await data.workspace.settings(actor);
+    expect(on.view === "manager" && on.ownerTwoFactor).toBe(true);
+  });
+
   it("levels, categories and templates", async () => {
     const { data, actor } = fakeSession("manager");
     const roofer = (await data.workspace.levels(actor)).find((l) => l.name === "Roofer")!;

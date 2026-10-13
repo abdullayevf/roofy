@@ -94,7 +94,7 @@ test.describe("Pay run review (display)", () => {
     const consoleLog = collectConsole(page);
     await signInAs(page, "owner", `${PATH}?demo=blocked`);
     const twoFactor = page.locator('[data-pay-flag="blocking"]').filter({ hasText: "Turn on two-factor before you approve a pay run." });
-    await expect(twoFactor.locator("a")).toHaveAttribute("href", "/settings/members");
+    await expect(twoFactor.locator("a")).toHaveAttribute("href", "/settings/two-factor");
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 

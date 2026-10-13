@@ -175,7 +175,7 @@ export function OnboardingWizard({ initial, platform, offline, resumed = false }
 
       {state.step === "crew" ? (
         <div className="flex flex-col gap-4">
-          <p className="text-body text-ink-2">Add the people you pay. You can add more, or import a CSV file, from Crew later.</p>
+          <p className="text-body text-ink-2">Add the people you pay. You can add more from Crew later.</p>
           {state.crew.length > 0 ? (
             <ul className="flex flex-col divide-y divide-line rounded-md border border-line bg-surface" aria-label="Crew added">
               {state.crew.map((c) => (

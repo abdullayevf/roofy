@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { collectConsole, expectScreenHealthy } from "./guards";
+import { collectConsole, expectScreenHealthy, waitForHydrated } from "./guards";
 
 const isPhone = (name: string) => name !== "desktop";
 
@@ -17,6 +17,7 @@ async function expectOneColumn(page: Page) {
 
 async function open(page: Page, role: string, path: string) {
   await page.goto(`/prototype/role?as=${role}&next=${encodeURIComponent(path)}`);
+  await waitForHydrated(page);
 }
 
 const STEPS = [
@@ -122,6 +123,7 @@ test.describe("Set-up wizard (screen 2)", () => {
 
   test("a reload resumes where it was, and Back keeps what was entered", async ({ page }) => {
     await page.goto("/sign-up");
+    await waitForHydrated(page);
     await page.getByRole("button", { name: "Continue with Google" }).click();
     await page.getByLabel("Business name", { exact: true }).fill("Smith Roofing");
     await page.getByLabel("ABN", { exact: true }).fill("51 824 753 556");
@@ -129,6 +131,7 @@ test.describe("Set-up wizard (screen 2)", () => {
     await expect(page.getByText("Step 2 of 5")).toBeVisible();
     await expect(page.getByText("Picking up where you left off.")).toHaveCount(0);
     await page.reload();
+    await waitForHydrated(page);
     await expect(page.getByRole("heading", { level: 1, name: "Your trade" })).toBeVisible();
     await expect(page.getByText("Pick your trade to load its stages.")).toBeVisible();
     await expect(page.getByText("Picking up where you left off.")).toBeVisible();

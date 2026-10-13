@@ -22,6 +22,11 @@ export function dayOfWeek(d: LocalDate): number {
   return toUtc(d).getUTCDay();
 }
 
+/** The date itself or the latest earlier date that falls on `weekday` (0 = Sunday … 6 = Saturday): 0 to 6 days back. */
+export function weekdayOnOrBefore(d: LocalDate, weekday: number): LocalDate {
+  return addDays(d, -((dayOfWeek(d) - weekday + 7) % 7));
+}
+
 export function daysBetween(a: LocalDate, b: LocalDate): number {
   return Math.round((toUtc(b).getTime() - toUtc(a).getTime()) / DAY_MS);
 }

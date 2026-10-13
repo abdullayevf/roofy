@@ -114,6 +114,7 @@ describe("pay run review: last week's draft (21–27 Sep)", () => {
     const r = await review("owner", "blocked");
     expect(r.flags.filter((f) => f.blocking).map((f) => f.kind)).toEqual(["missing_rate", "owner_2fa_off"]);
     expect(r.blockedBy).toEqual(["missing_rate", "owner_2fa_off"]);
+    expect(r.flags.find((f) => f.kind === "owner_2fa_off")?.href).toBe("/settings/two-factor");
     const blocked = fake("owner", { demo: "blocked" });
     const bws = await blocked.data.workspace.settings(blocked.actor);
     expect(bws.view === "manager" && bws.ownerTwoFactor).toBe(false);

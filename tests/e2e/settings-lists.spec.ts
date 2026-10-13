@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { checkKeyboard, checkSafeAreas, collectConsole, expectScreenHealthy } from "./guards";
+import { checkKeyboard, checkSafeAreas, collectConsole, expectScreenHealthy, waitForHydrated } from "./guards";
 import { SCREENS } from "./screens";
 
 const isPhone = (name: string) => name !== "desktop";
@@ -12,11 +12,7 @@ const NEEDS_CONNECTION = "Needs connection — try again once you're back online
  */
 async function go(page: Page, role: string, next: string) {
   await page.goto(`/prototype/role?as=${role}&next=${encodeURIComponent(next)}`);
-  await page.waitForFunction(() => {
-    // The boxes a person types or picks in: the ones whose state a too-early fill never reaches.
-    const controls = [...document.querySelectorAll("main input:not([type=radio]):not([type=checkbox]):not([type=hidden]), main select")];
-    return controls.every((el) => Object.keys(el).some((k) => k.startsWith("__reactProps$")));
-  });
+  await waitForHydrated(page);
 }
 const h1 = (page: Page, name: string | RegExp) => page.getByRole("heading", { level: 1, name });
 const saved = (page: Page, text = "Changes saved.") => page.getByText(text, { exact: true });

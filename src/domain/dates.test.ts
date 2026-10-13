@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, countWorkingDays, dayOfWeek, daysBetween, eachDay, todayIn } from "./dates";
+import { addDays, countWorkingDays, dayOfWeek, daysBetween, eachDay, todayIn, weekdayOnOrBefore } from "./dates";
 
 const MON_FRI = [1, 2, 3, 4, 5];
 
@@ -35,5 +35,14 @@ describe("todayIn", () => {
   });
   it("returns the previous day just before Sydney midnight", () => {
     expect(todayIn("Australia/Sydney", new Date("2026-09-27T13:59:00Z"))).toBe("2026-09-27");
+  });
+});
+
+describe("weekdayOnOrBefore", () => {
+  it("moves a date back 0 to 6 days to the given weekday (0 = Sunday)", () => {
+    expect(weekdayOnOrBefore("2026-09-28", 1)).toBe("2026-09-28");
+    expect(weekdayOnOrBefore("2026-09-28", 3)).toBe("2026-09-23");
+    expect(weekdayOnOrBefore("2026-09-28", 0)).toBe("2026-09-27");
+    expect(weekdayOnOrBefore("2026-03-01", 2)).toBe("2026-02-24");
   });
 });

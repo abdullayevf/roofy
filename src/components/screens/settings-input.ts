@@ -60,13 +60,8 @@ export function payPeriodText(frequency: PayFrequency, weekStart: number): strin
   return `${frequency === "weekly" ? "Weekly" : "Fortnightly"}, starting ${WEEKDAYS[weekStart]}`;
 }
 
-/** The pay-period anchor moved back (0–6 days) to the chosen start weekday; calendar maths only. */
-export function anchorOn(anchor: string, weekday: number): string {
-  const d = new Date(`${anchor}T00:00:00Z`);
-  const back = (d.getUTCDay() - weekday + 7) % 7;
-  d.setUTCDate(d.getUTCDate() - back);
-  return d.toISOString().slice(0, 10);
-}
+/** The pay-period anchor moved back (0–6 days) to the chosen start weekday; the calendar maths lives in `@/domain` (F5). */
+export { weekdayOnOrBefore as anchorOn } from "@/domain/dates";
 
 const SHARE_BLANK = "Add a share, or 0 if the stage has none.";
 

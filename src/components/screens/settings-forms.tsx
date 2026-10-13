@@ -75,7 +75,9 @@ export function useSave(demoOffline: boolean) {
     }
   }
   const [savedMessage, setSavedMessage] = useState(SAVED);
-  return { online, busy, saved, setSaved, savedMessage, failed, errors, setErrors, refused, run };
+  /** Re-reads the page after a row-by-row save that stopped part way, so rows already saved show in the props (F4). */
+  const refresh = () => router.refresh();
+  return { online, busy, saved, setSaved, savedMessage, failed, setFailed, errors, setErrors, refused, run, refresh };
 }
 
 export type Save = ReturnType<typeof useSave>;
@@ -349,12 +351,17 @@ export function LevelsForm({ levels, demoOffline }: { levels: CrewLevel[]; demoO
     s.run(
       () => Object.fromEntries(levels.map((l) => [l.id, floorError(floors[l.id] ?? null)])),
       async () => {
+        let savedAny = false;
         for (const l of levels) {
           const cents = floors[l.id] as Cents;
           if (cents === l.floorRateCents) continue;
           const r = await saveLevel({ id: l.id, name: l.name, floorRateCents: cents });
-          if (!r.ok)
+          if (!r.ok) {
+            // Earlier levels are saved: re-read so the page's props show them (F4).
+            if (savedAny) s.refresh();
             return r.issues.length ? { ...r, issues: r.issues.map((i) => ({ ...i, field: l.id })) } : r;
+          }
+          savedAny = true;
         }
         return { ok: true } as const;
       },
@@ -389,8 +396,8 @@ export function TwoFactorForm({ demoOffline }: { demoOffline: boolean }) {
     const r = readCode(code);
     return s.run(
       () => ({ code: "error" in r ? r.error : undefined }),
+      // No toast: once it is on the page re-reads and shows the on state in its place (F7).
       () => turnOnTwoFactor("code" in r ? r.code : ""),
-      "Two-factor is on.",
     );
   };
   return (

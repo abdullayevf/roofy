@@ -51,6 +51,12 @@ export function createFakeOnboarding(store: FakeStore, data: DataServices, today
     if (actor.role !== "owner") throw new DataError("forbidden", NO_ACCESS);
   }
 
+  /** The Owner, on the saved step: a stale tab or a replayed action for another step is refused (F6). */
+  function ownerAt(actor: Actor, step: OnboardingStep): void {
+    owner(actor);
+    if (meta().step !== step) throw new DataError("conflict", "Set-up has moved on since this page opened. Reload to carry on.");
+  }
+
   async function state(actor: Actor): Promise<OnboardingState> {
     owner(actor);
     const w = store.tables.workspace;
@@ -87,7 +93,7 @@ export function createFakeOnboarding(store: FakeStore, data: DataServices, today
   return {
     state,
     async saveBusiness(actor, input) {
-      owner(actor);
+      ownerAt(actor, "business");
       const p = businessProblems(input);
       const issues: FieldIssue[] = [];
       if (p.name) issues.push({ field: "name", message: p.name });
@@ -107,12 +113,12 @@ export function createFakeOnboarding(store: FakeStore, data: DataServices, today
       return state(actor);
     },
     async chooseTrade(actor, trade) {
-      owner(actor);
+      ownerAt(actor, "trade");
       go("defaults", trade);
       return state(actor);
     },
     async acceptDefaults(actor) {
-      owner(actor);
+      ownerAt(actor, "defaults");
       if ((await data.workspace.templates(actor)).length === 0) {
         for (const t of await seedData.workspace.templates(seedOwner))
           await data.workspace.saveTemplate(actor, { jobType: t.jobType, items: t.items });
@@ -123,7 +129,7 @@ export function createFakeOnboarding(store: FakeStore, data: DataServices, today
       return state(actor);
     },
     async addCrew(actor, input) {
-      owner(actor);
+      ownerAt(actor, "crew");
       const p = crewRowProblems(input);
       const issues: FieldIssue[] = [];
       if (p.name) issues.push({ field: "name", message: p.name });
@@ -152,7 +158,7 @@ export function createFakeOnboarding(store: FakeStore, data: DataServices, today
       return state(actor);
     },
     async finishCrew(actor) {
-      owner(actor);
+      ownerAt(actor, "crew");
       go("install");
       return state(actor);
     },
@@ -163,7 +169,7 @@ export function createFakeOnboarding(store: FakeStore, data: DataServices, today
       return state(actor);
     },
     async finish(actor) {
-      owner(actor);
+      ownerAt(actor, "install");
       go("done");
       return state(actor);
     },

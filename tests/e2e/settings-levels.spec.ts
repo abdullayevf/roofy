@@ -1,13 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
-import { checkErrorLineInView, checkPinnedBarMatchesColumn } from "./guards";
+import { checkErrorLineInView, checkPinnedBarMatchesColumn, waitForHydrated } from "./guards";
 
 /** Open a page and wait for React to attach to its boxes: a fill made before then shows but never reaches the form's state. */
 async function go(page: Page, role: string, next: string) {
   await page.goto(`/prototype/role?as=${role}&next=${encodeURIComponent(next)}`);
-  await page.waitForFunction(() => {
-    const controls = [...document.querySelectorAll("main input:not([type=radio]):not([type=checkbox]):not([type=hidden]), main select")];
-    return controls.every((el) => Object.keys(el).some((k) => k.startsWith("__reactProps$")));
-  });
+  await waitForHydrated(page);
 }
 
 // Entry-settings iteration 2, run 2a: the levels page and the pinned Save bar. The tablet and desktop checks resize one

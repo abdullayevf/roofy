@@ -920,6 +920,20 @@ export async function expectScreenHealthy(page: Page, opts: ScreenHealthOptions)
 }
 
 /**
+ * Waits until React has attached to every text box, select and text area on the page (F2). Call it after every
+ * `goto` and in-flow navigation before a fill: before hydration a box is read-only, and a value set into a box React
+ * has not reached yet never gets to the form's state.
+ */
+export async function waitForHydrated(page: Page): Promise<void> {
+  await page.waitForFunction(() => {
+    const controls = [
+      ...document.querySelectorAll("input:not([type=radio]):not([type=checkbox]):not([type=hidden]), select, textarea"),
+    ];
+    return controls.every((el) => Object.keys(el).some((k) => k.startsWith("__reactProps$")));
+  });
+}
+
+/**
  * Waits until a sliding sheet or dialog has stopped: its box is the same for five frames running. `toBeVisible` is true
  * the moment the sheet starts to slide in, so a position read straight after it can come from mid-slide.
  */

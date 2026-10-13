@@ -38,7 +38,7 @@ describe("flagTarget", () => {
   it("taps through to the line, else the person, else the fix", () => {
     expect(flagTarget(flag({ logIds: ["a", "b"] }))).toBe("#line-a");
     expect(flagTarget(flag({}))).toBe("#crew-c1");
-    expect(flagTarget(flag({ crewMemberId: null, href: "/settings/members" }))).toBe("/settings/members");
+    expect(flagTarget(flag({ crewMemberId: null, href: "/settings/two-factor" }))).toBe("/settings/two-factor");
     expect(flagTarget(flag({ crewMemberId: null }))).toBeNull();
   });
 });
@@ -108,12 +108,12 @@ describe("foldTimeOnlyLines", () => {
 });
 
 describe("pay iter2 fixes", () => {
-  const twoFactor = { kind: "owner_2fa_off", blocking: true, crewMemberId: null, crewName: null, logIds: [], dates: [], stageName: null, href: "/settings/members" } as unknown as PayFlag;
+  const twoFactor = { kind: "owner_2fa_off", blocking: true, crewMemberId: null, crewName: null, logIds: [], dates: [], stageName: null, href: "/settings/two-factor" } as unknown as PayFlag;
   it("N4: a manager is told the owner turns on two-factor, with nowhere to go", () => {
     expect(flagText(twoFactor, "2026-09-28", "manager")).toBe("The owner needs to turn on two-factor before this pay run can be approved.");
     expect(flagTarget(twoFactor, "manager")).toBeNull();
     expect(flagText(twoFactor, "2026-09-28", "owner")).toBe("Turn on two-factor before you approve a pay run.");
-    expect(flagTarget(twoFactor, "owner")).toBe("/settings/members");
+    expect(flagTarget(twoFactor, "owner")).toBe("/settings/two-factor");
   });
   it("D11: a person whose pay is the whole total has no footer row (the header shows it)", () => {
     expect(personTotalRows({ type: "employee", totals: { subtotalCents: 500, gstCents: 0, reimbursementsCents: 0, totalCents: 500 } })).toEqual([]);

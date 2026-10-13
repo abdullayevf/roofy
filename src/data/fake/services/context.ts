@@ -56,9 +56,9 @@ export class FakeContext {
     return todayIn(this.t.workspace.timezone, this.now());
   }
 
-  /** The workspace setting, or off when `?demo=blocked`. */
+  /** The workspace setting, or off when `?demo=blocked` until the Owner turns it on in this store (F7). */
   get ownerTwoFactor(): boolean {
-    if (this.options.demo === "blocked") return false;
+    if (this.options.demo === "blocked") return this.store.mutations.some((m) => m.type === "two_factor_on");
     return this.t.members.find((m) => m.role === "owner")?.twoFactorEnabled ?? false;
   }
 

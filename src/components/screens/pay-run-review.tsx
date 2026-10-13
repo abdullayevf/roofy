@@ -260,7 +260,7 @@ export function PayRunReviewBody({ review, role, today, demoOffline = false, ini
             review={review}
             periodText={payRunPeriodText(review.period, today)}
             missingRateHref={flagHref(review, "missing_rate") ?? null}
-            settingsHref={flagHref(review, "owner_2fa_off") ?? "/settings/members"}
+            settingsHref={flagHref(review, "owner_2fa_off") ?? "/settings/two-factor"}
             owner={role === "owner"}
             demoOffline={demoOffline}
             initialSheet={initialSheet}

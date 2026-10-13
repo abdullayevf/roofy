@@ -612,7 +612,7 @@ export class Figures {
         });
       }
     }
-    if (!this.ownerTwoFactor) flags.push({ ...blank("owner_2fa_off", true), href: "/settings/members" });
+    if (!this.ownerTwoFactor) flags.push({ ...blank("owner_2fa_off", true), href: "/settings/two-factor" });
     for (const p of people) {
       if (p.floor?.below && p.floorRateCents !== null) {
         flags.push({

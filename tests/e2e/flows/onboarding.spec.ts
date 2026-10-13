@@ -1,12 +1,15 @@
 import { expect, test } from "@playwright/test";
+import { waitForHydrated } from "../guards";
 import { Taps } from "../taps";
 
 /** flows.md "Onboarding to first log": sign up, set up, one crew member, one job, the first day logged in ≤ 25 taps. */
 test("Onboarding to first log: sign-up to the first day saved within 25 taps (typing not counted)", async ({ page }) => {
   await page.goto("/sign-up");
+  await waitForHydrated(page);
   const taps = new Taps("Onboarding to first log");
   await taps.tap(page.getByRole("button", { name: "Continue with Google" }));
   await expect(page.getByRole("heading", { name: "Your business" })).toBeVisible();
+  await waitForHydrated(page);
   await taps.tap(page.getByLabel("Business name"));
   await page.getByLabel("Business name").fill("Smith Roofing");
   await taps.tap(page.getByLabel("ABN"));
@@ -27,6 +30,7 @@ test("Onboarding to first log: sign-up to the first day saved within 25 taps (ty
   await expect(page.getByRole("heading", { name: "Put Roofy on your phone" })).toBeVisible();
   await taps.tap(page.getByRole("button", { name: "Continue" }));
   await taps.tap(page.getByRole("link", { name: "Add your first job" }).first());
+  await waitForHydrated(page);
   await taps.tap(page.getByRole("button", { name: "Quick-add client" }));
   await taps.tap(page.getByLabel("Client name"));
   await page.getByLabel("Client name").fill("Smith");
@@ -37,6 +41,7 @@ test("Onboarding to first log: sign-up to the first day saved within 25 taps (ty
   await taps.tap(page.getByRole("button", { name: "Accept stages" }).first());
   await taps.tap(page.getByRole("button", { name: "Create job" }));
   await taps.tap(page.getByRole("link", { name: "Log today on this job" }));
+  await waitForHydrated(page);
   await taps.tap(page.getByRole("button", { name: /^Sam/ }));
   await taps.tap(page.getByRole("button", { name: "Save day" }));
   await expect(page.getByRole("status").filter({ hasText: "Logged" })).toContainText("Sam");
