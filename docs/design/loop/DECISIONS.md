@@ -72,7 +72,7 @@ Owner decision (2026-10-09): accept jobs-2 at 73.5 and tick Task 14. This is the
 
 Scores 69 → 83.5 (iteration 2: design 84, field 83), automated checks clean (211 captures, 0 fail). Both critics reported no open P0/P1 at iteration 2 (the three P0/P1 rows from iteration 1 are closed as fixed in iteration 2; the 4 in the SCORES.md row was a mis-entry and is corrected to 0). Why it stopped below 90 and before the cap: Task 15 reached 825 of 800 tool uses after design fixes 1b and 2, so iteration 3 could not be run inside the budget (RUNBOOK §5). One further fix (063b072) closed a desktop crew-detail name-to-balance gap found by the task e2e.
 
-Owner decision (2026-10-10): accepted by the owner at iteration 2; open P3 rows stay in ISSUES.md. Open rows left in ISSUES.md, none P0/P1: P2 (12): i1-D4, i1-D6+F13, i1-D9, i1-D10, i1-D11, i1-D12+F11, i1-D13+F12, i1-F8, i2-D4+F23+D14, i2-D21+F25, i2-F18+D10, i2-F19+D25; P3 (17): i1-D14, i1-D16, i1-D19, i1-F16, i1-F17, i2-F17, i2-F27, i2-D6+D24, i2-D23+F20, i2-F26, i2-D12+F11, i2-D16, i2-F22, i2-D9+D11, i2-D22+F24, i2-F28, i2-D26+F21.
+Owner decision (2026-10-10): accepted by the owner at iteration 2; open P2 and P3 rows stay in ISSUES.md. Open rows left in ISSUES.md, none P0/P1: P2 (12): i1-D4, i1-D6+F13, i1-D9, i1-D10, i1-D11, i1-D12+F11, i1-D13+F12, i1-F8, i2-D4+F23+D14, i2-D21+F25, i2-F18+D10, i2-F19+D25; P3 (17): i1-D14, i1-D16, i1-D19, i1-F16, i1-F17, i2-F17, i2-F27, i2-D6+D24, i2-D23+F20, i2-F26, i2-D12+F11, i2-D16, i2-F22, i2-D9+D11, i2-D22+F24, i2-F28, i2-D26+F21.
 
 ## 2026-10-10 — expenses accepted at 88 under the 3-iteration cap
 
