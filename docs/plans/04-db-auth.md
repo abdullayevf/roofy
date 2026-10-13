@@ -155,22 +155,22 @@ Each task is one implementer run of at most 30 steps. A task marked "2 runs" is 
   - `toHundredths(numeric: string): number`, `fromHundredths(n: number): string`, `toCents(bigint: string | bigint): number`, `fromCents(n: number): string`.
   - `TENANT_TABLES` and `AUTH_TABLES` (`readonly string[]`, kept in sync by a test).
 
-- [ ] Failing unit tests first for `convert.ts`:
+- [x] Failing unit tests first for `convert.ts`:
   - "12.50" → 1250, "0.01" → 1.
   - Reject more than 2 decimals.
   - Cents outside `Number.MAX_SAFE_INTEGER` throws.
-- [ ] Columns and enums per architecture §5 for these tables, plus decision 4.
+- [x] Columns and enums per architecture §5 for these tables, plus decision 4.
   - The auth table shapes come from the Better Auth version installed in Task 8. Generate them now with its CLI (`npx @better-auth/cli generate` or the installed equivalent) and reconcile them with uuid ids.
   - `workspace` is the organization model, `member.workspace_id` is the organization id, and `invitation` carries `workspace_id`.
-- [ ] Every tenant table gets `unique (workspace_id, id)`, and child FKs are composite (decision 3).
-- [ ] `rate` unique is `(workspace_id, crew_member_id, basis, unit, project_id, effective_from) NULLS NOT DISTINCT`.
-- [ ] Date columns use `date(..., { mode: "string" })`. Money columns are `bigint({ mode: "number" })` with a CHECK that fits the safe range, or `mode: "bigint"` through `convert.ts`; pick one and use it everywhere.
-- [ ] Failing integration tests, then generate the migration and pass:
+- [x] Every tenant table gets `unique (workspace_id, id)`, and child FKs are composite (decision 3).
+- [x] `rate` unique is `(workspace_id, crew_member_id, basis, unit, project_id, effective_from) NULLS NOT DISTINCT`.
+- [x] Date columns use `date(..., { mode: "string" })`. Money columns are `bigint({ mode: "number" })` with a CHECK that fits the safe range, or `mode: "bigint"` through `convert.ts`; pick one and use it everywhere.
+- [x] Failing integration tests, then generate the migration and pass:
   - (a) A crew member in workspace A with `level_id` from workspace B is rejected.
   - (b) A rate with null project and null unit inserted twice for the same effective date is rejected.
   - (c) `date '2026-09-28'` reads back as the string `"2026-09-28"` with `TZ=Pacific/Kiritimati` set in the test process.
   - (d) `stage_segment` rejects `end_date < start_date`.
-- [ ] Done when the tests above pass, `pnpm db:generate` produces no further diff, and `pnpm verify` is green.
+- [x] Done when the tests above pass, `pnpm db:generate` produces no further diff, and `pnpm verify` is green.
 
 ### Task 3: Schema part B — field, money and system tables (opus)
 
