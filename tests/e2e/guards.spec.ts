@@ -448,7 +448,8 @@ test("checkNoMoney fails on a whole-dollar or cents amount and passes on money-f
   expect((await checkNoMoney(page)).ok).toBe(true);
 });
 
-const barFixture = (barWidth: number) => `<!doctype html><html><body style="margin:0">
+// The viewport meta matters: a mobile project lays a page without one out at 980 px, not the test's 768.
+const barFixture = (barWidth: number) => `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0">
 <form class="pin-pad" style="width:720px;margin:0 auto"><p>Leading hand</p></form>
 <div data-slot="primary-action" style="position:fixed;bottom:0;left:50%;width:${barWidth}px;translate:-50% 0;height:60px">Save changes</div>
 </body></html>`;

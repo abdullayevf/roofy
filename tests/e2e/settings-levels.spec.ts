@@ -77,8 +77,10 @@ test.describe("levels (entry-settings i2 D8, F2, D26, D27, F17)", () => {
         return { width: cs.borderTopWidth, style: cs.borderTopStyle };
       });
       expect(outline, "the list has the 1 px edge outline of every level-1 group").toEqual({ width: "1px", style: "solid" });
-      const rows = await page.locator("form.pin-pad > div > *").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
+      // The levels list is the form's first div; the pinned bar is a div too, and its empty slots have no height.
+      const rows = await page.locator("form.pin-pad > div").first().locator("> *").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
       expect(Math.min(...rows), "rows are at least 48 px").toBeGreaterThanOrEqual(48);
-      expect(Math.max(...rows), "and not the old 67 px").toBeLessThanOrEqual(60);
+      // The tallest a row can be below 1024 px: the 52 px touch-size rate box + 4 px above and below + the 1 px divider (48 px box from lg).
+      expect(Math.max(...rows), "and not the old 67 px").toBeLessThanOrEqual(61);
     });
 });

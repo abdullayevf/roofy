@@ -335,7 +335,7 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
     const sheet = page.getByRole("dialog", { name: "Change role" });
     await expect(sheet).toBeVisible();
     await expect(sheet.getByRole("radio", { name: /Accountant/ })).toBeChecked();
-    await sheet.getByText("Manager", { exact: true }).click();
+    await sheet.getByRole("radio", { name: "Manager", exact: true }).click();
     await sheet.getByRole("button", { name: "Save role", exact: true }).click();
     await expect(saved(page, "Role changed.")).toBeVisible();
     await expect(sheet).toHaveCount(0);
@@ -346,7 +346,7 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
     await expect(priya()).toContainText("Manager");
     // Put it back so later tests see the seeded roles.
     await priya().click();
-    await page.getByRole("dialog", { name: "Change role" }).getByText("Accountant", { exact: true }).click();
+    await page.getByRole("dialog", { name: "Change role" }).getByRole("radio", { name: "Accountant", exact: true }).click();
     await page.getByRole("button", { name: "Save role", exact: true }).click();
     await expect(saved(page, "Role changed.")).toBeVisible();
     await page.waitForLoadState("networkidle");
