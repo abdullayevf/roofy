@@ -1,2 +1,5 @@
-// Barrel for the Drizzle tables. Task 4 adds the schema files and exports them here.
-export {};
+// Barrel for the Drizzle tables and enums. drizzle.config.ts reads this file.
+export * from "./auth";
+export * from "./workspace";
+export * from "./jobs";
+export * from "./crew";

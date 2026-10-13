@@ -34,6 +34,7 @@
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
+    "better-auth": "1.7.7",
     "drizzle-orm": "0.45.4",
     "next": "16.3.6",
     "pg": "8.23.1",
