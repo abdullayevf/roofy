@@ -290,13 +290,13 @@ Each task is one implementer run of at most 30 steps. A task marked "2 runs" is 
   - `getMailer(): Mailer`.
   - `verificationEmail(url)`, `resetEmail(url)`, `inviteEmail({ workspaceName, inviterName, role, url })`, each returning `{ subject, text, html }`.
 
-- [ ] Failing tests first:
+- [x] Failing tests first:
   - Each template contains its link in both `text` and `html`, uses plain sentence-case copy, and contains no money.
   - The console transport writes one JSON line `{to, subject, text, links}` to `ROOFY_MAIL_LOG` when it is set.
   - `ROOFY_MAIL=smtp` without `SMTP_URL` throws at first send with a plain message.
   - The SMTP transport is exercised with a nodemailer `jsonTransport` stub.
-- [ ] Add nodemailer and `@types/nodemailer`, then implement.
-- [ ] Done when the tests pass and `pnpm verify` is green.
+- [x] Add nodemailer and `@types/nodemailer`, then implement.
+- [x] Done when the tests pass and `pnpm verify` is green.
 
 ### Task 8: Better Auth (opus)
 

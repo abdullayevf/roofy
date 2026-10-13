@@ -53,3 +53,4 @@
 - RLS tests cover the UPDATE WITH CHECK case (moving an own row into another workspace) and assert the row-level-security error, not just any 42501 (Phase 3 T4, both reviewers).
 - Triggers that insert rows with foreign keys get a test that deletes the parent (workspace) through the cascade; definer functions pin `search_path` ending in `pg_temp` and need a policy, not superuser, to write under forced RLS (Phase 3 T5, both reviewers).
 - Row guards on a table cover INSERT as well as UPDATE/DELETE (a row must not be created already in the guarded state), and a session-flag helper must survive nesting (Phase 3 T6, both reviewers).
+- A test must fail when the behaviour it names is removed: assert the exact error/code and the observable effect (call recorded, line written), never a bare `toThrow()` or a read of an unrelated empty place; mutation-check new tests (Phase 3 T4 and T7 reviewers).
