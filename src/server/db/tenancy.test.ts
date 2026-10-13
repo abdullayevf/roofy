@@ -63,7 +63,7 @@ describe("tenancy lists", () => {
         composite += 1;
       }
     }
-    expect(composite).toBeGreaterThanOrEqual(11);
+    expect(composite).toBeGreaterThanOrEqual(34);
   });
 
   it("back every tenant foreign key with an index or unique that starts with its columns", () => {

@@ -17,7 +17,7 @@ describe("allOf", () => {
     expect(true).toBe(true);
   });
 
-  it("is used by every typed enum (each lists its values once)", () => {
+  it("every pgEnum lists each of its values once", () => {
     const enums = Object.values(schema as Record<string, unknown>).filter(
       (v): v is { enumValues: string[] } => typeof v === "function" && "enumValues" in v,
     );

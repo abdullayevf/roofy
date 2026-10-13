@@ -32,6 +32,12 @@ export const localDate = (name: string) => date(name, { mode: "string" });
 export const centsInRange = (name: string, column: AnyPgColumn) =>
   check(name, sql`${column} between 0 and ${sql.raw(String(Number.MAX_SAFE_INTEGER))}`);
 
+/** Signed money (adjustments, pay-run lines, credits): −MAX_SAFE_INTEGER … MAX_SAFE_INTEGER cents. */
+export const signedCentsInRange = (name: string, column: AnyPgColumn) => {
+  const max = sql.raw(String(Number.MAX_SAFE_INTEGER));
+  return check(name, sql`${column} between -${max} and ${max}`);
+};
+
 /** Basis points: 0 … 10000. */
 export const bpInRange = (name: string, column: AnyPgColumn) =>
   check(name, sql`${column} between 0 and 10000`);
