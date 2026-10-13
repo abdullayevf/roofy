@@ -40,7 +40,7 @@
 3. **Cross-tenant references are blocked by composite foreign keys.** Every parent table has `unique (workspace_id, id)`, and every child references `(workspace_id, <parent>_id)`. This is needed because Postgres does not apply RLS to FK checks.
 4. **`workspace.onboarding_step`** (text, default `'business'`) and `workspace.trade` are added beyond architecture §5 so the wizard resumes after a reload, like the fake does.
 5. **Roofing defaults** (templates, expense categories, crew levels) move from the fake seed into `src/lib/roofing-defaults.ts`. Fake and real both read them.
-6. **Integration tests** live in `tests/integration/**/*.int.test.ts` as the Vitest project `integration`, against `roofy_test` (dropped and re-migrated once per run). They are part of `vitest run`, so `pnpm verify`, `pnpm test:coverage` and the pre-commit hook all need the dev DB up (`pnpm db:up`). Coverage stays 100% on `src/domain` only.
+6. **Integration tests** live in `tests/integration/**/*.int.test.ts` as the Vitest project `integration`, against `roofy_test` (dropped and re-migrated once per run). They are part of `vitest run`, so `pnpm verify` and `pnpm test:coverage` need the dev DB up (`pnpm db:up`) and a `.env` copied from `.env.example`; `pnpm test:unit` (`--project unit`) does not (Task 1 fix 8342c29). Coverage stays 100% on `src/domain` only.
 7. **Email in dev/test.**
    - The console transport prints each message.
    - When `ROOFY_MAIL_LOG` is set, it also appends one JSON line per message (`{to, subject, text, links}`) to that file. Db-mode e2e reads verification and invite links from there.
@@ -74,7 +74,7 @@
 | Path                                                                                                      | Responsibility                                                                                                   |
 | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `drizzle.config.ts`                                                                                       | drizzle-kit config (schema path, `src/server/db/migrations`, owner URL)                                          |
-| `src/server/db/client.ts`                                                                                 | `pg` pools for `roofy_app` and `roofy_auth`; `db`, `authDb`                                                      |
+| `src/server/db/client.ts`                                                                                 | `pg` pools for `roofy_app` and `roofy_auth`; `getDb()`, `getAuthDb()`                                                   |
 | `src/server/db/schema/*.ts`                                                                               | Drizzle tables: `auth.ts`, `workspace.ts`, `jobs.ts`, `crew.ts`, `field.ts`, `money.ts`, `system.ts`, `index.ts` |
 | `src/server/db/migrations/*.sql`                                                                          | Generated plus hand-written SQL (roles, grants, RLS, triggers)                                                   |
 | `src/server/db/convert.ts`                                                                                | numeric(12,2) ↔ hundredths, bigint ↔ cents (pure, unit-tested)                                                   |
@@ -125,21 +125,21 @@ Each task is one implementer run of at most 30 steps. A task marked "2 runs" is 
 **Interfaces:**
 
 - Produces:
-  - `db` and `authDb` (drizzle `NodePgDatabase`).
+  - `getDb()` and `getAuthDb()` (lazy, return drizzle `NodePgDatabase`; were `db`/`authDb`, changed in Task 1 fix 8342c29).
   - `pool(role: "app" | "auth" | "owner")` for tests.
   - Scripts `db:generate` (drizzle-kit generate), `db:migrate`, `db:roles`, `db:reset-test`, `test:integration` (`vitest run --project integration`).
   - Env: `DATABASE_URL` (app role), `AUTH_DATABASE_URL`, `MIGRATE_DATABASE_URL` (owner), and `TEST_*` twins of all three, plus `ROOFY_APP_DB_PASSWORD` and `ROOFY_AUTH_DB_PASSWORD`.
 
-- [ ] Add `drizzle-orm`, `pg`, `uuid` (if absent) and dev deps `drizzle-kit` and `@types/pg`. Pin exact versions.
-- [ ] Failing test first: `smoke.int.test.ts` connects with the owner test URL and asserts `select current_database()` = `roofy_test` and `server_version_num >= 170000`.
-- [ ] Add the Vitest project `integration`:
+- [x] Add `drizzle-orm`, `pg`, `uuid` (if absent) and dev deps `drizzle-kit` and `@types/pg`. Pin exact versions.
+- [x] Failing test first: `smoke.int.test.ts` connects with the owner test URL and asserts `select current_database()` = `roofy_test` and `server_version_num >= 170000`.
+- [x] Add the Vitest project `integration`:
   - `include: ["tests/integration/**/*.int.test.ts"]`, `environment: "node"`, `fileParallelism: false`, `globalSetup: ["tests/integration/setup.ts"]`.
   - Make sure `unit` does not pick these files up.
-- [ ] Global setup:
+- [x] Global setup:
   - Fail fast with "Test database not reachable on 127.0.0.1:5440. Run pnpm db:up." when it can't connect.
   - Run `db-reset-test` (drop schema public cascade, recreate, migrate as owner), then `db-roles` against `roofy_test`.
-- [ ] `client.ts` builds two lazily created pools from env and throws a plain error naming the missing variable.
-- [ ] Done when `pnpm test:integration` passes the smoke test, `pnpm verify` is green (the integration project is included), and `.env.example` lists every new variable with dev values.
+- [x] `client.ts` builds two lazily created pools from env and throws a plain error naming the missing variable.
+- [x] Done when `pnpm test:integration` passes the smoke test, `pnpm verify` is green (the integration project is included), and `.env.example` lists every new variable with dev values.
 
 ### Task 2: Schema part A — workspace, auth, people and jobs (opus)
 
@@ -212,7 +212,7 @@ Each task is one implementer run of at most 30 steps. A task marked "2 runs" is 
 
 - Consumes: `TENANT_TABLES`, `AUTH_TABLES`, `pool()`.
 - Produces:
-  - `withActor<T>(actor: Actor, fn: (tx: Tx) => Promise<T>): Promise<T>`, which runs one transaction on `db` that first sets `set_config('app.workspace_id', actor.workspaceId, true)`, then `app.user_id` and `app.role`.
+  - `withActor<T>(actor: Actor, fn: (tx: Tx) => Promise<T>): Promise<T>`, which runs one transaction on `getDb()` that first sets `set_config('app.workspace_id', actor.workspaceId, true)`, then `app.user_id` and `app.role`.
   - `type Tx`.
   - Test helper `makeWorkspace(): Promise<{ workspaceId, ownerActor }>`, run through the owner pool.
 
@@ -307,7 +307,7 @@ Each task is one implementer run of at most 30 steps. A task marked "2 runs" is 
 
 **Interfaces:**
 
-- Consumes: `authDb`, the Task 2 auth schema, `getMailer()` and the templates.
+- Consumes: `getAuthDb()`, the Task 2 auth schema, `getMailer()` and the templates.
 - Produces:
   - `auth` (the Better Auth instance).
   - `actorFromHeaders(h: Headers): Promise<{ kind: "actor"; actor: Actor; timezone: string; workspaceName: string } | { kind: "signed-out" } | { kind: "no-workspace"; userId: string }>`.
@@ -324,7 +324,7 @@ Each task is one implementer run of at most 30 steps. A task marked "2 runs" is 
   - User ids are uuid v7.
   - With Google env unset, the social provider list is empty. With it set, `signInSocial` returns an `accounts.google.com` URL.
 - [ ] Configure:
-  - The Drizzle adapter on `authDb` with model names mapped (`organization` → `workspace`, `organizationId` → `workspace_id`).
+  - The Drizzle adapter on `getAuthDb()` with model names mapped (`organization` → `workspace`, `organizationId` → `workspace_id`).
   - Email+password with `requireEmailVerification` and auto sign-in after verification.
   - The organization plugin with custom roles, `sendInvitationEmail` and no creator-limit surprises.
   - `twoFactor` with issuer "Roofy".

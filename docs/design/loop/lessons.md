@@ -47,3 +47,4 @@
 - Conductor/agent bash waits: never `pgrep -f "<pattern>"` when your own shell's command line contains that pattern — the wrapper matches itself and the `until` loop spins forever (T19 session 6 hung on `pgrep -f "playwright test tests/e2e/settings-lists"` after the e2e had already passed). Wait on a PID, a marker file, or exclude the current shell.
 - Inputs show figures like body figures: Atkinson tabular numerals, no letter spacing, also in the error state (entry-settings i2+i3 D19).
 - Captures after a Save step must wait for the saved text, never a fixed pause: `expectStill` on the saved text, or a `wait:` step before the next press (field-2 T23 fixes 2 and 3, seen twice; unit guard).
+- No secrets in source, not even dev passwords as fallbacks: read every credential from env and fail with a plain "missing VARIABLE" error; tests set their own env (Phase 3 T1, flagged by both reviewers).

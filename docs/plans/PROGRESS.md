@@ -2,10 +2,10 @@
 
 ## Current
 
-- Phase: 3 — Database, auth, tenancy, audit. **Owner approved the merge and the phase-3 start (2026-10-13).** Phase 2 is complete (`phase/2-design-prototype` fast-forwarded into `master` at dd0dd55, ahead 272 of origin/master, not pushed). Plan: `docs/plans/03-design-prototype.md` (done). Phase-3 plan: `docs/plans/04-db-auth.md` (write at phase start).
+- Phase: 3 — Database, auth, tenancy, audit. **Owner approved the merge and the phase-3 start (2026-10-13).** Phase 2 is complete (`phase/2-design-prototype` fast-forwarded into `master` at dd0dd55, ahead 272 of origin/master, not pushed). Plan: `docs/plans/03-design-prototype.md` (done). Phase-3 plan: `docs/plans/04-db-auth.md` (written, 14 tasks).
 - Ledger for phase 3: `.superpowers/sdd/04-db-auth/progress.md` (create on first task).
-- Done and reviewed: Phase 2 Tasks 1–23. Phase 2 gate evidence under "Gate evidence".
-- **Next:** Phase 3 — Database, auth, tenancy, audit (`docs/plans/00-master-plan.md` §Phase 3; spec architecture §4–§6, product spec §3, §5.1). First step: write `docs/plans/04-db-auth.md` at phase start, then its Task 1. No owner decision pending.
+- Done and reviewed: Phase 2 Tasks 1–23 (gate evidence below). Phase 3 Task 1 (DB toolchain and integration test harness) 9403316 + fix 8342c29, code and spec re-review CLEAN, verify 1200 green, integration 4 pass.
+- **Next:** Phase 3 Task 2 — Schema part A: workspace, auth, people and jobs (opus; plan `docs/plans/04-db-auth.md` §Task 2). Write `.superpowers/sdd/04-db-auth/task-2-brief.md` (pointers; note `getDb()`/`getAuthDb()`, `.env` from `.env.example`, `pnpm db:up`), dispatch implementer opus. No owner decision pending.
 - Known flaky (iphone, load): flows/no-work-marker.spec.ts:6, log-progress.spec.ts:135, design-page.spec.ts:45, settings-lists.spec.ts:64; unit "reads fast" timing tests in home.test.ts and seed.test.ts fail at load ≥ 14.
 - Environment: real WebKit works on the VPS. Never stop the server with `pkill -f "next start"`; kill the PID from `ss -ltnp | grep 3100`.
 
@@ -35,6 +35,7 @@
 - 2026-09-29/30 — Phase 2 on the VPS: Task 7 reviewed and fixed; Task 9 finished and reviewed; Task 8 loop iterations 4–5 scored (82, 87) and iteration 6 fixed + captured (critics cut off by the usage limit). Token budget rules added. See Current.
 
 ## Decisions and deviations
+- P3 T1 (2026-10-13): `src/server/db/client.ts` exports `getDb()`/`getAuthDb()` (real drizzle instances) instead of `db`/`authDb` proxies, so Better Auth's adapter gets a real instance; `pnpm test:unit` runs `--project unit` without the DB, while `pnpm verify` still runs the integration project and needs `pnpm db:up` plus `.env` from `.env.example` (no dev passwords in source). Plan updated.
 - T23 phase 2 gate (2026-10-13): the design loop passes under the owner's 3-iteration cap (RUNBOOK §4, owner 2026-10-01), not at ≥ 90 with ≤ 6 iterations (00-master-plan.md:50). Groups below 90 are recorded in docs/design/loop/DECISIONS.md; jobs-2 and crew were stopped early and accepted by the owner. One P1 stays open, field-2/i3-F1 (installed phone landscape save bar); it is accepted under the cap and recorded in ISSUES.md. No P0 is open.
 - T18 (2026-10-12, owner): stage Forecast labour opens a stage-scoped breakdown `/jobs/[id]/stages/[stageId]/forecast` (log lines with amounts, on-cost/GST and multiplier steps, forecast working; Owner/Manager/Accountant; Foreman no permission) per flows.md 200-202; supersedes plan line 178 for that figure only, job figures keep `/history?job=`. Safe defaults: route not sheet; over-budget alert hidden on done and under-10% stages (pay rules: done forecast = actual, under 10% no forecast; labour rows still shown); no separate design loop for this one small view — it is in `tests/e2e/screens.ts` and gets critiqued with the phase-end capture.
 - T17 (2026-10-11, assessor 2): phone-landscape pinned-bar buttons are 48 px (DESIGN.md:142 tap minimum met) rather than the 52 px phone button (DESIGN.md:78), so the bar fits one 64 px row; no DESIGN.md edit. Copy drift fixed by restoring spec/flows wording, not by editing specs.
