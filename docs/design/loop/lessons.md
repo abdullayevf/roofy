@@ -51,3 +51,4 @@
 - Implementer reports list every rename, added column or changed export versus the spec under "Deviations", and the conductor copies them into PROGRESS.md before the task is ticked (Phase 3 T1 and T2, spec-reviewer P3 both times).
 - Coverage guards ("every FK has a cross-tenant case", enum lists) derive the expected list from the schema and compare exactly; never a hand count or a `>=` floor (Phase 3 T2 and T3 reviewer).
 - RLS tests cover the UPDATE WITH CHECK case (moving an own row into another workspace) and assert the row-level-security error, not just any 42501 (Phase 3 T4, both reviewers).
+- Triggers that insert rows with foreign keys get a test that deletes the parent (workspace) through the cascade; definer functions pin `search_path` ending in `pg_temp` and need a policy, not superuser, to write under forced RLS (Phase 3 T5, both reviewers).

@@ -243,16 +243,16 @@ Each task is one implementer run of at most 30 steps. A task marked "2 runs" is 
 
 - Produces: `AUDITED_TABLES = ["workspace","member","crew_level","crew_member","rate","project","stage","stage_completion_share","progress_entry","progress_share","work_log","no_work","expense","pay_run","pay_run_line","ledger_entry","statement_link"] as const`.
 
-- [ ] Failing tests first:
+- [x] Failing tests first:
   - Inside `withActor`, an insert, update and delete on `rate` writes 3 `audit_event` rows. Each has `table_name`, `row_id` and `action`, `before`/`after` jsonb (null on the missing side), `actor_user_id` = the actor's user id, and the row's `workspace_id`.
   - The trigger is attached to exactly `AUDITED_TABLES` (catalogue query).
   - `roofy_app` cannot UPDATE or DELETE `audit_event` (permission error).
   - Actor A cannot read B's audit rows.
   - `statement_link.token_hash` is left out of `before`/`after`.
-- [ ] Implement:
+- [x] Implement:
   - A `SECURITY DEFINER` function owned by `roofy` with `search_path` pinned. It reads `app.user_id`, writes `audit_event`, and drops secret columns.
   - One `AFTER INSERT OR UPDATE OR DELETE FOR EACH ROW` trigger per table in `AUDITED_TABLES`.
-- [ ] Done when the tests pass and `pnpm verify` is green.
+- [x] Done when the tests pass and `pnpm verify` is green.
 
 ### Task 6: Locked-log immutability trigger (opus)
 
