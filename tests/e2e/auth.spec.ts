@@ -76,8 +76,9 @@ test.describe("Sign in (screen 1)", () => {
     await expect(email(page), "before hydration the box takes no typing").toHaveAttribute("readonly", "");
     await email(page).click({ force: true });
     await page.keyboard.type(OWNER_EMAIL);
+    // Let the held script requests through. The handler stays in place: it has several requests parked
+    // on `held`, and unrouting it while they wake makes each one's continue() hit "Route is already handled!".
     release();
-    await page.unroute("**/_next/static/**");
     await waitForHydrated(page);
     await expect(email(page), "once React is attached the box takes typing").not.toHaveAttribute("readonly", "");
     const kept = await email(page).inputValue();
