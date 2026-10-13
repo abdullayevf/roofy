@@ -21,6 +21,18 @@ export default defineConfig({
       {
         extends: true,
         test: {
+          name: "integration",
+          include: ["tests/integration/**/*.int.test.ts"],
+          environment: "node",
+          fileParallelism: false,
+          globalSetup: ["tests/integration/setup.ts"],
+          testTimeout: 30_000,
+          hookTimeout: 60_000,
+        },
+      },
+      {
+        extends: true,
+        test: {
           name: "jsdom",
           include: ["src/**/*.test.tsx", "tests/unit/**/*.test.tsx"],
           environment: "jsdom",
