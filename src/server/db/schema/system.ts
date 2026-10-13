@@ -6,7 +6,12 @@ import { user } from "./auth";
 import { allOf, timestamps, timestamptz } from "./columns";
 import { tenantColumns, tenantKey, workspace } from "./workspace";
 
-export const fileEntityTypeEnum = pgEnum("file_entity_type", ["project", "expense", "progress_entry", "stage"]);
+export const fileEntityTypeEnum = pgEnum("file_entity_type", [
+  "project",
+  "expense",
+  "progress_entry",
+  "stage",
+]);
 export const mutationTypeEnum = pgEnum(
   "mutation_type",
   allOf<MutationType>()(["crew_day", "progress", "no_work", "stage_pause", "stage_resume", "expense"]),

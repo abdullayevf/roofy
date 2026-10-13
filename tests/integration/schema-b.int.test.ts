@@ -1,6 +1,8 @@
 // Schema part B: composite tenant FKs on the field, money and system tables, the no-work and
 // pay-run uniques, the money/quantity CHECKs, the dashboard indexes and the tenancy lists.
+import { is } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
+import { getTableConfig, PgTable } from "drizzle-orm/pg-core";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closePools, pool } from "@/server/db/client";
@@ -136,6 +138,26 @@ async function parents(workspaceId: string, tag: string): Promise<Parents> {
     ),
   };
 }
+
+const TASK_TABLES = Object.values(schema as Record<string, unknown>).filter(
+  (value): value is PgTable =>
+    is(value, PgTable) &&
+    [
+      "progress_entry",
+      "progress_share",
+      "work_log",
+      "no_work",
+      "expense_category",
+      "pay_run",
+      "expense",
+      "pay_run_line",
+      "ledger_entry",
+      "statement_link",
+      "file",
+      "client_mutation",
+      "audit_event",
+    ].includes(getTableConfig(value).name),
+);
 
 // Every composite FK the tables in this task add: `own` is workspace A's parents, `fk` is the
 // parents for the key under test (A's for the control, B's for the cross-tenant insert).
@@ -316,8 +338,23 @@ describe("schema part B: composite tenant foreign keys", () => {
     b = await parents(wsB, "fk-b");
   });
 
-  it("covers every composite FK the field and money tables add", () => {
-    expect(crossTenant).toHaveLength(23);
+  it("covers every composite FK the field, money and system tables add", () => {
+    // Derived from the schema, so a new composite FK without a case here fails this test.
+    const expected = TASK_TABLES.flatMap((table) =>
+      getTableConfig(table).foreignKeys.flatMap((fk) => {
+        const { columns, foreignTable } = fk.reference();
+        const parent = getTableConfig(foreignTable).name;
+        const names = columns.map((c) => c.name);
+        // Plain keys (to workspace, or to the auth `user` table) are not tenant-composite; tenancy.test.ts
+        // already fails any plain key between two tenant tables.
+        if (parent === "workspace" || !names.includes("workspace_id")) return [];
+        const local = names.filter((name) => name !== "workspace_id");
+        expect(local, `${getTableConfig(table).name} -> ${parent}`).toHaveLength(1);
+        return [`${getTableConfig(table).name}.${local[0]}`];
+      }),
+    );
+    expect(TASK_TABLES).toHaveLength(13);
+    expect(crossTenant.map(([key]) => key).sort()).toEqual(expected.sort());
   });
 
   it.each(crossTenant)("(a) %s rejects a parent from another workspace", async (key, insert) => {

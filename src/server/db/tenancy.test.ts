@@ -63,7 +63,8 @@ describe("tenancy lists", () => {
         composite += 1;
       }
     }
-    expect(composite).toBeGreaterThanOrEqual(34);
+    // Exact on purpose: a new composite FK must be counted here and get its own cross-tenant case.
+    expect(composite).toBe(34);
   });
 
   it("back every tenant foreign key with an index or unique that starts with its columns", () => {

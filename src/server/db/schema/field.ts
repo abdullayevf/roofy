@@ -1,16 +1,6 @@
 // Field records: progress entries and their crew shares, work logs and no-work days.
 import { sql } from "drizzle-orm";
-import {
-  check,
-  foreignKey,
-  index,
-  pgEnum,
-  pgTable,
-  text,
-  integer,
-  unique,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { check, foreignKey, index, pgEnum, pgTable, text, integer, unique, uuid } from "drizzle-orm/pg-core";
 import type { NoWorkReason } from "@/domain/attendance";
 import type { Basis, LogSource } from "@/domain/types";
 import { user } from "./auth";

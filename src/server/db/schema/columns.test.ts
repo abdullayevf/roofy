@@ -21,7 +21,7 @@ describe("allOf", () => {
     const enums = Object.values(schema as Record<string, unknown>).filter(
       (v): v is { enumValues: string[] } => typeof v === "function" && "enumValues" in v,
     );
-    expect(enums.length).toBeGreaterThanOrEqual(11);
+    expect(enums).toHaveLength(22);
     for (const e of enums) expect(new Set(e.enumValues).size).toBe(e.enumValues.length);
   });
 });
