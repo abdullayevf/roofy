@@ -81,7 +81,7 @@ describe("field-2 filled-flow captures", () => {
   it("shows the crew-day filled, saved, already-logged and saved-with-no-signal, and the outbox with all four groups", () => {
     expect(byId("log-crew-day-filled")?.route).toMatch(/^\/log\?same=1&ex=.+:50$/);
     expect(byId("log-crew-day-saved")?.steps).toEqual(["Save day"]);
-    expect(byId("log-crew-day-logged-today")?.steps).toEqual(["Save day", "Log another stage"]);
+    expect(byId("log-crew-day-logged-today")?.steps).toEqual(["Save day", "wait:Logged:", "Log another stage"]);
     expect(byId("log-crew-day-offline-saved")).toMatchObject({ states: ["offline"], goOffline: true, steps: ["Save day"] });
     expect(byId("outbox")?.states).toContain("mixed");
   });
@@ -100,6 +100,25 @@ describe("field-2 filled-flow captures", () => {
       (s.steps ?? []).some((step, i, all) => /^radio:/.test(step) && /^Save\b/.test(all[i - 1] ?? "")),
     );
     expect(racy.map((s) => s.id)).toEqual([]);
+  });
+
+  it("holds every capture after a Save step until the saved text is on the page, never a fixed pause", () => {
+    // Task 23 fix 3: the same 300 ms pause after "Save day" / "Save progress" / "Save no work" was the whole wait on
+    // five more captures. A screen with a Save step needs `expectStill` (the saved text before the shot) or a later
+    // "wait:" step (before the next press).
+    const unproven = SCREENS.filter((s) => {
+      const steps = s.steps ?? [];
+      return steps.some((step, i) => /^Save\b/.test(step) && !s.expectStill && !steps.slice(i + 1).some((next) => next.startsWith("wait:")));
+    });
+    expect(unproven.map((s) => s.id)).toEqual([]);
+  });
+
+  it("names the saved text each field-2 save capture waits for", () => {
+    expect(byId("log-crew-day-saved")?.expectStill).toBe("Logged:");
+    expect(byId("log-crew-day-offline-saved")?.expectStill).toBe("Saved on this device:");
+    expect(byId("log-progress-saved")?.expectStill).toBe("Logged:");
+    expect(byId("log-no-work-saved")?.expectStill).toBe("Saved:");
+    expect(byId("log-crew-day-logged-today")?.steps).toEqual(["Save day", "wait:Logged:", "Log another stage"]);
   });
 
   it("shows progress split two ways, the split that does not add up, and the saved tape", () => {
