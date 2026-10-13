@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Actor } from "@/data/contracts";
 import { AUTH_TABLES, TENANT_TABLES } from "@/server/db/tenancy";
 import { withActor } from "@/server/db/with-actor";
-import { closePools, rows, SEED, seedWorkspace } from "./helpers";
+import { closePools, rows, SEED, seedOnly, seedWorkspace } from "./helpers";
 
 afterAll(async () => {
   await closePools();
@@ -181,7 +181,9 @@ describe("cross-tenant access as actor A", () => {
     const seen = (actor: Actor, ws: string) =>
       withActor(
         actor,
-        async (tx) => (await tx.execute(sql`select 1 from ${t} where ${key} = ${ws}`)).rows.length,
+        async (tx) =>
+          (await tx.execute(sql`select 1 from ${t} where ${key} = ${ws}${sql.raw(seedOnly(table))}`)).rows
+            .length,
       );
     expect(await seen(a, b.workspaceId)).toBe(0);
     expect(await seen(b, b.workspaceId)).toBe(1);
@@ -233,7 +235,11 @@ describe("cross-tenant access as actor A", () => {
       // Control: the same update on A's own row does reach it.
       expect(await count(a, sql`update ${t} set id = id where ${key} = ${a.workspaceId}`)).toBe(1);
     }
-    const left = await rows("owner", `select 1 from "${table}" where ${keyOf(table)} = $1`, [b.workspaceId]);
+    const left = await rows(
+      "owner",
+      `select 1 from "${table}" where ${keyOf(table)} = $1${seedOnly(table)}`,
+      [b.workspaceId],
+    );
     expect(left).toHaveLength(1);
   });
 
@@ -248,7 +254,9 @@ describe("cross-tenant access as actor A", () => {
     const granted = await appMay(table, "UPDATE");
     expect(granted).toBe(table !== "audit_event");
     expect(refusal).toEqual(granted ? RLS_REFUSAL : GRANT_REFUSAL);
-    const own = await rows("owner", `select 1 from "${table}" where ${keyOf(table)} = $1`, [a.workspaceId]);
+    const own = await rows("owner", `select 1 from "${table}" where ${keyOf(table)} = $1${seedOnly(table)}`, [
+      a.workspaceId,
+    ]);
     expect(own).toHaveLength(1);
   });
 });

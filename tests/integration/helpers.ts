@@ -152,6 +152,14 @@ export const SEED: Record<string, ((c: Ctx) => Record<string, unknown>) | typeof
   audit_event: (c) => ({ table_name: "project", row_id: c.id.project, action: "insert" }),
 };
 
+/**
+ * A where-clause suffix that keeps only the seed's own row. audit_event also holds the rows the
+ * Task 5 audit trigger writes for every seeded insert; those always carry before or after, so the
+ * seeded audit_event row is the only one with neither.
+ */
+export const seedOnly = (table: string) =>
+  table === "audit_event" ? " and before is null and after is null" : "";
+
 /** Seeds one row in every tenant table for a new workspace, through the owner pool. */
 export async function seedWorkspace(name: string): Promise<Actor> {
   const { workspaceId, ownerActor } = await makeWorkspace(name);

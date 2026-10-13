@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Actor } from "@/data/contracts";
 import { TENANT_TABLES } from "@/server/db/tenancy";
 import { withActor } from "@/server/db/with-actor";
-import { closePools, pool, rows, SEED, seedWorkspace } from "./helpers";
+import { closePools, pool, rows, SEED, seedOnly, seedWorkspace } from "./helpers";
 
 let actor: Actor;
 let other: Actor;
@@ -27,7 +27,7 @@ async function seededCounts(workspaceId: string) {
   for (const table of TENANT_TABLES) {
     const [r] = await rows<{ n: number }>(
       "owner",
-      `select count(*)::int as n from "${table}" where ${keyOf(table)} = $1`,
+      `select count(*)::int as n from "${table}" where ${keyOf(table)} = $1${seedOnly(table)}`,
       [workspaceId],
     );
     counts[table] = r!.n;
