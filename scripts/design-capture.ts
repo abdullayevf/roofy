@@ -255,6 +255,12 @@ async function captureOne(opts: {
       await page.evaluate(() => document.fonts.ready).catch(() => undefined);
       continue;
     }
+    // "wait:Logged: Jake" holds the next step until that text is on the page, so a save has landed (a fixed pause is
+    // shorter than the sync push now and then, and the next page would be drawn before the write exists).
+    if (step.startsWith("wait:")) {
+      await page.getByText(step.slice(5)).first().waitFor({ timeout: 15_000 });
+      continue;
+    }
     // "row:Site setup" opens a list row (a button whose name is the row's whole text, so it matches on a part).
     if (step.startsWith("row:")) {
       await page.getByRole("button", { name: step.slice(4) }).first().click();

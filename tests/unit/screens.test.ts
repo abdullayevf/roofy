@@ -86,6 +86,22 @@ describe("field-2 filled-flow captures", () => {
     expect(byId("outbox")?.states).toContain("mixed");
   });
 
+  it("waits for the saved day before it switches to No work, and checks the blocked row is on the page", () => {
+    // Task 23 fix 2: a fixed 300 ms after "Save day" lost the race with the sync push about one run in three, so the
+    // No work page was drawn before Jake's log existed and the baseline silently held an enabled row.
+    const blocked = byId("log-no-work-blocked");
+    expect(blocked?.steps).toEqual(["Save day", "wait:Logged: Jake", "radio:No work"]);
+    expect(blocked?.expectStill).toBe("Jake already has a log today.");
+  });
+
+  it("never presses a switch option straight after a save without waiting for the saved outcome", () => {
+    // A save is a network round trip of 250 to 450 ms, longer than the runners' fixed pause after a button.
+    const racy = SCREENS.filter((s) =>
+      (s.steps ?? []).some((step, i, all) => /^radio:/.test(step) && /^Save\b/.test(all[i - 1] ?? "")),
+    );
+    expect(racy.map((s) => s.id)).toEqual([]);
+  });
+
   it("shows progress split two ways, the split that does not add up, and the saved tape", () => {
     expect(byId("log-progress-split")?.route).toMatch(/^\/log\/progress\?stage=.+&qty=12000&crew=.+,.+$/);
     expect(byId("log-progress-split-error")?.route).toMatch(/&shares=6000,3200$/);

@@ -60,6 +60,12 @@ async function runSteps(page: Page, context: BrowserContext, screen: ScreenSpec)
       await settle(page);
       continue;
     }
+    // "wait:Logged: Jake" holds the next step until that text is on the page, so a save has landed (a fixed pause is
+    // shorter than the sync push now and then, and the next page would be drawn before the write exists).
+    if (step.startsWith("wait:")) {
+      await page.getByText(step.slice(5)).first().waitFor({ timeout: 15_000 });
+      continue;
+    }
     if (step.startsWith("row:")) {
       await page.getByRole("button", { name: step.slice(4) }).first().click();
       await page.waitForTimeout(600);

@@ -122,7 +122,7 @@ export type ScreenSpec = {
   lightOnly?: boolean;
   /** Skip the extra installed-mode, landscape, tablet and keyboard captures. */
   noExtras?: boolean;
-  /** Labels of buttons pressed in order once the page has loaded, before the shot (a save, then "Log another stage"); "radio:No work" presses a switch option; "fill:Sam's share=60" types into a field; "reload" opens the page again. */
+  /** Labels of buttons pressed in order once the page has loaded, before the shot (a save, then "Log another stage"); "radio:No work" presses a switch option; "wait:Logged: Jake" waits for that text (a save has landed); "fill:Sam's share=60" types into a field; "reload" opens the page again. */
   steps?: string[];
   /** Text that must be on the page once `steps` have run, before the shot: the settled outcome, not the spinner on the way to it. */
   expectStill?: string;
@@ -333,7 +333,9 @@ export const SCREENS: ScreenSpec[] = [
     route: `/log?project=${meta.projects.smith}&stage=${meta.stages.smithSheetInstall}&crew=${meta.crew.jake}`,
     states: ["normal"],
     roles: ["manager"],
-    steps: ["Save day", "radio:No work"],
+    // The save is a round trip to the server: wait for "Logged: Jake" before the switch, or No work is drawn before the log exists.
+    steps: ["Save day", "wait:Logged: Jake", "radio:No work"],
+    expectStill: "Jake already has a log today.",
     viewports: ["iphone"],
     lightOnly: true,
     noExtras: true,
