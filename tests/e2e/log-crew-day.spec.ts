@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { collectConsole, expectScreenHealthy } from "./guards";
+import { collectConsole, expectScreenHealthy, waitForHydrated } from "./guards";
 import { getSeed } from "../../src/data/fake/store";
 import { expectNoMoney } from "./money-scan";
 
@@ -143,11 +143,13 @@ test.describe("Log crew-day grid", () => {
 
   test("a ticked person's half-day and hours controls sit in the same tinted band as the row", async ({ page }) => {
     await signInAs(page, "manager");
+    await waitForHydrated(page);
     await page.getByRole("button", { name: "Same as yesterday" }).click();
     const sam = page.getByRole("button", { name: /^Sam\s/ });
-    // The row's button and its controls share one tinted wrapper.
+    await expect(sam).toHaveAttribute("aria-pressed", "true");
+    // The row's button and its controls share one tinted wrapper; the tick lands after a client navigation, so poll.
     const band = sam.locator("xpath=..");
-    expect(await band.evaluate((e) => getComputedStyle(e).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
+    await expect.poll(() => band.evaluate((e) => getComputedStyle(e).backgroundColor), { message: "tinted band" }).not.toBe("rgba(0, 0, 0, 0)");
     await expect(band.getByRole("radio", { name: "½ day" }).first()).toBeVisible();
   });
 

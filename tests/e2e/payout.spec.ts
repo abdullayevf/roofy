@@ -39,17 +39,26 @@ test.describe("Record payout (manager)", () => {
     const segBox = await seg.boundingBox();
     const colBox = await seg.locator("xpath=..").boundingBox();
     expect(colBox!.width - segBox!.width, "segment narrower than its column").toBeLessThanOrEqual(2);
-    // F18, D10: one outer border on the control; no option draws its own (rounded) border; the divider is a straight 1 px line.
+    // F18, D10: one outer border on the control; no option draws its own (rounded) border; the divider is a straight 1 px
+    // line: the group's edge fill showing through a 1 px gap between opaque options (segmented.tsx, since 37f6043).
+    const group = await seg.evaluate((e) => {
+      const s = getComputedStyle(e);
+      return { gap: s.columnGap, fill: s.backgroundColor, border: s.borderTopWidth };
+    });
+    expect(group.gap, "1 px gap between options").toBe("1px");
+    expect(group.fill, "the gap shows the edge colour").not.toBe("rgba(0, 0, 0, 0)");
+    expect(parseFloat(group.border), "one outer border").toBeGreaterThan(0);
     const parts = await seg.locator("label").evaluateAll((els) =>
       els.map((e) => {
         const s = getComputedStyle(e);
-        const b = getComputedStyle(e, "::before");
-        return { border: s.borderLeftWidth + s.borderTopWidth + s.borderRightWidth + s.borderBottomWidth, dividerWidth: b.width, dividerFill: b.backgroundColor };
+        const r = e.getBoundingClientRect();
+        return { border: s.borderLeftWidth + s.borderTopWidth + s.borderRightWidth + s.borderBottomWidth, fill: s.backgroundColor, left: r.left, right: r.right, top: r.top };
       }),
     );
     expect(parts.map((p) => p.border), "options must not draw their own border").toEqual(parts.map(() => "0px0px0px0px"));
-    expect(parts[1]!.dividerWidth, "straight 1 px divider").toBe("1px");
-    expect(parts[1]!.dividerFill, "divider has a colour").not.toBe("rgba(0, 0, 0, 0)");
+    expect(parts.map((p) => p.fill), "options are opaque, so only the gap shows the edge").not.toContain("rgba(0, 0, 0, 0)");
+    expect(parts[1]!.top, "Advance and Payment share one row").toBeCloseTo(parts[0]!.top, 0);
+    expect(parts[1]!.left - parts[0]!.right, "straight 1 px divider").toBeCloseTo(1, 1);
     await expect(page.locator("[data-payout-balance]")).toContainText(/^Dima: (owed|paid ahead|nothing owed) \$[\d,]+\.\d{2}$/);
     await expect(page.getByLabel("Date paid")).toHaveValue(TODAY);
     await expect(amount(page)).toHaveValue("");

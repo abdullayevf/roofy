@@ -48,8 +48,8 @@ const ENTRY = ["/sign-in", "/sign-up"];
 const REFUSED_OUTSIDE_SECTIONS = ["/onboarding"];
 /** Opened by typed URL only, with the foreman-shaped crew list (no balances): review CR2, crew-list.spec.ts. */
 const OPEN_IN_REFUSED_SECTIONS = ["/crew"];
-/** Money pages inside sections the foreman opens: a job's contract price and a crew member's rates. */
-const REFUSED_IN_OPEN_SECTIONS = [/^\/jobs\/new$/, /^\/jobs\/[^/]+\/edit$/];
+/** Money pages inside sections the foreman opens: a job's contract price, and a stage's forecast (budget and cost to date). */
+const REFUSED_IN_OPEN_SECTIONS = [/^\/jobs\/new$/, /^\/jobs\/[^/]+\/edit$/, /^\/jobs\/[^/]+\/stages\/[^/]+\/forecast$/];
 
 type Kind = "open" | "refused" | "skip";
 
@@ -75,6 +75,7 @@ const ALL_STATES = ["normal", ...DEMO_STATES];
 
 /**
  * Query keys that prefill a form with what the person types (the receipt total and GST on Add expense). The foreman
+ * (Narrowing ruled justified by the spec review, spec §3 l.49; expense-new.spec.ts:133 scans that prefilled form.)
  * adds expenses, so the amount they type is theirs to see; it is dropped from the scanned URL so the scan catches
  * workspace money only. The rest of the query (who paid, saved, check) is kept, so those states are still scanned.
  */
@@ -171,8 +172,10 @@ test.describe("Foreman leakage: the route list", () => {
   test("every SCREENS route is classified, and agrees with what SCREENS says the foreman sees", () => {
     for (const { spec, path } of screenRoutes) {
       const kind = kindOf(path); // throws on a route in no section
-      // A foreman variant of a screen is a page the foreman opens; a foreman no-access screen is a refused one.
-      if (spec.states.includes("foreman")) expect(kind, `${spec.id} ${path}`).toBe("open");
+      // A foreman variant of a screen is a page the foreman opens; a foreman no-access screen is a refused one. A money
+      // page listed in REFUSED_IN_OPEN_SECTIONS (the stage forecast) shoots its foreman state as the No access page.
+      const refusedHere = REFUSED_IN_OPEN_SECTIONS.some((r) => r.test(pathnameOf(path)));
+      if (spec.states.includes("foreman")) expect(kind, `${spec.id} ${path}`).toBe(refusedHere ? "refused" : "open");
       if (spec.roles.includes("foreman") && spec.id.endsWith("no-access"))
         expect(kind, `${spec.id} ${path}`).toBe("refused");
     }
@@ -199,6 +202,9 @@ test.describe("Foreman leakage: the route list", () => {
       "/settings/pay-period",
     ])
       expect(REFUSED.has(pathname), pathname).toBe(true);
+    // Review F3: the stage forecast (refused in fix 1) is swept as refused, so every demo state must say No access.
+    const forecast = `/jobs/${meta.projects.smith}/stages/${meta.stages.smithSheetInstall}/forecast`;
+    expect(REFUSED.has(forecast), forecast).toBe(true);
     expect(REFUSED.size).toBeGreaterThan(10);
   });
 

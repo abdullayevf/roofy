@@ -2,11 +2,19 @@ import { expect, test } from "@playwright/test";
 import { waitForHydrated } from "../guards";
 import { Taps } from "../taps";
 
-/** flows.md "Onboarding to first log": sign up, set up, one crew member, one job, the first day logged in ≤ 25 taps. */
-test("Onboarding to first log: sign-up to the first day saved within 25 taps (typing not counted)", async ({ page }) => {
+/**
+ * flows.md "Onboarding to first log": sign up, set up, one crew member, one job, the first day logged in ≤ 25 taps and
+ * under 10 min. The scripted run spends a person's 500 ms think time before every tap and fill (typing itself is
+ * instant here), so a fast run passes easily: it catches a flow that hangs or waits, not slow human typing.
+ */
+const THINK_MS = 500;
+const MAX_MS = 600_000;
+
+test("Onboarding to first log: sign-up to the first day saved within 25 taps (typing not counted) and 10 min", async ({ page }) => {
+  test.setTimeout(MAX_MS + 60_000);
   await page.goto("/sign-up");
   await waitForHydrated(page);
-  const taps = new Taps("Onboarding to first log");
+  const taps = new Taps("Onboarding to first log", { thinkMs: THINK_MS });
   await taps.tap(page.getByRole("button", { name: "Continue with Google" }));
   await expect(page.getByRole("heading", { name: "Your business" })).toBeVisible();
   await waitForHydrated(page);
@@ -39,5 +47,5 @@ test("Onboarding to first log: sign-up to the first day saved within 25 taps (ty
   await taps.tap(page.getByRole("button", { name: /^Sam/ }));
   await taps.tap(page.getByRole("button", { name: "Save day" }));
   await expect(page.getByRole("status").filter({ hasText: "Logged" })).toContainText("Sam");
-  taps.assertWithin(25);
+  taps.assertWithin(25, { maxMs: MAX_MS });
 });

@@ -114,9 +114,10 @@ test.describe("flow specs against flows.md", () => {
       const asserted = [...source.matchAll(/assertWithin\((\d+)/g)].map((m) => Number(m[1]));
       expect(asserted.length, `${row.file} asserts a budget`).toBeGreaterThan(0);
       expect(new Set(asserted), `${row.file} asserts the ${budget}-tap budget of "${row.flow}"`).toEqual(new Set([budget]));
-      const seconds = /<\s*(\d+)\s*s\b/.exec(row.budgetCell)?.[1];
-      if (seconds) {
-        expect(source, `${row.file} asserts the ${seconds} s limit`).toContain(`maxMs: MAX_MS`);
+      const limit = /<\s*(\d+)\s*(s|min)\b/.exec(row.budgetCell);
+      if (limit) {
+        const seconds = Number(limit[1]) * (limit[2] === "min" ? 60 : 1);
+        expect(source, `${row.file} asserts the ${limit[0]} limit`).toContain(`maxMs: MAX_MS`);
         expect(source, `${row.file} sets the limit to ${seconds} s`).toContain(`MAX_MS = ${seconds}_000`);
         expect(source, `${row.file} spends think time on every tap`).toContain("thinkMs: THINK_MS");
       } else {

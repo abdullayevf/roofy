@@ -48,7 +48,9 @@ test.describe("installable app", () => {
     }
   });
 
-  test("installed (standalone) Home keeps its content clear of the status bar and home bar", async ({ page, context, baseURL }) => {
+  // Home itself does not read the display mode (only the install guide does, next test): this is the safe-area check
+  // with standalone matchMedia emulated and the iPhone insets simulated by checkSafeAreas, plus the title below 47 px.
+  test("Home with standalone display mode emulated and iPhone insets simulated: content clear of status bar and home bar", async ({ page, context, baseURL }) => {
     await context.addCookies([{ name: "roofy_role", value: "manager", url: baseURL! }]);
     await emulateStandalone(page);
     await page.setViewportSize({ width: 390, height: 844 });

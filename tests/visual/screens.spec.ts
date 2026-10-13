@@ -121,7 +121,13 @@ for (const scheme of ["light", "dark"] as const) {
           await settle(page);
           await runSteps(page, context, screen);
 
+          // A full-page shot is taken until two in a row match, so a long page needs longer than the 5 s default (review
+          // G2a: the design gallery timed out on android). 1.5 s per screen-height of page, never under 5 s.
+          const pageHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+          const shotTimeout = Math.max(5_000, Math.ceil(pageHeight / page.viewportSize()!.height) * 1_500);
+          testInfo.setTimeout(testInfo.timeout + shotTimeout);
           await expect(page).toHaveScreenshot(`${screen.id}-${shot.state}-${scheme}.png`, {
+            timeout: shotTimeout,
             fullPage: true,
             // CSS pixels: the phones render at 2.6 to 3 device pixels per CSS pixel, which would make each baseline
             // 7 to 9 times larger for no extra regression signal.
