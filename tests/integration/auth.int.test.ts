@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { actorFromHeaders, roleFrom } from "../../src/server/auth/actor";
 import { createAuth, getAuth, ROLES_AC } from "../../src/server/auth/auth";
+import { roleEnum } from "../../src/server/db/schema";
 import { closePools, pool, rows } from "./helpers";
 
 const BASE = "http://localhost:3100";
@@ -139,8 +140,9 @@ describe("Better Auth", () => {
     }
   });
 
-  it("sends a reset mail and the new password works", async () => {
-    const { email } = await signUpVerified();
+  it("sends a reset mail, the new password works and the old sessions are signed out", async () => {
+    const { email, headers } = await signUpVerified();
+    expect((await actorFromHeaders(headers)).kind).toBe("no-workspace");
     await getAuth().api.requestPasswordReset({ body: { email, redirectTo: "/reset-password" } });
     const reset = mailsTo(email).filter((m) => m.links.some((l) => l.includes("/reset-password/")));
     expect(reset).toHaveLength(1);
@@ -150,6 +152,7 @@ describe("Better Auth", () => {
     expect(err.statusCode).toBe(401);
     const ok = await getAuth().api.signInEmail({ body: { email, password: "a brand new password" } });
     expect(ok.user.email).toBe(email);
+    expect(await actorFromHeaders(headers)).toEqual({ kind: "signed-out" });
   });
 
   it("makes the workspace creator owner and maps the session to an Actor", async () => {
@@ -201,8 +204,10 @@ describe("Better Auth", () => {
     expect(() => roleFrom("owner,manager")).toThrow('Unknown role "owner,manager".');
   });
 
-  it("exports exactly the four Roofy roles", () => {
+  it("exports exactly the four Roofy roles, the same list as the member_role enum", () => {
     expect(Object.keys(ROLES_AC).sort()).toEqual(["accountant", "foreman", "manager", "owner"]);
+    expect(Object.keys(ROLES_AC).sort()).toEqual([...roleEnum.enumValues].sort());
+    for (const role of roleEnum.enumValues) expect(roleFrom(role)).toBe(role);
   });
 
   it("sends an invite mail naming the workspace and role", async () => {
@@ -274,6 +279,112 @@ describe("Better Auth", () => {
     } finally {
       delete process.env.GOOGLE_CLIENT_ID;
       delete process.env.GOOGLE_CLIENT_SECRET;
+    }
+  });
+
+  it("fails with a plain error naming BETTER_AUTH_URL when it is unset", () => {
+    const saved = process.env.BETTER_AUTH_URL;
+    delete process.env.BETTER_AUTH_URL;
+    try {
+      expect(() => createAuth()).toThrow(/^BETTER_AUTH_URL is not set/);
+    } finally {
+      process.env.BETTER_AUTH_URL = saved;
+    }
+  });
+
+  it("refuses to delete a workspace through Better Auth, even for the owner", async () => {
+    const { headers, userId } = await signUpVerified();
+    const ws = await getAuth().api.createOrganization({ body: { name: "Keep Roofing", slug: `keep-${userId}` }, headers });
+    const err = await rejection(getAuth().api.deleteOrganization({ body: { organizationId: ws?.id ?? "" }, headers }));
+    expect(err.statusCode).toBe(404);
+    expect(err.body?.code).toBe("ORGANIZATION_DELETION_DISABLED");
+    expect(await rows("owner", "select id from workspace where id = $1", [ws?.id])).toEqual([{ id: ws?.id }]);
+  });
+
+  describe("refuses any role that is not exactly one Roofy role", () => {
+    async function ownerWithForeman() {
+      const owner = await signUpVerified();
+      const ws = await getAuth().api.createOrganization({
+        body: { name: "Role Roofing", slug: `role-${owner.userId}` },
+        headers: owner.headers,
+      });
+      const crew = await signUpVerified();
+      const added = await getAuth().api.addMember({ body: { userId: crew.userId, role: "foreman", organizationId: ws?.id } });
+      return { owner, wsId: ws?.id ?? "", crew, memberId: added?.id ?? "" };
+    }
+    const bad: (string | string[])[] = [["manager", "foreman"], "owner,manager", "manager,foreman"];
+
+    it.each(bad)("createInvitation with %j: 400 UNKNOWN_ROLE, no invitation row, no mail", async (role) => {
+      const { owner, wsId } = await ownerWithForeman();
+      const invitee = freshEmail();
+      const err = await rejection(
+        getAuth().api.createInvitation({
+          body: { email: invitee, role: role as "foreman", organizationId: wsId },
+          headers: owner.headers,
+        }),
+      );
+      expect(err.statusCode).toBe(400);
+      expect(err.body?.code).toBe("UNKNOWN_ROLE");
+      expect(await rows("owner", "select id from invitation where email = $1", [invitee])).toEqual([]);
+      expect(mailsTo(invitee)).toEqual([]);
+    });
+
+    it.each(bad)("updateMemberRole with %j: 400 UNKNOWN_ROLE, role unchanged", async (role) => {
+      const { owner, wsId, memberId } = await ownerWithForeman();
+      const err = await rejection(
+        getAuth().api.updateMemberRole({
+          body: { memberId, role: role as "foreman", organizationId: wsId },
+          headers: owner.headers,
+        }),
+      );
+      expect(err.statusCode).toBe(400);
+      expect(err.body?.code).toBe("UNKNOWN_ROLE");
+      expect(await rows("owner", "select role from member where id = $1", [memberId])).toEqual([{ role: "foreman" }]);
+    });
+
+    it.each(bad)("addMember with %j: 400 UNKNOWN_ROLE, no member row", async (role) => {
+      const { wsId } = await ownerWithForeman();
+      const other = await signUpVerified();
+      const err = await rejection(
+        getAuth().api.addMember({ body: { userId: other.userId, role: role as "foreman", organizationId: wsId } }),
+      );
+      expect(err.statusCode).toBe(400);
+      expect(err.body?.code).toBe("UNKNOWN_ROLE");
+      expect(await rows("owner", "select id from member where user_id = $1", [other.userId])).toEqual([]);
+    });
+
+    it("still accepts one plain role", async () => {
+      const { owner, wsId, memberId } = await ownerWithForeman();
+      await getAuth().api.updateMemberRole({ body: { memberId, role: "manager", organizationId: wsId }, headers: owner.headers });
+      expect(await rows("owner", "select role from member where id = $1", [memberId])).toEqual([{ role: "manager" }]);
+    });
+  });
+
+  it("opens the most recently joined workspace on a new sign-in", async () => {
+    const { email, headers, userId } = await signUpVerified();
+    await getAuth().api.createOrganization({ body: { name: "First Roofing", slug: `first-${userId}` }, headers });
+    const second = await getAuth().api.createOrganization({ body: { name: "Second Roofing", slug: `second-${userId}` }, headers });
+    await getAuth().api.signOut({ headers });
+    expect(await actorFromHeaders(headers)).toEqual({ kind: "signed-out" });
+    const again = await getAuth().api.signInEmail({ body: { email, password: PASSWORD }, returnHeaders: true });
+    const result = await actorFromHeaders(cookieHeader(again.headers));
+    expect(result).toMatchObject({ kind: "actor", actor: { userId, workspaceId: second?.id, role: "owner" } });
+  });
+
+  it("builds the invite link without a double slash when BETTER_AUTH_URL ends in /", async () => {
+    const { headers } = await signUpVerified();
+    const ws = await getAuth().api.createOrganization({ body: { name: "Slash Roofing", slug: `slash-${Date.now()}` }, headers });
+    const saved = process.env.BETTER_AUTH_URL;
+    process.env.BETTER_AUTH_URL = `${BASE}/`;
+    try {
+      const invitee = freshEmail();
+      const inv = await createAuth().api.createInvitation({
+        body: { email: invitee, role: "foreman", organizationId: ws?.id },
+        headers,
+      });
+      expect(mailsTo(invitee)[0]?.links[0]).toBe(`${BASE}/invite/${inv.id}`);
+    } finally {
+      process.env.BETTER_AUTH_URL = saved;
     }
   });
 });

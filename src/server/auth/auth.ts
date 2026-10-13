@@ -1,19 +1,21 @@
 // The Better Auth instance: Drizzle adapter on the roofy_auth pool, email + password with
 // verification, the organization plugin (organization = workspace), TOTP, database rate limits.
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { twoFactor } from "better-auth/plugins/two-factor";
 import { createAccessControl } from "better-auth/plugins/access";
 import { organization } from "better-auth/plugins/organization";
 import { adminAc, defaultStatements, memberAc, ownerAc } from "better-auth/plugins/organization/access";
+import { desc, eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import type { Role } from "@/data/contracts";
 import { getAuthDb } from "@/server/db/client";
 import { requireEnv } from "@/server/db/env";
 import { account, invitation, member, rateLimit, session, twoFactor as twoFactorTable, user, verification, workspace } from "@/server/db/schema";
 import { getMailer, inviteEmail, resetEmail, verificationEmail } from "@/server/email";
-import { roleFrom } from "./role";
+import { isRole, roleFrom } from "./role";
 
 const ac = createAccessControl(defaultStatements);
 
@@ -39,10 +41,28 @@ function google(): { google: { clientId: string; clientSecret: string } } | Reco
   return { google: { clientId, clientSecret } };
 }
 
+/** Refuses (400 UNKNOWN_ROLE) a role that is not exactly one Roofy role, before any row is written. */
+function oneRole(role: unknown): void {
+  if (!isRole(role)) {
+    throw new APIError("BAD_REQUEST", { code: "UNKNOWN_ROLE", message: "Pick one of owner, manager, foreman or accountant." });
+  }
+}
+
+/** The workspace a new session opens: the user's most recently joined membership, or none. */
+async function latestWorkspaceId(userId: string): Promise<string | undefined> {
+  const [row] = await getAuthDb()
+    .select({ workspaceId: member.workspaceId })
+    .from(member)
+    .where(eq(member.userId, userId))
+    .orderBy(desc(member.createdAt), desc(member.id))
+    .limit(1);
+  return row?.workspaceId;
+}
+
 /** Builds a Better Auth instance from the environment as it is now. */
 export function createAuth() {
   const secret = requireEnv("BETTER_AUTH_SECRET");
-  const baseURL = requireEnv("BETTER_AUTH_URL");
+  const baseURL = requireEnv("BETTER_AUTH_URL").replace(/\/+$/, "");
   return betterAuth({
     secret,
     baseURL,
@@ -59,6 +79,7 @@ export function createAuth() {
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: true,
+      revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url }) => send(user.email, resetEmail(url)),
     },
     emailVerification: {
@@ -67,6 +88,17 @@ export function createAuth() {
       sendVerificationEmail: async ({ user, url }) => send(user.email, verificationEmail(url)),
     },
     socialProviders: google(),
+    databaseHooks: {
+      session: {
+        create: {
+          before: async (session) => {
+            if (session.activeOrganizationId) return;
+            const activeOrganizationId = await latestWorkspaceId(session.userId);
+            return activeOrganizationId ? { data: { activeOrganizationId } } : undefined;
+          },
+        },
+      },
+    },
     rateLimit: {
       enabled: true,
       storage: "database",
@@ -78,6 +110,13 @@ export function createAuth() {
         roles: ROLES_AC,
         creatorRole: "owner",
         allowUserToCreateOrganization: true,
+        // Workspaces are soft-deleted through Roofy, never cascaded away through Better Auth.
+        disableOrganizationDeletion: true,
+        organizationHooks: {
+          beforeCreateInvitation: async ({ invitation }) => oneRole(invitation.role),
+          beforeAddMember: async ({ member }) => oneRole(member.role),
+          beforeUpdateMemberRole: async ({ newRole }) => oneRole(newRole),
+        },
         schema: {
           session: { fields: { activeOrganizationId: "activeWorkspaceId" } },
           organization: { modelName: "workspace" },
