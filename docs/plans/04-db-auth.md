@@ -184,23 +184,23 @@ Each task is one implementer run of at most 30 steps. A task marked "2 runs" is 
 
 - Produces: Drizzle tables `progressEntry`, `progressShare`, `workLog`, `noWork`, `expenseCategory`, `expense`, `payRun`, `payRunLine`, `ledgerEntry`, `statementLink`, `file`, `clientMutation`, `auditEvent`.
 
-- [ ] Columns, enums and uniques per architecture §5:
+- [x] Columns, enums and uniques per architecture §5:
   - `no_work` unique on (workspace, crew, date).
   - `pay_run` unique on (workspace, period_start, period_end).
   - `client_mutation.id` is the phone's uuid.
-- [ ] Indexes: `(workspace_id, date)` on `work_log`, `progress_entry`, `expense`, `no_work`; `(workspace_id, stage_id)` on `work_log`, `progress_entry`, `expense`; `(workspace_id, crew_member_id, date)` on `work_log`; `(pay_run_id)` on `work_log`, `pay_run_line`, `ledger_entry`.
-- [ ] CHECKs:
+- [x] Indexes: `(workspace_id, date)` on `work_log`, `progress_entry`, `expense`, `no_work`; `(workspace_id, stage_id)` on `work_log`, `progress_entry`, `expense`; `(workspace_id, crew_member_id, date)` on `work_log`; `(pay_run_id)` on `work_log`, `pay_run_line`, `ledger_entry`.
+- [x] CHECKs:
   - `share_bp between 0 and 10000`.
   - `amount_ex_gst_cents >= 0`, `gst_cents >= 0`.
   - `work_log.basis` and `source` enums.
   - `quantity`/`hours` `>= 0` except `source = 'adjustment'`.
-- [ ] Failing integration tests, then the migration:
+- [x] Failing integration tests, then the migration:
   - (a) A cross-workspace composite-FK attempt for `work_log.crew_member_id`, `work_log.stage_id`, `expense.category_id` and `pay_run_line.pay_run_id` fails.
   - (b) A duplicate no-work for the same crew and date fails.
   - (c) An overlapping pay run with the same period fails.
   - (d) An index catalogue query finds each index listed above.
   - (e) The `TENANT_TABLES ∪ AUTH_TABLES` set equals the set of public tables.
-- [ ] Done when the tests pass, the generated SQL is reviewed (no `DROP` of Task 2 objects), and `pnpm verify` is green.
+- [x] Done when the tests pass, the generated SQL is reviewed (no `DROP` of Task 2 objects), and `pnpm verify` is green.
 
 ### Task 4: DB roles, row-level security and `withActor` (opus)
 

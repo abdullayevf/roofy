@@ -49,3 +49,4 @@
 - Captures after a Save step must wait for the saved text, never a fixed pause: `expectStill` on the saved text, or a `wait:` step before the next press (field-2 T23 fixes 2 and 3, seen twice; unit guard).
 - No secrets in source, not even dev passwords as fallbacks: read every credential from env and fail with a plain "missing VARIABLE" error; tests set their own env (Phase 3 T1, flagged by both reviewers).
 - Implementer reports list every rename, added column or changed export versus the spec under "Deviations", and the conductor copies them into PROGRESS.md before the task is ticked (Phase 3 T1 and T2, spec-reviewer P3 both times).
+- Coverage guards ("every FK has a cross-tenant case", enum lists) derive the expected list from the schema and compare exactly; never a hand count or a `>=` floor (Phase 3 T2 and T3 reviewer).
