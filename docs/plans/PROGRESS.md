@@ -2,11 +2,10 @@
 
 ## Current
 
-- Phase: 2 — Design system and full prototype. **Phase gate done (2026-10-13).** Branch `phase/2-design-prototype` (local on the VPS, not pushed, not merged). Plan: `docs/plans/03-design-prototype.md`.
-- Ledger: `.superpowers/sdd/03-design-prototype/progress.md`.
-- Done and reviewed: Tasks 1–23. Evidence under "Gate evidence" (Phase 2). T23 spend: 8 runs, 176 tool uses (budget 12/300).
-- `.superpowers/STOP` is written: the owner decides the merge to master and when phase 3 starts.
-- **Next:** owner merges `phase/2-design-prototype` into master (plan line 206, last box), then removes `.superpowers/STOP`. The next session then starts phase 3 at its first task (`docs/plans/00-master-plan.md`). Do not start phase 3 before that.
+- Phase: 3 — Database, auth, tenancy, audit. **Owner approved the merge and the phase-3 start (2026-10-13).** Phase 2 is complete (`phase/2-design-prototype` fast-forwarded into `master` at dd0dd55, ahead 272 of origin/master, not pushed). Plan: `docs/plans/03-design-prototype.md` (done). Phase-3 plan: `docs/plans/04-db-auth.md` (write at phase start).
+- Ledger for phase 3: `.superpowers/sdd/04-db-auth/progress.md` (create on first task).
+- Done and reviewed: Phase 2 Tasks 1–23. Phase 2 gate evidence under "Gate evidence".
+- **Next:** Phase 3 — Database, auth, tenancy, audit (`docs/plans/00-master-plan.md` §Phase 3; spec architecture §4–§6, product spec §3, §5.1). First step: write `docs/plans/04-db-auth.md` at phase start, then its Task 1. No owner decision pending.
 - Known flaky (iphone, load): flows/no-work-marker.spec.ts:6, log-progress.spec.ts:135, design-page.spec.ts:45, settings-lists.spec.ts:64; unit "reads fast" timing tests in home.test.ts and seed.test.ts fail at load ≥ 14.
 - Environment: real WebKit works on the VPS. Never stop the server with `pkill -f "next start"`; kill the PID from `ss -ltnp | grep 3100`.
 
@@ -15,6 +14,7 @@
 `docs/plans/RUNBOOK.md` (2026-10-01) replaces the 2026-09-30 token budget rules 1–10 and keeps their substance: critics read slices only and split by lens, opus only where it earns it, focused e2e while iterating, short briefs by file, 3-iteration design-loop cap. New: step caps, conductor stays thin, changed-slices-only critics, capture by script.
 
 ## Log
+- 2026-10-13 owner decision: merge `phase/2-design-prototype` → `master` and start Phase 3 (no budget concern, "just get me my product done good"). Phase 2 merged (ff, dd0dd55); `.superpowers/STOP` cleared; phase 3 begins.
 - Detail moved out of Current on 2026-10-01 (so session start reads less):
   - Done and reviewed: Tasks 1–12.
     - Task 7: spec review (opus) settled the open question — re-pricing $0.00 missing-rate logs when a rate is added is spec-compliant (it is the only "fix" before approval). Fixed: re-pricing skipped adjustments (crash + half-saved rate), `FakeStore.write` is all-or-nothing, seed perf guard measures thread CPU time. Re-review clean.
