@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Actor } from "@/data/contracts";
 import { AUTH_TABLES, TENANT_TABLES } from "@/server/db/tenancy";
 import { withActor } from "@/server/db/with-actor";
-import { closePools, makeWorkspace, pool, rows } from "./helpers";
+import { closePools, rows, SEED, seedWorkspace } from "./helpers";
 
 afterAll(async () => {
   await closePools();
@@ -21,15 +21,32 @@ const keyOf = (table: string) => (table === "workspace" ? "id" : "workspace_id")
 /** Better Auth reaches these tenant tables, with USING (true) policies. */
 const AUTH_TENANT_TABLES = ["invitation", "member", "workspace"];
 
-/** The Postgres error code a promise rejects with (drizzle wraps the pg error in `cause`). */
-async function pgCode(promise: Promise<unknown>): Promise<string | undefined> {
+/** The Postgres error a promise rejects with (drizzle wraps the pg error in `cause`). */
+async function pgError(promise: Promise<unknown>): Promise<{ code?: string; message?: string } | undefined> {
   try {
     await promise;
   } catch (error) {
-    const e = error as { code?: string; cause?: { code?: string } };
-    return e.code ?? e.cause?.code;
+    const e = error as { code?: string; message?: string; cause?: { code?: string; message?: string } };
+    return e.cause?.code
+      ? { code: e.cause.code, message: e.cause.message }
+      : { code: e.code, message: e.message };
   }
   return undefined;
+}
+
+const pgCode = async (promise: Promise<unknown>) => (await pgError(promise))?.code;
+
+/** RLS refusals and missing grants share SQLSTATE 42501; tell them apart by the message. */
+const RLS_REFUSAL = { code: "42501", message: expect.stringContaining("row-level security") };
+const GRANT_REFUSAL = { code: "42501", message: expect.stringContaining("permission denied") };
+
+/** Whether roofy_app holds a privilege on a table, PUBLIC grants included. */
+async function appMay(table: string, privilege: string): Promise<boolean> {
+  const [r] = await rows<{ ok: boolean }>("owner", `select has_table_privilege('roofy_app', $1, $2) as ok`, [
+    `public."${table}"`,
+    privilege,
+  ]);
+  return r!.ok;
 }
 
 describe("catalogue", () => {
@@ -98,10 +115,15 @@ describe("roles", () => {
   });
 
   it("roofy_app has DML on every tenant table, SELECT only on audit_event, and nothing else", async () => {
+    // has_table_privilege counts PUBLIC grants too, so a GRANT ... TO PUBLIC would show up here.
     const grants = await rows<{ table: string; privileges: string }>(
       "owner",
-      `select table_name as table, string_agg(privilege_type, ',' order by privilege_type) as privileges
-       from information_schema.role_table_grants where grantee = 'roofy_app' group by table_name`,
+      `select c.relname as table, string_agg(p.priv, ',' order by p.priv) as privileges
+       from pg_class c
+       cross join unnest(array['DELETE','INSERT','REFERENCES','SELECT','TRIGGER','TRUNCATE','UPDATE']) as p(priv)
+       where c.relnamespace = 'public'::regnamespace and c.relkind in ('r', 'p')
+         and has_table_privilege('roofy_app', c.oid, p.priv)
+       group by c.relname`,
     );
     const expected = TENANT_TABLES.map((t) => ({
       table: t,
@@ -110,6 +132,24 @@ describe("roles", () => {
     expect(grants.sort((a, b) => a.table.localeCompare(b.table))).toEqual(
       expected.sort((a, b) => a.table.localeCompare(b.table)),
     );
+  });
+
+  it("PUBLIC holds no privilege on any public relation", async () => {
+    const publicGrants = await rows(
+      "owner",
+      `select c.relname, a.privilege_type from pg_class c, aclexplode(c.relacl) a
+       where c.relnamespace = 'public'::regnamespace and a.grantee = 0`,
+    );
+    expect(publicGrants).toEqual([]);
+  });
+
+  it("roofy_app and roofy_auth cannot create objects in schema public", async () => {
+    const may = await rows<{ app: boolean; auth: boolean }>(
+      "owner",
+      `select has_schema_privilege('roofy_app', 'public', 'CREATE') as app,
+              has_schema_privilege('roofy_auth', 'public', 'CREATE') as auth`,
+    );
+    expect(may).toEqual([{ app: false, auth: false }]);
   });
 
   it("roofy_auth has no privilege on a tenant table except workspace, member and invitation", async () => {
@@ -121,137 +161,6 @@ describe("roles", () => {
     expect(sorted(reachable.map((t) => t.name))).toEqual(sorted([...AUTH_TABLES, ...AUTH_TENANT_TABLES]));
   });
 });
-
-// One row per tenant table per workspace, in an order that respects the composite FKs. The keys
-// must equal TENANT_TABLES exactly; `workspace` and `member` come from makeWorkspace().
-type Ctx = { user: string; id: Record<string, string> };
-const FROM_MAKE_WORKSPACE = "makeWorkspace" as const;
-const SEED: Record<string, ((c: Ctx) => Record<string, unknown>) | typeof FROM_MAKE_WORKSPACE> = {
-  workspace: FROM_MAKE_WORKSPACE,
-  member: FROM_MAKE_WORKSPACE,
-  invitation: (c) => ({
-    email: `invite-${uuidv7()}@example.test`,
-    role: "manager",
-    expires_at: "2030-01-01T00:00:00Z",
-    inviter_id: c.user,
-  }),
-  client: () => ({ name: "Client" }),
-  project: () => ({ site_address: "1 Test St", job_type: "repair" }),
-  project_assignment: (c) => ({ member_id: c.id.member, project_id: c.id.project }),
-  stage_template: () => ({ job_type: "repair", name: "Template" }),
-  stage_template_item: (c) => ({ template_id: c.id.stage_template, name: "Item", position: 1 }),
-  stage: (c) => ({ project_id: c.id.project, name: "Stage", position: 1 }),
-  stage_segment: (c) => ({ stage_id: c.id.stage, start_date: "2026-09-28" }),
-  crew_level: () => ({ name: "Level", floor_rate_cents: 3000 }),
-  crew_member: () => ({ name: "Crew", type: "employee", active_from: "2026-01-05" }),
-  rate: (c) => ({
-    crew_member_id: c.id.crew_member,
-    basis: "hourly",
-    amount_cents: 4500,
-    effective_from: "2026-01-05",
-  }),
-  stage_completion_share: (c) => ({
-    stage_id: c.id.stage,
-    crew_member_id: c.id.crew_member,
-    share_bp: 10000,
-  }),
-  progress_entry: (c) => ({
-    stage_id: c.id.stage,
-    date: "2026-09-28",
-    quantity: "12.50",
-    entered_by: c.user,
-  }),
-  progress_share: (c) => ({
-    progress_entry_id: c.id.progress_entry,
-    crew_member_id: c.id.crew_member,
-    share_bp: 10000,
-  }),
-  work_log: (c) => ({
-    date: "2026-09-28",
-    crew_member_id: c.id.crew_member,
-    project_id: c.id.project,
-    stage_id: c.id.stage,
-    basis: "hourly",
-    quantity: "8.00",
-    hours: "8.00",
-    rate_cents: 4500,
-    amount_cents: 36000,
-    source: "grid",
-    entry_id: uuidv7(),
-    entered_by: c.user,
-  }),
-  no_work: (c) => ({
-    crew_member_id: c.id.crew_member,
-    date: "2026-09-29",
-    reason: "rain",
-    entered_by: c.user,
-  }),
-  expense_category: () => ({ name: "Category" }),
-  expense: (c) => ({
-    project_id: c.id.project,
-    category_id: c.id.expense_category,
-    supplier: "Bunnings",
-    date: "2026-09-28",
-    amount_ex_gst_cents: 10000,
-    gst_cents: 1000,
-    paid_by: "company_card",
-    entered_by: c.user,
-  }),
-  pay_run: () => ({ period_start: "2026-09-28", period_end: "2026-10-04" }),
-  pay_run_line: (c) => ({
-    pay_run_id: c.id.pay_run,
-    crew_member_id: c.id.crew_member,
-    kind: "log",
-    ref_id: c.id.work_log,
-    snapshot: "{}",
-    amount_cents: 36000,
-  }),
-  ledger_entry: (c) => ({
-    crew_member_id: c.id.crew_member,
-    date: "2026-09-28",
-    kind: "advance",
-    amount_cents: 100,
-  }),
-  statement_link: (c) => ({
-    pay_run_id: c.id.pay_run,
-    crew_member_id: c.id.crew_member,
-    token_hash: uuidv7(),
-    expires_at: "2030-01-01T00:00:00Z",
-  }),
-  file: (c) => ({
-    storage_key: `${c.id.workspace}/${uuidv7()}`,
-    name: "a.jpg",
-    mime: "image/jpeg",
-    bytes: 1024,
-    sha256: "0".repeat(64),
-    entity_type: "project",
-    entity_id: c.id.project,
-  }),
-  client_mutation: (c) => ({ user_id: c.user, type: "crew_day" }),
-  audit_event: (c) => ({ table_name: "project", row_id: c.id.project, action: "insert" }),
-};
-
-/** Seeds one row in every tenant table for a new workspace, through the owner pool. */
-async function seedWorkspace(name: string): Promise<Actor> {
-  const { workspaceId, ownerActor } = await makeWorkspace(name);
-  const owner = pool("owner");
-  const ctx: Ctx = { user: ownerActor.userId, id: { workspace: workspaceId } };
-  const [member] = await rows<{ id: string }>("owner", "select id from member where workspace_id = $1", [
-    workspaceId,
-  ]);
-  ctx.id.member = member!.id;
-  for (const [table, seed] of Object.entries(SEED)) {
-    if (seed === FROM_MAKE_WORKSPACE) continue;
-    const row = { id: uuidv7(), workspace_id: workspaceId, ...seed(ctx) };
-    const cols = Object.keys(row);
-    await owner.query(
-      `insert into "${table}" (${cols.map((c) => `"${c}"`).join(", ")}) values (${cols.map((_, i) => `$${i + 1}`).join(", ")})`,
-      Object.values(row),
-    );
-    ctx.id[table] = row.id;
-  }
-  return ownerActor;
-}
 
 let a: Actor;
 let b: Actor;
@@ -293,14 +202,18 @@ describe("cross-tenant access as actor A", () => {
     const row: Record<string, unknown> = { ...copy!.row, id: uuidv7() };
     if (table !== "workspace") expect(row.workspace_id).toBe(b.workspaceId);
     const t = sql.identifier(table);
-    const code = await pgCode(
+    const refusal = await pgError(
       withActor(a, (tx) =>
         tx.execute(
           sql`insert into ${t} select * from json_populate_record(null::${t}, ${JSON.stringify(row)}::json)`,
         ),
       ),
     );
-    expect(code).toBe("42501");
+    // audit_event has no INSERT grant (writes come from the Task 5 trigger); every other table
+    // grants INSERT, so its refusal must come from the policy.
+    const granted = await appMay(table, "INSERT");
+    expect(granted).toBe(table !== "audit_event");
+    expect(refusal).toEqual(granted ? RLS_REFUSAL : GRANT_REFUSAL);
   });
 
   it.each(TENANT_TABLES)("%s: updating or deleting B's row touches nothing", async (table) => {
@@ -322,5 +235,20 @@ describe("cross-tenant access as actor A", () => {
     }
     const left = await rows("owner", `select 1 from "${table}" where ${keyOf(table)} = $1`, [b.workspaceId]);
     expect(left).toHaveLength(1);
+  });
+
+  it.each(TENANT_TABLES)("%s: moving A's own row to workspace B is refused (WITH CHECK)", async (table) => {
+    const t = sql.identifier(table);
+    const key = sql.identifier(keyOf(table));
+    const refusal = await pgError(
+      withActor(a, (tx) =>
+        tx.execute(sql`update ${t} set ${key} = ${b.workspaceId} where ${key} = ${a.workspaceId}`),
+      ),
+    );
+    const granted = await appMay(table, "UPDATE");
+    expect(granted).toBe(table !== "audit_event");
+    expect(refusal).toEqual(granted ? RLS_REFUSAL : GRANT_REFUSAL);
+    const own = await rows("owner", `select 1 from "${table}" where ${keyOf(table)} = $1`, [a.workspaceId]);
+    expect(own).toHaveLength(1);
   });
 });

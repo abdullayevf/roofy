@@ -6,13 +6,34 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Actor } from "@/data/contracts";
 import { TENANT_TABLES } from "@/server/db/tenancy";
 import { withActor } from "@/server/db/with-actor";
-import { closePools, makeWorkspace, pool, rows } from "./helpers";
+import { closePools, pool, rows, SEED, seedWorkspace } from "./helpers";
 
 let actor: Actor;
+let other: Actor;
 
+// Both workspaces get one row in every tenant table, so "sees 0 rows" below is not vacuous
+// whatever order the integration files run in.
 beforeAll(async () => {
-  actor = { ...(await makeWorkspace("Echo Roofing")).ownerActor, role: "manager" };
+  actor = { ...(await seedWorkspace("Echo Roofing")), role: "manager" };
+  other = await seedWorkspace("Foxtrot Roofing");
 });
+
+const sorted = (list: readonly string[]) => [...list].sort();
+const keyOf = (table: string) => (table === "workspace" ? "id" : "workspace_id");
+
+/** Rows per tenant table for one workspace, read through the owner pool (no RLS). */
+async function seededCounts(workspaceId: string) {
+  const counts: Record<string, number> = {};
+  for (const table of TENANT_TABLES) {
+    const [r] = await rows<{ n: number }>(
+      "owner",
+      `select count(*)::int as n from "${table}" where ${keyOf(table)} = $1`,
+      [workspaceId],
+    );
+    counts[table] = r!.n;
+  }
+  return counts;
+}
 
 afterAll(async () => {
   await closePools();
@@ -45,6 +66,13 @@ async function nextClientAfter(run: (pid: (n: number) => void) => Promise<unknow
 const zeroCounts = () => Object.fromEntries(TENANT_TABLES.map((t) => [t, 0]));
 
 describe("withActor", () => {
+  it("has one seeded row in every tenant table for both workspaces", async () => {
+    expect(sorted(Object.keys(SEED))).toEqual(sorted(TENANT_TABLES));
+    const ones = Object.fromEntries(TENANT_TABLES.map((t) => [t, 1]));
+    expect(await seededCounts(actor.workspaceId)).toEqual(ones);
+    expect(await seededCounts(other.workspaceId)).toEqual(ones);
+  });
+
   it("runs as roofy_app with the actor's workspace, user and role set, and returns fn's value", async () => {
     const seen = await withActor(actor, async (tx) => {
       const { rows: r } = await tx.execute<{ who: string; ws: string; user_id: string; role: string }>(
@@ -77,6 +105,24 @@ describe("withActor", () => {
       }),
     ).rejects.toThrow("stop");
     expect(await rows("owner", "select 1 from client where id = $1", [id])).toEqual([]);
+  });
+
+  it("concurrent transactions for two actors each see only their own workspace", async () => {
+    const seenBy = (who: Actor) =>
+      withActor(who, async (tx) => {
+        await tx.execute(sql`select pg_sleep(0.005)`);
+        const keys = new Set<string>();
+        for (const table of TENANT_TABLES) {
+          const t = sql.identifier(table);
+          const key = sql.identifier(keyOf(table));
+          const { rows: r } = await tx.execute<{ k: string }>(sql`select distinct ${key} as k from ${t}`);
+          r.forEach((row) => keys.add(row.k));
+        }
+        return [...keys];
+      });
+    const runs = Array.from({ length: 20 }, (_, i) => (i % 2 === 0 ? actor : other));
+    const seen = await Promise.all(runs.map(seenBy));
+    seen.forEach((keys, i) => expect(keys).toEqual([runs[i]!.workspaceId]));
   });
 
   it("leaves a pooled connection with no actor and no tenant rows after it commits", async () => {
