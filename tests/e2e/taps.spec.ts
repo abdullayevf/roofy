@@ -101,7 +101,7 @@ test.describe("flow specs against flows.md", () => {
     });
 
   test("every flow in the flows.md summary has a spec, and every spec is a flow in the summary", () => {
-    expect(summary.length, "summary rows read from flows.md").toBe(16);
+    expect(summary.length, "summary rows read from flows.md").toBe(20);
     expect(summary.map((r) => r.file).sort()).toEqual(specFiles);
   });
 

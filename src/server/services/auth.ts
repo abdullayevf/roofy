@@ -16,6 +16,7 @@ import {
   type AuthService,
   type AuthSession,
   type FieldIssue,
+  type Role,
   type SignInInput,
 } from "@/data/contracts";
 import {
@@ -236,6 +237,25 @@ export function createDbAuth(deps: DbAuthDeps = DEFAULT_DEPS): DbAuthService {
         tooMany(found.status);
         if (found.code === "INVALID_CODE") refuseField("code", WRONG_CODE);
         throw new DataError("invalid", SIGN_IN_AGAIN);
+      }
+    },
+
+    async inviteDetails(invitationId) {
+      if (invitationId.trim() === "") throw new DataError("invalid", INVITE_GONE);
+      const h = await deps.requestHeaders();
+      if (!(await api().getSession({ headers: h }))) throw new DataError("invalid", SIGN_IN_AGAIN);
+      try {
+        const found = (await api().getInvitation({ query: { id: invitationId.trim() }, headers: h })) as {
+          status: string;
+          role: string;
+          organizationName: string;
+        } | null;
+        if (!found || found.status !== "pending") throw new DataError("invalid", INVITE_GONE);
+        return { workspaceName: found.organizationName, role: found.role as Role };
+      } catch (e) {
+        if (e instanceof DataError) throw e;
+        refusalOf(e);
+        throw new DataError("invalid", INVITE_GONE);
       }
     },
 

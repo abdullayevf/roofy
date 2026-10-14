@@ -19,7 +19,7 @@ import { assertInvite, assertKeepsAnOwner } from "@/server/authz/members";
 import { assertCan, memberActionFor } from "@/server/authz/matrix";
 import { isRole, roleFrom } from "./role";
 import { overLimit, SIGN_IN_LIMIT, subjectsOf, THROTTLED_PATHS } from "./throttle";
-import { TOO_MANY_TRIES } from "@/lib/auth-input";
+import { TOO_MANY_TRIES, verifyPageUrl } from "@/lib/auth-input";
 
 const ac = createAccessControl(defaultStatements);
 
@@ -176,7 +176,7 @@ export function createAuth() {
       // Signing in unverified sends a fresh link (the refusal says so).
       sendOnSignIn: true,
       autoSignInAfterVerification: true,
-      sendVerificationEmail: async ({ user, url }) => send(user.email, verificationEmail(url)),
+      sendVerificationEmail: async ({ user, token }) => send(user.email, verificationEmail(verifyPageUrl(baseURL, token))),
     },
     socialProviders: google(),
     hooks: {

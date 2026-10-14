@@ -2,7 +2,17 @@ import { describe, expect, it } from "vitest";
 import { memberSchema } from "../../src/data/admin-inputs";
 import { getSeed } from "../../src/data/fake/store";
 import { FAKE_DEAD_TOKENS } from "../../src/data/fake/services/auth";
-import { LINK_EXPIRED, RESET_LINK_SENT, newPasswordProblem, emailProblem } from "../../src/lib/auth-input";
+import {
+  INVITE_GONE,
+  LINK_EXPIRED,
+  OWNER_STILL_SETTING_UP,
+  RESET_LINK_SENT,
+  TOO_MANY_TRIES,
+  TWO_FACTOR_CODE,
+  WRONG_CODE,
+  emailProblem,
+  newPasswordProblem,
+} from "../../src/lib/auth-input";
 import { PLACEHOLDER_IDS, resolveRoute, SCREENS, type ScreenGroup } from "../e2e/screens";
 
 const KNOWN_GROUPS: ScreenGroup[] = [
@@ -196,8 +206,16 @@ describe("entry-settings invite captures", () => {
 
 describe("auth captures", () => {
   const auth = SCREENS.filter((s) => s.group === "auth");
-  const sentences = [LINK_EXPIRED, RESET_LINK_SENT, "Your password is set."];
-  const refusals = [emailProblem(""), newPasswordProblem(""), newPasswordProblem("short")];
+  const sentences = [
+    LINK_EXPIRED,
+    RESET_LINK_SENT,
+    "Your password is set.",
+    WRONG_CODE,
+    TOO_MANY_TRIES,
+    INVITE_GONE,
+    OWNER_STILL_SETTING_UP,
+  ];
+  const refusals = [emailProblem(""), newPasswordProblem(""), newPasswordProblem("short"), TWO_FACTOR_CODE];
 
   it("every capture that waits for text waits for a sentence the screens really say", () => {
     for (const screen of auth.filter((s) => s.expectStill)) {
@@ -206,10 +224,14 @@ describe("auth captures", () => {
     }
   });
 
-  it("every capture that presses a button waits for its result, and no auth screen needs a role", () => {
+  it("every capture that presses a button waits for its result, and only the no-access screens need a role", () => {
     for (const screen of auth) {
       if (screen.steps?.some((step) => !step.startsWith("fill:"))) expect(screen.expectStill, `${screen.id} has steps but no expectStill`).toBeTruthy();
-      expect(screen.roles, `${screen.id} is pre-auth`).toEqual([]);
+      // The no-access screens are what a signed-in member sees, so they carry the role.
+      const noAccess = screen.id.startsWith("onboarding-no-access-");
+      expect(screen.roles, `${screen.id} is pre-auth`).toEqual(
+        noAccess ? [screen.id.replace("onboarding-no-access-", "")] : [],
+      );
     }
   });
 

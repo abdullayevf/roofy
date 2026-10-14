@@ -1081,6 +1081,97 @@ export const SCREENS: ScreenSpec[] = [
   { id: "reset-password-used", group: "auth", route: "/reset-password?token=used", states: ["normal"], roles: [], steps: ["fill:New password=a-long-password", "Set password"], expectStill: LINK_EXPIRED_TEXT },
   { id: "reset-password-no-token", group: "auth", route: "/reset-password", states: ["normal"], roles: [], expectStill: LINK_EXPIRED_TEXT },
 
+  // Sign-in second step: the prototype takes any 6 digits except 000000 (wrong) and 111111 (too many tries).
+  {
+    id: "two-factor",
+    group: "auth",
+    route: "/two-factor",
+    states: AUTH_STATES,
+    roles: [],
+    keyboard: { field: "Code", action: "Check code" },
+  },
+  {
+    id: "two-factor-invalid",
+    group: "auth",
+    route: "/two-factor",
+    states: ["normal"],
+    roles: [],
+    steps: ["Check code"],
+    expectStill: "Enter the 6-digit code",
+  },
+  {
+    id: "two-factor-filled",
+    group: "auth",
+    route: "/two-factor",
+    states: ["normal"],
+    roles: [],
+    steps: ["fill:Code=482913"],
+  },
+  {
+    id: "two-factor-wrong-code",
+    group: "auth",
+    route: "/two-factor",
+    states: ["normal"],
+    roles: [],
+    steps: ["fill:Code=000000", "Check code"],
+    expectStill: "That code doesn't match",
+  },
+  {
+    id: "two-factor-too-many-tries",
+    group: "auth",
+    route: "/two-factor",
+    states: ["normal"],
+    roles: [],
+    steps: ["fill:Code=111111", "Check code"],
+    expectStill: "Too many tries",
+  },
+
+  // Invite link: the team and role, then one tap. Cancelled, expired and used invites say so.
+  { id: "invite", group: "auth", route: "/invite/good-invite", states: AUTH_STATES, roles: [] },
+  { id: "invite-long-name", group: "auth", route: "/invite/long", states: ["normal"], roles: [] },
+  {
+    id: "invite-expired",
+    group: "auth",
+    route: "/invite/expired",
+    states: ["normal"],
+    roles: [],
+    expectStill: "This invite has expired",
+  },
+  {
+    id: "invite-cancelled",
+    group: "auth",
+    route: "/invite/cancelled",
+    states: ["normal"],
+    roles: [],
+    expectStill: "This invite has expired",
+  },
+  {
+    id: "invite-used",
+    group: "auth",
+    route: "/invite/used",
+    states: ["normal"],
+    roles: [],
+    expectStill: "This invite has expired",
+  },
+
+  // A non-owner member of a workspace the owner has not finished setting up.
+  {
+    id: "onboarding-no-access-manager",
+    group: "auth",
+    route: "/onboarding",
+    states: ["normal"],
+    roles: ["manager"],
+    expectStill: "The owner is still setting this up",
+  },
+  {
+    id: "onboarding-no-access-foreman",
+    group: "auth",
+    route: "/onboarding",
+    states: ["normal"],
+    roles: ["foreman"],
+    expectStill: "The owner is still setting this up",
+  },
+
   // --- entry-settings (Task 19) -----------------------------------------
   // Sign in and sign up: the form, the busy button, no signal, and the plain-words refusals.
   { id: "sign-in", group: "entry-settings", route: "/sign-in", states: AUTH_STATES, roles: [], keyboard: { field: "Password", action: "Sign in" } },

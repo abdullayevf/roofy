@@ -38,34 +38,34 @@ Today in the prototype is **Mon 28 Sep 2026** (Australia/Sydney). Workspace: **H
 
 ## Screen inventory → routes → flows
 
-| #   | Screen (product spec §6)    | Route                              | Touched by                                                                                                                                |
-| --- | --------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Sign in / sign up           | `/sign-in`, `/sign-up`             | Onboarding                                                                                                                                |
-| 2   | Onboarding wizard           | `/onboarding`                      | Onboarding                                                                                                                                |
-| 3   | Install guide               | `/install`                         | Onboarding                                                                                                                                |
-| 4   | Home (manager)              | `/`                                | Find the job losing money, Approve a pay run (entry), Record a payout (entry), Outbox needs attention (badge), Reports drill-down (entry) |
-| 5   | Home (foreman)              | `/` (foreman role)                 | Log a full crew-day (foreman variant), Outbox needs attention (badge)                                                                     |
-| 6   | Log crew-day (grid)         | `/log`                             | Log a full crew-day, Same as yesterday                                                                                                    |
-| 7   | Progress entry              | `/log/progress`                    | Progress 120 m² split two ways                                                                                                            |
-| 8   | No-work marker              | `/log/no-work`                     | No-work marker                                                                                                                            |
-| 9   | Jobs list                   | `/jobs`                            | Pause a stage (entry), Stage done with lump sum (entry)                                                                                   |
-| 10  | New/edit job                | `/jobs/new`, `/jobs/[id]/edit`     | Onboarding                                                                                                                                |
-| 11  | Job detail                  | `/jobs/[id]`                       | Pause a stage (entry), Stage done with lump sum (entry), Find the job losing money                                                        |
-| 12  | Stage detail                | `/jobs/[id]/stages/[stageId]`      | Pause a stage, Find the job losing money                                                                                                  |
-| 13  | Stage Done + lump-sum split | `/jobs/[id]/stages/[stageId]/done` | Stage done with lump sum                                                                                                                  |
-| 14  | Crew list                   | `/crew`                            | Record a payout (entry), Statement share (entry)                                                                                          |
-| 15  | Crew member detail          | `/crew/[id]`                       | Record a payout (entry), Statement share                                                                                                  |
-| 16  | Expenses list               | `/expenses`                        | Add a receipt (entry), Expense edit (entry)                                                                                               |
-| 17  | Add/edit expense            | `/expenses/new`, `/expenses/[id]`  | Add a receipt, Expense edit                                                                                                               |
-| 18  | Pay runs list               | `/pay`                             | Approve a pay run (entry)                                                                                                                 |
-| 19  | Pay run review              | `/pay/[runId]`                     | Approve a pay run                                                                                                                         |
-| 20  | Record payout               | `/crew/[id]/payout`                | Record a payout                                                                                                                           |
-| 21  | Crew statement              | `/s/[token]`                       | Statement share                                                                                                                           |
-| 22  | Reports                     | `/reports`, `/reports/[kind]`      | Reports drill-down                                                                                                                        |
-| 23  | Settings                    | `/settings/*`                      | Settings changes                                                                                                                          |
-| 24  | Outbox / sync status        | `/outbox`                          | Outbox needs attention                                                                                                                    |
-| 25  | Record history              | `/history`                         | Expense edit (viewing the audit trail of a changed line); also reachable from Job/Crew detail                                             |
-| 26  | Workspace export            | `/export`                          | Settings changes (final step)                                                                                                             |
+| #   | Screen (product spec §6)    | Route                                                                                                                   | Touched by                                                                                                                                |
+| --- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Sign in / sign up           | `/sign-in`, `/sign-up`, `/check-email`, `/verify`, `/forgot-password`, `/reset-password`, `/two-factor`, `/invite/[id]` | Onboarding, Verify email, Reset password, Sign in with two-factor, Accept invite                                                          |
+| 2   | Onboarding wizard           | `/onboarding`                                                                                                           | Onboarding                                                                                                                                |
+| 3   | Install guide               | `/install`                                                                                                              | Onboarding                                                                                                                                |
+| 4   | Home (manager)              | `/`                                                                                                                     | Find the job losing money, Approve a pay run (entry), Record a payout (entry), Outbox needs attention (badge), Reports drill-down (entry) |
+| 5   | Home (foreman)              | `/` (foreman role)                                                                                                      | Log a full crew-day (foreman variant), Outbox needs attention (badge)                                                                     |
+| 6   | Log crew-day (grid)         | `/log`                                                                                                                  | Log a full crew-day, Same as yesterday                                                                                                    |
+| 7   | Progress entry              | `/log/progress`                                                                                                         | Progress 120 m² split two ways                                                                                                            |
+| 8   | No-work marker              | `/log/no-work`                                                                                                          | No-work marker                                                                                                                            |
+| 9   | Jobs list                   | `/jobs`                                                                                                                 | Pause a stage (entry), Stage done with lump sum (entry)                                                                                   |
+| 10  | New/edit job                | `/jobs/new`, `/jobs/[id]/edit`                                                                                          | Onboarding                                                                                                                                |
+| 11  | Job detail                  | `/jobs/[id]`                                                                                                            | Pause a stage (entry), Stage done with lump sum (entry), Find the job losing money                                                        |
+| 12  | Stage detail                | `/jobs/[id]/stages/[stageId]`                                                                                           | Pause a stage, Find the job losing money                                                                                                  |
+| 13  | Stage Done + lump-sum split | `/jobs/[id]/stages/[stageId]/done`                                                                                      | Stage done with lump sum                                                                                                                  |
+| 14  | Crew list                   | `/crew`                                                                                                                 | Record a payout (entry), Statement share (entry)                                                                                          |
+| 15  | Crew member detail          | `/crew/[id]`                                                                                                            | Record a payout (entry), Statement share                                                                                                  |
+| 16  | Expenses list               | `/expenses`                                                                                                             | Add a receipt (entry), Expense edit (entry)                                                                                               |
+| 17  | Add/edit expense            | `/expenses/new`, `/expenses/[id]`                                                                                       | Add a receipt, Expense edit                                                                                                               |
+| 18  | Pay runs list               | `/pay`                                                                                                                  | Approve a pay run (entry)                                                                                                                 |
+| 19  | Pay run review              | `/pay/[runId]`                                                                                                          | Approve a pay run                                                                                                                         |
+| 20  | Record payout               | `/crew/[id]/payout`                                                                                                     | Record a payout                                                                                                                           |
+| 21  | Crew statement              | `/s/[token]`                                                                                                            | Statement share                                                                                                                           |
+| 22  | Reports                     | `/reports`, `/reports/[kind]`                                                                                           | Reports drill-down                                                                                                                        |
+| 23  | Settings                    | `/settings/*`                                                                                                           | Settings changes                                                                                                                          |
+| 24  | Outbox / sync status        | `/outbox`                                                                                                               | Outbox needs attention                                                                                                                    |
+| 25  | Record history              | `/history`                                                                                                              | Expense edit (viewing the audit trail of a changed line); also reachable from Job/Crew detail                                             |
+| 26  | Workspace export            | `/export`                                                                                                               | Settings changes (final step)                                                                                                             |
 
 ## Flow summary (recap)
 
@@ -87,6 +87,10 @@ Today in the prototype is **Mon 28 Sep 2026** (Australia/Sydney). Workspace: **H
 | Statement share                     | Manager/Owner                   | ≤ 4 taps                           | 3 taps         | `statement-share.spec.ts`        |
 | Reports drill-down                  | Manager/Owner/Accountant        | ≤ 5 taps                           | 4 taps         | `reports-drilldown.spec.ts`      |
 | Settings changes                    | Owner/Manager                   | ≤ 5 taps                           | 5 taps         | `settings-changes.spec.ts`       |
+| Verify email                        | Owner                           | ≤ 4 taps                           | 3 taps         | `verify-email.spec.ts`           |
+| Reset password                      | Anyone with an account          | ≤ 7 taps                           | 6 taps         | `reset-password.spec.ts`         |
+| Sign in with two-factor             | Owner                           | ≤ 6 taps                           | 5 taps         | `sign-in-two-factor.spec.ts`     |
+| Accept invite                       | Manager/Accountant/Foreman      | ≤ 2 taps                           | 1 tap          | `accept-invite.spec.ts`          |
 
 ---
 
@@ -420,3 +424,58 @@ Example: a lump-sum stage "Ridge bedding & pointing", L = $2,000.00, three peopl
 **Errors:** a floor rate of $0.00 or blank shows **"Add a floor rate before saving."**
 
 **Related, not tap-counted separately:** **Workspace export** (`/export`, screen 26) is reached the same way, one level up (More → Settings → Workspace export), and is a single **Export workspace** tap once on the page — it is not a numbered UX target but is covered here so it is not orphaned from the screen inventory.
+
+---
+
+## Verify email
+
+| Goal                                            | Who   | Start      | Budget   | Test                                   |
+| ----------------------------------------------- | ----- | ---------- | -------- | -------------------------------------- |
+| Create an account and confirm the email address | Owner | `/sign-up` | ≤ 4 taps | `tests/e2e/flows/verify-email.spec.ts` |
+
+1. Tap the **Email** field to focus it, type the address. _(1)_
+2. Tap the **Password** field to focus it, type a password. _(2)_
+3. Tap **Create account.** → `/check-email` names the address. _(3)_
+4. Open the link in the email (the mail app is not counted). `/verify` checks the link on arrival, with no tap, and goes on to `/onboarding`. _(0)_
+
+**Expired or already-used link:** "This link has expired or was already used. Ask for a new one." with the one button **Ask for a new link**. **Offline:** "Needs connection". **Service down:** "Couldn't check your link. Try again." (button: **Try again**).
+
+## Reset password
+
+| Goal                                     | Who                    | Start      | Budget   | Test                                     |
+| ---------------------------------------- | ---------------------- | ---------- | -------- | ---------------------------------------- |
+| Set a new password from the sign-in page | Anyone with an account | `/sign-in` | ≤ 7 taps | `tests/e2e/flows/reset-password.spec.ts` |
+
+1. Tap **Forgot password?** → `/forgot-password`. _(1)_
+2. Tap the **Email** field to focus it, type the address. _(2)_
+3. Tap **Send link.** The same sentence answers whether or not the email has an account. _(3)_
+4. Open the link in the email (not counted) → `/reset-password`. Tap the **New password** field to focus it, type the password. _(4)_
+5. Tap **Set password.** _(5)_
+6. Tap **Sign in.** → `/sign-in`. _(6)_
+
+**Expired or already-used link:** the same sentence as verify, with **Ask for a new link**. **Errors:** a password under 8 characters shows "Use at least 8 characters."
+
+## Sign in with two-factor
+
+| Goal                                  | Who   | Start      | Budget   | Test                                         |
+| ------------------------------------- | ----- | ---------- | -------- | -------------------------------------------- |
+| Sign in when the account needs a code | Owner | `/sign-in` | ≤ 6 taps | `tests/e2e/flows/sign-in-two-factor.spec.ts` |
+
+1. Tap the **Email** field to focus it, type the address. _(1)_
+2. Tap the **Password** field to focus it, type the password. _(2)_
+3. Tap **Sign in.** The password is right and the account has two-factor on → `/two-factor`. _(3)_
+4. Tap the **Code** field to focus it, type the 6 digits from the authenticator app. _(4)_
+5. Tap **Check code.** → Home. _(5)_
+
+**Errors:** a wrong code shows "That code doesn't match. Enter the code your authenticator app shows now." under the box; after too many tries, "Too many tries. Wait a minute, then try again." **Offline:** "Needs connection". In the prototype any 6 digits work except 000000 (wrong) and 111111 (too many tries).
+
+## Accept invite
+
+| Goal                               | Who                        | Start                     | Budget   | Test                                    |
+| ---------------------------------- | -------------------------- | ------------------------- | -------- | --------------------------------------- |
+| Join the team from the invite link | Manager/Accountant/Foreman | `/invite/[id]`, signed in | ≤ 2 taps | `tests/e2e/flows/accept-invite.spec.ts` |
+
+1. Open the invite link in the email (not counted). The page names the team and the role.
+2. Tap **Join team.** → Home, with the invited role. _(1)_
+
+**Cancelled, expired or used invite:** "This invite has expired or was cancelled. Ask your manager for a new one." with **Sign in**. **Not signed in:** the page says to sign in with the invited email, then open the invite again. **Wrong email:** "This invite is for a different email. Sign in with the email it was sent to." **Related:** a manager, accountant or foreman who opens `/onboarding` while the owner has not finished set-up sees "The owner is still setting this up" and one button, **Sign out**.

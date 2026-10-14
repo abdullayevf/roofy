@@ -56,7 +56,7 @@ export const ONBOARDING_METHODS = {
 
 export const AUTH_METHODS = {
   signIn: true, signUp: true, continueWithGoogle: true, verifyEmail: true, requestPasswordReset: true,
-  resetPassword: true, verifyTwoFactor: true, acceptInvite: true,
+  resetPassword: true, verifyTwoFactor: true, acceptInvite: true, inviteDetails: true,
 } as const satisfies MethodsOf<AuthService>;
 
 function notReady(): Promise<never> {

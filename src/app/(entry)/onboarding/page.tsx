@@ -3,8 +3,8 @@ import { headers } from "next/headers";
 import { getOnboarding } from "@/data";
 import { isDataError, ONBOARDING_STEPS, type OnboardingStep } from "@/data/contracts";
 import type { SearchParams } from "@/data/session";
-import { NoPermission } from "@/components/page-states";
 import { Button } from "@/components/ui/button";
+import { OnboardingNoAccess } from "@/components/screens/onboarding-no-access";
 import { OnboardingWizard } from "@/components/screens/onboarding-wizard";
 import { detectPlatform, parsePlatform } from "@/lib/install-platform";
 
@@ -19,14 +19,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
   const params = await searchParams;
   const { onboarding, actor, demo } = await getOnboarding({ searchParams: params });
   // The role check comes first, so a demo error or offline state never shows a non-owner the wizard's error.
-  if (actor.role !== "owner")
-    return <NoPermission backHref="/" backLabel="Go to Home" ask="the business owner" />;
+  if (actor.role !== "owner") return <OnboardingNoAccess />;
   let state: Awaited<ReturnType<typeof onboarding.state>>;
   try {
     state = await onboarding.state(actor);
   } catch (e) {
-    if (isDataError(e) && e.code === "forbidden")
-      return <NoPermission backHref="/" backLabel="Go to Home" ask="the business owner" />;
+    if (isDataError(e) && e.code === "forbidden") return <OnboardingNoAccess />;
     return (
       <div role="alert" className="flex flex-col gap-4">
         <h1 className="font-display text-title text-ink">Couldn&apos;t load this</h1>

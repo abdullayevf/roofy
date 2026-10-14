@@ -63,3 +63,19 @@ export const PASSWORD_SET = "Your password is set. Sign in with it now.";
 export function newPasswordProblem(password: string): string | null {
   return password === "" ? "Enter a new password." : passwordProblem(password, "sign-up");
 }
+
+// Two-factor, invites and the unfinished-workspace screen.
+export const TWO_FACTOR_FAILED = "Couldn't check your code. Try again.";
+export const INVITE_FAILED = "Couldn't join the team. Try again.";
+/** A non-owner member opens a workspace whose set-up the owner has not finished. */
+export const OWNER_STILL_SETTING_UP = "The owner is still setting this up";
+
+/** The 6-digit code box: blank asks for it, anything but six digits is the same plain sentence. */
+export function codeProblem(code: string): string | null {
+  return /^\d{6}$/.test(code.trim()) ? null : TWO_FACTOR_CODE;
+}
+
+/** The page the verification email's button opens: it checks the token itself, so the person lands in the app. */
+export function verifyPageUrl(baseURL: string, token: string): string {
+  return `${baseURL.replace(/\/+$/, "")}/verify?token=${encodeURIComponent(token)}`;
+}

@@ -24,6 +24,8 @@ async function enter(
     const session = await work(getAuth());
     if ("redirectTo" in session) return { ok: true, next: session.redirectTo };
     if (!isFakeMode()) return { ok: true, next: session.next };
+    // The code comes first: nobody is signed in on the prototype until it is right.
+    if (session.next === "/two-factor") return { ok: true, next: session.next };
     await ensureDemoSession();
     if (session.next === "/onboarding") await startNewWorkspace();
     (await cookies()).set(ROLE_COOKIE, session.role, { ...SESSION_COOKIE_OPTIONS, secure: isHttps("", await headers()) });

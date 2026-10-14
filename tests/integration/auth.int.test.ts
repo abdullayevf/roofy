@@ -99,7 +99,7 @@ describe("Better Auth", () => {
     expect(res.user.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     const mails = mailsTo(email);
     expect(mails).toHaveLength(1);
-    expect(mails[0]?.links[0]).toContain(`${BASE}/api/auth/verify-email?token=`);
+    expect(mails[0]?.links[0]).toContain(`${BASE}/verify?token=`);
     const err = await rejection(getAuth().api.signInEmail({ body: { email, password: PASSWORD } }));
     expect(err.statusCode).toBe(403);
     expect(err.body?.code).toBe("EMAIL_NOT_VERIFIED");

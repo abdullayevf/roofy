@@ -1767,6 +1767,12 @@ export interface AuthRedirect {
   redirectTo: string;
 }
 
+/** What an invite link names: the team and the role it joins as. */
+export interface InviteDetails {
+  workspaceName: string;
+  role: Role;
+}
+
 /** What "Send link" answers: the same sentence whether or not the email has an account. */
 export interface PasswordResetRequested {
   message: string;
@@ -1792,6 +1798,8 @@ export interface AuthService {
   resetPassword(token: string, password: string): Promise<void>;
   /** The 6-digit code from the authenticator app, after a sign-in answered `next: "/two-factor"`. */
   verifyTwoFactor(code: string): Promise<AuthSession>;
+  /** The team and role an invite is for, to show before "Join team". Cancelled or expired is `DataError("invalid")`; no sign-in yet is `DataError("invalid")` with the sign-in-again sentence. */
+  inviteDetails(invitationId: string): Promise<InviteDetails>;
   /** Join the team an invite is for, with the invited role. A cancelled or expired invite is `DataError("invalid")`. */
   acceptInvite(invitationId: string): Promise<AuthSession>;
 }

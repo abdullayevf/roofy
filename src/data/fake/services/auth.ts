@@ -3,7 +3,7 @@
  * password. Any other well-formed email signs in with a password of 8 or more characters, so a reviewer can try
  * their own address; a shorter password reads as a wrong one. Everyone who signs in is the Owner.
  */
-import { DataError, type AuthService, type AuthSession, type FieldIssue, type SignInInput } from "../../contracts";
+import { DataError, type AuthService, type InviteDetails, type AuthSession, type FieldIssue, type SignInInput } from "../../contracts";
 import {
   authProblems,
   emailProblem,
@@ -13,7 +13,9 @@ import {
   passwordProblem,
   PASSWORD_MIN,
   RESET_LINK_SENT,
+  TOO_MANY_TRIES,
   TWO_FACTOR_CODE,
+  WRONG_CODE,
   WRONG_PASSWORD,
   type AuthMode,
 } from "@/lib/auth-input";
@@ -34,6 +36,14 @@ export {
 /** Link tokens the prototype treats as spent: the design captures open `?token=expired` and `?token=used`. */
 export const FAKE_DEAD_TOKENS: readonly string[] = ["expired", "used"];
 const deadLink = (token: string) => token.trim() === "" || FAKE_DEAD_TOKENS.includes(token.trim());
+
+/** Signing in with this email asks for a code next; the prototype takes any 6 digits except the two below. */
+export const DEMO_TWO_FACTOR_EMAIL = "owner-2fa@harbourroofing.example";
+export const FAKE_WRONG_CODE = "000000";
+export const FAKE_LOCKED_CODE = "111111";
+/** Invite ids the prototype treats as cancelled or expired; `long` is a team with a very long name. */
+export const FAKE_DEAD_INVITES: readonly string[] = ["expired", "used", "cancelled"];
+const LONG_TEAM = "Harbour and Bay Roofing and Waterproofing Contractors of the Northern Beaches";
 
 const normal = (email: string) => email.trim().toLowerCase();
 
@@ -56,6 +66,7 @@ export function createFakeAuth(): AuthService {
       const email = normal(input.email);
       const known = email === DEMO_OWNER_EMAIL ? input.password === DEMO_PASSWORD : input.password.length >= PASSWORD_MIN;
       if (!known) throw new DataError("invalid", WRONG_PASSWORD);
+      if (email === DEMO_TWO_FACTOR_EMAIL) return { role: "owner", next: "/two-factor" } satisfies AuthSession;
       return { role: "owner", next: "/" } satisfies AuthSession;
     },
     async signUp(input) {
@@ -83,11 +94,18 @@ export function createFakeAuth(): AuthService {
     },
     async verifyTwoFactor(code) {
       if (!/^\d{6}$/.test(code.trim())) refuseField("code", TWO_FACTOR_CODE);
+      if (code.trim() === FAKE_WRONG_CODE) throw new DataError("invalid", WRONG_CODE);
+      if (code.trim() === FAKE_LOCKED_CODE) throw new DataError("invalid", TOO_MANY_TRIES);
       return { role: "owner", next: "/" };
     },
-    /** The prototype has no invite rows to read: an invite link joins as a foreman, the usual invite. */
+    /** The prototype has no invite rows to read: an invite link joins Harbour Roofing as a foreman, the usual invite. */
+    async inviteDetails(invitationId): Promise<InviteDetails> {
+      const id = invitationId.trim();
+      if (id === "" || FAKE_DEAD_INVITES.includes(id)) throw new DataError("invalid", INVITE_GONE);
+      return { workspaceName: id === "long" ? LONG_TEAM : "Harbour Roofing", role: "foreman" };
+    },
     async acceptInvite(invitationId) {
-      if (invitationId.trim() === "") throw new DataError("invalid", INVITE_GONE);
+      if (invitationId.trim() === "" || FAKE_DEAD_INVITES.includes(invitationId.trim())) throw new DataError("invalid", INVITE_GONE);
       return { role: "foreman", next: "/" };
     },
   };
