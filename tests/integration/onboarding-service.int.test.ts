@@ -10,6 +10,7 @@ import {
   NAME_CREW,
   RATE_MISSING,
   RATE_MISSING_DAILY,
+  RATE_UNREADABLE,
 } from "@/lib/onboarding-input";
 import { ROOFING_DEFAULTS } from "@/lib/roofing-defaults";
 import { ONBOARDING_SCAN } from "@/server/services/foreman-scan";
@@ -288,6 +289,111 @@ describe("db onboarding: the steps", () => {
       [first.workspaceId],
     );
     expect(w!.onboarding_step).toBe("crew");
+  });
+});
+
+describe("db onboarding: Task 12 fix 1 guards", () => {
+  const count = async (t: string, ws: string) =>
+    (await rows("owner", `select 1 from ${t} where workspace_id = $1`, [ws])).length;
+
+  it("R2: the pay anchor is the Monday on or before today in Sydney, not in UTC (Sun 18th UTC is Mon 19th in Sydney)", async () => {
+    const { userId } = await newUser("Anchor");
+    await createDbOnboarding({ userId }, () => new Date("2026-10-18T14:30:00Z")).saveBusiness(
+      setUpActor(userId),
+      BUSINESS,
+    );
+    const [w] = await rows<{ pay_anchor: string }>(
+      "owner",
+      "select w.pay_anchor::text as pay_anchor from workspace w join member m on m.workspace_id = w.id where m.user_id = $1",
+      [userId],
+    );
+    expect(w!.pay_anchor).toBe("2026-10-19");
+  });
+
+  it("R3: an actor claiming Owner whose member row is manager or foreman is refused and the step stays", async () => {
+    const { actor: first, o } = await walkTo("trade", "Boss");
+    for (const role of ["manager", "foreman"]) {
+      const { userId } = await newUser(`Claims ${role}`);
+      await pool("owner").query(
+        "insert into member (id, workspace_id, user_id, role) values (gen_random_uuid(), $1, $2, $3)",
+        [first.workspaceId, userId, role],
+      );
+      const claimed: Actor = { userId, workspaceId: first.workspaceId, role: "owner", name: role };
+      const e = await refusal(createDbOnboarding(claimed, now).chooseTrade(claimed, "roofing"));
+      expect(e.code).toBe("forbidden");
+    }
+    expect((await o.state(first)).step).toBe("trade");
+  });
+
+  it("R4: defaults applied, back, applied again leaves every kind's count unchanged", async () => {
+    const { actor, o } = await walkTo("defaults");
+    await o.acceptDefaults(actor);
+    const kinds = ["stage_template", "stage_template_item", "expense_category", "crew_level"];
+    const before = await Promise.all(kinds.map((k) => count(k, actor.workspaceId)));
+    await o.back(actor);
+    await o.acceptDefaults(actor);
+    expect(await Promise.all(kinds.map((k) => count(k, actor.workspaceId)))).toEqual(before);
+  });
+
+  it("R4: a kind the workspace already has is not copied; the other kinds are", async () => {
+    const { actor, o } = await walkTo("defaults");
+    await pool("owner").query(
+      "insert into expense_category (id, workspace_id, name, position) values (gen_random_uuid(), $1, 'Scaffold hire', 1)",
+      [actor.workspaceId],
+    );
+    await o.acceptDefaults(actor);
+    const names = await rows<{ name: string }>(
+      "owner",
+      "select name from expense_category where workspace_id = $1",
+      [actor.workspaceId],
+    );
+    expect(names.map((r) => r.name)).toEqual(["Scaffold hire"]);
+    expect(await count("crew_level", actor.workspaceId)).toBe(ROOFING_DEFAULTS.levels.length);
+    expect(await count("stage_template", actor.workspaceId)).toBe(
+      Object.keys(ROOFING_DEFAULTS.templates).length,
+    );
+  });
+
+  it("R5: a service for one user refuses another user, and a bound service refuses another workspace", async () => {
+    const { actor: other } = await walkTo("crew", "Other");
+    const { userId } = await newUser("Mine");
+    const o = createDbOnboarding({ userId }, now);
+    expect((await refusal(o.state(setUpActor(other.userId)))).code).toBe("forbidden");
+    await o.saveBusiness(setUpActor(userId), BUSINESS);
+    const onOther: Actor = { userId, workspaceId: other.workspaceId, role: "owner", name: "Mine" };
+    expect((await refusal(o.back(onOther))).code).toBe("forbidden");
+    expect((await createDbOnboarding(other, now).state(other)).step).toBe("crew");
+  });
+
+  it("R5: a level that is not in this workspace's list, or an unreadable rate, is refused by field", async () => {
+    const { actor: other } = await walkTo("crew", "Level owner");
+    const [theirs] = await rows<{ id: string }>("owner", "select id from crew_level where workspace_id = $1", [
+      other.workspaceId,
+    ]);
+    const { actor, o } = await walkTo("crew");
+    for (const levelId of [uuidv7(), theirs!.id]) {
+      const e = await refusal(
+        o.addCrew(actor, { name: "Jo", type: "employee", levelId, basis: "hourly", rateCents: 4000 }),
+      );
+      expect([e.code, e.issues]).toEqual([
+        "invalid",
+        [{ field: "levelId", message: "Pick a level from the list." }],
+      ]);
+    }
+    const r = await refusal(
+      o.addCrew(actor, { name: "Jo", type: "contractor", levelId: null, basis: "daily", rateCents: 320.5 }),
+    );
+    expect(r.issues).toEqual([{ field: "rate", message: RATE_UNREADABLE }]);
+    expect(await count("crew_member", actor.workspaceId)).toBe(0);
+  });
+
+  it("R5: two set-up saves at once for one user make one workspace", async () => {
+    const { userId } = await newUser("Twice");
+    const results = await Promise.allSettled(
+      [1, 2].map(() => createDbOnboarding({ userId }, now).saveBusiness(setUpActor(userId), BUSINESS)),
+    );
+    expect(results.map((r) => r.status).sort()).toEqual(["fulfilled", "rejected"]);
+    expect(await rows("owner", "select 1 from member where user_id = $1", [userId])).toHaveLength(1);
   });
 });
 

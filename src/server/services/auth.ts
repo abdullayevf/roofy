@@ -8,7 +8,8 @@
  * Where to go next: unverified → `/check-email`, TOTP on → `/two-factor`, no workspace or an unfinished one
  * → `/onboarding`, otherwise Home. The role is the member row of the workspace the session opens.
  */
-import { and, desc, eq } from "drizzle-orm";
+import { createHash } from "node:crypto";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { APIError } from "better-auth/api";
 import { headers as nextHeaders } from "next/headers";
 import {
@@ -36,7 +37,7 @@ import {
   WRONG_PASSWORD,
   type AuthMode,
 } from "@/lib/auth-input";
-import { getAuth, type Auth } from "@/server/auth/auth";
+import { getAuth, SIGN_IN_LIMIT, type Auth } from "@/server/auth/auth";
 import { roleFrom } from "@/server/auth/role";
 import { getAuthDb } from "@/server/db/client";
 import { member, workspace } from "@/server/db/schema";
@@ -99,6 +100,38 @@ async function landing(userId: string, workspaceId?: string): Promise<AuthSessio
 
 const normal = (email: string) => email.trim().toLowerCase();
 
+/**
+ * One try at `kind` for `subject`, counted in Better Auth's own `rate_limit` table with `SIGN_IN_LIMIT`.
+ * The service calls `auth.api.*` directly, and Better Auth limits only requests through its HTTP router,
+ * so these calls are throttled here. The window starts at the first try; past `max` inside it the try is
+ * refused before Better Auth is asked. Keys are hashed (no email stored) and prefixed apart from Better Auth's.
+ */
+async function throttle(kind: string, subject: string): Promise<void> {
+  const key = `roofy:${kind}:${createHash("sha256").update(subject).digest("hex")}`;
+  const now = Date.now();
+  const since = now - SIGN_IN_LIMIT.window * 1000;
+  const res = await getAuthDb().execute<{ count: number }>(sql`
+    insert into rate_limit (id, key, count, last_request)
+    values (gen_random_uuid(), ${key}, 1, ${now})
+    on conflict (key) do update set
+      count = case when rate_limit.last_request <= ${since} then 1 else rate_limit.count + 1 end,
+      last_request = case when rate_limit.last_request <= ${since} then ${now} else rate_limit.last_request end
+    returning count`);
+  if (Number(res.rows[0]?.count ?? 0) > SIGN_IN_LIMIT.max) throw new DataError("invalid", TOO_MANY_TRIES);
+}
+
+/**
+ * The cookies that name this code check: the sign-in waiting for its code, or the session turning TOTP on.
+ * Each is counted on its own, so junk copies sent beside the real cookie still count against the real one.
+ */
+function codeSubjects(h: Headers): string[] {
+  const found = (h.get("cookie") ?? "")
+    .split(";")
+    .map((c) => c.trim())
+    .filter((c) => /^(__Secure-)?better-auth\.(two_factor|session_token)=/.test(c));
+  return [...new Set(found)];
+}
+
 export function createDbAuth(deps: DbAuthDeps = DEFAULT_DEPS): DbAuthService {
   const api = () => deps.auth().api;
 
@@ -106,6 +139,7 @@ export function createDbAuth(deps: DbAuthDeps = DEFAULT_DEPS): DbAuthService {
     async signIn(input) {
       check("sign-in", input);
       const email = normal(input.email);
+      await throttle("sign-in", email);
       try {
         const res = await api().signInEmail({
           body: { email, password: input.password },
@@ -127,6 +161,7 @@ export function createDbAuth(deps: DbAuthDeps = DEFAULT_DEPS): DbAuthService {
     async signUp(input) {
       check("sign-up", input);
       const email = normal(input.email);
+      await throttle("sign-up", email);
       // Better Auth answers a taken email with a silent success; the sign-up screen says so instead (the fake's copy).
       if (await userIdByEmail(email)) refuseField("email", EMAIL_TAKEN);
       try {
@@ -182,6 +217,7 @@ export function createDbAuth(deps: DbAuthDeps = DEFAULT_DEPS): DbAuthService {
     async requestPasswordReset(email) {
       const problem = emailProblem(email);
       if (problem) refuseField("email", problem);
+      await throttle("reset", normal(email));
       try {
         await api().requestPasswordReset({ body: { email: normal(email), redirectTo: "/reset-password" } });
       } catch (e) {
@@ -205,10 +241,13 @@ export function createDbAuth(deps: DbAuthDeps = DEFAULT_DEPS): DbAuthService {
 
     async verifyTwoFactor(code) {
       if (!/^\d{6}$/.test(code.trim())) refuseField("code", TWO_FACTOR_CODE);
+      const h = await deps.requestHeaders();
+      // No sign-in waiting and no session: Better Auth refuses it without checking a code.
+      for (const subject of codeSubjects(h)) await throttle("two-factor", subject);
       try {
         const res = await api().verifyTOTP({
           body: { code: code.trim() },
-          headers: await deps.requestHeaders(),
+          headers: h,
           returnHeaders: true,
         });
         await deps.keepCookies(res.headers);
@@ -250,8 +289,8 @@ export function createDbAuth(deps: DbAuthDeps = DEFAULT_DEPS): DbAuthService {
         const res = await api().signOut({ headers: await deps.requestHeaders(), returnHeaders: true });
         await deps.keepCookies(res.headers);
       } catch (e) {
-        // No session to end (already signed out) is fine; anything else is an outage.
-        refusalOf(e);
+        // No session to end (already signed out) is fine; any other refusal or outage is rethrown.
+        if (refusalOf(e).status !== 401) throw e;
       }
     },
   };

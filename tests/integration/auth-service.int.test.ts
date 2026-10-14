@@ -19,12 +19,14 @@ import {
   LINK_EXPIRED,
   RESET_LINK_SENT,
   SIGN_IN_AGAIN,
+  TOO_MANY_TRIES,
   TWO_FACTOR_CODE,
   WRONG_CODE,
   WRONG_PASSWORD,
 } from "@/lib/auth-input";
 import { actorFromHeaders } from "@/server/auth/actor";
-import { createAuth, getAuth } from "@/server/auth/auth";
+import { APIError } from "better-auth/api";
+import { createAuth, getAuth, type Auth } from "@/server/auth/auth";
 import { createDbAuth } from "@/server/services/auth";
 import { closePools, makeWorkspace, pool, rows } from "./helpers";
 
@@ -303,6 +305,110 @@ describe("db auth service", () => {
       delete process.env.GOOGLE_CLIENT_ID;
       delete process.env.GOOGLE_CLIENT_SECRET;
     }
+  });
+
+  /** A verified user with TOTP on, and a browser whose sign-in is waiting for the code. */
+  async function waitingForCode() {
+    const { b, email } = await verifiedUser();
+    const enabled = await getAuth().api.enableTwoFactor({ body: { password: PASSWORD }, headers: b.headers() });
+    if (enabled.method !== "totp") throw new Error("expected TOTP");
+    const secret = base32Decode(new URL(enabled.totpURI).searchParams.get("secret") ?? "");
+    await getAuth().api.verifyTOTP({
+      body: { code: (await getAuth().api.generateTOTP({ body: { secret } })).code },
+      headers: b.headers(),
+    });
+    const c = browser();
+    await c.service.signIn({ email, password: PASSWORD });
+    return { c, secret };
+  }
+
+  it("R1: a sixth sign-in for one email inside a minute is too many tries, right password or not; another email is not", async () => {
+    const { email } = await verifiedUser();
+    for (let i = 0; i < 5; i++)
+      expect((await refusal(browser().service.signIn({ email, password: "not the password" }))).message).toBe(
+        WRONG_PASSWORD,
+      );
+    const sixth = await refusal(browser().service.signIn({ email: email.toUpperCase(), password: PASSWORD }));
+    expect([sixth.code, sixth.message]).toEqual(["invalid", TOO_MANY_TRIES]);
+    const { email: other } = await verifiedUser();
+    expect((await browser().service.signIn({ email: other, password: PASSWORD })).next).toBe("/onboarding");
+  });
+
+  it("R1: a sixth sign-up for one email inside a minute is too many tries", async () => {
+    const email = freshEmail();
+    await browser().service.signUp({ email, password: PASSWORD });
+    for (let i = 0; i < 4; i++)
+      expect((await refusal(browser().service.signUp({ email, password: PASSWORD }))).message).toBe(EMAIL_TAKEN);
+    const sixth = await refusal(browser().service.signUp({ email, password: PASSWORD }));
+    expect([sixth.code, sixth.message]).toEqual(["invalid", TOO_MANY_TRIES]);
+  });
+
+  it("R1: a sixth TOTP code for one waiting sign-in is too many tries, even the right code", async () => {
+    const { c, secret } = await waitingForCode();
+    const { code } = await getAuth().api.generateTOTP({ body: { secret } });
+    const bad = code === "000000" ? "111111" : "000000";
+    for (let i = 0; i < 5; i++)
+      expect((await refusal(c.service.verifyTwoFactor(bad))).issues).toEqual([{ field: "code", message: WRONG_CODE }]);
+    // A junk copy of the cookie sent beside the real one does not start a fresh count.
+    const junk = createDbAuth({
+      auth: getAuth,
+      requestHeaders: async () =>
+        new Headers({ cookie: `${c.headers().get("cookie")}; better-auth.two_factor=junk${Date.now()}` }),
+      keepCookies: () => undefined,
+    });
+    const sixth = await refusal(junk.verifyTwoFactor(code));
+    expect([sixth.code, sixth.message]).toEqual(["invalid", TOO_MANY_TRIES]);
+    const seventh = await refusal(c.service.verifyTwoFactor(code));
+    expect(seventh.message).toBe(TOO_MANY_TRIES);
+    expect((await actorFromHeaders(c.headers())).kind).toBe("signed-out");
+  });
+
+  it("R1: a sixth reset request for one email inside a minute is too many tries and sends no sixth mail", async () => {
+    const { email } = await verifiedUser();
+    const unknown = freshEmail();
+    const before = mailsTo(email).length;
+    for (const to of [email, unknown]) {
+      for (let i = 0; i < 5; i++)
+        expect(await browser().service.requestPasswordReset(to)).toEqual({ message: RESET_LINK_SENT });
+      const sixth = await refusal(browser().service.requestPasswordReset(to));
+      expect([sixth.code, sixth.message]).toEqual(["invalid", TOO_MANY_TRIES]);
+    }
+    expect(mailsTo(email)).toHaveLength(before + 5);
+  });
+
+  it("R5: signIn for a member of an unfinished workspace names set-up", async () => {
+    const { email, userId } = await verifiedUser();
+    const { workspaceId } = await makeWorkspace("Unfinished Roofing");
+    await pool("owner").query("update workspace set onboarding_step = 'crew' where id = $1", [workspaceId]);
+    await pool("owner").query(
+      "insert into member (id, workspace_id, user_id, role) values (gen_random_uuid(), $1, $2, 'manager')",
+      [workspaceId, userId],
+    );
+    expect(await browser().service.signIn({ email, password: PASSWORD })).toEqual({
+      role: "manager",
+      next: "/onboarding",
+    });
+  });
+
+  it("R8: signOut ignores only a no-session refusal and rethrows any other Better Auth failure", async () => {
+    const failing = (status: "UNAUTHORIZED" | "INTERNAL_SERVER_ERROR") => () =>
+      ({
+        api: {
+          signOut: async () => {
+            throw new APIError(status, { message: "from the test" });
+          },
+        },
+      }) as unknown as Auth;
+    const e = await browser(failing("INTERNAL_SERVER_ERROR"))
+      .service.signOut()
+      .then(
+        () => null,
+        (x: unknown) => x,
+      );
+    expect(e).toBeInstanceOf(APIError);
+    expect((e as APIError).statusCode).toBe(500);
+    await expect(browser(failing("UNAUTHORIZED")).service.signOut()).resolves.toBeUndefined();
+    await expect(browser().service.signOut()).resolves.toBeUndefined();
   });
 
   it("signOut ends the session in the database and clears the cookie", async () => {
