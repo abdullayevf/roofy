@@ -147,7 +147,7 @@ export function Sheet({ open, onOpenChange, title, children, primaryAction }: Sh
     return (
       <Dialog.Root open={open} onOpenChange={onOpenChange}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-ink/40" />
+          <Dialog.Overlay className="fixed inset-0 z-40 bg-scrim" />
           <Dialog.Content
             onCloseAutoFocus={restoreFocus}
             className={cx(
@@ -175,7 +175,7 @@ export function Sheet({ open, onOpenChange, title, children, primaryAction }: Sh
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange} autoFocus>
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-40 bg-ink/40" />
+        <Drawer.Overlay className="fixed inset-0 z-40 bg-scrim" />
         <Drawer.Content
           onCloseAutoFocus={restoreFocus}
           className={cx("fixed inset-x-0 bottom-0 z-50", "duration-[220ms] ease-out")}

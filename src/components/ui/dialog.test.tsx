@@ -26,6 +26,15 @@ function Demo({ tone }: { tone?: "danger" }) {
 }
 
 describe("Dialog", () => {
+  it("darkens the page behind it with the scrim token, never a veil made from ink (dark mode lifts it)", async () => {
+    const user = userEvent.setup();
+    render(<Demo />);
+    await user.click(screen.getByRole("button", { name: "Open dialog" }));
+    const veil = document.querySelector(".fixed.inset-0.z-40");
+    expect(veil?.className).toContain("bg-scrim");
+    expect(veil?.className).not.toMatch(/bg-ink/);
+  });
+
   it("moves focus inside, traps Tab, and restores focus to the opener on Escape", async () => {
     const user = userEvent.setup();
     render(<Demo />);

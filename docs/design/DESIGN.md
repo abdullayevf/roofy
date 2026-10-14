@@ -113,6 +113,8 @@ Rules: all money, quantities, hours and dates in tables use `font-variant-numeri
 
 Radius hierarchy is deliberate: controls 6, groups 8, sheets 12 (top only), chips full. Not one radius for everything.
 
+The veil behind a dialog or sheet is the `scrim` token (`ink` at 40% in light, black at 60% in dark). It always darkens the page, so the dialog reads as raised in both schemes; never build it from `ink`, which is the light tone in dark.
+
 ## 7. Do's and don'ts
 
 **Do**

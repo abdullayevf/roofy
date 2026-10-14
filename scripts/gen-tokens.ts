@@ -169,6 +169,13 @@ function colorDeclarations(c: ColorTokens, indent: string): string {
   return COLOR_TOKEN_ORDER.map((name) => `${indent}--${name}: ${c[name]};`).join("\n");
 }
 
+/**
+ * The veil behind a dialog or sheet. It always darkens the page: the page ink in light mode, black in dark mode,
+ * where `ink` is the light tone and a scrim made from it would lift the page above the dialog (auth i1 D5).
+ */
+const SCRIM_LIGHT = "rgb(31 34 36 / 0.4)";
+const SCRIM_DARK = "rgb(0 0 0 / 0.6)";
+
 export function generateTokensCss(designMd: string): string {
   const { light: lightBase, dark: darkBase } = parseColorSection(designMd);
   const elevation = parseElevation(designMd);
@@ -201,6 +208,7 @@ export function generateTokensCss(designMd: string): string {
 ${colorDeclarations(light, "  ")}
   --shadow-sheet: ${elevation.sheet};
   --shadow-toast: ${elevation.toast};
+  --scrim: ${SCRIM_LIGHT};
 }
 
 @media (prefers-color-scheme: dark) {
@@ -209,6 +217,7 @@ ${colorDeclarations(light, "  ")}
 ${colorDeclarations(dark, "    ")}
     --shadow-sheet: none;
     --shadow-toast: none;
+    --scrim: ${SCRIM_DARK};
   }
 }
 
@@ -217,6 +226,7 @@ ${colorDeclarations(dark, "    ")}
 ${colorDeclarations(dark, "  ")}
   --shadow-sheet: none;
   --shadow-toast: none;
+  --scrim: ${SCRIM_DARK};
 }
 
 /*
@@ -229,6 +239,7 @@ ${colorDeclarations(dark, "  ")}
 ${colorDeclarations(dark, "  ")}
   --shadow-sheet: none;
   --shadow-toast: none;
+  --scrim: ${SCRIM_DARK};
 }
 
 [data-theme="light"] {
@@ -236,6 +247,7 @@ ${colorDeclarations(dark, "  ")}
 ${colorDeclarations(light, "  ")}
   --shadow-sheet: ${elevation.sheet};
   --shadow-toast: ${elevation.toast};
+  --scrim: ${SCRIM_LIGHT};
 }
 `;
 }

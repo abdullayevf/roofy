@@ -74,7 +74,7 @@ export function Dialog({ open, onOpenChange, onConfirm, ...panelProps }: DialogP
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
-        <RadixDialog.Overlay className="fixed inset-0 z-40 bg-ink/40" />
+        <RadixDialog.Overlay className="fixed inset-0 z-40 bg-scrim" />
         <RadixDialog.Content
           ref={content}
           onCloseAutoFocus={restoreFocus}

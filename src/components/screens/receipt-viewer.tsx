@@ -32,7 +32,7 @@ export function ReceiptViewer({ name, src = null }: { name: string; src?: string
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-ink/40" />
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-scrim" />
         <Dialog.Content
           data-receipt-full=""
           onCloseAutoFocus={restoreFocus}

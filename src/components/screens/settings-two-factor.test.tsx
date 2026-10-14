@@ -23,6 +23,12 @@ const SETUP: TwoFactorSetup = {
 const QR = { name: "Scan this with your authenticator app" };
 
 beforeEach(() => {
+  // The pinned Save bar measures itself.
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
   refresh.mockClear();
   startTwoFactor.mockReset();
   turnOnTwoFactor.mockReset();
@@ -37,6 +43,20 @@ describe("TwoFactorForm with the key already on the page (prototype)", () => {
     expect(screen.getByLabelText("Code")).toBeVisible();
     expect(screen.queryByLabelText("Your password")).toBeNull();
     expect(screen.queryByRole("button", { name: "Show QR code" })).toBeNull();
+  });
+
+  it("offers Copy key beside the key (spaces dropped) and an Open in authenticator app link for the phone", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    render(<TwoFactorForm demoOffline={false} setup={SETUP} />);
+    expect(screen.getByRole("link", { name: "Open in authenticator app" })).toHaveAttribute(
+      "href",
+      SETUP.uri,
+    );
+    await user.click(screen.getByRole("button", { name: "Copy key" }));
+    expect(writeText).toHaveBeenCalledWith("RFY47KQ2MZTD3XWB");
+    expect(await screen.findByRole("button", { name: "Copied" })).toBeVisible();
   });
 
   it("a code that is not 6 digits is refused where it is typed and nothing is sent", async () => {

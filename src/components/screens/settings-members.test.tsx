@@ -27,7 +27,11 @@ const member = (id: string, name: string, role: Member["role"]): Member => ({
   twoFactorEnabled: false,
   projectIds: [],
 });
-const MEMBERS = [member("m1", "Karen Holt", "owner"), member("m2", "Priya Shah", "accountant"), member("m3", "Dean Cole", "foreman")];
+const MEMBERS = [
+  member("m1", "Karen Holt", "owner"),
+  member("m2", "Priya Shah", "accountant"),
+  member("m3", "Dean Cole", "foreman"),
+];
 
 // The sheet picks its desktop dialog (not the phone drawer, which needs drag APIs jsdom lacks) from matchMedia.
 beforeEach(() => {
@@ -84,7 +88,12 @@ describe("MembersForm: a person is a row, the role changes in a sheet", () => {
 
   it("a role the server refuses stays as it was and the sheet says why", async () => {
     const user = userEvent.setup();
-    setMemberRole.mockResolvedValue({ ok: false, code: "forbidden", message: "Only the Owner can change roles.", issues: [] });
+    setMemberRole.mockResolvedValue({
+      ok: false,
+      code: "forbidden",
+      message: "Only the Owner can change roles.",
+      issues: [],
+    });
     render(<MembersForm members={MEMBERS} demoOffline={false} />);
     await user.click(screen.getByRole("button", { name: /Dean Cole/ }));
     const sheet = await screen.findByRole("dialog", { name: "Change role" });
@@ -139,28 +148,39 @@ describe("MembersForm: removing a person asks first", () => {
     await user.click(within(confirm).getByRole("button", { name: "Remove from team" }));
     expect(removeMember).toHaveBeenCalledTimes(1);
     expect(removeMember).toHaveBeenCalledWith("m2");
-    expect(await screen.findByText("Person removed.")).toBeVisible();
+    expect(await screen.findByText("Priya Shah removed.")).toBeVisible();
     expect(screen.queryByRole("button", { name: /Priya Shah/ })).toBeNull();
     expect(screen.getByRole("button", { name: /Dean Cole/ })).toBeVisible();
   });
 
   it("a removal the server refuses keeps the row and shows the sentence", async () => {
     const user = userEvent.setup();
-    removeMember.mockResolvedValue({ ok: false, code: "conflict", message: "A workspace needs at least one Owner.", issues: [] });
+    removeMember.mockResolvedValue({
+      ok: false,
+      code: "conflict",
+      message: "A workspace needs at least one Owner.",
+      issues: [],
+    });
     render(<MembersForm members={MEMBERS} demoOffline={false} />);
     const confirm = await openRemove(user, /Dean Cole/);
     await user.click(within(confirm).getByRole("button", { name: "Remove from team" }));
     expect(await screen.findByText("A workspace needs at least one Owner.")).toBeVisible();
     expect(screen.getByRole("button", { name: /Dean Cole/ })).toBeVisible();
-    expect(screen.queryByText("Person removed.")).toBeNull();
+    expect(screen.queryByText(/ removed\.$/)).toBeNull();
   });
 
-  it("offline, the remove button is disabled and says it needs a connection", async () => {
+  it("offline, Save role carries the one Needs connection line and Remove from team sits last, disabled, with no second line", async () => {
     const user = userEvent.setup();
     render(<MembersForm members={MEMBERS} demoOffline />);
     await user.click(screen.getByRole("button", { name: /Priya Shah/ }));
     const sheet = await screen.findByRole("dialog", { name: "Change role" });
-    expect(within(sheet).getByRole("button", { name: "Remove from team" })).toBeDisabled();
+    const save = within(sheet).getByRole("button", { name: "Save role" });
+    const remove = within(sheet).getByRole("button", { name: "Remove from team" });
+    expect(remove).toBeDisabled();
+    expect(within(sheet).getAllByText(/^Needs connection/)).toHaveLength(1);
+    // Save role comes first in the sheet; the page-level line is hidden while the sheet is open.
+    expect(save.compareDocumentPosition(remove) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getAllByText(/^Needs connection/)).toHaveLength(1);
   });
 
   it("the Owner's row has no way to remove", () => {

@@ -393,7 +393,7 @@ export function MembersForm({ members, demoOffline }: { members: Member[]; demoO
         if (r.ok) setGone((x) => [...x, member.id]);
         return r;
       },
-      "Person removed.",
+      `${member.name} removed.`,
     );
   return (
     <div className="flex flex-col gap-3">
@@ -405,7 +405,7 @@ export function MembersForm({ members, demoOffline }: { members: Member[]; demoO
           onClick: m.role === "owner" ? undefined : () => open(m),
         }))}
       />
-      {s.online ? null : (
+      {s.online || edit ? null : (
         <p role="status" className="text-body text-ink">
           {NEEDS_CONNECTION}
         </p>
@@ -418,45 +418,48 @@ export function MembersForm({ members, demoOffline }: { members: Member[]; demoO
         }}
         title="Change role"
         primaryAction={
-          <Button
-            type="button"
-            onClick={submit}
-            loading={s.busy}
-            loadingLabel="Saving role"
-            disabled={!s.online}
-            reason={s.online ? undefined : NEEDS_CONNECTION}
-            className="w-full"
-          >
-            Save role
-          </Button>
+          // Save role first and the one Needs connection line right under it; Remove from team last, set apart (D12 + F9).
+          <div className="flex flex-col gap-6">
+            <Button
+              type="button"
+              onClick={submit}
+              loading={s.busy}
+              loadingLabel="Saving role"
+              disabled={!s.online}
+              reason={s.online ? undefined : NEEDS_CONNECTION}
+              className="w-full"
+            >
+              Save role
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              tone="danger"
+              className="w-full"
+              disabled={!s.online}
+              onClick={() => {
+                setRemoving(edit?.member ?? null);
+                setEdit(null);
+              }}
+            >
+              Remove from team
+            </Button>
+          </div>
         }
       >
         <div className="flex flex-col gap-4">
           <p className="break-words text-body text-ink-2">{edit?.member.name}</p>
+          {/* Stacked, so a ticked "Accountant" is never squeezed into a third of the sheet (D12). */}
           <Segmented
             legend="Role"
             name="member-role"
             fill
-            equal
+            className="flex-col"
             options={ROLES}
             value={edit?.role ?? "foreman"}
             onChange={(v) => setEdit((d) => (d ? { ...d, role: v as Role } : d))}
           />
           {problem ? <ErrorMessage>{problem}</ErrorMessage> : null}
-          <Button
-            type="button"
-            variant="ghost"
-            tone="danger"
-            className="w-full sm:w-auto sm:self-start"
-            disabled={!s.online}
-            reason={s.online ? undefined : NEEDS_CONNECTION}
-            onClick={() => {
-              setRemoving(edit?.member ?? null);
-              setEdit(null);
-            }}
-          >
-            Remove from team
-          </Button>
         </div>
       </Sheet>
       <Dialog
@@ -472,7 +475,7 @@ export function MembersForm({ members, demoOffline }: { members: Member[]; demoO
           if (removing) void leave(removing);
         }}
       />
-      <Toast open={s.saved} onOpenChange={s.setSaved} message={s.savedMessage} viewportClassName="toast-above-tabs" />
+      <Toast open={s.saved} onOpenChange={s.setSaved} message={s.savedMessage} viewportClassName="toast-above-tabs toast-in-column" />
     </div>
   );
 }

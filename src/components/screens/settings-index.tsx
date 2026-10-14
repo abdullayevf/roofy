@@ -8,8 +8,8 @@ import { LoadError } from "./field-entry";
 import { COLUMN, FOCUS } from "./home-parts";
 import { bpText, payPeriodText } from "./settings-input";
 
-/** Full width from 1024 px (lesson: desktop uses the width). */
-export const SETTINGS_WIDE = cx(COLUMN, "lg:max-w-none");
+/** Full width from 1024 px (lesson: desktop uses the width), with 16 px more each side so the gutter beside the sidebar and the right edge is 32 px (auth i1 D15). */
+export const SETTINGS_WIDE = cx(COLUMN, "lg:max-w-none lg:px-4");
 
 /** Back row, title and an optional plain sentence under it. */
 export function SettingsHead({ title, intro, back = { href: "/settings", label: "Back to Settings" } }: { title: string; intro?: React.ReactNode; back?: { href: string; label: string } }) {

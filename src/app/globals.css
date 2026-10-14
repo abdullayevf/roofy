@@ -31,6 +31,7 @@
   --color-on-over-fill: var(--on-over-fill);
   --color-bar: var(--bar);
   --color-on-bar: var(--on-bar);
+  --color-scrim: var(--scrim);
 
   --font-display: var(--font-barlow);
   --font-body: var(--font-atkinson);
@@ -279,6 +280,10 @@ body {
   main.entry-main {
     padding-top: 1rem;
   }
+  /* The sign-in form has the 48 px Forgot password? link under the password, so its fields close up too. */
+  .entry-form {
+    gap: 0.5rem;
+  }
 }
 @media (max-height: 499px) {
   .pin-hint:not(.pin-hint-side) {
@@ -431,6 +436,17 @@ body {
     bottom: calc(
       var(--tab-bar-body) + var(--tab-bar-raise) + var(--pin-action-height, 9rem) + max(var(--sab-sim, 0px), env(safe-area-inset-bottom))
     ) !important;
+  }
+}
+/*
+ * From 1024 px the sidebar takes 240 px on the left; a settings toast sits in the content column beside it, not across
+ * the sidebar, and no wider than a sentence needs (auth i1 D13).
+ */
+@media (min-width: 1024px) {
+  .toast-in-column {
+    left: calc(240px + 1.5rem) !important;
+    right: auto !important;
+    width: min(28rem, calc(100vw - 240px - 3rem));
   }
 }
 @media (max-height: 499px) {

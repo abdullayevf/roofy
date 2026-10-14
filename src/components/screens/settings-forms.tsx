@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { Check, Copy } from "@phosphor-icons/react";
 import type { ActionResult, Cents, CrewLevel, PayFrequency, TwoFactorSetup, WorkspaceSettings, WorkspaceSettingsInput } from "@/data/contracts";
 import { saveLevel, startTwoFactor, turnOnTwoFactor, updateSettings } from "@/app/actions/settings";
 import { businessProblems } from "@/lib/onboarding-input";
@@ -30,11 +31,13 @@ import {
   WEEKDAYS,
 } from "./settings-input";
 import { PinnedAction, usePinnedBar } from "./field-entry";
+import { FOCUS } from "./home-parts";
 import { NEEDS_CONNECTION, useOnline } from "./use-online";
 
 export type Errors = Record<string, string | undefined>;
 const SAVED = "Changes saved.";
 const FAILED = "Couldn't save this. Try again.";
+const CODE_SUMMARY = "Check the 6-digit code and try again.";
 /** Fields sit two to a row from 1024 px, so the form uses the width (lesson: desktop uses the width). */
 export const FORM_GRID = "grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-x-8";
 
@@ -143,7 +146,7 @@ function PlainSettingsForm({ s, onSubmit, label = "Save changes", quiet = false,
           {label}
         </Button>
       </div>
-      <Toast open={s.saved} onOpenChange={s.setSaved} message={s.savedMessage} viewportClassName="toast-above-tabs" />
+      <Toast open={s.saved} onOpenChange={s.setSaved} message={s.savedMessage} viewportClassName="toast-above-tabs toast-in-column" />
     </form>
   );
 }
@@ -171,7 +174,7 @@ function PinnedSettingsForm({ s, onSubmit, label = "Save changes", quiet = false
           {label}
         </Button>
       </PinnedAction>
-      <Toast open={s.saved} onOpenChange={s.setSaved} message={s.savedMessage} viewportClassName="toast-above-pin" />
+      <Toast open={s.saved} onOpenChange={s.setSaved} message={s.savedMessage} viewportClassName="toast-above-pin toast-in-column" />
     </form>
   );
 }
@@ -442,6 +445,29 @@ function TwoFactorPassword({ demoOffline, onSetup }: { demoOffline: boolean; onS
   );
 }
 
+/** Copy the set-up key; says "Copied" for a moment. The key stays on the page as text if the browser refuses. */
+function CopyKey({ secret }: { secret: string }) {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const t = window.setTimeout(() => setCopied(false), 2500);
+    return () => window.clearTimeout(t);
+  }, [copied]);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(secret.replace(/\s+/g, ""));
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  };
+  return (
+    <Button type="button" variant="secondary" icon={copied ? Check : Copy} onClick={copy}>
+      {copied ? "Copied" : "Copy key"}
+    </Button>
+  );
+}
+
 function TwoFactorCode({ demoOffline, setup }: { demoOffline: boolean; setup: TwoFactorSetup }) {
   const s = useSave(demoOffline);
   const [code, setCode] = useState("");
@@ -453,15 +479,24 @@ function TwoFactorCode({ demoOffline, setup }: { demoOffline: boolean; setup: Tw
       () => turnOnTwoFactor("code" in r ? r.code : ""),
     );
   };
+  // The form is taller than a phone's first screen, so Turn on two-factor is the pinned bar above the tab bar (D1).
   return (
-    <SettingsForm s={s} onSubmit={submit} label="Turn on two-factor">
+    <SettingsForm s={s} onSubmit={submit} label="Turn on two-factor" pinned summary={CODE_SUMMARY}>
       <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
         <QrCode value={setup.uri} label="Scan this with your authenticator app" />
         <ol className="flex list-decimal flex-col gap-2 pl-6 text-body text-ink">
           <li>Open an authenticator app, like Google Authenticator or 1Password.</li>
           <li>
-            Scan the QR code, or add Roofy with this set-up key:{" "}
-            <span className="break-words text-body-strong tabular-nums">{setup.secret}</span>
+            <span className="flex flex-col gap-2">
+              Scan the QR code, or add Roofy with this set-up key:
+              <span className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <span className="break-words text-body-strong tabular-nums">{setup.secret}</span>
+                <CopyKey secret={setup.secret} />
+              </span>
+              <a href={setup.uri} className={cx("flex min-h-12 items-center self-start text-body-strong text-chalk-link underline underline-offset-4 lg:hidden", FOCUS)}>
+                Open in authenticator app
+              </a>
+            </span>
           </li>
           <li>Enter the 6-digit code the app shows.</li>
         </ol>
@@ -475,6 +510,8 @@ function TwoFactorCode({ demoOffline, setup }: { demoOffline: boolean; setup: Tw
           onChange={(e) => setCode(e.target.value)}
           error={s.errors.code}
           hint={s.errors.code ? undefined : CODE_HINT}
+          // Six digits need about 200 px, not the whole column (D20).
+          className="[&_input]:max-w-52"
         />
       </div>
     </SettingsForm>

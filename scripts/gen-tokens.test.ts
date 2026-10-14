@@ -125,6 +125,16 @@ describe("generateTokensCss", () => {
     expect(rootBlock).toMatch(/--shadow-toast:\s*0 12px 32px rgb\(31 34 36 \/ 0\.28\);/);
   });
 
+  it("emits a scrim that darkens the page in both schemes (a light ink scrim would lighten the page in dark mode)", () => {
+    const rootBlock = css.match(/:root\s*{([^}]*)}/s)?.[1] ?? "";
+    expect(rootBlock).toMatch(/--scrim:\s*rgb\(31 34 36 \/ 0\.4\);/);
+    const mediaBlock = css.match(
+      /@media \(prefers-color-scheme: dark\)\s*{\s*:root:not\(\[data-theme="light"\]\)\s*{([^}]*)}/s,
+    )?.[1];
+    expect(mediaBlock).toMatch(/--scrim:\s*rgb\(0 0 0 \/ 0\.6\);/);
+    expect(css.match(/--scrim:/g)).toHaveLength(5);
+  });
+
   it("emits dark tokens under prefers-color-scheme guarded by :not([data-theme=light])", () => {
     const mediaBlock = css.match(
       /@media \(prefers-color-scheme: dark\)\s*{\s*:root:not\(\[data-theme="light"\]\)\s*{([^}]*)}/s,
