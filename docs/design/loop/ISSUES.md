@@ -733,10 +733,13 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | auth/i1-D6 | auth | P1 | helper/error lines on entry pages | 13-14px, below meta size | Meta token + guard | fixed i2 | 1 |
 | auth/i1-P2 | auth | P2 | various | D7-D20, F4-F12 | See .superpowers/sdd/04-db-auth/auth-iter1-{design,field}.md; fix list task-13-design-fix-1.md | mostly fixed i2; open D10 (mid-domain break tablet/desktop), D13 desktop, F16 (toast covers fields) | 1 |
 | auth/i1-P3 | auth | P3 | various | D21-D23, F13-F18 | As above; F17 (Check again) declined: brief says one way out; D23 deferred as entry-settings i3 | mostly fixed i2; open D23, F5 (no resend in AuthService), F17 declined, F18 verify landscape | 1 |
-| auth/i2-D26+F19 | auth | P2 | forgot/reset/two-factor -error, two-factor-loading | Typed value cleared under Try again; retry sends blank | Keep the typed value (guard) | open | 2 |
-| auth/i2-D25+F20 | auth | P2 | two-factor-setup invalid/wrong-code | Same error under field and in pinned bar | One message per problem; bar names what is missing in ink or drops | open | 2 |
-| auth/i2-D24 | auth | P2 | invite/verify/reset result and error pages | Page-level sentence styled as red meta field error | Body size ink with icon | open | 2 |
-| auth/i2-D27+F16 | auth | P2 | members-removed iphone/android | Toast covers Send invite / Email field | Toast clears primary actions (guard) | open | 2 |
-| auth/i2-F21+D33 | auth | P2 | two-factor-too-many-tries landscape; offline desktop dark | Disabled primary label ~2.5-3:1 | Disabled label contrast >= 4.5:1 (guard) | open | 2 |
-| auth/i2-P2 | auth | P2 | various | D28 (Use a different email two styles), D29 (sheet padding 24 vs 16, grabber) | See auth-iter2-{design,field}.md | open | 2 |
-| auth/i2-P3 | auth | P3 | various | D30-D32, D34, F22-F27 | As above | open | 2 |
+| auth/i2-D26+F19 | auth | P2 | forgot/reset/two-factor -error, two-factor-loading | Typed value cleared under Try again; retry sends blank | Keep the typed value (guard) | fixed i3 (8f17363); forgot-error, reset-error, two-factor-loading not re-viewed | 2 |
+| auth/i2-D25+F20 | auth | P2 | two-factor-setup invalid/wrong-code | Same error under field and in pinned bar | One message per problem; bar names what is missing in ink or drops | duplicate gone i3 (7f63918) but now zero visible on phone: see i3-F28+D36 | 2 |
+| auth/i2-D24 | auth | P2 | invite/verify/reset result and error pages | Page-level sentence styled as red meta field error | Body size ink with icon | fixed i3 (8f17363) | 2 |
+| auth/i2-D27+F16 | auth | P2 | members-removed iphone/android | Toast covers Send invite / Email field | Toast clears primary actions (guard) | fixed i3 (7f63918) landscape; iphone not re-viewed | 2 |
+| auth/i2-F21+D33 | auth | P2 | two-factor-too-many-tries landscape; offline desktop dark | Disabled primary label ~2.5-3:1 | Disabled label contrast >= 4.5:1 (guard) | fixed i3 (8f17363) light; desktop dark not re-viewed | 2 |
+| auth/i2-P2 | auth | P2 | various | D28 (Use a different email two styles), D29 (sheet padding 24 vs 16, grabber) | See auth-iter2-{design,field}.md | fixed i3 | 2 |
+| auth/i2-P3 | auth | P3 | various | D30-D32, D34, F22-F27 | As above | fixed i3 except F27 (desktop field error ~13 px) | 2 |
+| auth/i3-F28+D36 | auth | P1 | two-factor-setup invalid/wrong-code phone | No visible error after Turn on two-factor: code field below the fold, bar line dropped (regression from i2 fix) | Scroll the field into view and focus it on error, or a bar line only while the field is off screen (guard) | open, carried to review fix run | 3 |
+| auth/i3-F29 | auth | P1 | check-email-long-email landscape | Sentences and address missing; portrait fine; maybe capture seed | Check the capture first, then the page | open, carried to review fix run | 3 |
+| auth/i3-P3 | auth | P3 | various | D35 two disabled styles, D37 gap, D38 Needs connection meta size, D39 invite-used wording, F30 offline line under one button, F31 repeated Check your email | See auth-iter3-{design,field}.md | open (cap) | 3 |

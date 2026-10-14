@@ -62,3 +62,4 @@
 - One message per problem: a field error is not repeated in the pinned bar or a summary line while the field is on screen (auth i2 D25+F20, both critics).
 - A page-level message (link expired, invite gone, load failed) is body text in ink with its icon; red meta is for field errors only (auth i2 D24).
 - A toast never covers the page's primary action or a focused field; disabled button labels keep ≥ 4.5:1 in both themes (auth i2 D27+F16, F21+D33).
+- One message never means zero: on an error, the field with the error is scrolled into view and focused, or the pinned bar says it while the field is off screen (auth i3 F28+D36, both critics).

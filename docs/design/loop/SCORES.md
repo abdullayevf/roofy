@@ -48,3 +48,4 @@ Score history for every screen group's design loop (`docs/specs/04-design-proces
 | entry-settings | 3 | 87 | 88 | 87.5 | 0 | yes (1182 captures, 0 fail); accepted at the 3-iteration cap |
 | auth | 1 | 65 | 72 | 68.5 | 9 | yes (405 captures, 0 fail) |
 | auth | 2 | 78 | 83 | 80.5 | 0 | yes (405 captures, 0 fail after capture fixes dca36d0, fc0da10) |
+| auth | 3 | 85 | 81 | 83 | 2 | yes (408 captures, 0 fail); accepted at the 3-iteration cap; P1s F28, F29 carried to the review fix run |
