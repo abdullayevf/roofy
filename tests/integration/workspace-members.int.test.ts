@@ -153,7 +153,7 @@ describe("assignments", () => {
   });
   it("refuses a non-foreman, B's project, B on A's foreman, and accountant or foreman callers", async () => {
     expect(await refusal(ws.setAssignments(a, await memberIdOf(manager), [projectA]))).toBe("invalid: Only a foreman is assigned to jobs.");
-    expect(await refusal(ws.setAssignments(a, foremanMemberId, [projectB]))).toBe("invalid: Pick jobs from the list.");
+    expect(await refusal(ws.setAssignments(a, foremanMemberId, [projectB]))).toMatch(NOT_FOUND);
     expect(await refusal(ws.setAssignments(b, foremanMemberId, [projectB]))).toMatch(NOT_FOUND);
     expect(await refusal(ws.setAssignments(accountant, foremanMemberId, [projectA]))).toBe(FORBIDDEN);
     expect(await refusal(ws.assignments(foreman))).toBe(FORBIDDEN);
@@ -170,5 +170,126 @@ describe("turnOnTwoFactor", () => {
     expect(await refusal(ws.turnOnTwoFactor(foreman, "12345"))).toBe("invalid: Enter the 6-digit code from your app.");
     await setTwoFactor(foreman, true);
     expect(await ws.turnOnTwoFactor(foreman, "123456")).toEqual({ twoFactorEnabled: true });
+  });
+});
+
+// ─── Task 11 fix 1 ──────────────────────────────────────────────────────────
+
+describe("fix 1: Owner 2FA in settings is read inside withActor (B1/F8)", () => {
+  it("reports the actor's own Owner 2FA off and on, never another business's", async () => {
+    const own = async (actor: Actor) => {
+      const v = await ws.settings(actor);
+      return v.view === "manager" ? v.ownerTwoFactor : undefined;
+    };
+    await setTwoFactor(a, false);
+    await setTwoFactor(b, true);
+    expect(await own(a)).toBe(false);
+    expect(await own(b)).toBe(true);
+    await setTwoFactor(a, true);
+    expect(await own(a)).toBe(true);
+    await setTwoFactor(a, false);
+    await setTwoFactor(b, false);
+  });
+});
+
+describe("fix 1: last-owner rule is atomic (F2)", () => {
+  it("the database refuses taking the role away from the only Owner", async () => {
+    const c = (await makeWorkspace("Lone Owner")).ownerActor;
+    const id = await memberIdOf(c);
+    await expect(pool("owner").query(`update member set role = 'manager' where id = $1`, [id])).rejects.toThrow(/roofy_last_owner/);
+    await expect(pool("owner").query(`delete from member where id = $1`, [id])).rejects.toThrow(/roofy_last_owner/);
+  });
+  it("two Owners demoting each other at the same moment leave one Owner", async () => {
+    for (let i = 0; i < 3; i++) {
+      const o1 = (await makeWorkspace(`Race ${i}`)).ownerActor;
+      const o2 = await addMember(o1.workspaceId, "owner");
+      await setTwoFactor(o1, true);
+      await setTwoFactor(o2, true);
+      const [m1, m2] = [await memberIdOf(o1), await memberIdOf(o2)];
+      const results = await Promise.allSettled([ws.setMemberRole(o1, m2, "manager"), ws.setMemberRole(o2, m1, "manager")]);
+      const owners = await rows("owner", "select id from member where workspace_id = $1 and role = 'owner'", [o1.workspaceId]);
+      expect(owners).toHaveLength(1);
+      const failed = results.filter((r) => r.status === "rejected") as PromiseRejectedResult[];
+      expect(failed).toHaveLength(1);
+      expect(`${(failed[0]!.reason as DataError).code}: ${(failed[0]!.reason as DataError).message}`).toBe(
+        "conflict: Your business needs at least one owner.",
+      );
+    }
+  });
+});
+
+describe("fix 1: invites (F3, F9)", () => {
+  it("a failed invite mail removes the invite, so the next invite works", async () => {
+    const email = `mailfail-${uuidv7()}@example.test`;
+    process.env.ROOFY_MAIL = "broken";
+    try {
+      expect(await refusal(ws.inviteMember(a, { name: "Fail", email, role: "foreman" }))).toBe(
+        "unavailable: We couldn't send the invite. Try again.",
+      );
+    } finally {
+      process.env.ROOFY_MAIL = "console";
+    }
+    expect(await rows("owner", "select id from invitation where lower(email) = $1", [email])).toEqual([]);
+    await ws.inviteMember(a, { name: "Fail", email, role: "foreman" });
+    expect(await rows("owner", "select id from invitation where lower(email) = $1 and status = 'pending'", [email])).toHaveLength(1);
+    expect(mailsTo(email)).toHaveLength(1);
+  });
+  it("two invites for one email at the same moment make one invite", async () => {
+    const email = `double-${uuidv7()}@example.test`;
+    const results = await Promise.allSettled([1, 2].map(() => ws.inviteMember(a, { name: "Twice", email, role: "foreman" })));
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(await rows("owner", "select id from invitation where lower(email) = $1", [email])).toHaveLength(1);
+  });
+});
+
+describe("fix 1: workspace_member_profiles() safety (F5)", () => {
+  it("is a definer with a pinned search_path, runnable by roofy_app only", async () => {
+    const [f] = await rows<{ prosecdef: boolean; proconfig: string[]; acl: string[] }>(
+      "owner",
+      `select prosecdef, proconfig, coalesce(proacl::text[], '{}') as acl from pg_proc where proname = 'workspace_member_profiles'`,
+    );
+    expect(f!.prosecdef).toBe(true);
+    expect(f!.proconfig).toEqual(["search_path=pg_catalog, pg_temp"]);
+    expect(f!.acl.some((e) => e.startsWith("="))).toBe(false);
+    expect(f!.acl.some((e) => e.startsWith("roofy_app=X"))).toBe(true);
+    const [g] = await rows<{ can: boolean }>("owner", `select has_table_privilege('roofy_app', 'public."user"', 'select') as can`);
+    expect(g!.can).toBe(false);
+  });
+  it("returns exactly user_id, name, email, two_factor_enabled, and nothing with no business set", async () => {
+    const cols = await rows<{ name: string }>(
+      "owner",
+      `select unnest(proargnames) as name from pg_proc where proname = 'workspace_member_profiles'`,
+    );
+    expect(cols.map((c) => c.name)).toEqual(["user_id", "name", "email", "two_factor_enabled"]);
+    const client = await pool("app").connect();
+    try {
+      expect((await client.query("select * from workspace_member_profiles()")).rows).toEqual([]);
+      await client.query("begin");
+      await client.query("select set_config('app.workspace_id', '', true)");
+      expect((await client.query("select * from workspace_member_profiles()")).rows).toEqual([]);
+      await client.query("rollback");
+    } finally {
+      client.release();
+    }
+  });
+  it("workspace B sees only its own people, never A's emails", async () => {
+    const seen = await withActor(b, async (tx) => {
+      const res: unknown = await tx.execute(sql`select email from workspace_member_profiles()`);
+      return (Array.isArray(res) ? res : (res as { rows: { email: string }[] }).rows) as { email: string }[];
+    });
+    const aEmails = await rows<{ email: string }>(
+      "owner",
+      `select u.email from member m join "user" u on u.id = m.user_id where m.workspace_id = $1`,
+      [a.workspaceId],
+    );
+    expect(aEmails.length).toBeGreaterThan(1);
+    expect(seen.filter((s) => aEmails.some((x) => x.email === s.email))).toEqual([]);
+    expect(seen).toHaveLength(1);
+  });
+});
+
+describe("fix 1: another business's job id is not_found (spec NB1)", () => {
+  it("setAssignments with B's job", async () => {
+    expect(await refusal(ws.setAssignments(a, foremanMemberId, [projectB]))).toMatch(NOT_FOUND);
   });
 });

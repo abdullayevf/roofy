@@ -1,7 +1,7 @@
 // The Better Auth instance: Drizzle adapter on the roofy_auth pool, email + password with
 // verification, the organization plugin (organization = workspace), TOTP, database rate limits.
 import { betterAuth } from "better-auth";
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { twoFactor } from "better-auth/plugins/two-factor";
@@ -16,6 +16,7 @@ import { requireEnv } from "@/server/db/env";
 import { account, invitation, member, rateLimit, session, twoFactor as twoFactorTable, user, verification, workspace } from "@/server/db/schema";
 import { getMailer, inviteEmail, resetEmail, verificationEmail } from "@/server/email";
 import { assertInvite, assertKeepsAnOwner } from "@/server/authz/members";
+import { assertCan, memberActionFor } from "@/server/authz/matrix";
 import { isRole, roleFrom } from "./role";
 
 const ac = createAccessControl(defaultStatements);
@@ -61,7 +62,7 @@ function asApiError(e: unknown): unknown {
  * rules (`assertInvite`): Manager never invites as Owner, an Owner only with 2FA, no email already
  * in the team or already invited. Better Auth's own checks run too; this one decides the wording.
  */
-async function guardInvite(inv: { email: string; role: string; organizationId: string; inviterId: string }): Promise<void> {
+export async function guardInvite(inv: { email: string; role: string; organizationId: string; inviterId: string }): Promise<void> {
   const db = getAuthDb();
   const wsId = inv.organizationId;
   const email = inv.email.trim().toLowerCase();
@@ -89,7 +90,7 @@ async function guardInvite(inv: { email: string; role: string; organizationId: s
 }
 
 /** Carry note T8: `update-member-role` called directly never leaves a workspace without an Owner. */
-async function guardKeepsAnOwner(m: { role: string; organizationId: string }, newRole: string): Promise<void> {
+export async function guardKeepsAnOwner(m: { role: string; organizationId: string }, newRole: string): Promise<void> {
   const owners = await getAuthDb()
     .select({ id: member.id })
     .from(member)
@@ -100,6 +101,39 @@ async function guardKeepsAnOwner(m: { role: string; organizationId: string }, ne
     throw asApiError(e);
   }
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Fix 1 (F1): `/organization/update-member-role` and `/organization/remove-member` called directly
+ * are held to the matrix like the service: any change touching the Owner role is
+ * `member.changeOwner` (an Owner with 2FA). `role` null means remove. Unknown caller or target is
+ * left to Better Auth's own refusal. A role change also keeps an Owner (the trigger in 0007 backs it).
+ */
+export async function guardMemberChange(c: { userId: string; organizationId: string; memberIdOrEmail: string; role: string | null }): Promise<void> {
+  const db = getAuthDb();
+  const [me] = await db
+    .select({ role: member.role, twoFactorEnabled: user.twoFactorEnabled, name: user.name })
+    .from(member)
+    .innerJoin(user, eq(user.id, member.userId))
+    .where(and(eq(member.workspaceId, c.organizationId), eq(member.userId, c.userId)));
+  const key = c.memberIdOrEmail.trim();
+  const [target] = await db
+    .select({ role: member.role })
+    .from(member)
+    .innerJoin(user, eq(user.id, member.userId))
+    .where(and(eq(member.workspaceId, c.organizationId), UUID_RE.test(key) ? eq(member.id, key) : sql`lower(${user.email}) = ${key.toLowerCase()}`));
+  if (!me || !target || (c.role !== null && !isRole(c.role))) return;
+  const actor = { userId: c.userId, workspaceId: c.organizationId, role: roleFrom(me.role), name: me.name, twoFactorEnabled: me.twoFactorEnabled };
+  try {
+    assertCan(actor, memberActionFor(roleFrom(target.role), c.role === null ? null : roleFrom(c.role)));
+  } catch (e) {
+    throw asApiError(e);
+  }
+  if (c.role !== null) await guardKeepsAnOwner({ role: target.role, organizationId: c.organizationId }, c.role);
+}
+
+const MEMBER_CHANGE_PATHS = new Set(["/organization/update-member-role", "/organization/remove-member"]);
 
 /** The workspace a new session opens: the user's most recently joined membership, or none. */
 async function latestWorkspaceId(userId: string): Promise<string | undefined> {
@@ -141,6 +175,18 @@ export function createAuth() {
       sendVerificationEmail: async ({ user, url }) => send(user.email, verificationEmail(url)),
     },
     socialProviders: google(),
+    hooks: {
+      before: createAuthMiddleware(async (ctx) => {
+        if (!MEMBER_CHANGE_PATHS.has(ctx.path)) return;
+        const s = await getSessionFromCtx(ctx);
+        if (!s) return;
+        const body = (ctx.body ?? {}) as { organizationId?: string; memberId?: string; memberIdOrEmail?: string; role?: string | string[] };
+        const organizationId = body.organizationId || (s.session as { activeOrganizationId?: string | null }).activeOrganizationId;
+        if (!organizationId) return;
+        const role = ctx.path === "/organization/remove-member" ? null : [body.role ?? ""].flat().join(",");
+        await guardMemberChange({ userId: s.user.id, organizationId, memberIdOrEmail: body.memberId ?? body.memberIdOrEmail ?? "", role });
+      }),
+    },
     databaseHooks: {
       session: {
         create: {

@@ -1133,7 +1133,7 @@ export const SCREENS: ScreenSpec[] = [
   { id: "settings-members-invalid", group: "entry-settings", route: "/settings/members", states: ["normal"], roles: ["owner"], steps: ["fill:Email=karen@harbourroofing", "Send invite"], expectStill: "Add the person's name." },
   { id: "settings-members-saved", group: "entry-settings", route: "/settings/members", states: ["normal"], roles: ["owner"], steps: ["fill:Name=Karen Lee", "fill:Email=karen.lee@harbourroofing.example", "Send invite"], expectStill: "Invite sent." },
   // Karen Holt, the Owner, already has this address: the refusal shows on the Email field.
-  { id: "settings-members-conflict", group: "entry-settings", route: "/settings/members", states: ["normal"], roles: ["owner"], steps: ["fill:Name=Karen Lee", "fill:Email=karen@harbourroofing.example", "Send invite"], expectStill: "Someone with that email is already a member." },
+  { id: "settings-members-conflict", group: "entry-settings", route: "/settings/members", states: ["normal"], roles: ["owner"], steps: ["fill:Name=Karen Lee", "fill:Email=karen@harbourroofing.example", "Send invite"], expectStill: "This person is already in your team." },
   { id: "settings-members-long", group: "entry-settings", route: "/settings/members", states: ["normal"], roles: ["owner"], steps: [`fill:Name=${LONG_PERSON}`, `fill:Email=${LONG_EMAIL}`, "Send invite"], expectStill: "Invite sent." },
   { id: "settings-members-role", group: "entry-settings", route: "/settings/members", states: ["normal"], roles: ["owner"], steps: ["row:Priya Shah"], expectStill: "Change role" },
   { id: "settings-members-no-access", group: "entry-settings", route: "/settings/members", states: ["normal"], roles: ["manager", "accountant", "foreman"] },

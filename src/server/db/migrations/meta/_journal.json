@@ -50,6 +50,13 @@
       "when": 1791926818396,
       "tag": "0006_member_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791926819396,
+      "tag": "0007_member_owner_guard",
+      "breakpoints": true
     }
   ]
 }

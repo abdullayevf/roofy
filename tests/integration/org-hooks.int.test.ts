@@ -5,7 +5,7 @@ import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { getAuth } from "../../src/server/auth/auth";
+import { getAuth, guardInvite, guardKeepsAnOwner, guardMemberChange } from "../../src/server/auth/auth";
 import { closePools, rows } from "./helpers";
 
 const PASSWORD = "correct horse battery";
@@ -78,7 +78,11 @@ describe("organization hooks (T8)", () => {
   it("refuses demoting the last Owner and a Manager changing the Owner", async () => {
     const update = (headers: Headers) =>
       getAuth().api.updateMemberRole({ body: { memberId: ownerMemberId, role: "manager", organizationId }, headers });
-    expect((await refused(update(owner.headers))).status).toBe(400);
+    // Without 2FA an Owner change is refused first (F1); with it, the last-owner rule answers.
+    expect(await refused(update(owner.headers))).toMatchObject({ status: 403 });
+    await rows("owner", `update "user" set two_factor_enabled = true where id = $1`, [owner.userId]);
+    expect(await refused(update(owner.headers))).toMatchObject({ status: 400, message: "Your business needs at least one owner." });
+    await rows("owner", `update "user" set two_factor_enabled = false where id = $1`, [owner.userId]);
     expect((await refused(update(manager.headers))).status).toBe(403);
     const [m] = await rows<{ role: string }>("owner", "select role from member where id = $1", [ownerMemberId]);
     expect(m!.role).toBe("owner");
@@ -88,5 +92,56 @@ describe("organization hooks (T8)", () => {
     await getAuth().api.updateMemberRole({ body: { memberId: mgr!.id, role: "accountant", organizationId }, headers: owner.headers });
     const audit = await rows("owner", "select actor_user_id from audit_event where table_name = 'member' and row_id = $1 and action = 'update'", [mgr!.id]);
     expect(audit).toEqual([{ actor_user_id: null }]);
+  });
+
+  // Fix 1 (F4): Better Auth refuses these before beforeCreateInvitation runs, so the hook's own
+  // branches are pinned by calling it directly; deleting a branch turns these red.
+  it("guardInvite: Manager as Owner, already in the team (any case), already invited", async () => {
+    await rows("owner", `update member set role = 'manager' where user_id = $1`, [manager.userId]);
+    const base = { organizationId, inviterId: manager.userId };
+    expect(await refused(guardInvite({ ...base, email: `g${n++}@example.com`, role: "owner" }))).toMatchObject({
+      status: 403,
+      message: "You don't have access to this.",
+    });
+    expect(await refused(guardInvite({ ...base, email: owner.email.toUpperCase(), role: "foreman" }))).toMatchObject({
+      status: 400,
+      message: "This person is already in your team.",
+    });
+    const email = `p${n++}@example.com`;
+    await invite(owner.headers, email, "foreman");
+    expect(await refused(guardInvite({ ...base, email, role: "foreman" }))).toMatchObject({
+      status: 400,
+      message: "This person has already been invited.",
+    });
+    await expect(guardInvite({ ...base, email: `ok${n++}@example.com`, role: "foreman" })).resolves.toBeUndefined();
+  });
+  it("guardKeepsAnOwner: the only Owner keeps the role", async () => {
+    expect(await refused(guardKeepsAnOwner({ role: "owner", organizationId }, "manager"))).toMatchObject({
+      status: 400,
+      message: "Your business needs at least one owner.",
+    });
+    await expect(guardKeepsAnOwner({ role: "foreman", organizationId }, "manager")).resolves.toBeUndefined();
+  });
+  // Fix 1 (F1): role change and remove over the direct API need an Owner with 2FA for Owner changes.
+  it("an Owner without 2FA cannot promote to Owner or remove an Owner; with 2FA they can", async () => {
+    const third = await signUp();
+    await getAuth().api.addMember({ body: { userId: third.userId, role: "foreman", organizationId } });
+    const [t] = await rows<{ id: string }>("owner", "select id from member where user_id = $1", [third.userId]);
+    const promote = () => getAuth().api.updateMemberRole({ body: { memberId: t!.id, role: "owner", organizationId }, headers: owner.headers });
+    const remove = () => getAuth().api.removeMember({ body: { memberIdOrEmail: t!.id, organizationId }, headers: owner.headers });
+    const roleOf = async () => (await rows<{ role: string }>("owner", "select role from member where id = $1", [t!.id]))[0]?.role;
+    await rows("owner", `update "user" set two_factor_enabled = false where id = $1`, [owner.userId]);
+    expect(await refused(promote())).toMatchObject({ status: 403, message: "You don't have access to this." });
+    expect(await roleOf()).toBe("foreman");
+    await rows("owner", `update "user" set two_factor_enabled = true where id = $1`, [owner.userId]);
+    await promote();
+    expect(await roleOf()).toBe("owner");
+    await rows("owner", `update "user" set two_factor_enabled = false where id = $1`, [owner.userId]);
+    expect(await refused(remove())).toMatchObject({ status: 403, message: "You don't have access to this." });
+    expect(await roleOf()).toBe("owner");
+    expect(await refused(guardMemberChange({ userId: owner.userId, organizationId, memberIdOrEmail: third.email, role: null }))).toMatchObject({ status: 403 });
+    await rows("owner", `update "user" set two_factor_enabled = true where id = $1`, [owner.userId]);
+    await remove();
+    expect(await roleOf()).toBeUndefined();
   });
 });

@@ -185,7 +185,7 @@ describe("entry-settings invite captures", () => {
   });
 
   it("shows the refusal for an email that is already a member", () => {
-    const refused = invites.filter((s) => s.expectStill === "Someone with that email is already a member.");
+    const refused = invites.filter((s) => s.expectStill === "This person is already in your team.");
     expect(refused.length).toBe(1);
     expect(seedEmails.has(emailOf(refused[0]!.steps)!.toLowerCase())).toBe(true);
   });

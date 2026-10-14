@@ -309,7 +309,7 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
     await page.getByLabel("Name", { exact: true }).fill("Karen Lee");
     await page.getByLabel("Email", { exact: true }).fill("karen@harbourroofing.example");
     await page.getByRole("button", { name: "Send invite" }).click();
-    await expect(page.getByText("Someone with that email is already a member.")).toBeVisible();
+    await expect(page.getByText("This person is already in your team.")).toBeVisible();
     // The same email again is a conflict on the email field, not a crash.
     await page.getByLabel("Name", { exact: true }).fill("Karen Lee");
     await page.getByLabel("Email", { exact: true }).fill(`${stamp}@harbourroofing.example`);

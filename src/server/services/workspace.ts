@@ -31,11 +31,11 @@ import {
 import { dayOfWeek } from "@/domain/dates";
 import { ROOFING_DEFAULTS } from "@/lib/roofing-defaults";
 import { assertCan, type Action, type ActorWith2fa } from "@/server/authz/matrix";
-import { assertInvite, assertKeepsAnOwner, assertRoleChange } from "@/server/authz/members";
+import { assertInvite, assertKeepsAnOwner, assertRoleChange, NEEDS_AN_OWNER } from "@/server/authz/members";
 import { shapeAccess } from "@/server/authz/shape";
 import { isRole } from "@/server/auth/role";
 import { getMailer, inviteEmail } from "@/server/email";
-import { getAuthDb } from "@/server/db/client";
+import { requireEnv } from "@/server/db/env";
 import { fromHundredths, toHundredths } from "@/server/db/convert";
 import {
   crewLevel,
@@ -46,7 +46,6 @@ import {
   projectAssignment,
   stageTemplate,
   stageTemplateItem,
-  user,
   workspace,
 } from "@/server/db/schema";
 import { withActor, type Tx } from "@/server/db/with-actor";
@@ -111,16 +110,25 @@ async function workspaceRow(tx: Tx, actor: Actor): Promise<WorkspaceRow> {
 }
 
 /**
- * Whether the workspace's Owner has two-factor on. `user` is a Better Auth table that roofy_app has
- * no grant on, so this reads through the roofy_auth pool, filtered to the actor's workspace.
+ * Whether the workspace's Owner has two-factor on, inside the actor's `withActor` transaction:
+ * owner members of the actor's workspace joined to `workspace_member_profiles()` (fix 1, B1/F8).
  */
-async function ownerTwoFactor(workspaceId: string): Promise<boolean> {
-  const owners = await getAuthDb()
-    .select({ on: user.twoFactorEnabled })
+async function ownerTwoFactor(tx: Tx, actor: Actor): Promise<boolean> {
+  const owners = await tx
+    .select({ userId: member.userId })
     .from(member)
-    .innerJoin(user, eq(user.id, member.userId))
-    .where(and(eq(member.workspaceId, workspaceId), eq(member.role, "owner")));
-  return owners.some((o) => o.on);
+    .where(and(eq(member.workspaceId, actor.workspaceId), eq(member.role, "owner")));
+  const people = await profiles(tx);
+  return owners.some((o) => people.some((p) => p.user_id === o.userId && p.two_factor_enabled === true));
+}
+
+/** True for the `member_keeps_an_owner` trigger's refusal (migration 0007). */
+function isLastOwnerError(e: unknown): boolean {
+  for (let x: unknown = e; x; x = (x as { cause?: unknown }).cause) {
+    const m = (x as { message?: unknown }).message;
+    if (typeof m === "string" && m.includes("roofy_last_owner")) return true;
+  }
+  return false;
 }
 
 const crewCount = sql<number>`(select count(*)::int from crew_member m
@@ -215,14 +223,18 @@ async function memberRows(tx: Tx, actor: Actor, id?: string): Promise<Member[]> 
 }
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const appUrl = () => (process.env.BETTER_AUTH_URL ?? "").replace(/\/+$/, "");
+/** The same base URL Better Auth builds its invite links from; a missing value fails loudly. */
+const appUrl = () => requireEnv("BETTER_AUTH_URL").replace(/\/+$/, "");
 
 /** The workspace service on Postgres. Each method takes the actor it acts for. */
 export function createWorkspaceService(): BuiltWorkspaceService {
   return {
     async settings(actor: Actor): Promise<WorkspaceView> {
       allow(actor, "workspace.read");
-      const w = await withActor(actor, (tx) => workspaceRow(tx, actor));
+      const { w, ownerOn } = await withActor(actor, async (tx) => ({
+        w: await workspaceRow(tx, actor),
+        ownerOn: actor.role === "foreman" ? false : await ownerTwoFactor(tx, actor),
+      }));
       if (actor.role === "foreman") {
         // Workspace-level flags: what a foreman may do on an assigned job.
         const access = shapeAccess(as2fa(actor), { projectId: "assigned", assignedProjectIds: ["assigned"] });
@@ -242,7 +254,7 @@ export function createWorkspaceService(): BuiltWorkspaceService {
         view: "manager",
         access: shapeAccess(as2fa(actor)) as Access,
         settings: settingsOf(w),
-        ownerTwoFactor: await ownerTwoFactor(actor.workspaceId),
+        ownerTwoFactor: ownerOn,
       };
     },
 
@@ -452,7 +464,10 @@ export function createWorkspaceService(): BuiltWorkspaceService {
       const email = input.email.trim().toLowerCase();
       if (!EMAIL.test(email)) throw invalid("Enter an email address.", "email");
       if (!isRole(input.role)) throw invalid("Pick a role from the list.", "role");
+      const base = appUrl();
       const { id, workspaceName } = await withActor(actor, async (tx) => {
+        // F9: one invite at a time per business and email, so the check and the insert are one step.
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`roofy_invite:${actor.workspaceId}:${email}`}))`);
         const people = await profiles(tx);
         const pending = await tx
           .select({ id: invitation.id })
@@ -481,10 +496,18 @@ export function createWorkspaceService(): BuiltWorkspaceService {
         });
         return { id, workspaceName: w.name };
       });
-      await getMailer().send({
-        to: email,
-        ...inviteEmail({ workspaceName, inviterName: actor.name, role: input.role, url: `${appUrl()}/invite/${id}` }),
-      });
+      try {
+        await getMailer().send({
+          to: email,
+          ...inviteEmail({ workspaceName, inviterName: actor.name, role: input.role, url: `${base}/invite/${id}` }),
+        });
+      } catch {
+        // F3: an invite nobody was told about must not block the email for 48 hours.
+        await withActor(actor, (tx) =>
+          tx.delete(invitation).where(and(eq(invitation.workspaceId, actor.workspaceId), eq(invitation.id, id))),
+        );
+        throw new DataError("unavailable", "We couldn't send the invite. Try again.");
+      }
       return { id, userId: "", name: input.name.trim(), email, role: input.role, twoFactorEnabled: false, projectIds: [] };
     },
 
@@ -494,6 +517,8 @@ export function createWorkspaceService(): BuiltWorkspaceService {
       if (!isRole(role)) throw invalid("Pick a role from the list.", "role");
       if (!UUID.test(memberId)) throw notFound("member");
       return withActor(actor, async (tx) => {
+        // F2: the same lock the member_keeps_an_owner trigger takes, so the count below is current.
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`roofy_member_owner:${actor.workspaceId}`}))`);
         const [m] = await memberRows(tx, actor, memberId);
         if (!m) throw notFound("member");
         assertRoleChange(withTwoFactor(actor, await profiles(tx)), m.role, role);
@@ -512,6 +537,9 @@ export function createWorkspaceService(): BuiltWorkspaceService {
             .delete(projectAssignment)
             .where(and(eq(projectAssignment.workspaceId, actor.workspaceId), eq(projectAssignment.memberId, memberId)));
         return (await memberRows(tx, actor, memberId))[0]!;
+      }).catch((e: unknown) => {
+        if (isLastOwnerError(e)) throw new DataError("conflict", NEEDS_AN_OWNER);
+        throw e;
       });
     },
 
@@ -539,7 +567,8 @@ export function createWorkspaceService(): BuiltWorkspaceService {
             .select({ id: project.id })
             .from(project)
             .where(and(eq(project.workspaceId, actor.workspaceId), inArray(project.id, ids)));
-          if (found.length !== ids.length) throw invalid("Pick jobs from the list.", "projectIds");
+          // Another business's job id reads as missing, as for every other id (plan: not_found).
+          if (found.length !== ids.length) throw notFound("job");
         }
         await tx
           .delete(projectAssignment)

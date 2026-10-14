@@ -449,14 +449,16 @@ describe("settings", () => {
     expect(e.message).toBe("The pay period start date must be a Monday.");
   });
 
-  it("two-factor: the Owner turns it on with a 6-digit code; anyone else is refused", async () => {
+  it("two-factor: every role turns on their own with a 6-digit code (matrix twoFactor.manage)", async () => {
     const { data, actor } = fakeSession("owner");
     expect((await refusal(data.workspace.turnOnTwoFactor(actor, "12ab56"))).message).toBe(
       "Enter the 6-digit code from your app.",
     );
     await expect(data.workspace.turnOnTwoFactor(actor, "123456")).resolves.toEqual({ twoFactorEnabled: true });
     const manager = fakeSession("manager");
-    expect((await refusal(manager.data.workspace.turnOnTwoFactor(manager.actor, "123456"))).code).toBe("forbidden");
+    await expect(manager.data.workspace.turnOnTwoFactor(manager.actor, "123456")).resolves.toEqual({ twoFactorEnabled: true });
+    const mine = (await manager.data.workspace.members(manager.actor)).find((x) => x.userId === manager.actor.userId);
+    expect(mine?.twoFactorEnabled).toBe(true);
   });
 
   it("two-factor off (?demo=blocked): once the Owner turns it on, the workspace reads on (F7)", async () => {
@@ -501,20 +503,22 @@ describe("settings", () => {
     ).toBe("Labour shares must add up to 100%.");
   });
 
-  it("members and roles are the Owner's; assignments open a job to the foreman", async () => {
+  it("members and roles follow the matrix (Owner and Manager; Owner changes need the Owner); assignments open a job to the foreman", async () => {
     const { data, actor, as } = fakeSession("owner");
     const manager = as("manager");
+    const al = await manager.data.workspace.inviteMember(manager.actor, { email: "al@b.au", name: "Al", role: "foreman" });
+    expect(al.role).toBe("foreman");
     expect(
-      (
-        await refusal(
-          manager.data.workspace.inviteMember(manager.actor, {
-            email: "a@b.au",
-            name: "Al",
-            role: "foreman",
-          }),
-        )
-      ).code,
+      (await refusal(manager.data.workspace.inviteMember(manager.actor, { email: "o@b.au", name: "O", role: "owner" }))).code,
     ).toBe("forbidden");
+    expect((await manager.data.workspace.setMemberRole(manager.actor, al.id, "accountant")).role).toBe("accountant");
+    const boss = (await data.workspace.members(actor)).find((x) => x.role === "owner")!;
+    expect((await refusal(manager.data.workspace.setMemberRole(manager.actor, boss.id, "manager"))).code).toBe("forbidden");
+    expect((await refusal(manager.data.workspace.setMemberRole(manager.actor, al.id, "owner"))).code).toBe("forbidden");
+    for (const r of ["foreman", "accountant"] as const) {
+      const other = as(r);
+      expect((await refusal(other.data.workspace.inviteMember(other.actor, { email: "x@b.au", name: "X", role: "foreman" }))).code).toBe("forbidden");
+    }
     const m = await data.workspace.inviteMember(actor, {
       email: "Sue@Harbour.au",
       name: "Sue",
@@ -525,10 +529,11 @@ describe("settings", () => {
     const owner0 = (await data.workspace.members(actor)).find((x) => x.role === "owner")!;
     for (const email of ["sue@harbour.au", owner0.email.toUpperCase()]) {
       const r = await refusal(data.workspace.inviteMember(actor, { email, name: "Karen Lee", role: "foreman" }));
-      expect([r.code, r.message]).toEqual(["conflict", "Someone with that email is already a member."]);
+      expect([r.code, r.message]).toEqual(["conflict", "This person is already in your team."]);
     }
     const owner = (await data.workspace.members(actor)).find((x) => x.role === "owner")!;
-    expect((await refusal(data.workspace.setMemberRole(actor, owner.id, "manager"))).code).toBe("conflict");
+    const last = await refusal(data.workspace.setMemberRole(actor, owner.id, "manager"));
+    expect([last.code, last.message]).toEqual(["conflict", "Your business needs at least one owner."]);
     expect((await data.workspace.setMemberRole(actor, m.id, "manager")).role).toBe("manager");
     const craig = (await data.workspace.assignments(actor))[0]!;
     await manager.data.workspace.setAssignments(manager.actor, craig.memberId, [

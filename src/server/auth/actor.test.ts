@@ -6,19 +6,35 @@ vi.mock("react", async (orig) => {
   const react = await orig<typeof import("react")>();
   return {
     ...react,
-    cache: <F extends (...a: never[]) => unknown>(fn: F): F => {
+    // Faithful to React.cache inside one request: memoised on argument identity (F10).
+    cache: <F extends (h: unknown) => unknown>(fn: F): F => {
       wrapped.push(fn);
-      return fn;
+      const seen = new Map<unknown, unknown>();
+      return ((h: unknown) => {
+        if (!seen.has(h)) seen.set(h, fn(h));
+        return seen.get(h);
+      }) as F;
     },
   };
 });
 vi.mock("@/server/db/client", () => ({ getAuthDb: vi.fn() }));
-vi.mock("./auth", () => ({ getAuth: vi.fn() }));
+const getSession = vi.fn(async () => null);
+vi.mock("./auth", () => ({ getAuth: () => ({ api: { getSession } }) }));
 
 describe("actorFromHeaders", () => {
   it("is wrapped in React.cache", async () => {
-    const { actorFromHeaders } = await import("./actor");
-    expect(wrapped).toContain(actorFromHeaders);
+    await import("./actor");
+    expect(wrapped).toHaveLength(1);
     expect((wrapped[0] as { name: string }).name).toBe("actorFromHeaders");
+  });
+  it("reads the session once for two calls with one request's headers", async () => {
+    const { actorFromHeaders } = await import("./actor");
+    getSession.mockClear();
+    const h = new Headers({ cookie: "a=1" });
+    expect(await actorFromHeaders(h)).toEqual({ kind: "signed-out" });
+    expect(await actorFromHeaders(h)).toEqual({ kind: "signed-out" });
+    expect(getSession).toHaveBeenCalledTimes(1);
+    await actorFromHeaders(new Headers({ cookie: "a=1" }));
+    expect(getSession).toHaveBeenCalledTimes(2);
   });
 });

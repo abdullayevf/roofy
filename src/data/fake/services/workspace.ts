@@ -18,8 +18,8 @@ import type {
   WorkspaceSettingsInput,
   WorkspaceView,
 } from "../../contracts";
-import { FIELD_ACCESS, type FakeContext, forbidden, notFound } from "./context";
-import { conflict, invalid, requireEditor, requireOwner, snapshot, write } from "./writes";
+import { FIELD_ACCESS, type FakeContext, forbidden, NO_ACCESS, notFound } from "./context";
+import { conflict, invalid, requireEditor, snapshot, write } from "./writes";
 
 const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -100,6 +100,11 @@ export function createWorkspaceService(c: FakeContext): WorkspaceService {
     }));
 
   const memberOf = (id: Id): Member => members().find((m) => m.id === id)!;
+
+  /** Matrix `member.changeOwner`: only an Owner with two-factor on. */
+  const requireOwnerChange = (actor: Actor): void => {
+    if (actor.role !== "owner" || !c.ownerTwoFactor) throw forbidden(NO_ACCESS);
+  };
 
   return {
     async settings(actor: Actor): Promise<WorkspaceView> {
@@ -193,17 +198,19 @@ export function createWorkspaceService(c: FakeContext): WorkspaceService {
       return settingsOf();
     },
 
-    /** Owner only. The prototype accepts any 6 digits; the owner's member row records it. Audited. */
+    /** Every role, for their own member row (matrix `twoFactor.manage`). Any 6 digits. Audited. */
     async turnOnTwoFactor(actor: Actor, code: string): Promise<{ twoFactorEnabled: true }> {
-      if (!c.access(actor).canAdminister) throw forbidden("Only the Owner can turn on two-factor.");
+      c.access(actor);
       const digits = code.replace(/\s/g, "");
       if (!/^\d{6}$/.test(digits))
         throw invalid("Enter the 6-digit code from your app.", [{ field: "code", message: "Enter the 6-digit code from your app." }]);
       write(c, actor, "two_factor_on", (w) => {
-        const owner = w.t.members.find((m) => m.role === "owner")!;
-        const before = snapshot(owner);
-        Object.assign(owner, { twoFactorEnabled: true, updatedAt: w.at });
-        w.audit("member", owner.id, "update", before, snapshot(owner));
+        const own =
+          w.t.members.find((m) => m.userId === actor.userId) ??
+          w.t.members.find((m) => m.role === actor.role)!;
+        const before = snapshot(own);
+        Object.assign(own, { twoFactorEnabled: true, updatedAt: w.at });
+        w.audit("member", own.id, "update", before, snapshot(own));
       });
       return { twoFactorEnabled: true };
     },
@@ -286,12 +293,12 @@ export function createWorkspaceService(c: FakeContext): WorkspaceService {
       return templates().find((x) => x.id === id)!;
     },
 
-    /** Invite someone (Owner only). There is one Owner. */
+    /** Invite someone (Owner or Manager); inviting as Owner is an Owner change. */
     async inviteMember(actor: Actor, input: MemberInput): Promise<Member> {
-      requireOwner(c, actor);
-      if (input.role === "owner") throw invalid("There can only be one Owner.");
+      requireEditor(c, actor);
+      if (input.role === "owner") requireOwnerChange(actor);
       if (c.t.members.some((m) => sameName(m.email, input.email)))
-        throw conflict("Someone with that email is already a member.");
+        throw conflict("This person is already in your team.");
       const id = write(c, actor, "member_invite", (w) => {
         const row = {
           ...w.base(),
@@ -308,13 +315,15 @@ export function createWorkspaceService(c: FakeContext): WorkspaceService {
       return memberOf(id);
     },
 
-    /** Change a member's role (Owner only). The Owner's own role doesn't change here. */
+    /** Change a member's role (Owner or Manager); anything touching the Owner role is an Owner change. */
     async setMemberRole(actor: Actor, memberId: Id, role: Role): Promise<Member> {
-      requireOwner(c, actor);
+      requireEditor(c, actor);
       const m = c.t.members.find((x) => x.id === memberId);
       if (!m) throw notFound("member");
-      if (m.role === "owner") throw conflict("The Owner's role can't be changed.");
-      if (role === "owner") throw invalid("There can only be one Owner.");
+      if (m.role === "owner" || role === "owner") requireOwnerChange(actor);
+      if (m.role === "owner" && role !== "owner" && c.t.members.filter((x) => x.role === "owner").length <= 1)
+        throw conflict("Your business needs at least one owner.");
+      if (m.role === role) return memberOf(m.id);
       write(c, actor, "member_role", (w) => {
         w.audit("member", m.id, "update", { role: m.role }, { role });
         if (m.role === "foreman" && role !== "foreman")
