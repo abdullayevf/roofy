@@ -442,7 +442,7 @@ Run 1 covers settings, levels, categories and templates. Run 2 covers members, i
 - Consumes: `auth`, `withActor`, `ROOFING_DEFAULTS`, and `crewRowProblems`/`businessProblems` from `src/lib/onboarding-input`.
 - Produces: `createDbOnboarding(actor | { userId }): OnboardingService` and `createDbAuth(): AuthService`.
 
-- [ ] Failing tests first:
+- [x] Failing tests first:
   - `saveBusiness` for a user with no workspace creates the workspace (organization) with the user as Owner, sets it active, and stores name/ABN/GST with timezone default `Australia/Sydney`.
   - `chooseTrade` → `acceptDefaults` copies the roofing templates, categories and levels once (calling it twice adds no duplicates).
   - `addCrew` writes one `crew_member` and one `rate` (`effective_from` = today in the workspace timezone, project null).
@@ -454,8 +454,8 @@ Run 1 covers settings, levels, categories and templates. Run 2 covers members, i
   - `signIn` with TOTP on → `next: "/two-factor"`.
   - `requestPasswordReset` answers the same for unknown emails.
   - `acceptInvite` joins with the invited role.
-- [ ] Run the existing `src/data/fake/services/onboarding.test.ts` expectations against both implementations through a shared contract test (`tests/integration/onboarding-contract.ts`), if they can share it without rewriting the fake.
-- [ ] Done when the tests pass and `pnpm verify` is green.
+- [x] Run the existing `src/data/fake/services/onboarding.test.ts` expectations against both implementations through a shared contract test (`tests/integration/onboarding-contract.ts`), if they can share it without rewriting the fake.
+- [x] Done when the tests pass and `pnpm verify` is green.
 
 ### Task 13: Entry screens and members screen, wired (sonnet, design loop)
 
