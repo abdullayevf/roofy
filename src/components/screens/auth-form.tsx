@@ -32,7 +32,7 @@ export function AuthForm({ mode, demo }: { mode: AuthMode; demo: AuthDemo }) {
   const busy = pending || demo === "loading";
 
   function finish(result: ActionResult<{ next: string }>) {
-    if (result.ok) return router.push(result.next);
+    if (result.ok) return router.push(result.next === "/check-email" ? `/check-email?email=${encodeURIComponent(email.trim())}` : result.next);
     const next: AuthProblems = {};
     for (const issue of result.issues) if (issue.field === "email" || issue.field === "password") next[issue.field] ??= issue.message;
     setProblems(next);
@@ -99,6 +99,13 @@ export function AuthForm({ mode, demo }: { mode: AuthMode; demo: AuthDemo }) {
           error={problems.password}
           disabled={busy}
         />
+        {mode === "sign-in" ? (
+          <div>
+            <Button variant="link" href="/forgot-password">
+              Forgot password?
+            </Button>
+          </div>
+        ) : null}
         {formError ? (
           <div role="alert">
             <ErrorMessage>{formError}</ErrorMessage>

@@ -52,3 +52,14 @@ export const SIGN_IN_AGAIN = "Your sign-in has timed out. Sign in again.";
 export const INVITE_OTHER_EMAIL = "This invite is for a different email. Sign in with the email it was sent to.";
 export const GOOGLE_OFF = "Google sign-in isn't available yet. Use your email instead.";
 export const TOO_MANY_TRIES = "Too many tries. Wait a minute, then try again.";
+
+// "Send link", "Set password" and the email link landing: one sorry sentence each, for a service that is down.
+export const RESET_SEND_FAILED = "Couldn't send the link. Try again.";
+export const RESET_SET_FAILED = "Couldn't set your password. Try again.";
+export const VERIFY_FAILED = "Couldn't check your link. Try again.";
+export const PASSWORD_SET = "Your password is set. Sign in with it now.";
+
+/** The new password from a reset link: the sign-up rules, with a blank box asking for a new one. */
+export function newPasswordProblem(password: string): string | null {
+  return password === "" ? "Enter a new password." : passwordProblem(password, "sign-up");
+}

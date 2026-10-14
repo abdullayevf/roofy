@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { memberSchema } from "../../src/data/admin-inputs";
 import { getSeed } from "../../src/data/fake/store";
+import { FAKE_DEAD_TOKENS } from "../../src/data/fake/services/auth";
+import { LINK_EXPIRED, RESET_LINK_SENT, newPasswordProblem, emailProblem } from "../../src/lib/auth-input";
 import { PLACEHOLDER_IDS, resolveRoute, SCREENS, type ScreenGroup } from "../e2e/screens";
 
 const KNOWN_GROUPS: ScreenGroup[] = [
@@ -14,6 +16,7 @@ const KNOWN_GROUPS: ScreenGroup[] = [
   "pay",
   "reports",
   "entry-settings",
+  "auth",
 ];
 
 describe("SCREENS manifest", () => {
@@ -188,5 +191,33 @@ describe("entry-settings invite captures", () => {
     const refused = invites.filter((s) => s.expectStill === "This person is already in your team.");
     expect(refused.length).toBe(1);
     expect(seedEmails.has(emailOf(refused[0]!.steps)!.toLowerCase())).toBe(true);
+  });
+});
+
+describe("auth captures", () => {
+  const auth = SCREENS.filter((s) => s.group === "auth");
+  const sentences = [LINK_EXPIRED, RESET_LINK_SENT, "Your password is set."];
+  const refusals = [emailProblem(""), newPasswordProblem(""), newPasswordProblem("short")];
+
+  it("every capture that waits for text waits for a sentence the screens really say", () => {
+    for (const screen of auth.filter((s) => s.expectStill)) {
+      const text = screen.expectStill!;
+      expect([...sentences, ...refusals].some((sentence) => sentence?.includes(text)), `${screen.id} waits for "${text}"`).toBe(true);
+    }
+  });
+
+  it("every capture that presses a button waits for its result, and no auth screen needs a role", () => {
+    for (const screen of auth) {
+      if (screen.steps?.some((step) => !step.startsWith("fill:"))) expect(screen.expectStill, `${screen.id} has steps but no expectStill`).toBeTruthy();
+      expect(screen.roles, `${screen.id} is pre-auth`).toEqual([]);
+    }
+  });
+
+  it("the dead-link captures use exactly the tokens the fake treats as spent, and the live ones do not", () => {
+    const tokenOf = (route: string) => new URLSearchParams(route.split("?")[1] ?? "").get("token");
+    for (const screen of auth.filter((s) => tokenOf(s.route) !== null)) {
+      const says = screen.expectStill === "This link has expired";
+      expect(FAKE_DEAD_TOKENS.includes(tokenOf(screen.route)!), `${screen.id} (token ${tokenOf(screen.route)})`).toBe(says);
+    }
   });
 });

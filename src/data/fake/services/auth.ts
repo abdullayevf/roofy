@@ -31,6 +31,10 @@ export {
   WRONG_PASSWORD,
 } from "@/lib/auth-input";
 
+/** Link tokens the prototype treats as spent: the design captures open `?token=expired` and `?token=used`. */
+export const FAKE_DEAD_TOKENS: readonly string[] = ["expired", "used"];
+const deadLink = (token: string) => token.trim() === "" || FAKE_DEAD_TOKENS.includes(token.trim());
+
 const normal = (email: string) => email.trim().toLowerCase();
 
 function refuseField(field: string, message: string): never {
@@ -64,7 +68,7 @@ export function createFakeAuth(): AuthService {
       return { role: "owner", next: mode === "sign-up" ? "/onboarding" : "/" };
     },
     async verifyEmail(token) {
-      if (token.trim() === "") throw new DataError("invalid", LINK_EXPIRED);
+      if (deadLink(token)) throw new DataError("invalid", LINK_EXPIRED);
       return { role: "owner", next: "/onboarding" };
     },
     async requestPasswordReset(email) {
@@ -73,7 +77,7 @@ export function createFakeAuth(): AuthService {
       return { message: RESET_LINK_SENT };
     },
     async resetPassword(token, password) {
-      if (token.trim() === "") throw new DataError("invalid", LINK_EXPIRED);
+      if (deadLink(token)) throw new DataError("invalid", LINK_EXPIRED);
       const problem = passwordProblem(password, "sign-up");
       if (problem) refuseField("password", problem);
     },

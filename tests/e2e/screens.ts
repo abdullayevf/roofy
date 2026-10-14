@@ -85,7 +85,8 @@ export type ScreenGroup =
   | "expenses" // Task 16 — Expenses list, add/edit
   | "pay" // Task 17 — Pay runs, review, statement
   | "reports" // Task 18 — Reports, record history, workspace export
-  | "entry-settings"; // Task 19 — Sign in/up, onboarding, install, settings, more
+  | "entry-settings" // Task 19 — Sign in/up, onboarding, install, settings, more
+  | "auth"; // Phase 3 Task 13 — email links, password reset, two-factor, invites, members
 
 export type ScreenSpec = {
   /** Stable id used in the screenshot filename and by --screens filtering. */
@@ -150,6 +151,10 @@ const LONG_NAME = "Scaffolding hire, safety rails and edge protection for the Ha
 // states use names inside those limits; LONG_NAME above is the too-long case.
 const LONG_CATEGORY = "Scaffolding, safety rails and edge protection for re-roofs";
 const LONG_PERSON = "Bartholomew Wolfeschlegelsteinhausenberger-Smythe, Harbour View site lead";
+const OWNER_EMAIL = "karen@harbourroofing.example";
+// The sentences the auth screens settle on (src/lib/auth-input.ts), matched as text.
+const LINK_EXPIRED_TEXT = "This link has expired";
+const RESET_SENT_TEXT = "If that email has an account";
 const LONG_EMAIL = "maria.fernanda.van-der-westhuizen-smith@harbour-and-bay-roofing-contractors.example";
 
 export const SCREENS: ScreenSpec[] = [
@@ -1047,6 +1052,34 @@ export const SCREENS: ScreenSpec[] = [
   { id: "workspace-export", group: "reports", route: "/export", states: READ_STATES, roles: ["owner"] },
   { id: "workspace-export-done", group: "reports", route: "/export", states: ["normal"], roles: ["owner"], steps: ["Export workspace"], expectStill: "is saved to your downloads" },
   { id: "workspace-export-no-access", group: "reports", route: "/export", states: ["normal"], roles: ["manager", "accountant", "foreman"] },
+
+  // --- auth (Phase 3 Task 13) ---------------------------------------------
+  // Check your email (after sign-up): static, so no error or offline state; the address wraps when long.
+  { id: "check-email", group: "auth", route: `/check-email?email=${encodeURIComponent(OWNER_EMAIL)}`, states: ["normal"], roles: [] },
+  { id: "check-email-no-address", group: "auth", route: "/check-email", states: ["normal"], roles: [] },
+  { id: "check-email-long-email", group: "auth", route: `/check-email?email=${encodeURIComponent(LONG_EMAIL)}`, states: ["normal"], roles: [] },
+  // Verify email (the link's landing checks on arrival, so its steady states are busy, no signal, the sorry sentence
+  // and the two dead links; a good token goes straight on to set-up).
+  { id: "verify", group: "auth", route: "/verify?token=good-link", states: ["loading", "offline", "error"], roles: [] },
+  { id: "verify-expired", group: "auth", route: "/verify?token=expired", states: ["normal"], roles: [], expectStill: LINK_EXPIRED_TEXT },
+  { id: "verify-used", group: "auth", route: "/verify?token=used", states: ["normal"], roles: [], expectStill: LINK_EXPIRED_TEXT },
+  { id: "verify-no-token", group: "auth", route: "/verify", states: ["normal"], roles: [], expectStill: LINK_EXPIRED_TEXT },
+  // Forgot password: the form, a refusal, filled, the one answer (same for an unknown email), a long email.
+  { id: "forgot-password", group: "auth", route: "/forgot-password", states: AUTH_STATES, roles: [], keyboard: { field: "Email", action: "Send link" } },
+  { id: "forgot-password-invalid", group: "auth", route: "/forgot-password", states: ["normal"], roles: [], steps: ["Send link"], expectStill: "Enter your email address." },
+  { id: "forgot-password-filled", group: "auth", route: "/forgot-password", states: ["normal"], roles: [], steps: [`fill:Email=${OWNER_EMAIL}`] },
+  { id: "forgot-password-sent", group: "auth", route: "/forgot-password", states: ["normal"], roles: [], steps: [`fill:Email=${OWNER_EMAIL}`, "Send link"], expectStill: RESET_SENT_TEXT },
+  { id: "forgot-password-sent-unknown", group: "auth", route: "/forgot-password", states: ["normal"], roles: [], steps: ["fill:Email=nobody@nowhere.example", "Send link"], expectStill: RESET_SENT_TEXT },
+  { id: "forgot-password-long-email", group: "auth", route: "/forgot-password", states: ["normal"], roles: [], steps: [`fill:Email=${LONG_EMAIL}`, "Send link"], expectStill: RESET_SENT_TEXT },
+  // Reset password: the form, refusals, filled, done, the two dead links (found out on Set password) and no token.
+  { id: "reset-password", group: "auth", route: "/reset-password?token=good-link", states: AUTH_STATES, roles: [], keyboard: { field: "New password", action: "Set password" } },
+  { id: "reset-password-invalid", group: "auth", route: "/reset-password?token=good-link", states: ["normal"], roles: [], steps: ["Set password"], expectStill: "Enter a new password." },
+  { id: "reset-password-short", group: "auth", route: "/reset-password?token=good-link", states: ["normal"], roles: [], steps: ["fill:New password=short", "Set password"], expectStill: "Use at least 8 characters." },
+  { id: "reset-password-filled", group: "auth", route: "/reset-password?token=good-link", states: ["normal"], roles: [], steps: ["fill:New password=a-long-password"] },
+  { id: "reset-password-done", group: "auth", route: "/reset-password?token=good-link", states: ["normal"], roles: [], steps: ["fill:New password=a-long-password", "Set password"], expectStill: "Your password is set." },
+  { id: "reset-password-expired", group: "auth", route: "/reset-password?token=expired", states: ["normal"], roles: [], steps: ["fill:New password=a-long-password", "Set password"], expectStill: LINK_EXPIRED_TEXT },
+  { id: "reset-password-used", group: "auth", route: "/reset-password?token=used", states: ["normal"], roles: [], steps: ["fill:New password=a-long-password", "Set password"], expectStill: LINK_EXPIRED_TEXT },
+  { id: "reset-password-no-token", group: "auth", route: "/reset-password", states: ["normal"], roles: [], expectStill: LINK_EXPIRED_TEXT },
 
   // --- entry-settings (Task 19) -----------------------------------------
   // Sign in and sign up: the form, the busy button, no signal, and the plain-words refusals.

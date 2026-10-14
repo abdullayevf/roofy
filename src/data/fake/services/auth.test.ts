@@ -88,6 +88,14 @@ describe("fake auth: email, reset, two-factor and invite (Phase 3 additions)", (
     const e = await refusal(auth.verifyEmail(" "));
     expect([e.code, e.message]).toEqual(["invalid", LINK_EXPIRED]);
   });
+  it("the prototype's spent link tokens (expired, used) are refused as expired links by verify and reset", async () => {
+    for (const token of ["expired", "used", " used "]) {
+      const v = await refusal(auth.verifyEmail(token));
+      expect([v.code, v.message]).toEqual(["invalid", LINK_EXPIRED]);
+      const r = await refusal(auth.resetPassword(token, "long-enough"));
+      expect([r.code, r.message]).toEqual(["invalid", LINK_EXPIRED]);
+    }
+  });
   it("resetPassword takes a new password of 8 or more characters", async () => {
     await expect(auth.resetPassword("token-1", "long-enough")).resolves.toBeUndefined();
     const short = await refusal(auth.resetPassword("token-1", "short"));

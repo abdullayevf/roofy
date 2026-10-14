@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { authProblems, emailProblem, passwordProblem } from "./auth-input";
+import { authProblems, emailProblem, newPasswordProblem, passwordProblem } from "./auth-input";
 
 describe("emailProblem", () => {
   it("asks for a blank email", () => expect(emailProblem("  ")).toBe("Enter your email address."));
@@ -33,5 +33,14 @@ describe("authProblems", () => {
       password: "Enter your password.",
     });
     expect(authProblems("sign-in", { email: "a@b.example", password: "x" })).toEqual({});
+  });
+});
+
+describe("newPasswordProblem", () => {
+  it("asks for a new password when blank, then holds it to the sign-up rules", () => {
+    expect(newPasswordProblem("")).toBe("Enter a new password.");
+    expect(newPasswordProblem("short")).toBe("Use at least 8 characters.");
+    expect(newPasswordProblem("a".repeat(129))).toBe("Use 128 characters or fewer.");
+    expect(newPasswordProblem("long-enough")).toBeNull();
   });
 });
