@@ -43,6 +43,13 @@
       "when": 1791926817396,
       "tag": "0005_locked_logs",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791926818396,
+      "tag": "0006_member_profiles",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,92 @@
+// Task 11 run 2, carry note T8: /api/auth/organization/* called directly (here through auth.api)
+// is held to the workspace service's member rules by the organization hooks in auth.ts.
+import { randomBytes } from "node:crypto";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { getAuth } from "../../src/server/auth/auth";
+import { closePools, rows } from "./helpers";
+
+const PASSWORD = "correct horse battery";
+let mailLog = "";
+let n = 0;
+
+const linksTo = (to: string): string[] =>
+  existsSync(mailLog)
+    ? readFileSync(mailLog, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l) as { to: string; links: string[] }).filter((m) => m.to === to).flatMap((m) => m.links)
+    : [];
+
+async function signUp(): Promise<{ email: string; userId: string; headers: Headers }> {
+  const auth = getAuth();
+  const email = `hook${Date.now()}${n++}@example.com`;
+  const res = await auth.api.signUpEmail({ body: { email, password: PASSWORD, name: "Hook Person" } });
+  const token = new URL(linksTo(email)[0]!).searchParams.get("token")!;
+  await auth.api.verifyEmail({ query: { token } });
+  const signIn = await auth.api.signInEmail({ body: { email, password: PASSWORD }, returnHeaders: true });
+  const cookie = signIn.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+  return { email, userId: res.user.id, headers: new Headers({ cookie }) };
+}
+
+async function refused(p: Promise<unknown>): Promise<{ status: number; code?: string; message?: string }> {
+  return p.then(
+    () => expect.fail("expected a refusal"),
+    (e: { statusCode: number; body?: { code?: string; message?: string } }) => ({ status: e.statusCode, code: e.body?.code, message: e.body?.message }),
+  );
+}
+
+let owner: Awaited<ReturnType<typeof signUp>>;
+let manager: Awaited<ReturnType<typeof signUp>>;
+let organizationId = "";
+let ownerMemberId = "";
+
+beforeAll(async () => {
+  process.env.BETTER_AUTH_SECRET ??= randomBytes(32).toString("hex");
+  process.env.BETTER_AUTH_URL ??= "http://localhost:3100";
+  process.env.ROOFY_MAIL = "console";
+  mailLog = join(mkdtempSync(join(tmpdir(), "roofy-hooks-")), "mail.jsonl");
+  process.env.ROOFY_MAIL_LOG = mailLog;
+  owner = await signUp();
+  manager = await signUp();
+  const ws = await getAuth().api.createOrganization({ body: { name: "Hook Roofing", slug: `hook-${owner.userId}` }, headers: owner.headers });
+  organizationId = ws!.id;
+  await getAuth().api.addMember({ body: { userId: manager.userId, role: "manager", organizationId } });
+  await getAuth().api.setActiveOrganization({ body: { organizationId }, headers: manager.headers });
+  ownerMemberId = (await rows<{ id: string }>("owner", "select id from member where user_id = $1", [owner.userId]))[0]!.id;
+});
+afterAll(closePools);
+
+const invite = (headers: Headers, email: string, role: "owner" | "manager" | "foreman" | "accountant") =>
+  getAuth().api.createInvitation({ body: { email, role, organizationId }, headers });
+
+describe("organization hooks (T8)", () => {
+  it("refuses a Manager inviting as Owner (member.changeOwner), and an Owner without 2FA too", async () => {
+    expect(await refused(invite(manager.headers, `x${n++}@example.com`, "owner"))).toMatchObject({ status: 403 });
+    expect(await refused(invite(owner.headers, `y${n++}@example.com`, "owner"))).toMatchObject({
+      status: 403,
+      message: "You don't have access to this.",
+    });
+  });
+  it("lets a Manager invite a foreman, then refuses the same email again", async () => {
+    const email = `z${n++}@example.com`;
+    await invite(manager.headers, email, "foreman");
+    expect((await refused(invite(owner.headers, email, "foreman"))).status).toBe(400);
+  });
+  it("refuses inviting someone already in the team", async () => {
+    expect((await refused(invite(owner.headers, manager.email, "foreman"))).status).toBe(400);
+  });
+  it("refuses demoting the last Owner and a Manager changing the Owner", async () => {
+    const update = (headers: Headers) =>
+      getAuth().api.updateMemberRole({ body: { memberId: ownerMemberId, role: "manager", organizationId }, headers });
+    expect((await refused(update(owner.headers))).status).toBe(400);
+    expect((await refused(update(manager.headers))).status).toBe(403);
+    const [m] = await rows<{ role: string }>("owner", "select role from member where id = $1", [ownerMemberId]);
+    expect(m!.role).toBe("owner");
+  });
+  it("records a Better Auth role change in audit_event without an actor (accepted, see report)", async () => {
+    const [mgr] = await rows<{ id: string }>("owner", "select id from member where user_id = $1", [manager.userId]);
+    await getAuth().api.updateMemberRole({ body: { memberId: mgr!.id, role: "accountant", organizationId }, headers: owner.headers });
+    const audit = await rows("owner", "select actor_user_id from audit_event where table_name = 'member' and row_id = $1 and action = 'update'", [mgr!.id]);
+    expect(audit).toEqual([{ actor_user_id: null }]);
+  });
+});

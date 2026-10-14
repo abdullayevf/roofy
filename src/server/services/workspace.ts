@@ -6,7 +6,7 @@
  * Every query runs through `withActor` (row-level security on `app.workspace_id`) AND filters
  * `workspace_id = actor.workspaceId` itself: the first of the two layers of tenant isolation.
  */
-import { and, asc, eq, ne, sql, type SQL } from "drizzle-orm";
+import { and, asc, eq, inArray, ne, sql, type SQL } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import {
   DataError,
@@ -18,6 +18,9 @@ import {
   type FieldAccess,
   type JobType,
   type LevelInput,
+  type Member,
+  type MemberInput,
+  type Role,
   type StageTemplate,
   type TemplateInput,
   type WorkspaceService,
@@ -28,13 +31,19 @@ import {
 import { dayOfWeek } from "@/domain/dates";
 import { ROOFING_DEFAULTS } from "@/lib/roofing-defaults";
 import { assertCan, type Action, type ActorWith2fa } from "@/server/authz/matrix";
+import { assertInvite, assertKeepsAnOwner, assertRoleChange } from "@/server/authz/members";
 import { shapeAccess } from "@/server/authz/shape";
+import { isRole } from "@/server/auth/role";
+import { getMailer, inviteEmail } from "@/server/email";
 import { getAuthDb } from "@/server/db/client";
 import { fromHundredths, toHundredths } from "@/server/db/convert";
 import {
   crewLevel,
   expenseCategory,
+  invitation,
   member,
+  project,
+  projectAssignment,
   stageTemplate,
   stageTemplateItem,
   user,
@@ -42,18 +51,8 @@ import {
 } from "@/server/db/schema";
 import { withActor, type Tx } from "@/server/db/with-actor";
 
-/** The methods built so far; `createDbServices` fills the rest with not-ready placeholders. */
-export type BuiltWorkspaceService = Pick<
-  WorkspaceService,
-  | "settings"
-  | "updateSettings"
-  | "levels"
-  | "saveLevel"
-  | "categories"
-  | "saveCategory"
-  | "templates"
-  | "saveTemplate"
->;
+/** Every `WorkspaceService` method is built (run 2); the name stays for `createDbServices`. */
+export type BuiltWorkspaceService = WorkspaceService;
 
 const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -166,6 +165,57 @@ async function templateRows(tx: Tx, actor: Actor): Promise<StageTemplate[]> {
       })),
   }));
 }
+
+
+// ─── Members (run 2) ────────────────────────────────────────────────────────
+
+type Profile = { user_id: string; name: string; email: string; two_factor_enabled: boolean };
+
+/**
+ * Names, emails and 2FA of the members of the actor's workspace, through the migration-added
+ * security-definer function (carry note T4(7)); roofy_app has no grant on "user".
+ */
+async function profiles(tx: Tx): Promise<Profile[]> {
+  const res: unknown = await tx.execute(
+    sql`select user_id, name, email, two_factor_enabled from workspace_member_profiles()`,
+  );
+  return (Array.isArray(res) ? res : (res as { rows: Profile[] }).rows) as Profile[];
+}
+
+/** The actor with their real two-factor state, for the 2FA-gated Owner changes. */
+const withTwoFactor = (actor: Actor, people: Profile[]): ActorWith2fa => ({
+  ...actor,
+  twoFactorEnabled: people.find((p) => p.user_id === actor.userId)?.two_factor_enabled === true,
+});
+
+async function memberRows(tx: Tx, actor: Actor, id?: string): Promise<Member[]> {
+  const ms = await tx
+    .select({ id: member.id, userId: member.userId, role: member.role })
+    .from(member)
+    .where(and(eq(member.workspaceId, actor.workspaceId), id ? eq(member.id, id) : undefined))
+    .orderBy(asc(member.id));
+  const people = new Map((await profiles(tx)).map((p) => [p.user_id, p]));
+  const assigned = await tx
+    .select({ memberId: projectAssignment.memberId, projectId: projectAssignment.projectId })
+    .from(projectAssignment)
+    .where(eq(projectAssignment.workspaceId, actor.workspaceId))
+    .orderBy(asc(projectAssignment.id));
+  return ms.map((m) => {
+    const p = people.get(m.userId);
+    return {
+      id: m.id,
+      userId: m.userId,
+      name: p?.name ?? "",
+      email: p?.email ?? "",
+      role: m.role as Role,
+      twoFactorEnabled: p?.two_factor_enabled === true,
+      projectIds: m.role === "foreman" ? assigned.filter((x) => x.memberId === m.id).map((x) => x.projectId) : [],
+    };
+  });
+}
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const appUrl = () => (process.env.BETTER_AUTH_URL ?? "").replace(/\/+$/, "");
 
 /** The workspace service on Postgres. Each method takes the actor it acts for. */
 export function createWorkspaceService(): BuiltWorkspaceService {
@@ -390,6 +440,125 @@ export function createWorkspaceService(): BuiltWorkspaceService {
           );
         return (await templateRows(tx, actor)).find((t) => t.id === templateId)!;
       });
+    },
+    async members(actor: Actor): Promise<Member[]> {
+      allow(actor, "member.read");
+      return withActor(actor, (tx) => memberRows(tx, actor));
+    },
+
+    /** Owner or Manager; inviting as Owner needs an Owner with 2FA. One pending invite per email. */
+    async inviteMember(actor: Actor, input: MemberInput): Promise<Member> {
+      allow(actor, "member.invite");
+      const email = input.email.trim().toLowerCase();
+      if (!EMAIL.test(email)) throw invalid("Enter an email address.", "email");
+      if (!isRole(input.role)) throw invalid("Pick a role from the list.", "role");
+      const { id, workspaceName } = await withActor(actor, async (tx) => {
+        const people = await profiles(tx);
+        const pending = await tx
+          .select({ id: invitation.id })
+          .from(invitation)
+          .where(
+            and(
+              eq(invitation.workspaceId, actor.workspaceId),
+              sql`lower(${invitation.email}) = ${email}`,
+              eq(invitation.status, "pending"),
+              sql`${invitation.expiresAt} > now()`,
+            ),
+          );
+        assertInvite(withTwoFactor(actor, people), input.role, {
+          alreadyMember: people.some((p) => p.email.toLowerCase() === email),
+          alreadyInvited: pending.length > 0,
+        });
+        const w = await workspaceRow(tx, actor);
+        const id = uuidv7();
+        await tx.insert(invitation).values({
+          id,
+          workspaceId: actor.workspaceId,
+          email,
+          role: input.role,
+          expiresAt: sql`now() + interval '48 hours'`,
+          inviterId: actor.userId,
+        });
+        return { id, workspaceName: w.name };
+      });
+      await getMailer().send({
+        to: email,
+        ...inviteEmail({ workspaceName, inviterName: actor.name, role: input.role, url: `${appUrl()}/invite/${id}` }),
+      });
+      return { id, userId: "", name: input.name.trim(), email, role: input.role, twoFactorEnabled: false, projectIds: [] };
+    },
+
+    /** Owner or Manager; anything touching the Owner role is an Owner change. Keeps one Owner. */
+    async setMemberRole(actor: Actor, memberId: string, role: Role): Promise<Member> {
+      allow(actor, "member.setRole");
+      if (!isRole(role)) throw invalid("Pick a role from the list.", "role");
+      if (!UUID.test(memberId)) throw notFound("member");
+      return withActor(actor, async (tx) => {
+        const [m] = await memberRows(tx, actor, memberId);
+        if (!m) throw notFound("member");
+        assertRoleChange(withTwoFactor(actor, await profiles(tx)), m.role, role);
+        const owners = await tx
+          .select({ id: member.id })
+          .from(member)
+          .where(and(eq(member.workspaceId, actor.workspaceId), eq(member.role, "owner")));
+        assertKeepsAnOwner(m.role, role, owners.length);
+        if (m.role === role) return m;
+        await tx
+          .update(member)
+          .set({ role })
+          .where(and(eq(member.workspaceId, actor.workspaceId), eq(member.id, memberId)));
+        if (m.role === "foreman")
+          await tx
+            .delete(projectAssignment)
+            .where(and(eq(projectAssignment.workspaceId, actor.workspaceId), eq(projectAssignment.memberId, memberId)));
+        return (await memberRows(tx, actor, memberId))[0]!;
+      });
+    },
+
+    async assignments(actor: Actor): Promise<{ memberId: string; name: string; projectIds: string[] }[]> {
+      allow(actor, "member.read");
+      const ms = await withActor(actor, (tx) => memberRows(tx, actor));
+      return ms.filter((m) => m.role === "foreman").map((m) => ({ memberId: m.id, name: m.name, projectIds: m.projectIds }));
+    },
+
+    /** Replaces the jobs a foreman is assigned to (Owner/Manager). */
+    async setAssignments(actor: Actor, memberId: string, projectIds: string[]): Promise<void> {
+      allow(actor, "assignment.edit");
+      if (!UUID.test(memberId)) throw notFound("member");
+      const ids = [...new Set(projectIds)];
+      await withActor(actor, async (tx) => {
+        const [m] = await tx
+          .select({ role: member.role })
+          .from(member)
+          .where(and(eq(member.workspaceId, actor.workspaceId), eq(member.id, memberId)));
+        if (!m) throw notFound("member");
+        if (m.role !== "foreman") throw invalid("Only a foreman is assigned to jobs.");
+        if (ids.some((id) => !UUID.test(id))) throw invalid("Pick jobs from the list.", "projectIds");
+        if (ids.length) {
+          const found = await tx
+            .select({ id: project.id })
+            .from(project)
+            .where(and(eq(project.workspaceId, actor.workspaceId), inArray(project.id, ids)));
+          if (found.length !== ids.length) throw invalid("Pick jobs from the list.", "projectIds");
+        }
+        await tx
+          .delete(projectAssignment)
+          .where(and(eq(projectAssignment.workspaceId, actor.workspaceId), eq(projectAssignment.memberId, memberId)));
+        for (const projectId of ids)
+          await tx.insert(projectAssignment).values({ id: uuidv7(), workspaceId: actor.workspaceId, memberId, projectId });
+      });
+    },
+
+    /**
+     * Every role manages their own two-factor (matrix `twoFactor.manage`). Better Auth owns TOTP
+     * enrolment (verifying the code against the secret); this reports its state for the caller.
+     */
+    async turnOnTwoFactor(actor: Actor, code: string): Promise<{ twoFactorEnabled: true }> {
+      allow(actor, "twoFactor.manage");
+      if (!/^\d{6}$/.test(code.replace(/\s/g, ""))) throw invalid("Enter the 6-digit code from your app.", "code");
+      const on = await withActor(actor, async (tx) => withTwoFactor(actor, await profiles(tx)).twoFactorEnabled);
+      if (!on) throw new DataError("conflict", "Scan the code with your authenticator app and confirm it first.");
+      return { twoFactorEnabled: true };
     },
   };
 }

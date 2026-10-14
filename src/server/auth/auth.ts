@@ -8,13 +8,14 @@ import { twoFactor } from "better-auth/plugins/two-factor";
 import { createAccessControl } from "better-auth/plugins/access";
 import { organization } from "better-auth/plugins/organization";
 import { adminAc, defaultStatements, memberAc, ownerAc } from "better-auth/plugins/organization/access";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
-import type { Role } from "@/data/contracts";
+import { DataError, type Role } from "@/data/contracts";
 import { getAuthDb } from "@/server/db/client";
 import { requireEnv } from "@/server/db/env";
 import { account, invitation, member, rateLimit, session, twoFactor as twoFactorTable, user, verification, workspace } from "@/server/db/schema";
 import { getMailer, inviteEmail, resetEmail, verificationEmail } from "@/server/email";
+import { assertInvite, assertKeepsAnOwner } from "@/server/authz/members";
 import { isRole, roleFrom } from "./role";
 
 const ac = createAccessControl(defaultStatements);
@@ -45,6 +46,58 @@ function google(): { google: { clientId: string; clientSecret: string } } | Reco
 function oneRole(role: unknown): void {
   if (!isRole(role)) {
     throw new APIError("BAD_REQUEST", { code: "UNKNOWN_ROLE", message: "Pick one of owner, manager, foreman or accountant." });
+  }
+}
+
+/** A service refusal as the Better Auth error the organization endpoints answer with. */
+function asApiError(e: unknown): unknown {
+  if (!(e instanceof DataError)) return e;
+  const status = e.code === "forbidden" ? "FORBIDDEN" : "BAD_REQUEST";
+  return new APIError(status, { code: e.code.toUpperCase(), message: e.message });
+}
+
+/**
+ * Carry note T8: `/api/auth/organization/invite-member` called directly is held to the service's
+ * rules (`assertInvite`): Manager never invites as Owner, an Owner only with 2FA, no email already
+ * in the team or already invited. Better Auth's own checks run too; this one decides the wording.
+ */
+async function guardInvite(inv: { email: string; role: string; organizationId: string; inviterId: string }): Promise<void> {
+  const db = getAuthDb();
+  const wsId = inv.organizationId;
+  const email = inv.email.trim().toLowerCase();
+  const [me] = await db
+    .select({ role: member.role, twoFactorEnabled: user.twoFactorEnabled, name: user.name })
+    .from(member)
+    .innerJoin(user, eq(user.id, member.userId))
+    .where(and(eq(member.workspaceId, wsId), eq(member.userId, inv.inviterId)));
+  if (!me) throw new APIError("FORBIDDEN", { code: "FORBIDDEN", message: "You don't have access to this." });
+  const taken = await db
+    .select({ id: member.id })
+    .from(member)
+    .innerJoin(user, eq(user.id, member.userId))
+    .where(and(eq(member.workspaceId, wsId), sql`lower(${user.email}) = ${email}`));
+  const pending = await db
+    .select({ id: invitation.id })
+    .from(invitation)
+    .where(and(eq(invitation.workspaceId, wsId), sql`lower(${invitation.email}) = ${email}`, eq(invitation.status, "pending"), sql`${invitation.expiresAt} > now()`));
+  const actor = { userId: inv.inviterId, workspaceId: wsId, role: roleFrom(me.role), name: me.name, twoFactorEnabled: me.twoFactorEnabled };
+  try {
+    assertInvite(actor, roleFrom(inv.role), { alreadyMember: taken.length > 0, alreadyInvited: pending.length > 0 });
+  } catch (e) {
+    throw asApiError(e);
+  }
+}
+
+/** Carry note T8: `update-member-role` called directly never leaves a workspace without an Owner. */
+async function guardKeepsAnOwner(m: { role: string; organizationId: string }, newRole: string): Promise<void> {
+  const owners = await getAuthDb()
+    .select({ id: member.id })
+    .from(member)
+    .where(and(eq(member.workspaceId, m.organizationId), eq(member.role, "owner")));
+  try {
+    assertKeepsAnOwner(m.role, newRole, owners.length);
+  } catch (e) {
+    throw asApiError(e);
   }
 }
 
@@ -113,9 +166,15 @@ export function createAuth() {
         // Workspaces are soft-deleted through Roofy, never cascaded away through Better Auth.
         disableOrganizationDeletion: true,
         organizationHooks: {
-          beforeCreateInvitation: async ({ invitation }) => oneRole(invitation.role),
+          beforeCreateInvitation: async ({ invitation }) => {
+            oneRole(invitation.role);
+            await guardInvite(invitation);
+          },
           beforeAddMember: async ({ member }) => oneRole(member.role),
-          beforeUpdateMemberRole: async ({ newRole }) => oneRole(newRole),
+          beforeUpdateMemberRole: async ({ member, newRole }) => {
+            oneRole(newRole);
+            await guardKeepsAnOwner(member, newRole);
+          },
         },
         schema: {
           session: { fields: { activeOrganizationId: "activeWorkspaceId" } },
