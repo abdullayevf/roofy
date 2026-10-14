@@ -58,3 +58,7 @@
 - A dead-end state offers the forward action its own copy names as the primary button ("Ask for a new link"), never only "Sign in" (auth i1 D2+F1).
 - Every capture asserts its state's visible text before the shot; a capture that looks like another state (error = normal, long-email = sent) is a capture bug (auth i1 D3, D4, F2, F3).
 - "Needs connection" is one line directly under the disabled primary, which keeps its filled shape at disabled opacity; never repeated in a sheet (auth i1 D12, D16, F8, F9; extends the admin-screens line).
+- An error or retry state keeps what the person typed; "Try again" over an empty field is a bug (auth i2 D26+F19, both critics).
+- One message per problem: a field error is not repeated in the pinned bar or a summary line while the field is on screen (auth i2 D25+F20, both critics).
+- A page-level message (link expired, invite gone, load failed) is body text in ink with its icon; red meta is for field errors only (auth i2 D24).
+- A toast never covers the page's primary action or a focused field; disabled button labels keep ≥ 4.5:1 in both themes (auth i2 D27+F16, F21+D33).
