@@ -2,7 +2,7 @@
 // timezone from the member and workspace rows, read through the roofy_auth pool.
 import { and, eq } from "drizzle-orm";
 import { cache } from "react";
-import type { Actor } from "@/data/contracts";
+import type { Actor, OnboardingStep } from "@/data/contracts";
 import { getAuthDb } from "@/server/db/client";
 import { member, workspace } from "@/server/db/schema";
 import { getAuth } from "./auth";
@@ -11,7 +11,7 @@ import { roleFrom } from "./role";
 export { roleFrom };
 
 export type ActorResult =
-  | { kind: "actor"; actor: Actor; timezone: string; workspaceName: string }
+  | { kind: "actor"; actor: Actor; timezone: string; workspaceName: string; onboardingStep: OnboardingStep }
   | { kind: "signed-out" }
   | { kind: "no-workspace"; userId: string };
 
@@ -28,7 +28,7 @@ export const actorFromHeaders = cache(async function actorFromHeaders(h: Headers
   const workspaceId = found.session.activeOrganizationId;
   if (!workspaceId) return { kind: "no-workspace", userId };
   const [row] = await getAuthDb()
-    .select({ role: member.role, name: workspace.name, timezone: workspace.timezone })
+    .select({ role: member.role, name: workspace.name, timezone: workspace.timezone, step: workspace.onboardingStep })
     .from(member)
     .innerJoin(workspace, eq(workspace.id, member.workspaceId))
     .where(and(eq(member.workspaceId, workspaceId), eq(member.userId, userId)))
@@ -39,5 +39,6 @@ export const actorFromHeaders = cache(async function actorFromHeaders(h: Headers
     actor: { userId, workspaceId, role: roleFrom(row.role), name: found.user.name },
     timezone: row.timezone,
     workspaceName: row.name,
+    onboardingStep: row.step,
   };
 });

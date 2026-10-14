@@ -4,10 +4,10 @@ import type { ActorResult } from "@/server/auth/actor";
 
 vi.mock("@/server/auth/actor", () => ({ actorFromHeaders: vi.fn() }));
 const { createDbDataProvider, NO_WORKSPACE_ACTOR_ID } = await import("./data");
-const { NOT_READY } = await import("./services");
+const { NOT_READY, ONBOARDING_METHODS } = await import("./services");
 
 const actor: Actor = { userId: "u-1", workspaceId: "w-1", role: "manager", name: "Ann Lee" };
-const inSydney: ActorResult = { kind: "actor", actor, timezone: "Australia/Sydney", workspaceName: "Lee Roofing" };
+const inSydney: ActorResult = { kind: "actor", actor, timezone: "Australia/Sydney", workspaceName: "Lee Roofing", onboardingStep: "done" };
 
 function provider(result: ActorResult, now = new Date("2026-10-14T03:00:00Z")) {
   const seen: Headers[] = [];
@@ -50,7 +50,15 @@ describe("db data provider: session → actor", () => {
     const found = await provider({ kind: "no-workspace", userId: "u-9" }).p.onboarding(new Headers());
     if ("redirect" in found) throw new Error("expected the wizard");
     expect(found.actor).toEqual({ userId: "u-9", workspaceId: NO_WORKSPACE_ACTOR_ID, role: "owner", name: "" });
-    await expect(found.service.state(found.actor)).rejects.toMatchObject({ code: "unavailable", message: NOT_READY });
+    expect(Object.keys(found.service).sort()).toEqual(Object.keys(ONBOARDING_METHODS).sort());
+  });
+
+  it("an unfinished workspace (T10): the app sends its members to /onboarding, and the wizard is theirs", async () => {
+    const unfinished = provider({ ...inSydney, onboardingStep: "trade" }).p;
+    expect(await unfinished.context(new Headers())).toEqual({ redirect: "/onboarding" });
+    const found = await unfinished.onboarding(new Headers());
+    if ("redirect" in found) throw new Error("expected the wizard");
+    expect(found.actor).toEqual(actor);
   });
 
   it("auth service is not ready yet: sign in rejects as unavailable", async () => {

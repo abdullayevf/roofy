@@ -13,7 +13,10 @@ import {
   type DataServices,
   type OnboardingService,
 } from "@/data/contracts";
+import { createDbOnboarding } from "./onboarding";
 import { createWorkspaceService } from "./workspace";
+
+export { createDbOnboarding };
 
 export const NOT_READY = "This part isn't ready yet.";
 
@@ -80,12 +83,6 @@ export function createDbServices(actor: Actor): DataServices {
     return [k, build ? build(actor) : notReadyService(DATA_SERVICE_METHODS[k])];
   });
   return Object.fromEntries(entries) as DataServices;
-}
-
-/** The set-up wizard (Task 12: `createDbOnboarding(actor | { userId })`). */
-export function createDbOnboarding(who: Actor | { userId: string }): OnboardingService {
-  void who;
-  return notReadyService<OnboardingService>(ONBOARDING_METHODS);
 }
 
 /** Sign in, sign up, email links, two-factor and invites (Task 12: `createDbAuth()`). */

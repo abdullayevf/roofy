@@ -173,6 +173,7 @@ describe("Better Auth", () => {
       actor: { userId, workspaceId: ws?.id, role: "owner", name: "Sam Roof" },
       timezone: "Australia/Sydney",
       workspaceName: "Top Roofing",
+      onboardingStep: "business",
     });
   });
 

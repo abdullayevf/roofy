@@ -55,12 +55,14 @@ describe("createDbServices (until each real service lands)", () => {
     }
   });
 
-  it("every set-up wizard method rejects the same way", async () => {
-    const service = createDbOnboarding({ userId: "u-1" }) as unknown as Record<string, () => unknown>;
+  it("the set-up wizard is built: every method in the contract list is a real function, none a placeholder", async () => {
+    const service = createDbOnboarding({ userId: "u-1" }) as unknown as Record<string, unknown>;
     expect(Object.keys(service).sort()).toEqual(Object.keys(ONBOARDING_METHODS).sort());
     for (const method of Object.keys(ONBOARDING_METHODS)) {
-      const e = await refusal(service[method]!());
-      expect([method, e.code, e.message]).toEqual([method, "unavailable", NOT_READY]);
+      expect(typeof service[method], method).toBe("function");
+      // A set-up user (no workspace yet) is answered before any connection: never "not ready".
+      const e = await refusal((service[method] as (a: Actor) => Promise<unknown>)({ ...actor, userId: "u-2" }));
+      expect([method, e.code]).toEqual([method, "forbidden"]);
     }
   });
 });
