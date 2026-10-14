@@ -1433,7 +1433,7 @@ export const SCREENS: ScreenSpec[] = [
     states: ["normal"],
     roles: ["owner"],
     steps: ["row:Priya Shah", "Remove from team", "Remove from team"],
-    expectStill: "Person removed.",
+    expectStill: "Priya Shah removed.",
   },
   {
     id: "members-two-factor-off",
