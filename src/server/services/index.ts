@@ -13,6 +13,7 @@ import {
   type DataServices,
   type OnboardingService,
 } from "@/data/contracts";
+import { createWorkspaceService } from "./workspace";
 
 export const NOT_READY = "This part isn't ready yet.";
 
@@ -63,10 +64,15 @@ function notReadyService<S>(methods: Readonly<Record<string, true>>): S {
 }
 
 /**
- * The real services as they land. Task 11 adds `workspace: (actor) => createWorkspaceService(actor)`;
- * each built service reads `shapeAccess` (`@/server/authz`) for the access flags it hands to screens.
+ * The real services as they land; each reads `shapeAccess` (`@/server/authz`) for the access flags
+ * it hands to screens. A service built in parts keeps not-ready placeholders for the rest.
  */
-const BUILT: { [K in keyof DataServices]?: (actor: Actor) => DataServices[K] } = {};
+const BUILT: { [K in keyof DataServices]?: (actor: Actor) => DataServices[K] } = {
+  workspace: () => ({
+    ...notReadyService<DataServices["workspace"]>(DATA_SERVICE_METHODS.workspace),
+    ...createWorkspaceService(),
+  }),
+};
 
 export function createDbServices(actor: Actor): DataServices {
   const entries = (Object.keys(DATA_SERVICE_METHODS) as (keyof DataServices)[]).map((k) => {
