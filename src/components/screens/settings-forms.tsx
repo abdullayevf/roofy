@@ -37,7 +37,6 @@ import { NEEDS_CONNECTION, useOnline } from "./use-online";
 export type Errors = Record<string, string | undefined>;
 const SAVED = "Changes saved.";
 const FAILED = "Couldn't save this. Try again.";
-const CODE_SUMMARY = "Check the 6-digit code and try again.";
 /** Fields sit two to a row from 1024 px, so the form uses the width (lesson: desktop uses the width). */
 export const FORM_GRID = "grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-x-8";
 
@@ -107,8 +106,8 @@ type SettingsFormProps = {
   quiet?: boolean;
   /** A form taller than the first viewport pins its Save bar above the tab bar (DESIGN.md §5); its error and Needs connection line sit in the bar. */
   pinned?: boolean;
-  /** The bar's line when a pinned save is refused and the failed field has no sentence of its own (default: a general one). */
-  summary?: string;
+  /** The bar's line when a pinned save is refused and the failed field has no sentence of its own (default: a general one). `false`: none, the field's own sentence is the only message (one message per problem). */
+  summary?: string | false;
   /** Extra classes on the form (a width from 1024 px, so the list and the pinned bar share one column). */
   className?: string;
   children: ReactNode;
@@ -154,7 +153,7 @@ function PlainSettingsForm({ s, onSubmit, label = "Save changes", quiet = false,
 function PinnedSettingsForm({ s, onSubmit, label = "Save changes", quiet = false, summary, className, children }: SettingsFormProps) {
   const ref = useFocusFirstBad(s);
   // A refused save puts its line in the bar, where it is in view whatever the scroll (entry-settings i2 D8 + F2).
-  const barError = Object.values(s.errors).some(Boolean) ? (summary ?? PIN_SUMMARY) : undefined;
+  const barError = summary !== false && Object.values(s.errors).some(Boolean) ? (summary ?? PIN_SUMMARY) : undefined;
   const { style, barProps } = usePinnedBar(`${s.online}${s.failed}${barError}`);
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -481,7 +480,7 @@ function TwoFactorCode({ demoOffline, setup }: { demoOffline: boolean; setup: Tw
   };
   // The form is taller than a phone's first screen, so Turn on two-factor is the pinned bar above the tab bar (D1).
   return (
-    <SettingsForm s={s} onSubmit={submit} label="Turn on two-factor" pinned summary={CODE_SUMMARY}>
+    <SettingsForm s={s} onSubmit={submit} label="Turn on two-factor" pinned summary={false}>
       <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
         <QrCode value={setup.uri} label="Scan this with your authenticator app" />
         <ol className="flex list-decimal flex-col gap-2 pl-6 text-body text-ink">

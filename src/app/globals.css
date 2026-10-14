@@ -449,6 +449,18 @@ body {
     width: min(28rem, calc(100vw - 240px - 3rem));
   }
 }
+/*
+ * A tablet or a phone on its side: the toast is no wider than the page column (37.5 rem, the pinned bar's width) and
+ * centred in it, not edge to edge across the People list (auth i2 F26).
+ */
+@media (min-width: 600px) and (max-width: 1023px) {
+  .toast-in-column {
+    left: 50% !important;
+    right: auto !important;
+    translate: -50% 0;
+    width: min(37.5rem, calc(100vw - 2rem));
+  }
+}
 @media (max-height: 499px) {
   .jobs-add-bar {
     display: none;

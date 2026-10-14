@@ -13,6 +13,7 @@ import { Dialog } from "radix-ui";
 import { CaretDown, X } from "@phosphor-icons/react";
 import { cx } from "@/lib/cx";
 import { Button } from "./button";
+import { PANEL_BOTTOM_GAP, PANEL_GRABBER, PANEL_PAD_X, PANEL_TOP } from "./panel-chrome";
 import { useRestoreFocus } from "./restore-focus";
 
 export type SheetContentProps = {
@@ -67,7 +68,7 @@ function SheetBody({ title, children, primaryAction }: SheetContentProps) {
       <div
         ref={scroller}
         onScroll={measure}
-        className="flex-1 overflow-y-auto px-4 pb-4 pt-4 lg:px-6 lg:pt-6"
+        className={cx("flex-1 overflow-y-auto pb-4 pt-4 lg:pt-6", PANEL_PAD_X)}
         // With no pinned action the last control is the content's own, so it clears the home indicator (real or simulated) itself.
         style={primaryAction ? undefined : { paddingBottom: "calc(max(var(--sab-sim, 0px), env(safe-area-inset-bottom)) + 16px)" }}
       >
@@ -87,8 +88,8 @@ function SheetBody({ title, children, primaryAction }: SheetContentProps) {
         // Same horizontal padding as the body above; the pinned action fills
         // the width, and clears the home indicator (real or simulated).
         <div
-          className={cx("px-4 pt-4 *:w-full lg:px-6", !moreBelow && "border-t border-line")}
-          style={{ paddingBottom: "calc(max(var(--sab-sim, 0px), env(safe-area-inset-bottom)) + 16px)" }}
+          className={cx("pt-4 *:w-full", PANEL_PAD_X, !moreBelow && "border-t border-line")}
+          style={{ paddingBottom: `calc(max(var(--sab-sim, 0px), env(safe-area-inset-bottom)) + ${PANEL_BOTTOM_GAP}px)` }}
         >
           {primaryAction}
         </div>
@@ -116,11 +117,12 @@ export function SheetPanel({
     <div
       data-sheet-panel=""
       className={cx(
-        "relative rounded-t-sheet bg-surface shadow-sheet lg:mx-auto lg:w-full lg:max-w-md lg:rounded-sheet",
+        "relative rounded-t-sheet bg-surface shadow-sheet lg:mx-auto lg:w-full lg:max-w-md lg:rounded-sheet lg:pt-0",
+        PANEL_TOP,
         className,
       )}
     >
-      <div aria-hidden="true" className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-line lg:hidden" />
+      <div aria-hidden="true" className={PANEL_GRABBER} />
       {/* A 48 px+ Close top right on phone and desktop: the grabber alone is not a control you can find with a thumb. */}
       <span className="absolute right-4 top-4">
         <Button iconOnly icon={X} label="Close" variant="ghost" onClick={onClose} />

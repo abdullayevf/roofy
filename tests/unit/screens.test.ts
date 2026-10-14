@@ -238,6 +238,7 @@ describe("auth captures", () => {
   const sentences = [
     LINK_EXPIRED,
     LINK_INCOMPLETE,
+    VERIFY_FAILED,
     RESET_LINK_SENT,
     "Your password is set.",
     WRONG_CODE,

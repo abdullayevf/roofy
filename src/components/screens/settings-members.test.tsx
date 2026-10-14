@@ -183,6 +183,18 @@ describe("MembersForm: removing a person asks first", () => {
     expect(screen.getAllByText(/^Needs connection/)).toHaveLength(1);
   });
 
+  it("offline, the Needs connection line is the shared one: a wifi icon, directly under Save role (auth i2 F22)", async () => {
+    const user = userEvent.setup();
+    render(<MembersForm members={MEMBERS} demoOffline />);
+    await user.click(screen.getByRole("button", { name: /Priya Shah/ }));
+    const sheet = await screen.findByRole("dialog", { name: "Change role" });
+    const save = within(sheet).getByRole("button", { name: "Save role" });
+    const line = within(sheet).getByText(/^Needs connection/).closest("p")!;
+    expect(line.querySelector("svg"), "the icon").not.toBeNull();
+    expect(line.getAttribute("class")).toContain("flex");
+    expect(save.parentElement!.contains(line), "the line sits in the same block as Save role, with no Remove button between").toBe(true);
+  });
+
   it("the Owner's row has no way to remove", () => {
     render(<MembersForm members={MEMBERS} demoOffline={false} />);
     expect(screen.queryByRole("button", { name: /Karen Holt/ })).toBeNull();

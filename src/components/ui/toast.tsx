@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ComponentPropsWithRef } from "react";
+import { useEffect, useLayoutEffect, useRef, type ComponentPropsWithRef } from "react";
 import { Toast as RadixToast } from "radix-ui";
 import { cx } from "@/lib/cx";
 import { isTextEntry } from "./focus";
@@ -30,6 +30,32 @@ export function ToastView({ message, className, children, ...rest }: ToastViewPr
   );
 }
 
+/** Space left between a lifted toast and the primary button under it, px. */
+const CLEAR_GAP = 8;
+
+/**
+ * A toast never covers the page's primary action (auth i2 D27 + F16): when it opens over a visible primary button (Send
+ * invite at the foot of a long page, a Save that is in the flow) its holder is lifted until the toast ends above that
+ * button. It does nothing when the toast is already clear, or when lifting would push it off the top of the screen.
+ */
+export function liftClearOfPrimary(viewport: HTMLElement) {
+  viewport.style.removeProperty("bottom");
+  const li = viewport.querySelector("li");
+  if (!li) return;
+  const box = li.getBoundingClientRect();
+  let lift = 0;
+  for (const button of Array.from(document.querySelectorAll<HTMLElement>('button[data-variant="primary"], a[data-variant="primary"]'))) {
+    const r = button.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) continue;
+    const across = box.left < r.right && box.right > r.left;
+    const down = box.top < r.bottom && box.bottom > r.top;
+    if (across && down) lift = Math.max(lift, box.bottom - r.top + CLEAR_GAP);
+  }
+  if (lift === 0 || box.top - lift < CLEAR_GAP) return;
+  const bottom = parseFloat(getComputedStyle(viewport).bottom) || 0;
+  viewport.style.setProperty("bottom", `${bottom + lift}px`, "important");
+}
+
 export type ToastProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -54,6 +80,10 @@ export function Toast({ open, onOpenChange, message, className, viewportClassNam
     document.addEventListener("focusin", entered);
     return () => document.removeEventListener("focusin", entered);
   }, [open, onOpenChange]);
+  const holder = useRef<HTMLOListElement>(null);
+  useLayoutEffect(() => {
+    if (open && holder.current) liftClearOfPrimary(holder.current);
+  }, [open]);
   return (
     <RadixToast.Provider swipeDirection="up" duration={4000}>
       <RadixToast.Root
@@ -69,7 +99,7 @@ export function Toast({ open, onOpenChange, message, className, viewportClassNam
           )}
         />
       </RadixToast.Root>
-      <RadixToast.Viewport className={cx("fixed inset-x-4 bottom-4 z-50 flex flex-col gap-2", viewportClassName)} />
+      <RadixToast.Viewport ref={holder} className={cx("fixed inset-x-4 bottom-4 z-50 flex flex-col gap-2", viewportClassName)} />
     </RadixToast.Provider>
   );
 }

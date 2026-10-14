@@ -23,6 +23,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { Toast } from "@/components/ui/toast";
 import { bpText, CATEGORY_NAME_MAX, nameLengthError, readShare, shareErrors } from "./settings-input";
 import { FORM_GRID, SettingsForm, useSave, type Errors } from "./settings-forms";
+import { NeedsConnectionLine } from "./entry-parts";
 import { NEEDS_CONNECTION } from "./use-online";
 
 const COULD_NOT_SAVE = "Couldn't save this. Try again.";
@@ -301,17 +302,20 @@ export function CategoriesForm({
         }}
         title={edit?.id ? "Rename category" : "Add a category"}
         primaryAction={
-          <Button
-            type="button"
-            onClick={submit}
-            loading={s.busy}
-            loadingLabel="Saving category"
-            disabled={!s.online}
-            reason={s.online ? undefined : NEEDS_CONNECTION}
-            className="w-full"
-          >
-            Save category
-          </Button>
+          // Needs connection is the shared line (icon, full width) directly under the disabled button (auth i2 F22).
+          <div className="flex flex-col gap-3">
+            <Button
+              type="button"
+              onClick={submit}
+              loading={s.busy}
+              loadingLabel="Saving category"
+              disabled={!s.online}
+              className="w-full"
+            >
+              Save category
+            </Button>
+            {s.online ? null : <NeedsConnectionLine />}
+          </div>
         }
       >
         <div className="flex flex-col gap-4">
@@ -326,7 +330,7 @@ export function CategoriesForm({
           {s.failed ? <ErrorMessage>{s.failed}</ErrorMessage> : null}
         </div>
       </Sheet>
-      <Toast open={s.saved} onOpenChange={s.setSaved} message={s.savedMessage} viewportClassName="toast-above-tabs" />
+      <Toast open={s.saved} onOpenChange={s.setSaved} message={s.savedMessage} viewportClassName="toast-above-tabs toast-in-column" />
     </div>
   );
 }
@@ -420,17 +424,19 @@ export function MembersForm({ members, demoOffline }: { members: Member[]; demoO
         primaryAction={
           // Save role first and the one Needs connection line right under it; Remove from team last, set apart (D12 + F9).
           <div className="flex flex-col gap-6">
-            <Button
-              type="button"
-              onClick={submit}
-              loading={s.busy}
-              loadingLabel="Saving role"
-              disabled={!s.online}
-              reason={s.online ? undefined : NEEDS_CONNECTION}
-              className="w-full"
-            >
-              Save role
-            </Button>
+            <div className="flex flex-col gap-3">
+              <Button
+                type="button"
+                onClick={submit}
+                loading={s.busy}
+                loadingLabel="Saving role"
+                disabled={!s.online}
+                className="w-full"
+              >
+                Save role
+              </Button>
+              {s.online ? null : <NeedsConnectionLine />}
+            </div>
             <Button
               type="button"
               variant="ghost"

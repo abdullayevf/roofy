@@ -66,6 +66,10 @@ describe("TwoFactorForm with the key already on the page (prototype)", () => {
     await user.click(screen.getByRole("button", { name: "Turn on two-factor" }));
     expect(await screen.findByText("Enter the 6-digit code from your app.")).toBeVisible();
     expect(turnOnTwoFactor).not.toHaveBeenCalled();
+    // One message per problem (auth i2 D25 + F20): the pinned bar adds no second red line.
+    expect(screen.queryByText("Check the 6-digit code and try again.")).toBeNull();
+    expect(screen.getAllByText("Enter the 6-digit code from your app.")).toHaveLength(1);
+    expect(screen.getByLabelText("Code")).toHaveAttribute("aria-invalid", "true");
   });
 
   it("sends the 6 digits; a wrong code from the server shows its sentence on the Code field", async () => {
@@ -82,6 +86,7 @@ describe("TwoFactorForm with the key already on the page (prototype)", () => {
     expect(await screen.findByText("That code doesn't match. Check your app and try again.")).toBeVisible();
     expect(turnOnTwoFactor).toHaveBeenCalledWith("000000");
     expect(refresh).not.toHaveBeenCalled();
+    expect(screen.queryByText("Check the 6-digit code and try again.")).toBeNull();
   });
 
   it("a right code re-reads the page so the on state takes the form's place", async () => {

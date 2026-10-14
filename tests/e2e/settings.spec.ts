@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { checkPrimaryActionPlacement, checkSafeAreas, checkToastClearsBars, collectConsole, expectScreenHealthy, waitForHydrated } from "./guards";
+import { checkOneMessagePerProblem, checkPrimaryActionPlacement, checkSafeAreas, checkToastClearsBars, collectConsole, expectScreenHealthy, waitForHydrated } from "./guards";
 
 const isPhone = (name: string) => name !== "desktop";
 const NEEDS_CONNECTION = "Needs connection — try again once you're back online.";
@@ -101,6 +101,9 @@ test.describe("Settings (screen 23)", () => {
     await go(page, "owner", "/settings/two-factor?demo=blocked");
     await page.getByRole("button", { name: "Turn on two-factor" }).click();
     await expect(page.getByText("Enter the 6-digit code from your app.")).toHaveCount(1);
+    // D25 + F20: the field's sentence is the only red line; the pinned bar does not add a second one about the same code.
+    expect((await checkOneMessagePerProblem(page)).failures).toEqual([]);
+    await expect(page.getByText("Check the 6-digit code and try again.")).toHaveCount(0);
     await expect(page.getByText("Two-factor is on.", { exact: true })).toHaveCount(0);
     await page.getByLabel("Code").fill("123 456");
     await page.getByRole("button", { name: "Turn on two-factor" }).click();
@@ -154,6 +157,17 @@ test.describe("Settings (screen 23)", () => {
         expect(toast.failures).toEqual([]);
       }
     });
+
+  // Auth i2 D27 + F16 + F26: "Priya Shah removed." never covers Send invite (or any primary button) and is no wider than the page column.
+  test("/settings/members: the removed toast stays off Send invite and inside the page column", async ({ page }) => {
+    await go(page, "owner", "/settings/members");
+    await page.getByRole("button", { name: /Priya Shah/ }).click();
+    await page.getByRole("button", { name: "Remove from team" }).click();
+    await page.getByRole("dialog").last().getByRole("button", { name: "Remove from team" }).click();
+    await expect(page.getByText("Priya Shah removed.", { exact: true })).toBeVisible();
+    const toast = await checkToastClearsBars(page);
+    expect(toast.failures).toEqual([]);
+  });
 
   for (const [path, label, bad] of [
     ["/settings/pay-period", "Standard day", "0"],

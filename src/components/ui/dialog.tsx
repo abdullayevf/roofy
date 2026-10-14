@@ -5,6 +5,7 @@ import { Dialog as RadixDialog } from "radix-ui";
 import { Button } from "./button";
 import { useRestoreFocus } from "./restore-focus";
 import { cx } from "@/lib/cx";
+import { PANEL_BOTTOM_GAP, PANEL_GRABBER, PANEL_PAD_X, PANEL_TOP } from "./panel-chrome";
 
 export type DialogContentProps = {
   title: string;
@@ -39,13 +40,16 @@ export function DialogPanel({
   return (
     <div
       className={cx(
-        // A bottom sheet on phone (grabber, 16 px top radius, clears the home bar), the shared 448 px dialog from 1024 px.
-        "relative rounded-t-sheet bg-surface px-6 pt-2 shadow-sheet lg:mx-auto lg:w-full lg:max-w-md lg:rounded-sheet lg:pt-6",
+        // A bottom sheet on phone (grabber, 16 px top radius, clears the home bar), the shared 448 px dialog from 1024 px;
+        // the side padding and grabber are the change-role sheet's own (panel-chrome).
+        "relative rounded-t-sheet bg-surface shadow-sheet lg:mx-auto lg:w-full lg:max-w-md lg:rounded-sheet lg:pt-6",
+        PANEL_PAD_X,
+        PANEL_TOP,
         className,
       )}
-      style={{ paddingBottom: "calc(max(var(--sab-sim, 0px), env(safe-area-inset-bottom)) + 24px)" }}
+      style={{ paddingBottom: `calc(max(var(--sab-sim, 0px), env(safe-area-inset-bottom)) + ${PANEL_BOTTOM_GAP}px)` }}
     >
-      <div aria-hidden="true" className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-line lg:hidden" />
+      <div aria-hidden="true" className={cx(PANEL_GRABBER, "mb-4")} />
       <h2 className="text-heading text-ink">{title}</h2>
       {description ? <p className="mt-2 text-body text-ink-2">{description}</p> : null}
       <div className="mt-6 flex flex-col gap-3">
