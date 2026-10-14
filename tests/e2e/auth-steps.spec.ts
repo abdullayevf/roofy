@@ -1,8 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
   checkCodeFieldFont,
+  checkDisabledPrimaryContrast,
   checkEntryLinesMeta,
   checkInlineLinkHit,
+  checkIntroFillsWidth,
   collectConsole,
   expectScreenHealthy,
   waitForHydrated,
@@ -60,6 +62,10 @@ test.describe("Two-factor step", () => {
     await open(page, "/two-factor?demo=error");
     await expect(formAlert(page)).toHaveText("Couldn't check your code. Try again.");
     await expect(button(page, "Try again")).toBeVisible();
+    // Auth i2 D26 + F19: the code that was typed is still in the box, in the loading state too.
+    await expect(page.getByLabel("Code")).toHaveValue("482913");
+    await open(page, "/two-factor?demo=loading");
+    await expect(page.getByLabel("Code")).toHaveValue("482913");
   });
 
   test("a good code signs in and goes Home; offline blocks the button", async ({ page }) => {
@@ -70,6 +76,7 @@ test.describe("Two-factor step", () => {
     await open(page, "/two-factor?demo=offline");
     await expect(page.getByText("Needs connection")).toBeVisible();
     await expect(button(page, "Check code")).toBeDisabled();
+    expect((await checkDisabledPrimaryContrast(page)).failures).toEqual([]);
   });
 });
 
@@ -116,6 +123,7 @@ test.describe("Owner still setting up", () => {
         Math.min(column!.width - 32, 448 - 32) - 1,
       );
       await expect(page.locator("main").getByRole("link")).toHaveCount(0);
+      expect((await checkIntroFillsWidth(page)).failures).toEqual([]);
       expect(await page.locator("main").innerText()).not.toMatch(/\$\d/);
       await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
     });

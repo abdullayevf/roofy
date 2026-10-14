@@ -76,6 +76,15 @@ describe("Check your email", () => {
     expect(screen.getByRole("link", { name: "Sign in" }).getAttribute("href")).toBe("/sign-in");
   });
 
+  it("the sentences sit in the heading block, right under the title like an intro (auth i2 D31)", () => {
+    render(<CheckEmail email="sam@example.com" />);
+    const h1 = screen.getByRole("heading", { level: 1, name: "Check your email" });
+    expect(h1.nextElementSibling?.textContent).toContain("We sent a link to");
+    expect(h1.nextElementSibling?.className).toContain("entry-intro");
+    expect(h1.parentElement?.contains(screen.getByTestId("check-email-address"))).toBe(true);
+    expect(screen.getByRole("link", { name: "Use a different email" }).getAttribute("data-variant")).toBe("secondary");
+  });
+
   it("without an address, says a link was sent and still offers the way out", () => {
     render(<CheckEmail email={null} />);
     expect(screen.getByText("We sent you a link. Open it to finish setting up.")).toBeTruthy();
@@ -141,7 +150,7 @@ describe("Forgot password", () => {
     await userEvent.type(screen.getByLabelText("Email"), "karen@harbourroofing.example");
     await userEvent.click(screen.getByRole("button", { name: "Send link" }));
     expect((await screen.findByRole("alert")).textContent).toBe("Couldn't send the link. Try again.");
-    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeTruthy();
   });
 
   it("the answer replaces the heading and instruction, and offers Send again after a wait and a different email", async () => {
@@ -168,7 +177,8 @@ describe("Forgot password", () => {
     render(<ForgotPasswordForm demo="error" />);
     // The error shows on arrival, with the button reading Try again.
     expect(screen.getByRole("alert").textContent).toBe("Couldn't send the link. Try again.");
-    await userEvent.type(screen.getByLabelText("Email"), "karen@harbourroofing.example");
+    // The typed email is still in the box, so Try again never sits over an empty one (auth i2 D26 + F19).
+    expect((screen.getByLabelText("Email") as HTMLInputElement).value).toBe("karen@harbourroofing.example");
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(mocks.requestPasswordReset).not.toHaveBeenCalled();
   });
@@ -208,9 +218,10 @@ describe("Reset password", () => {
     );
   });
 
-  it("with no token in the link, shows the expired sentence and no form", () => {
+  it("with no token in the link, says it is incomplete (not expired) and shows no form", () => {
     render(<ResetPasswordForm token={null} demo={null} />);
-    expect(screen.getByRole("alert").textContent).toBe(LINK_EXPIRED);
+    expect(screen.getByRole("heading", { level: 1, name: "Link incomplete" })).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toBe(LINK_INCOMPLETE);
     expect(screen.queryByLabelText("New password")).toBeNull();
     expect(screen.getByRole("link", { name: "Ask for a new link" }).getAttribute("href")).toBe(
       "/forgot-password",
@@ -261,6 +272,12 @@ describe("Verify email", () => {
   it("with no token, says the link is incomplete without asking the service", () => {
     render(<VerifyEmail token={null} demo={null} />);
     expect(screen.getByRole("alert").textContent).toBe(LINK_INCOMPLETE);
+    // A page-level note is body size in ink with an icon; red meta is for a field's own error (auth i2 D24).
+    const note = screen.getByRole("alert");
+    expect(note.className).toContain("text-body");
+    expect(note.className).toContain("text-ink");
+    expect(note.className).not.toContain("text-over");
+    expect(note.querySelector("svg")).not.toBeNull();
     expect(screen.getByRole("heading", { level: 1, name: "Link incomplete" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Ask for a new link" })).toBeTruthy();
     expect(mocks.verifyEmail).not.toHaveBeenCalled();

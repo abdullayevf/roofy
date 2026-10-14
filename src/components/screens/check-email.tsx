@@ -5,12 +5,14 @@ import { EntryHeading } from "./entry-parts";
 /** The address with a place to break after each @ and dot only, so a long one wraps at a sensible spot and never widens the page. */
 function Address({ email }: { email: string }) {
   const parts = email.split(/(?<=[@.])/);
+  // Each piece is an inline block that never hyphenates and, when it fits the line, never breaks at a hyphen inside it
+  // ("harbour-and-bay"): the only breaks are the <wbr> after @ and dots (auth i2 D10).
   return (
-    <p className="break-words font-medium text-ink" data-testid="check-email-address">
+    <p className="break-words font-medium text-ink [hyphens:none]" data-testid="check-email-address">
       {parts.map((part, i) => (
         <Fragment key={i}>
           {i > 0 ? <wbr /> : null}
-          {part}
+          <span className="inline-block max-w-full break-words">{part}</span>
         </Fragment>
       ))}
     </p>
@@ -24,10 +26,10 @@ function Address({ email }: { email: string }) {
 export function CheckEmail({ email }: { email: string | null }) {
   return (
     <>
-      <EntryHeading title="Check your email" />
-      <div className="entry-main flex flex-col gap-6">
-        <div className="flex flex-col gap-1 text-body text-ink-2">
-          {email ? (
+      <EntryHeading
+        title="Check your email"
+        lines={
+          email ? (
             <>
               <p>We sent a link to</p>
               <Address email={email} />
@@ -35,8 +37,10 @@ export function CheckEmail({ email }: { email: string | null }) {
             </>
           ) : (
             <p>We sent you a link. Open it to finish setting up.</p>
-          )}
-        </div>
+          )
+        }
+      />
+      <div className="entry-main flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           <Button variant="secondary" href="/sign-up">
             Use a different email

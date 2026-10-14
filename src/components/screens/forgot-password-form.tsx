@@ -6,7 +6,7 @@ import { RESET_SEND_FAILED, emailProblem } from "@/lib/auth-input";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import type { AuthDemo } from "./auth-form";
-import { EntryHeading, NeedsConnectionLine, ProblemNote, ResultNote, useCountdown } from "./entry-parts";
+import { DEMO_TYPED, EntryHeading, NeedsConnectionLine, ProblemNote, ResultNote, useCountdown } from "./entry-parts";
 import { useOnline } from "./use-online";
 
 /** Seconds before "Send again" works again, so a worried tap does not send a pile of links. */
@@ -21,7 +21,8 @@ export function ForgotPasswordForm({ demo }: { demo: AuthDemo }) {
   const online = useOnline(demo === "offline");
   const [pending, start] = useTransition();
   const { left, start: startWait } = useCountdown();
-  const [email, setEmail] = useState("");
+  // The error and loading demos stand for "after Send link was tapped", so the box holds what was typed (auth i2 D26 + F19).
+  const [email, setEmail] = useState(demo === "error" || demo === "loading" ? DEMO_TYPED.email : "");
   const [problem, setProblem] = useState<string | undefined>();
   const [formError, setFormError] = useState<string | null>(demo === "error" ? RESET_SEND_FAILED : null);
   const [sent, setSent] = useState<string | null>(null);
@@ -80,8 +81,7 @@ export function ForgotPasswordForm({ demo }: { demo: AuthDemo }) {
             {!online ? <NeedsConnectionLine /> : null}
             {formError ? <ProblemNote>{formError}</ProblemNote> : null}
             <Button
-              variant="link"
-              className="self-start"
+              variant="secondary"
               onClick={() => {
                 setSent(null);
                 setFormError(null);

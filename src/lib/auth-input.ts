@@ -71,7 +71,7 @@ export function newPasswordProblem(password: string): string | null {
 
 // Two-factor, invites and the unfinished-workspace screen.
 export const TWO_FACTOR_FAILED = "Couldn't check your code. Try again.";
-export const LINK_INCOMPLETE = "This link is incomplete. Open it again from your email.";
+export const LINK_INCOMPLETE = "This link is incomplete. Ask for a new one.";
 export const INVITE_LOAD_FAILED = "Couldn't load this invite. Try again.";
 export const INVITE_FAILED = "Couldn't join the team. Try again.";
 /** A non-owner member opens a workspace whose set-up the owner has not finished. */

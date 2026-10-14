@@ -2,19 +2,19 @@
 
 import { useState, useTransition } from "react";
 import { resetPassword } from "@/app/actions/auth";
-import { LINK_EXPIRED, PASSWORD_SET, RESET_SET_FAILED, newPasswordProblem } from "@/lib/auth-input";
+import { LINK_EXPIRED, LINK_INCOMPLETE, PASSWORD_SET, RESET_SET_FAILED, newPasswordProblem } from "@/lib/auth-input";
 import { Button } from "@/components/ui/button";
 import type { AuthDemo } from "./auth-form";
-import { EntryHeading, NeedsConnectionLine, PasswordField, ProblemNote, ResultNote } from "./entry-parts";
+import { DEMO_TYPED, EntryHeading, NeedsConnectionLine, PasswordField, ProblemNote, ResultNote } from "./entry-parts";
 import { useOnline } from "./use-online";
 
-/** The link is no good: said once, with the one way forward. */
-function LinkGone() {
+/** The link is no good (used or out of date), or arrived without its code: said once, with the one way forward. */
+function LinkGone({ incomplete }: { incomplete: boolean }) {
   return (
     <>
-      <EntryHeading title="Link expired" />
+      <EntryHeading title={incomplete ? "Link incomplete" : "Link expired"} />
       <div className="entry-main flex flex-col gap-4">
-        <ProblemNote>{LINK_EXPIRED}</ProblemNote>
+        <ProblemNote>{incomplete ? LINK_INCOMPLETE : LINK_EXPIRED}</ProblemNote>
         <Button variant="primary" href="/forgot-password">
           Ask for a new link
         </Button>
@@ -30,13 +30,15 @@ function LinkGone() {
 export function ResetPasswordForm({ token, demo }: { token: string | null; demo: AuthDemo }) {
   const online = useOnline(demo === "offline");
   const [pending, start] = useTransition();
-  const [password, setPassword] = useState("");
+  // The error and loading demos stand for "after Set password was tapped", so the box holds what was typed (auth i2 D26 + F19).
+  const [password, setPassword] = useState(demo === "error" || demo === "loading" ? DEMO_TYPED.password : "");
   const [problem, setProblem] = useState<string | undefined>();
   const [formError, setFormError] = useState<string | null>(demo === "error" ? RESET_SET_FAILED : null);
   const [state, setState] = useState<"form" | "gone" | "done">("form");
   const busy = pending || demo === "loading";
 
-  if (!token || token.trim() === "" || state === "gone") return <LinkGone />;
+  if (!token || token.trim() === "") return <LinkGone incomplete />;
+  if (state === "gone") return <LinkGone incomplete={false} />;
   if (state === "done") {
     return (
       <>

@@ -88,15 +88,16 @@ describe("Button", () => {
 });
 
 describe("Button dim", () => {
-  it("keeps the filled shape at disabled opacity when dim, and the pale outline when not", () => {
+  it("keeps the filled shape in a pale fill with ink text (readable, not faded) when dim, and the pale outline when not", () => {
     const { rerender } = render(
       <Button variant="primary" disabled dim>
         Join team
       </Button>,
     );
     const dimmed = screen.getByRole("button", { name: "Join team" }).className;
-    expect(dimmed).toContain("opacity-60");
-    expect(dimmed).toContain("bg-chalk");
+    expect(dimmed).not.toContain("opacity-60");
+    expect(dimmed).toContain("bg-chalk/45");
+    expect(dimmed).toContain("text-ink");
     expect(dimmed).not.toContain("border-line");
     rerender(
       <Button variant="primary" disabled>

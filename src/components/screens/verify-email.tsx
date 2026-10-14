@@ -63,7 +63,10 @@ export function VerifyEmail({ token, demo }: { token: string | null; demo: AuthD
   if (state.kind === "failed" || !online) {
     return (
       <>
-        <EntryHeading title="Verify your email" />
+        <EntryHeading
+          title="Verify your email"
+          intro={state.kind === "failed" ? undefined : "Your link is waiting to be checked."}
+        />
         <div className="entry-main flex flex-col gap-2">
           {state.kind === "failed" ? <ProblemNote>{state.message}</ProblemNote> : null}
           <Button

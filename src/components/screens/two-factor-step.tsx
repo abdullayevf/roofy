@@ -7,7 +7,7 @@ import { TOO_MANY_TRIES, TWO_FACTOR_FAILED, WRONG_CODE, codeProblem } from "@/li
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import type { AuthDemo } from "./auth-form";
-import { EntryHeading, NeedsConnectionLine, ProblemNote, useCountdown } from "./entry-parts";
+import { DEMO_TYPED, EntryHeading, NeedsConnectionLine, ProblemNote, useCountdown } from "./entry-parts";
 import { useOnline } from "./use-online";
 
 /** Seconds the button stays off after "Too many tries", so the wait the sentence asks for is the wait the screen enforces. */
@@ -22,7 +22,8 @@ export function TwoFactorStep({ demo }: { demo: AuthDemo }) {
   const online = useOnline(demo === "offline");
   const [pending, start] = useTransition();
   const { left, start: startWait } = useCountdown();
-  const [code, setCode] = useState("");
+  // The error and loading demos stand for "after Check code was tapped", so the box shows the code that was typed (auth i2 D26 + F19).
+  const [code, setCode] = useState(demo === "error" || demo === "loading" ? DEMO_TYPED.code : "");
   const [problem, setProblem] = useState<string | undefined>();
   const [formError, setFormError] = useState<string | null>(demo === "error" ? TWO_FACTOR_FAILED : null);
   const busy = pending || demo === "loading";
@@ -80,7 +81,7 @@ export function TwoFactorStep({ demo }: { demo: AuthDemo }) {
               loading={busy}
               loadingLabel="Checking code"
               disabled={!online || waiting}
-              dim
+              dim={!waiting}
             >
               {waiting
                 ? `Try again in ${left} s`

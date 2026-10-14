@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
+  checkAddressBreaks,
+  checkDisabledPrimaryContrast,
   checkEntryLinesMeta,
   checkInlineLinkHit,
   checkNeedsConnectionUnderPrimary,
@@ -12,7 +14,7 @@ const isPhone = (name: string) => name !== "desktop";
 const OWNER_EMAIL = "karen@harbourroofing.example";
 const LONG_EMAIL = "maria.fernanda.van-der-westhuizen-smith@harbour-and-bay-roofing-contractors.example";
 const SENT = "If that email has an account, we've sent a link to set a new password. Check your email.";
-const INCOMPLETE = "This link is incomplete. Open it again from your email.";
+const INCOMPLETE = "This link is incomplete. Ask for a new one.";
 const EXPIRED = "This link has expired or was already used. Ask for a new one.";
 const button = (page: Page, name: string) => page.getByRole("button", { name, exact: true });
 /** The form's own message; Next adds its own empty role="alert" route announcer to every page. */
@@ -53,6 +55,15 @@ test.describe("Check your email", () => {
     );
     await expect(page.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/sign-in");
     expect((await checkInlineLinkHit(page)).failures).toEqual([]);
+    // Auth i2 D10: the address breaks only after "@" or a dot, at any width (phone, tablet, desktop).
+    expect((await checkAddressBreaks(page)).failures).toEqual([]);
+    // Auth i2 D31: the first sentence sits 8 px under the title, like the intro of the other entry pages.
+    const gap = await page.evaluate(() => {
+      const h1 = document.querySelector("main h1")!.getBoundingClientRect();
+      const first = document.querySelector("main h1")!.nextElementSibling!.getBoundingClientRect();
+      return first.top - h1.bottom;
+    });
+    expect(gap, "title to first sentence").toBeLessThanOrEqual(12);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
@@ -93,6 +104,7 @@ test.describe("Forgot password", () => {
     await expect(page.getByText(/Needs connection/)).toBeVisible();
     await expect(button(page, "Send link")).toBeDisabled();
     expect((await checkNeedsConnectionUnderPrimary(page)).failures).toEqual([]);
+    expect((await checkDisabledPrimaryContrast(page)).failures).toEqual([]);
   });
 
   test("an error shows its sentence in the meta size with Try again as the one button", async ({
@@ -101,7 +113,27 @@ test.describe("Forgot password", () => {
     await open(page, "/forgot-password?demo=error");
     await expect(formAlert(page)).toHaveText("Couldn't send the link. Try again.");
     await expect(button(page, "Try again")).toBeVisible();
+    // Auth i2 D26 + F19: Try again never sits over an empty box; the sentence is body ink, not red meta.
+    await expect(page.getByLabel("Email")).toHaveValue(OWNER_EMAIL);
     expect((await checkEntryLinesMeta(page, { phone: isPhone(testInfo.project.name) })).failures).toEqual([]);
+  });
+
+  test("the loading demo keeps the typed email, and a sent answer offers Use a different email as a secondary button", async ({
+    page,
+  }) => {
+    await open(page, "/forgot-password?demo=loading");
+    await expect(page.getByLabel("Email")).toHaveValue(OWNER_EMAIL);
+    await open(page, "/forgot-password");
+    await page.getByLabel("Email").fill(OWNER_EMAIL);
+    await button(page, "Send link").click();
+    await expect(page.getByText("If that email has an account")).toBeVisible();
+    // Auth i2 D28: the same secondary button as on Check your email.
+    await expect(button(page, "Use a different email")).toHaveAttribute("data-variant", "secondary");
+    await open(page, `/check-email?email=${encodeURIComponent(OWNER_EMAIL)}`);
+    await expect(page.getByRole("link", { name: "Use a different email" })).toHaveAttribute(
+      "data-variant",
+      "secondary",
+    );
   });
 });
 
@@ -134,10 +166,25 @@ test.describe("Reset password", () => {
     });
   }
 
-  test("a link with no token shows the expired sentence and no form", async ({ page }) => {
+  test("a link with no token says it is incomplete (not expired), with Ask for a new link and no form", async ({
+    page,
+  }) => {
     await open(page, "/reset-password");
-    await expect(formAlert(page)).toHaveText(EXPIRED);
+    await expect(page.getByRole("heading", { level: 1, name: "Link incomplete" })).toBeVisible();
+    await expect(formAlert(page)).toHaveText(INCOMPLETE);
+    await expect(page.getByRole("link", { name: "Ask for a new link" })).toHaveAttribute("href", "/forgot-password");
     await expect(page.getByLabel("New password")).toHaveCount(0);
+  });
+
+  test("the error and loading demos keep the typed password (hidden, but there)", async ({ page }) => {
+    for (const demo of ["error", "loading"]) {
+      await open(page, `/reset-password?token=good-link&demo=${demo}`);
+      await expect(page.getByLabel("New password")).not.toHaveValue("");
+    }
+    // Auth i2 F25: the eye button keeps its look (no box) while saving.
+    const eye = page.getByRole("button", { name: "Show password" });
+    await expect(eye).toBeEnabled();
+    expect(await eye.evaluate((el) => getComputedStyle(el).borderTopColor)).toBe("rgba(0, 0, 0, 0)");
   });
 });
 
@@ -167,7 +214,7 @@ test.describe("Verify email", () => {
     });
   }
 
-  test("a link with no token says it is incomplete and to open it again from the email", async ({
+  test("a link with no token says it is incomplete and to ask for a new one", async ({
     page,
   }, testInfo) => {
     const consoleLog = collectConsole(page);
@@ -186,8 +233,10 @@ test.describe("Verify email", () => {
     await expect(page).toHaveURL(/\/verify/);
     await open(page, "/verify?token=good-link&demo=offline");
     await expect(page.getByText(/Needs connection/)).toBeVisible();
+    await expect(page.getByText("Your link is waiting to be checked.")).toBeVisible();
     await expect(button(page, "Try again")).toBeDisabled();
     expect((await checkNeedsConnectionUnderPrimary(page)).failures).toEqual([]);
+    expect((await checkDisabledPrimaryContrast(page)).failures).toEqual([]);
     await open(page, "/verify?token=good-link&demo=error");
     await expect(formAlert(page)).toHaveText("Couldn't check your link. Try again.");
     await expect(button(page, "Try again")).toBeVisible();

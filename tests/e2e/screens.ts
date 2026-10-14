@@ -1164,6 +1164,17 @@ export const SCREENS: ScreenSpec[] = [
     stateText: authStateText("Couldn't check your link. Try again.", "Checking your link"),
   },
   {
+    // Auth i2 F18: the verify page on its side (844x390) and on a tablet. The load-failed state stays put, so the extras settle on it; phone, light only.
+    id: "verify-load-failed",
+    group: "auth",
+    route: "/verify?token=good-link&demo=error",
+    states: ["normal"],
+    roles: [],
+    expectStill: "Couldn't check your link. Try again.",
+    viewports: ["iphone"],
+    lightOnly: true,
+  },
+  {
     id: "verify-expired",
     group: "auth",
     route: "/verify?token=expired",
@@ -1312,7 +1323,7 @@ export const SCREENS: ScreenSpec[] = [
     route: "/reset-password",
     states: ["normal"],
     roles: [],
-    expectStill: LINK_EXPIRED_TEXT,
+    expectStill: LINK_INCOMPLETE_TEXT,
   },
 
   // Sign-in second step: the prototype takes any 6 digits except 000000 (wrong) and 111111 (too many tries).

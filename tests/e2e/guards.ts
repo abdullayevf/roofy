@@ -774,6 +774,16 @@ export async function checkToastClearsBars(page: Page): Promise<GuardResult> {
       if (getComputedStyle(bar).position === "fixed" && r.height > 0)
         tops.push({ what: "the pinned bar", top: r.top });
     }
+    // Never over the page's primary button, at any width (auth i2 D27 + F16): Send invite at the foot of a long page.
+    for (const b of Array.from(document.querySelectorAll('button[data-variant="primary"], a[data-variant="primary"]'))) {
+      const r = b.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) continue;
+      if (toastBox.left < r.right && toastBox.right > r.left && toastBox.top < r.bottom && toastBox.bottom > r.top)
+        out.push(`the toast (${Math.round(toastBox.top)}-${Math.round(toastBox.bottom)} px) covers the primary button "${(b.textContent ?? "").trim()}"`);
+    }
+    // From 600 px up it is no wider than the page column (37.5 rem), not edge to edge (auth i2 F26).
+    if (window.innerWidth >= 600 && toastBox.width > 600.5)
+      out.push(`the toast is ${Math.round(toastBox.width)} px wide, wider than the 600 px page column`);
     for (const t of tops)
       if (window.innerWidth < 1024 && toastBox.bottom > t.top + 0.5)
         out.push(
@@ -875,27 +885,155 @@ export async function checkSegmentedRows(page: Page): Promise<GuardResult> {
 }
 
 /**
- * Auth i1 D6: the helper, error and "Needs connection" lines of an entry page are the meta size (15 px on a phone, 14 px
- * on a desktop), never the smaller 12-13 px a bare span falls back to. Opt-in: the auth specs call it.
+ * Auth i1 D6 + i2 D24 + F27: the lines of an entry page have the sizes DESIGN.md gives them. A field's error and hint line,
+ * a sign-in form error and "Needs connection" are the meta size (15 px on a phone, 14 px on a desktop); a page-level
+ * problem sentence (link expired, invite gone, load failed: `data-problem-note`) is body size (17 / 16 px) in ink, never
+ * the red meta of a field error. Opt-in: the auth specs call it.
  */
 export async function checkEntryLinesMeta(page: Page, opts: { phone: boolean }): Promise<GuardResult> {
   const want = opts.phone ? 15 : 14;
-  const failures = await page.evaluate((expected) => {
-    const out: string[] = [];
-    for (const el of document.querySelectorAll('[role="alert"], [role="status"]')) {
-      const r = el.getBoundingClientRect();
-      if (r.width === 0 || r.height === 0 || !(el.textContent ?? "").trim()) continue;
-      // A confirmed result is body-sized by design (ResultNote); only the problem and connection lines are meta.
-      const meta = el.matches('[role="alert"]') || /needs connection/i.test(el.textContent ?? "");
-      if (!meta) continue;
-      const target = el.querySelector("span, p") ?? el;
-      const size = parseFloat(getComputedStyle(target).fontSize);
-      if (Math.abs(size - expected) > 0.5)
-        out.push(`"${(el.textContent ?? "").trim().slice(0, 40)}" is ${size}px, wants ${expected}px`);
+  const wantBody = opts.phone ? 17 : 16;
+  const failures = await page.evaluate(
+    ([expected, expectedBody]) => {
+      const out: string[] = [];
+      const label = (el: Element) => `"${(el.textContent ?? "").trim().slice(0, 40)}"`;
+      const shown = (el: Element) => {
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 && (el.textContent ?? "").trim() !== "";
+      };
+      for (const el of document.querySelectorAll('[data-problem-note]')) {
+        if (!shown(el)) continue;
+        const size = parseFloat(getComputedStyle(el).fontSize);
+        if (Math.abs(size - expectedBody) > 0.5) out.push(`${label(el)} is ${size}px, a page-level sentence wants ${expectedBody}px`);
+        const colour = getComputedStyle(el.querySelector("span") ?? el).color;
+        const ink = document.querySelector("h1") ? getComputedStyle(document.querySelector("h1")!).color : colour;
+        if (colour !== ink) out.push(`${label(el)} text is ${colour}, wants the heading's ink ${ink}`);
+      }
+      const meta = [
+        ...document.querySelectorAll('[role="alert"]:not([data-problem-note]), [id$="-error"], [id$="-hint"]'),
+        ...[...document.querySelectorAll('[role="status"]')].filter((el) => /needs connection/i.test(el.textContent ?? "")),
+      ];
+      for (const el of meta) {
+        if (!shown(el)) continue;
+        const target = el.querySelector("span, p") ?? el;
+        const size = parseFloat(getComputedStyle(target).fontSize);
+        if (Math.abs(size - expected) > 0.5) out.push(`${label(el)} is ${size}px, wants ${expected}px`);
+      }
+      return out;
+    },
+    [want, wantBody] as const,
+  );
+  return { name: "entryLinesMeta", ok: failures.length === 0, failures };
+}
+
+/**
+ * Auth i2 F21 + D33: the label of a disabled primary button is at least 4.5:1 against what is really behind it, in both
+ * themes: its fill (any alpha) laid over the nearest solid background, and the element's own opacity. Colours are
+ * resolved through a canvas so any CSS colour syntax (color-mix, oklab) is read the way the browser paints it.
+ */
+export async function checkDisabledPrimaryContrast(page: Page, min = 4.5): Promise<GuardResult> {
+  const rows = await page.evaluate(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 1;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+    const rgba = (css: string): [number, number, number, number] => {
+      ctx.clearRect(0, 0, 1, 1);
+      ctx.fillStyle = "#000";
+      ctx.fillStyle = css;
+      ctx.fillRect(0, 0, 1, 1);
+      const d = ctx.getImageData(0, 0, 1, 1).data;
+      return [d[0]!, d[1]!, d[2]!, d[3]! / 255];
+    };
+    const over = (top: number[], below: number[], a: number) =>
+      [0, 1, 2].map((i) => top[i]! * a + below[i]! * (1 - a));
+    const out: { name: string; fill: number[]; text: number[] }[] = [];
+    const buttons = document.querySelectorAll<HTMLElement>(
+      "main button[disabled][data-variant='primary'], main button[aria-disabled='true'][data-variant='primary']",
+    );
+    for (const b of buttons) {
+      if (b.getBoundingClientRect().width === 0) continue;
+      let opacity = 1;
+      for (let n: HTMLElement | null = b; n; n = n.parentElement) opacity *= Number(getComputedStyle(n).opacity);
+      let page = [255, 255, 255];
+      for (let n: HTMLElement | null = b.parentElement; n; n = n.parentElement) {
+        const c = rgba(getComputedStyle(n).backgroundColor);
+        if (c[3] > 0) {
+          page = c.slice(0, 3);
+          break;
+        }
+      }
+      const f = rgba(getComputedStyle(b).backgroundColor);
+      const fill = over(f.slice(0, 3), page, f[3] * opacity);
+      const t = rgba(getComputedStyle(b).color);
+      // The label over its fill, then the whole button over the page when the element itself is see-through.
+      const textOnFill = over(t.slice(0, 3), fill, t[3]);
+      out.push({
+        name: (b.textContent ?? "").trim().slice(0, 30),
+        fill: opacity < 1 ? over(fill, page, 1) : fill,
+        text: opacity < 1 ? over(textOnFill, page, opacity) : textOnFill,
+      });
     }
     return out;
-  }, want);
-  return { name: "entryLinesMeta", ok: failures.length === 0, failures };
+  });
+  const failures: string[] = [];
+  for (const r of rows) {
+    const ratio = contrastRatio(channelsToHex(r.text as [number, number, number]), channelsToHex(r.fill as [number, number, number]));
+    if (ratio < min) failures.push(`disabled primary "${r.name}" label is ${ratio.toFixed(2)}:1, wants ${min}:1`);
+  }
+  return { name: "disabledPrimaryContrast", ok: failures.length === 0, failures };
+}
+
+/**
+ * Auth i2 D32 + F23: an entry page's intro sentence uses the column. When it wraps, its longest line fills at least 80% of
+ * the box (a balanced or max-width wrap that stops at 256 of 358 px fails).
+ */
+export async function checkIntroFillsWidth(page: Page, minShare = 0.8): Promise<GuardResult> {
+  const failures = await page.evaluate((share) => {
+    const out: string[] = [];
+    for (const p of document.querySelectorAll<HTMLElement>(".entry-intro")) {
+      const box = p.getBoundingClientRect();
+      if (box.width === 0) continue;
+      const lineHeight = parseFloat(getComputedStyle(p).lineHeight);
+      if (box.height < lineHeight * 1.5) continue;
+      const range = document.createRange();
+      range.selectNodeContents(p);
+      const widest = Math.max(...[...range.getClientRects()].map((r) => r.width));
+      if (widest < box.width * share)
+        out.push(`intro "${(p.textContent ?? "").trim().slice(0, 30)}" lines reach ${Math.round(widest)} of ${Math.round(box.width)}px`);
+    }
+    return out;
+  }, minShare);
+  return { name: "introFillsWidth", ok: failures.length === 0, failures };
+}
+
+/**
+ * Auth i2 D10: a long address on the check-your-email page breaks only straight after "@" or ".", never at a hyphen or
+ * in the middle of a word, at any width. Every character's line is read; where it changes, the character before must be
+ * one of those two.
+ */
+export async function checkAddressBreaks(page: Page, selector = '[data-testid="check-email-address"]'): Promise<GuardResult> {
+  const failures = await page.evaluate((sel) => {
+    const out: string[] = [];
+    const root = document.querySelector(sel);
+    if (!root) return [`no element ${sel}`];
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let prev: { ch: string; top: number } | null = null;
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const text = node.textContent ?? "";
+      for (let i = 0; i < text.length; i++) {
+        const range = document.createRange();
+        range.setStart(node, i);
+        range.setEnd(node, i + 1);
+        const rect = range.getBoundingClientRect();
+        if (rect.width === 0) continue;
+        if (prev && rect.top - prev.top > 4 && prev.ch !== "@" && prev.ch !== ".")
+          out.push(`line breaks after "${prev.ch}" before "${text[i]}"`);
+        prev = { ch: text[i]!, top: rect.top };
+      }
+    }
+    return out;
+  }, selector);
+  return { name: "addressBreaks", ok: failures.length === 0, failures };
 }
 
 /**
@@ -1651,5 +1789,27 @@ export async function checkErrorLineInView(page: Page): Promise<GuardResult> {
           `${lines.length} error line(s) on the page, none fully inside the first ${Math.round(h)} px and uncovered`,
         ];
   });
+  return { name, ok: failures.length === 0, failures };
+}
+
+/**
+ * One message per problem (auth i2 D25 + F20): after a refused save the page shows no more than `max` error lines (an icon
+ * and a sentence in the error colour), and no two of them say the same thing. The two-factor set-up used to print the
+ * field's sentence and, in the pinned bar, a second red line about the same code.
+ */
+export async function checkOneMessagePerProblem(page: Page, max = 1): Promise<GuardResult> {
+  const name = "one-message-per-problem";
+  const lines = await page.evaluate(() =>
+    Array.from(document.querySelectorAll<HTMLElement>("span.text-over"))
+      .filter((el) => el.querySelector("svg"))
+      .filter((el) => {
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden";
+      })
+      .map((el) => (el.textContent ?? "").trim()),
+  );
+  const failures: string[] = [];
+  if (lines.length > max) failures.push(`${lines.length} error lines on the page (wants at most ${max}): ${lines.map((l) => `"${l}"`).join(", ")}`);
+  if (new Set(lines).size < lines.length) failures.push(`the same error is shown twice: ${lines.map((l) => `"${l}"`).join(", ")}`);
   return { name, ok: failures.length === 0, failures };
 }

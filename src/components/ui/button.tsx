@@ -15,7 +15,7 @@ type Shared = {
   /** Solid `over` fill — only valid with `tone="danger"`, only inside confirmation sheets. */
   filled?: boolean;
   loading?: boolean;
-  /** With `disabled`: keeps the variant's own fill at reduced opacity instead of the grey treatment (a primary blocked only by no signal still reads as the primary). */
+  /** With `disabled`: keeps a primary's own blue fill, lightened, with an ink label instead of the grey treatment (a primary blocked only by no signal still reads as the primary). */
   dim?: boolean;
   /** The verb shown while loading, e.g. "Saving day". Defaults to the button's own label. */
   loadingLabel?: string;
@@ -50,8 +50,13 @@ const SIZE = "min-h-[52px] lg:min-h-12 px-4 py-1 rounded-control text-body-stron
 // its variant or tone, so it reads as clearly "not a secondary button".
 const DISABLED = "bg-galv text-ink-2 border border-line";
 
+// `dim`: the variant's own fill at 45% with the label in ink, never the whole button at reduced opacity. Ink on the 45%
+// fill is 5.4:1 on the light page and about 8:1 on the dark one, so the label stays legible in both themes.
+const DIM_PRIMARY = "bg-chalk/45 text-ink border border-transparent";
+
 function variantClasses(props: ButtonProps): string {
   if (props.disabled && !props.dim) return DISABLED;
+  if (props.disabled && props.dim && (props.variant ?? "primary") === "primary" && !props.tone) return DIM_PRIMARY;
   if (props.tone === "danger") {
     return props.filled
       ? "bg-over-fill text-on-over-fill border border-transparent"
@@ -85,7 +90,6 @@ export function Button(props: ButtonProps) {
     isLink && !props.iconOnly ? "text-body-strong" : "",
     props.iconOnly && "w-[52px] lg:w-12 px-0",
     variantClasses(props),
-    props.disabled && props.dim && "opacity-60",
     props.disabled && !props.focusableWhenDisabled && "pointer-events-none",
     focusRing(props.focusVisible),
     props.className,
