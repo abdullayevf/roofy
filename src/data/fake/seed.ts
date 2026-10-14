@@ -100,7 +100,8 @@ export interface Seed extends SeedTables {
 
 const LEVELS = ROOFING_DEFAULTS.levels;
 const CATEGORIES = ROOFING_DEFAULTS.categories;
-export const TEMPLATES: Record<JobType, { name: string; items: TemplateItemDef[] }> = ROOFING_DEFAULTS.templates;
+export const TEMPLATES: Record<JobType, { name: string; items: readonly TemplateItemDef[] }> =
+  ROOFING_DEFAULTS.templates;
 
 interface CrewDef {
   key: CrewKey;
@@ -863,7 +864,7 @@ export function buildSeed(): Seed {
   // Two years of completed jobs.
   const templates = Object.fromEntries(Object.entries(TEMPLATES).map(([k, v]) => [k, v.items])) as Record<
     JobType,
-    TemplateItemDef[]
+    readonly TemplateItemDef[]
   >;
   generateHistory(b, {
     start: HISTORY_START,
@@ -1289,7 +1290,14 @@ export function buildSeed(): Seed {
       address: siteAddress,
     };
     t.clients.push(c);
-    const row = b.addProject({ clientId: c.id, nickname, siteAddress, jobType: "restoration", status: "quoted", createdOn });
+    const row = b.addProject({
+      clientId: c.id,
+      nickname,
+      siteAddress,
+      jobType: "restoration",
+      status: "quoted",
+      createdOn,
+    });
     return row;
   };
   const noStages = fixtureProject(
@@ -1320,7 +1328,12 @@ export function buildSeed(): Seed {
   );
   b.addStage(
     longNames,
-    { name: "Copper valley, flashing and box gutter fabrication", unit: "lm", labourShareBp: 5000, materialsShareBp: 5000 },
+    {
+      name: "Copper valley, flashing and box gutter fabrication",
+      unit: "lm",
+      labourShareBp: 5000,
+      materialsShareBp: 5000,
+    },
     2,
   );
 
@@ -1376,7 +1389,12 @@ export function buildSeed(): Seed {
         brownRidge: stageOf("B6").id,
         kellyRepairs: stageOf("K3").id,
       },
-      fixtures: { noStages: noStages.id, longNames: longNames.id, longNamesStage: longStage.id, longNamesCrew: longNamesCrew.id },
+      fixtures: {
+        noStages: noStages.id,
+        longNames: longNames.id,
+        longNamesStage: longStage.id,
+        longNamesCrew: longNamesCrew.id,
+      },
       payRuns: { review: review.id, current: current.id, lastApproved: lastApproved.id },
       logs: { lateEntry: lateEntry!.id, adjustment: adjustment.id, adjustedOriginal: original.id },
       expenses: { dimaScrews: dimaScrews.id, smithSheets: smithSheets.id },

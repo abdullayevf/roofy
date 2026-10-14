@@ -19,8 +19,17 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-const { getData, getWriteData, getAuth, getOnboarding, getOnboardingWrite, startNewWorkspace, isFakeMode, dataMode } =
-  await import("./index");
+const {
+  getData,
+  getDemo,
+  getWriteData,
+  getAuth,
+  getOnboarding,
+  getOnboardingWrite,
+  startNewWorkspace,
+  isFakeMode,
+  dataMode,
+} = await import("./index");
 const { registerDbData } = await import("./db-registry");
 const { createFakeAuth } = await import("./fake/services/auth");
 const { clearSessionStores, sessionStoreIds, sharedStore, emptyStore } = await import("./fake/store");
@@ -53,7 +62,8 @@ describe("ROOFY_DATA", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("ROOFY_DATA", undefined);
     expect(isFakeMode()).toBe(false);
-    const unset = "ROOFY_DATA isn't set. Set ROOFY_DATA=db for the database or ROOFY_DATA=fake to run the prototype.";
+    const unset =
+      "ROOFY_DATA isn't set. Set ROOFY_DATA=db for the database or ROOFY_DATA=fake to run the prototype.";
     expect(() => dataMode()).toThrow(new Error(unset));
     await expect(getData()).rejects.toThrow(new Error(unset));
     vi.stubEnv("ROOFY_DATA", "");
@@ -65,7 +75,9 @@ describe("ROOFY_DATA", () => {
   it("anything else throws a clear error", async () => {
     vi.stubEnv("ROOFY_DATA", "postgres");
     expect(isFakeMode()).toBe(false);
-    const wrong = new Error('ROOFY_DATA="postgres" isn\'t a data mode. Set ROOFY_DATA=db or ROOFY_DATA=fake.');
+    const wrong = new Error(
+      'ROOFY_DATA="postgres" isn\'t a data mode. Set ROOFY_DATA=db or ROOFY_DATA=fake.',
+    );
     expect(() => dataMode()).toThrow(wrong);
     await expect(getData()).rejects.toThrow(wrong);
     expect(() => getAuth()).toThrow(wrong);
@@ -104,6 +116,12 @@ describe("getData", () => {
     await getData();
     expect(sessionStoreIds()).toEqual([id]);
     expect(sharedStore().readOnly).toBe(true);
+  });
+
+  it("getDemo answers getData's demo flags", async () => {
+    const searchParams = { demo: "offline" };
+    expect(await getDemo({ searchParams })).toEqual((await getData({ searchParams })).demo);
+    expect((await getDemo({ searchParams })).offline).toBe(true);
   });
 
   it("reads ?demo= from searchParams (Promise) or, in layouts, the proxy header", async () => {
@@ -171,7 +189,10 @@ describe("ROOFY_DATA=db", () => {
     requestHeaders.set("x-roofy-demo", "waiting");
     for (const demo of ["loading", "offline", "error", "noperm", "empty"]) {
       const ctx = await getData({ searchParams: { demo } });
-      expect([ctx.demo, ctx.data]).toEqual([{ state: null, loading: false, offline: false, outbox: [] }, data]);
+      expect([ctx.demo, ctx.data]).toEqual([
+        { state: null, loading: false, offline: false, outbox: [] },
+        data,
+      ]);
     }
     expect((await getOnboarding({ searchParams: { demo: "error" } })).demo).toEqual({
       state: null,
@@ -203,6 +224,31 @@ describe("ROOFY_DATA=db", () => {
     onboarding = { actor, service };
     expect(await getOnboarding()).toMatchObject({ onboarding: service, actor });
     expect((await getOnboardingWrite()).onboarding).toBe(service);
+  });
+
+  it("prototype cookies (roofy_role, roofy_demo) are ignored: the provider's actor, no cookie or demo store touched", async () => {
+    const demoId = crypto.randomUUID();
+    jar.set("roofy_role", "foreman");
+    jar.set("roofy_demo", demoId);
+    const before = [...jar.entries()];
+    expect((await getData()).actor).toBe(actor);
+    expect((await getWriteData()).actor).toBe(actor);
+    expect((await getOnboarding()).actor).toBe(actor);
+    expect((await getOnboardingWrite()).actor).toBe(actor);
+    expect([...jar.entries()]).toEqual(before);
+    expect(sessionStoreIds()).toEqual([]);
+  });
+
+  it("getDemo reads no session: signed out still answers all-off flags, no redirect", async () => {
+    context = { redirect: "/sign-in" };
+    onboarding = { redirect: "/sign-in" };
+    expect(await getDemo({ searchParams: { demo: "loading" } })).toEqual({
+      state: null,
+      loading: false,
+      offline: false,
+      outbox: [],
+    });
+    expect([redirects, seen]).toEqual([[], []]);
   });
 
   it("getAuth is the provider's auth service; sign-up makes no demo workspace", async () => {

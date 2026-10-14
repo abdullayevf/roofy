@@ -9,20 +9,20 @@ import type { BasisPoints, Cents, Unit } from "@/domain/types";
 export type RoofingJobType = "metal_reroof" | "tile_reroof" | "restoration" | "repair" | "new_build";
 
 export interface RoofingTemplateItem {
-  name: string;
-  unit: Unit | null;
-  labourShareBp: BasisPoints;
-  materialsShareBp: BasisPoints;
+  readonly name: string;
+  readonly unit: Unit | null;
+  readonly labourShareBp: BasisPoints;
+  readonly materialsShareBp: BasisPoints;
 }
 
 export interface RoofingTemplate {
-  name: string;
-  items: RoofingTemplateItem[];
+  readonly name: string;
+  readonly items: readonly RoofingTemplateItem[];
 }
 
 export interface RoofingLevel {
-  name: string;
-  floorRateCents: Cents;
+  readonly name: string;
+  readonly floorRateCents: Cents;
 }
 
 const LEVELS: readonly RoofingLevel[] = [
@@ -116,8 +116,18 @@ const TEMPLATES: Record<RoofingJobType, RoofingTemplate> = {
   },
 };
 
+/** Freezes a plain object or array and everything inside it (the defaults are shared by every workspace). */
+function deepFreeze<T>(value: T): T {
+  if (typeof value === "object" && value !== null && !Object.isFrozen(value)) {
+    for (const child of Object.values(value)) deepFreeze(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+/** Read-only, deeply frozen: callers copy what they store (a seed or a new workspace) and never change it. */
 export const ROOFING_DEFAULTS: {
-  templates: Record<RoofingJobType, RoofingTemplate>;
-  categories: readonly string[];
-  levels: readonly RoofingLevel[];
-} = { templates: TEMPLATES, categories: CATEGORIES, levels: LEVELS };
+  readonly templates: Readonly<Record<RoofingJobType, RoofingTemplate>>;
+  readonly categories: readonly string[];
+  readonly levels: readonly RoofingLevel[];
+} = deepFreeze({ templates: TEMPLATES, categories: CATEGORIES, levels: LEVELS });

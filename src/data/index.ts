@@ -64,7 +64,9 @@ export function isFakeMode(): boolean {
 export function dataMode(): DataMode {
   const mode = rawMode();
   if (mode === "") {
-    throw new Error("ROOFY_DATA isn't set. Set ROOFY_DATA=db for the database or ROOFY_DATA=fake to run the prototype.");
+    throw new Error(
+      "ROOFY_DATA isn't set. Set ROOFY_DATA=db for the database or ROOFY_DATA=fake to run the prototype.",
+    );
   }
   if (mode !== "fake" && mode !== "db") {
     throw new Error(`ROOFY_DATA="${mode}" isn't a data mode. Set ROOFY_DATA=db or ROOFY_DATA=fake.`);
@@ -123,6 +125,15 @@ export async function getData(options: { searchParams?: SearchParamsInput } = {}
   };
 }
 
+/**
+ * The `?demo=` flags alone, for pages that need no signed-in person (sign in, sign up). Never redirects:
+ * in db mode it reads no session and answers all-off flags; in fake mode it is `getData()`'s `demo`.
+ */
+export async function getDemo(options: { searchParams?: SearchParamsInput } = {}): Promise<DemoFlags> {
+  if (dataMode() === "db") return noDemo();
+  return (await getData(options)).demo;
+}
+
 export interface WriteContext {
   mode: DataMode;
   data: DataServices;
@@ -172,7 +183,11 @@ export interface OnboardingContext {
   demo: DemoFlags;
 }
 
-function onboardingOn(store: FakeStore, role: Role, demo: ReturnType<typeof parseDemoState>): OnboardingContext {
+function onboardingOn(
+  store: FakeStore,
+  role: Role,
+  demo: ReturnType<typeof parseDemoState>,
+): OnboardingContext {
   const now = fakeNow();
   const data = createFakeServices(store, { now: () => now, demo: null });
   const onboarding = createFakeOnboarding(store, data, todayIn(store.tables.workspace.timezone, now));
@@ -183,7 +198,9 @@ function onboardingOn(store: FakeStore, role: Role, demo: ReturnType<typeof pars
  * The set-up wizard for a page render: the demo session's workspace, or (no session yet) a new one that is
  * shown but never written. `?demo=error|noperm` refuse every call as elsewhere.
  */
-export async function getOnboarding(options: { searchParams?: SearchParamsInput } = {}): Promise<OnboardingContext> {
+export async function getOnboarding(
+  options: { searchParams?: SearchParamsInput } = {},
+): Promise<OnboardingContext> {
   if (dataMode() === "db") return dbOnboarding();
   const session = await readSession();
   const state = parseDemoState(await readDemoParam(options.searchParams));
@@ -195,7 +212,9 @@ export async function getOnboarding(options: { searchParams?: SearchParamsInput 
   if (state === "error" || state === "noperm") {
     const refusal = createFakeServices(store, { now: fakeNow, demo: state }).workspace.settings;
     const refuse = () => refusal(ctx.actor) as never;
-    ctx.onboarding = Object.fromEntries(Object.keys(ctx.onboarding).map((k) => [k, refuse])) as unknown as OnboardingService;
+    ctx.onboarding = Object.fromEntries(
+      Object.keys(ctx.onboarding).map((k) => [k, refuse]),
+    ) as unknown as OnboardingService;
   }
   return ctx;
 }

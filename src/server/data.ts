@@ -11,7 +11,10 @@ import { todayIn } from "@/domain/dates";
 import { actorFromHeaders, type ActorResult } from "@/server/auth/actor";
 import { createDbAuth, createDbOnboarding, createDbServices } from "@/server/services";
 
-/** Someone setting up their first workspace has none yet: their wizard actor carries this id. */
+/**
+ * Someone setting up their first workspace has none yet: their wizard actor carries this id. Set-up only:
+ * that actor must never reach withActor/shapeAccess or a workspace-scoped service (Task 12 replaces it).
+ */
 export const NO_WORKSPACE_ACTOR_ID = "";
 
 export interface DbDataDeps {
@@ -38,10 +41,20 @@ export function createDbDataProvider(deps: DbDataDeps): DbDataProvider {
       if (found.kind === "signed-out") return { redirect: "/sign-in" };
       if (found.kind === "actor") return { redirect: "/" };
       // The person setting up becomes the new workspace's owner (Task 12 fills in the wizard).
-      const actor = { userId: found.userId, workspaceId: NO_WORKSPACE_ACTOR_ID, role: "owner" as const, name: "" };
+      // Set-up only: this actor has no workspace (NO_WORKSPACE_ACTOR_ID), so it must never reach
+      // withActor/shapeAccess or any workspace-scoped service. Task 12 replaces it.
+      const actor = {
+        userId: found.userId,
+        workspaceId: NO_WORKSPACE_ACTOR_ID,
+        role: "owner" as const,
+        name: "",
+      };
       return { actor, service: createDbOnboarding({ userId: found.userId }) };
     },
   };
 }
 
-export const dbDataProvider: DbDataProvider = createDbDataProvider({ actorFromHeaders, now: () => new Date() });
+export const dbDataProvider: DbDataProvider = createDbDataProvider({
+  actorFromHeaders,
+  now: () => new Date(),
+});

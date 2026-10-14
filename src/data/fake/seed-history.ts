@@ -26,7 +26,7 @@ export interface HistoryOptions {
   /** Last day any history job may work (inclusive). */
   cutoff: LocalDate;
   teams: HistoryTeam[];
-  templates: Record<JobType, TemplateItemDef[]>;
+  templates: Record<JobType, readonly TemplateItemDef[]>;
   enteredBy: Id;
 }
 
@@ -280,7 +280,7 @@ export function generateHistory(b: SeedBuilder, o: HistoryOptions): void {
 }
 
 interface JobPlan {
-  items: TemplateItemDef[];
+  items: readonly TemplateItemDef[];
   durations: number[];
   slots: number[];
   materialsStage: number | null;
@@ -292,7 +292,7 @@ interface JobPlan {
 function planJob(
   b: SeedBuilder,
   team: HistoryTeam,
-  items: TemplateItemDef[],
+  items: readonly TemplateItemDef[],
   cursor: LocalDate,
   rain: ReadonlySet<LocalDate>,
   away: ReadonlyMap<string, "leave" | "sick">,
@@ -420,7 +420,8 @@ function commitJob(
         ? stages[plan.materialsStage]!
         : null;
     for (const st of stages) {
-      if (st !== waiting && st.status === "paused" && b.pausedBy(st.id) === "weather") b.resumeStage(st.id, date);
+      if (st !== waiting && st.status === "paused" && b.pausedBy(st.id) === "weather")
+        b.resumeStage(st.id, date);
     }
     if (waiting?.status === "active") b.pauseStage(waiting.id, date, "materials", "Waiting on materials");
     if (stage.status === "paused") b.resumeStage(stage.id, date);

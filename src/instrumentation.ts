@@ -5,7 +5,13 @@
  * Postgres or Better Auth.
  */
 export async function register(): Promise<void> {
-  if (process.env.NEXT_RUNTIME !== "nodejs" || process.env.ROOFY_DATA !== "db") return;
-  const [{ registerDbData }, { dbDataProvider }] = await Promise.all([import("@/data/db-registry"), import("@/server/data")]);
-  registerDbData(dbDataProvider);
+  // The positive `if (process.env.NEXT_RUNTIME === "nodejs")` form from Next's instrumentation guide,
+  // so the edge bundle drops the Node-only imports inside it.
+  if (process.env.NEXT_RUNTIME === "nodejs" && process.env.ROOFY_DATA === "db") {
+    const [{ registerDbData }, { dbDataProvider }] = await Promise.all([
+      import("@/data/db-registry"),
+      import("@/server/data"),
+    ]);
+    registerDbData(dbDataProvider);
+  }
 }

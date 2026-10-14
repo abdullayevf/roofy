@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getData } from "@/data";
+import { getDemo } from "@/data";
 import type { SearchParams } from "@/data/session";
 import { AuthForm, type AuthDemo } from "@/components/screens/auth-form";
 
@@ -9,7 +9,7 @@ const DEMOS: readonly string[] = ["loading", "offline", "error"];
 
 /** Sign in. The `?demo=` states change the form: loading (button busy), offline (Needs connection), error (the sorry sentence). */
 export default async function Page({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const { demo } = await getData({ searchParams });
+  const demo = await getDemo({ searchParams });
   const state = demo.state && DEMOS.includes(demo.state) ? (demo.state as AuthDemo) : null;
   return (
     <>

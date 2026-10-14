@@ -8,6 +8,7 @@
  * Location: `src/app/actions/*` (route groups don't exist yet; screens import from here).
  */
 import { revalidatePath } from "next/cache";
+import { unstable_rethrow } from "next/navigation";
 import type { z } from "zod";
 import { getWriteData, type WriteContext } from "@/data";
 import { isDataError, type ActionResult } from "@/data/contracts";
@@ -51,6 +52,7 @@ export async function act<A extends unknown[], T extends object>(
   try {
     result = await work(await getWriteData(), ...(parsed as A));
   } catch (e) {
+    unstable_rethrow(e); // Next's own throws (an expired session's redirect to /sign-in) are not form errors
     if (isDataError(e)) return { ok: false, code: e.code, message: e.message, issues: [...e.issues] };
     console.error(e);
     return { ok: false, code: "unavailable", message: SAVE_FAILED, issues: [] };
