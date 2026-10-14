@@ -394,15 +394,15 @@ Each task is one implementer run of at most 30 steps. A task marked "2 runs" is 
     - `verifyEmail(token)`, `requestPasswordReset(email)`, `resetPassword(token, password)`, `verifyTwoFactor(code)`, `acceptInvite(invitationId)`.
     - `AuthSession.next` widens to `"/" | "/onboarding" | "/check-email" | "/two-factor"`.
     - `continueWithGoogle` may return `{ redirectTo: string }`.
-- [ ] Failing unit tests first:
+- [x] Failing unit tests first:
   - `dataMode()` accepts `db`.
   - In db mode, `getData()` calls `redirect("/sign-in")` for `signed-out` and `redirect("/onboarding")` for `no-workspace`, using a registered stub provider.
   - In db mode, `demo` flags are all false and `?demo=` is ignored.
   - Fake mode behaviour is unchanged (existing tests stay green).
   - The fake AuthService additions behave like the prototype (`requestPasswordReset` always answers the same sentence, so it never reveals whether an email exists).
-- [ ] `src/instrumentation.ts` `register()` imports `@/server/data` only when `process.env.NEXT_RUNTIME === "nodejs"` and `ROOFY_DATA === "db"`. Confirm the hook in `node_modules/next/dist/docs` first.
-- [ ] In db mode, `today` = `todayIn(timezone, new Date())`.
-- [ ] Done when unit tests pass, `pnpm build` succeeds, `ROOFY_DATA=db pnpm start -p 3101` redirects `/` to `/sign-in` (curl `-I`), and `pnpm verify` is green.
+- [x] `src/instrumentation.ts` `register()` imports `@/server/data` only when `process.env.NEXT_RUNTIME === "nodejs"` and `ROOFY_DATA === "db"`. Confirm the hook in `node_modules/next/dist/docs` first.
+- [x] In db mode, `today` = `todayIn(timezone, new Date())`.
+- [x] Done when unit tests pass, `pnpm build` succeeds, `ROOFY_DATA=db pnpm start -p 3101` redirects `/` to `/sign-in` (curl `-I`), and `pnpm verify` is green.
 
 ### Task 11: Real workspace service — settings, members, invites, roles, assignments (opus, 2 runs)
 
