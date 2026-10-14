@@ -11,7 +11,8 @@ export function emailProblem(email: string): string | null {
   const value = email.trim();
   if (value === "") return "Enter your email address.";
   if (value.length > EMAIL_MAX) return "That email address is too long.";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "Check your email address. It should look like name@example.com.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
+    return "Check your email address. It should look like name@example.com.";
   return null;
 }
 
@@ -41,7 +42,8 @@ export const WRONG_PASSWORD = "That email and password don't match. Check them a
 export const WRONG_OWN_PASSWORD = "That password doesn't match. Check it and try again.";
 export const EMAIL_TAKEN = "An account with that email already exists. Sign in instead.";
 /** The one answer to "Send link", so it never reveals whether an email has an account. */
-export const RESET_LINK_SENT = "If that email has an account, we've sent a link to set a new password. Check your email.";
+export const RESET_LINK_SENT =
+  "If that email has an account, we've sent a link to set a new password. Check your email.";
 export const LINK_EXPIRED = "This link has expired or was already used. Ask for a new one.";
 export const TWO_FACTOR_CODE = "Enter the 6-digit code from your authenticator app.";
 export const INVITE_GONE = "This invite has expired or was cancelled. Ask your manager for a new one.";
@@ -51,7 +53,8 @@ export const EMAIL_NOT_VERIFIED = "Verify your email first. We've sent you a new
 export const WRONG_CODE = "That code doesn't match. Enter the code your authenticator app shows now.";
 /** A step that needs a sign-in in progress (two-factor) or a session (invite) when there is none. */
 export const SIGN_IN_AGAIN = "Your sign-in has timed out. Sign in again.";
-export const INVITE_OTHER_EMAIL = "This invite is for a different email. Sign in with the email it was sent to.";
+export const INVITE_OTHER_EMAIL =
+  "This invite is for a different email. Sign in with the email it was sent to.";
 export const GOOGLE_OFF = "Google sign-in isn't available yet. Use your email instead.";
 export const TOO_MANY_TRIES = "Too many tries. Wait a minute, then try again.";
 
@@ -68,6 +71,8 @@ export function newPasswordProblem(password: string): string | null {
 
 // Two-factor, invites and the unfinished-workspace screen.
 export const TWO_FACTOR_FAILED = "Couldn't check your code. Try again.";
+export const LINK_INCOMPLETE = "This link is incomplete. Open it again from your email.";
+export const INVITE_LOAD_FAILED = "Couldn't load this invite. Try again.";
 export const INVITE_FAILED = "Couldn't join the team. Try again.";
 /** A non-owner member opens a workspace whose set-up the owner has not finished. */
 export const OWNER_STILL_SETTING_UP = "The owner is still setting this up";

@@ -37,7 +37,12 @@ describe("sign in and sign up pages", () => {
   it("in db mode, signed out: render the form without a redirect (no redirect loop)", async () => {
     vi.stubEnv("ROOFY_DATA", "db");
     const signedOut = async () => ({ redirect: "/sign-in" as const });
-    registerDbData({ context: signedOut, onboarding: signedOut, auth: () => createFakeAuth(), signOut: async () => {} });
+    registerDbData({
+      context: signedOut,
+      onboarding: signedOut,
+      auth: () => createFakeAuth(),
+      signOut: async () => {},
+    });
     for (const Page of [SignIn, SignUp]) {
       const el = await Page({ searchParams: Promise.resolve({ demo: "loading" }) });
       expect(formDemo(el)).toBeNull();
@@ -54,8 +59,8 @@ describe("sign in and sign up pages", () => {
   });
 });
 
-/** The props a page hands its client part (second child of the fragment, or the root for check-email). */
-const formProps = (el: unknown) => (el as { props: { children: Array<{ props: Record<string, unknown> }> } }).props.children[1]!.props;
+/** The props a page hands its client part (the element the page returns). */
+const formProps = (el: unknown) => (el as { props: Record<string, unknown> }).props;
 
 describe("link landing pages", () => {
   beforeEach(() => {
@@ -64,20 +69,35 @@ describe("link landing pages", () => {
 
   it("verify and reset-password hand the token (the first when repeated; null when missing) and the demo state to the form", async () => {
     for (const Page of [Verify, ResetPassword]) {
-      expect(formProps(await Page({ searchParams: Promise.resolve({ token: "abc", demo: "offline" }) }))).toEqual({ token: "abc", demo: "offline" });
-      expect(formProps(await Page({ searchParams: Promise.resolve({ token: ["first", "second"] }) }))).toEqual({ token: "first", demo: null });
-      expect(formProps(await Page({ searchParams: Promise.resolve({}) }))).toEqual({ token: null, demo: null });
+      expect(
+        formProps(await Page({ searchParams: Promise.resolve({ token: "abc", demo: "offline" }) })),
+      ).toEqual({ token: "abc", demo: "offline" });
+      expect(
+        formProps(await Page({ searchParams: Promise.resolve({ token: ["first", "second"] }) })),
+      ).toEqual({ token: "first", demo: null });
+      expect(formProps(await Page({ searchParams: Promise.resolve({}) }))).toEqual({
+        token: null,
+        demo: null,
+      });
     }
   });
 
   it("forgot-password hands the demo state to the form; a state it does not use is ignored", async () => {
-    expect(formProps(await ForgotPassword({ searchParams: Promise.resolve({ demo: "error" }) }))).toEqual({ demo: "error" });
-    expect(formProps(await ForgotPassword({ searchParams: Promise.resolve({ demo: "waiting" }) }))).toEqual({ demo: null });
+    expect(formProps(await ForgotPassword({ searchParams: Promise.resolve({ demo: "error" }) }))).toEqual({
+      demo: "error",
+    });
+    expect(formProps(await ForgotPassword({ searchParams: Promise.resolve({ demo: "waiting" }) }))).toEqual({
+      demo: null,
+    });
   });
 
   it("check-email shows the address it was given, trimmed and cut to 254 characters, or none", async () => {
     const props = async (email?: string | string[]) =>
-      (await CheckEmailPage({ searchParams: Promise.resolve({ email }) }) as unknown as { props: { email: string | null } }).props.email;
+      (
+        (await CheckEmailPage({ searchParams: Promise.resolve({ email }) })) as unknown as {
+          props: { email: string | null };
+        }
+      ).props.email;
     expect(await props("  sam@example.com ")).toBe("sam@example.com");
     expect(await props("a".repeat(300))).toHaveLength(254);
     expect(await props(["x@example.com", "y@example.com"])).toBe("x@example.com");

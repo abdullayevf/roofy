@@ -4,6 +4,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   INVITE_FAILED,
+  INVITE_LOAD_FAILED,
   INVITE_GONE,
   TOO_MANY_TRIES,
   TWO_FACTOR_CODE,
@@ -68,23 +69,44 @@ describe("Two-factor step", () => {
     await userEvent.click(screen.getByRole("button", { name: "Check code" }));
     expect(await screen.findByText(WRONG_CODE)).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
-    mocks.verifyTwoFactor.mockResolvedValueOnce(refused(TOO_MANY_TRIES));
-    await userEvent.click(screen.getByRole("button", { name: "Check code" }));
-    expect((await screen.findByRole("alert")).textContent).toContain(TOO_MANY_TRIES);
     mocks.verifyTwoFactor.mockResolvedValueOnce(refused("boom", "unavailable"));
     await userEvent.click(screen.getByRole("button", { name: "Check code" }));
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain(TWO_FACTOR_FAILED));
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
     expect(mocks.push).not.toHaveBeenCalled();
+  });
+
+  it("too many tries clears the box and turns the button off for the wait (auth i1 D18)", async () => {
+    mocks.verifyTwoFactor.mockResolvedValueOnce(refused(TOO_MANY_TRIES));
+    render(<TwoFactorStep demo={null} />);
+    await userEvent.type(screen.getByLabelText("Code"), "111111");
+    await userEvent.click(screen.getByRole("button", { name: "Check code" }));
+    expect((await screen.findByRole("alert")).textContent).toContain(TOO_MANY_TRIES);
+    const button = screen.getByRole("button", { name: /Try again in 60 s/ }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect((screen.getByLabelText("Code") as HTMLInputElement).value).toBe("");
+    expect(mocks.verifyTwoFactor).toHaveBeenCalledTimes(1);
+  });
+
+  it("has its own heading, and Back to sign in sits on the left", () => {
+    render(<TwoFactorStep demo={null} />);
+    expect(screen.getByRole("heading", { level: 1, name: "Enter your code" })).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Back to sign in" }).parentElement?.className ?? "",
+    ).not.toContain("text-center");
   });
 
   it("offline shows Needs connection alone and does not ask; the error demo refuses without asking", async () => {
     const { unmount } = render(<TwoFactorStep demo="offline" />);
     expect(screen.getByText(/Needs connection/)).toBeTruthy();
     expect((screen.getByRole("button", { name: "Check code" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getAllByText(/Needs connection/)).toHaveLength(1);
     unmount();
     render(<TwoFactorStep demo="error" />);
+    // The error shows on arrival, with the button reading Try again.
+    expect(screen.getByRole("alert").textContent).toContain(TWO_FACTOR_FAILED);
     await userEvent.type(screen.getByLabelText("Code"), "482913");
-    await userEvent.click(screen.getByRole("button", { name: "Check code" }));
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(screen.getByRole("alert").textContent).toContain(TWO_FACTOR_FAILED);
     expect(mocks.verifyTwoFactor).not.toHaveBeenCalled();
   });
@@ -93,8 +115,8 @@ describe("Two-factor step", () => {
 describe("Join team", () => {
   it("names the team and the role, with a Join team button", () => {
     render(<InviteJoin id="abc" view={ready} demo={null} />);
-    expect(screen.getByText("Harbour Roofing")).toBeTruthy();
-    expect(screen.getByText(/as foreman/)).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: "Join Harbour Roofing" })).toBeTruthy();
+    expect(screen.getByText(/as a foreman/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Join team" })).toBeTruthy();
   });
 
@@ -118,6 +140,14 @@ describe("Join team", () => {
   it("a cancelled invite shows its sentence and no Join team button", () => {
     render(<InviteJoin id="abc" view={{ kind: "gone", message: INVITE_GONE }} demo={null} />);
     expect(screen.getByRole("alert").textContent).toContain(INVITE_GONE);
+    expect(screen.getByRole("heading", { level: 1, name: "This invite can't be used" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Join team" })).toBeNull();
+  });
+
+  it("an invite that would not load says so with Try again (auth i1 D3)", () => {
+    render(<InviteJoin id="abc" view={{ kind: "failed" }} demo="error" />);
+    expect(screen.getByRole("alert").textContent).toBe(INVITE_LOAD_FAILED);
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Join team" })).toBeNull();
   });
 
@@ -126,6 +156,7 @@ describe("Join team", () => {
     const { unmount } = render(<InviteJoin id="abc" view={ready} demo={null} />);
     await userEvent.click(screen.getByRole("button", { name: "Join team" }));
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain(INVITE_FAILED));
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
     unmount();
     render(<InviteJoin id="abc" view={ready} demo="offline" />);
     expect((screen.getByRole("button", { name: "Join team" }) as HTMLButtonElement).disabled).toBe(true);

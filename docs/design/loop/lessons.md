@@ -54,3 +54,7 @@
 - Triggers that insert rows with foreign keys get a test that deletes the parent (workspace) through the cascade; definer functions pin `search_path` ending in `pg_temp` and need a policy, not superuser, to write under forced RLS (Phase 3 T5, both reviewers).
 - Row guards on a table cover INSERT as well as UPDATE/DELETE (a row must not be created already in the guarded state), and a session-flag helper must survive nesting (Phase 3 T6, both reviewers).
 - A test must fail when the behaviour it names is removed: assert the exact error/code and the observable effect (call recorded, line written), never a bare `toThrow()` or a read of an unrelated empty place; mutation-check new tests (Phase 3 T4 and T7 reviewers).
+- Result states (sent, done, expired, used, error) replace the form's heading and instruction; the page never says "One moment…" above an error (auth i1 D7+F4).
+- A dead-end state offers the forward action its own copy names as the primary button ("Ask for a new link"), never only "Sign in" (auth i1 D2+F1).
+- Every capture asserts its state's visible text before the shot; a capture that looks like another state (error = normal, long-email = sent) is a capture bug (auth i1 D3, D4, F2, F3).
+- "Needs connection" is one line directly under the disabled primary, which keeps its filled shape at disabled opacity; never repeated in a sheet (auth i1 D12, D16, F8, F9; extends the admin-screens line).

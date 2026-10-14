@@ -1,10 +1,18 @@
 import { expect, test, type Page } from "@playwright/test";
-import { collectConsole, expectScreenHealthy, waitForHydrated } from "./guards";
+import {
+  checkEntryLinesMeta,
+  checkInlineLinkHit,
+  checkNeedsConnectionUnderPrimary,
+  collectConsole,
+  expectScreenHealthy,
+  waitForHydrated,
+} from "./guards";
 
 const isPhone = (name: string) => name !== "desktop";
 const OWNER_EMAIL = "karen@harbourroofing.example";
 const LONG_EMAIL = "maria.fernanda.van-der-westhuizen-smith@harbour-and-bay-roofing-contractors.example";
 const SENT = "If that email has an account, we've sent a link to set a new password. Check your email.";
+const INCOMPLETE = "This link is incomplete. Open it again from your email.";
 const EXPIRED = "This link has expired or was already used. Ask for a new one.";
 const button = (page: Page, name: string) => page.getByRole("button", { name, exact: true });
 /** The form's own message; Next adds its own empty role="alert" route announcer to every page. */
@@ -22,6 +30,8 @@ test.describe("Sign in links to Forgot password", () => {
     await expect(link).toHaveAttribute("href", "/forgot-password");
     const box = await link.boundingBox();
     expect(box!.height, "Forgot password? hit area").toBeGreaterThanOrEqual(48);
+    expect(box!.width, "Forgot password? hit width").toBeGreaterThanOrEqual(48);
+    expect((await checkInlineLinkHit(page)).failures).toEqual([]);
     await link.click();
     await expect(page.getByRole("heading", { level: 1, name: "Forgot your password?" })).toBeVisible();
     await open(page, "/sign-up");
@@ -30,13 +40,19 @@ test.describe("Sign in links to Forgot password", () => {
 });
 
 test.describe("Check your email", () => {
-  test("names the address, wraps a long one, and offers a different email or sign in", async ({ page }, testInfo) => {
+  test("names the address, wraps a long one, and offers a different email or sign in", async ({
+    page,
+  }, testInfo) => {
     const consoleLog = collectConsole(page);
     await open(page, `/check-email?email=${encodeURIComponent(LONG_EMAIL)}`);
     await expect(page.getByRole("heading", { level: 1, name: "Check your email" })).toBeVisible();
     await expect(page.getByText(LONG_EMAIL)).toBeVisible();
-    await expect(page.getByRole("link", { name: "Use a different email" })).toHaveAttribute("href", "/sign-up");
+    await expect(page.getByRole("link", { name: "Use a different email" })).toHaveAttribute(
+      "href",
+      "/sign-up",
+    );
     await expect(page.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/sign-in");
+    expect((await checkInlineLinkHit(page)).failures).toEqual([]);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
@@ -49,7 +65,9 @@ test.describe("Check your email", () => {
 });
 
 test.describe("Forgot password", () => {
-  test("a blank box says what is missing; a known and an unknown email get the same answer", async ({ page }, testInfo) => {
+  test("a blank box says what is missing; a known and an unknown email get the same answer", async ({
+    page,
+  }, testInfo) => {
     const consoleLog = collectConsole(page);
     await open(page, "/forgot-password");
     await button(page, "Send link").click();
@@ -74,6 +92,16 @@ test.describe("Forgot password", () => {
     await open(page, "/forgot-password?demo=offline");
     await expect(page.getByText(/Needs connection/)).toBeVisible();
     await expect(button(page, "Send link")).toBeDisabled();
+    expect((await checkNeedsConnectionUnderPrimary(page)).failures).toEqual([]);
+  });
+
+  test("an error shows its sentence in the meta size with Try again as the one button", async ({
+    page,
+  }, testInfo) => {
+    await open(page, "/forgot-password?demo=error");
+    await expect(formAlert(page)).toHaveText("Couldn't send the link. Try again.");
+    await expect(button(page, "Try again")).toBeVisible();
+    expect((await checkEntryLinesMeta(page, { phone: isPhone(testInfo.project.name) })).failures).toEqual([]);
   });
 });
 
@@ -98,7 +126,10 @@ test.describe("Reset password", () => {
       await page.getByLabel("New password").fill("a-long-password");
       await button(page, "Set password").click();
       await expect(formAlert(page)).toHaveText(EXPIRED);
-      await expect(page.getByRole("link", { name: "Ask for a new link" })).toHaveAttribute("href", "/forgot-password");
+      await expect(page.getByRole("link", { name: "Ask for a new link" })).toHaveAttribute(
+        "href",
+        "/forgot-password",
+      );
       await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
     });
   }
@@ -116,22 +147,47 @@ test.describe("Verify email", () => {
     await expect(page).toHaveURL(/\/onboarding/);
   });
 
-  for (const token of ["expired", "used", null]) {
-    test(`${token ?? "a missing"} token says the link is no good and offers Sign in`, async ({ page }, testInfo) => {
+  for (const token of ["expired", "used"]) {
+    test(`a ${token} link says so once, with Ask for a new link as the one button`, async ({
+      page,
+    }, testInfo) => {
       const consoleLog = collectConsole(page);
-      await open(page, token ? `/verify?token=${token}` : "/verify");
+      await open(page, `/verify?token=${token}`);
+      await expect(page.getByRole("heading", { level: 1, name: "Link expired" })).toBeVisible();
       await expect(formAlert(page)).toHaveText(EXPIRED);
-      await expect(page.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/sign-in");
+      const ask = page.getByRole("link", { name: "Ask for a new link" });
+      await expect(ask).toHaveAttribute("href", "/sign-in");
+      expect((await ask.boundingBox())!.height, "Ask for a new link hit area").toBeGreaterThanOrEqual(48);
+      await expect(page.getByRole("link", { name: "Sign in", exact: true })).toHaveCount(0);
+      expect((await checkInlineLinkHit(page)).failures).toEqual([]);
+      expect((await checkEntryLinesMeta(page, { phone: isPhone(testInfo.project.name) })).failures).toEqual(
+        [],
+      );
       await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
     });
   }
 
-  test("the demo states: loading stays on Checking your link, offline says Needs connection, error offers Try again", async ({ page }) => {
+  test("a link with no token says it is incomplete and to open it again from the email", async ({
+    page,
+  }, testInfo) => {
+    const consoleLog = collectConsole(page);
+    await open(page, "/verify");
+    await expect(page.getByRole("heading", { level: 1, name: "Link incomplete" })).toBeVisible();
+    await expect(formAlert(page)).toHaveText(INCOMPLETE);
+    await expect(page.getByRole("link", { name: "Ask for a new link" })).toHaveAttribute("href", "/sign-in");
+    await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
+  });
+
+  test("the demo states: loading stays on Checking your link, offline says Needs connection, error offers Try again", async ({
+    page,
+  }) => {
     await open(page, "/verify?token=good-link&demo=loading");
     await expect(page.getByText("Checking your link")).toBeVisible();
     await expect(page).toHaveURL(/\/verify/);
     await open(page, "/verify?token=good-link&demo=offline");
     await expect(page.getByText(/Needs connection/)).toBeVisible();
+    await expect(button(page, "Try again")).toBeDisabled();
+    expect((await checkNeedsConnectionUnderPrimary(page)).failures).toEqual([]);
     await open(page, "/verify?token=good-link&demo=error");
     await expect(formAlert(page)).toHaveText("Couldn't check your link. Try again.");
     await expect(button(page, "Try again")).toBeVisible();

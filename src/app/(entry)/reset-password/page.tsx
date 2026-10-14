@@ -15,13 +15,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
   const state = demo.state && DEMOS.includes(demo.state) ? (demo.state as AuthDemo) : null;
   const raw = params.token;
   const token = Array.isArray(raw) ? (raw[0] ?? null) : (raw ?? null);
-  return (
-    <>
-      <div className="flex flex-col gap-2">
-        <h1 className="font-display text-title text-ink">Choose a new password</h1>
-        <p className="entry-intro text-body text-ink-2">Set a new password for your Roofy account.</p>
-      </div>
-      <ResetPasswordForm token={token} demo={state} />
-    </>
-  );
+  return <ResetPasswordForm token={token} demo={state} />;
 }

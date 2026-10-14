@@ -4,7 +4,13 @@ import { getSeed } from "../../src/data/fake/store";
 import { FAKE_DEAD_TOKENS } from "../../src/data/fake/services/auth";
 import {
   INVITE_GONE,
+  INVITE_LOAD_FAILED,
   LINK_EXPIRED,
+  LINK_INCOMPLETE,
+  RESET_SEND_FAILED,
+  RESET_SET_FAILED,
+  TWO_FACTOR_FAILED,
+  VERIFY_FAILED,
   OWNER_STILL_SETTING_UP,
   RESET_LINK_SENT,
   TOO_MANY_TRIES,
@@ -231,6 +237,7 @@ describe("auth captures", () => {
   const signedIn = (id: string) => id.startsWith("members-") || id.startsWith("two-factor-setup-");
   const sentences = [
     LINK_EXPIRED,
+    LINK_INCOMPLETE,
     RESET_LINK_SENT,
     "Your password is set.",
     WRONG_CODE,
@@ -244,7 +251,7 @@ describe("auth captures", () => {
     for (const screen of auth.filter((s) => s.expectStill && !signedIn(s.id))) {
       const text = screen.expectStill!;
       expect(
-        [...sentences, ...refusals].some((sentence) => sentence?.includes(text)),
+        [...sentences, ...refusals, "Send link"].some((sentence) => sentence?.includes(text)),
         `${screen.id} waits for "${text}"`,
       ).toBe(true);
     }
@@ -275,5 +282,32 @@ describe("auth captures", () => {
         `${screen.id} (token ${tokenOf(screen.route)})`,
       ).toBe(says);
     }
+  });
+
+  it("every auth page that has an error or offline state names it by its own words, and the words are the product's", () => {
+    const errorWords: Record<string, string> = {
+      verify: VERIFY_FAILED,
+      "forgot-password": RESET_SEND_FAILED,
+      "reset-password": RESET_SET_FAILED,
+      "two-factor": TWO_FACTOR_FAILED,
+      invite: INVITE_LOAD_FAILED,
+    };
+    for (const [id, words] of Object.entries(errorWords)) {
+      const screen = auth.find((s) => s.id === id);
+      expect(screen?.stateText?.error, `${id} error`).toBe(words);
+      expect(screen?.stateText?.offline, `${id} offline`).toBe("Needs connection");
+    }
+  });
+
+  it("a typed-but-not-sent capture proves the form is still there; the no-token link says it is incomplete", () => {
+    for (const id of ["forgot-password-filled", "forgot-password-long-email"]) {
+      const screen = auth.find((s) => s.id === id);
+      expect(
+        screen?.steps?.every((step) => step.startsWith("fill:")),
+        id,
+      ).toBe(true);
+      expect(screen?.expectStill, id).toBe("Send link");
+    }
+    expect(auth.find((s) => s.id === "verify-no-token")?.expectStill).toBe(LINK_INCOMPLETE.slice(0, 23));
   });
 });

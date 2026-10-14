@@ -3,7 +3,7 @@ import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { LINK_EXPIRED, RESET_LINK_SENT, SIGN_IN_FAILED } from "@/lib/auth-input";
+import { LINK_EXPIRED, LINK_INCOMPLETE, RESET_LINK_SENT, SIGN_IN_FAILED } from "@/lib/auth-input";
 import { AuthForm } from "./auth-form";
 import { CheckEmail } from "./check-email";
 import { ForgotPasswordForm } from "./forgot-password-form";
@@ -40,7 +40,9 @@ beforeEach(() => {
 describe("sign-in and sign-up links and routing", () => {
   it("sign in has a Forgot password? link to /forgot-password; sign up does not", () => {
     render(<AuthForm mode="sign-in" demo={null} />);
-    expect(screen.getByRole("link", { name: "Forgot password?" }).getAttribute("href")).toBe("/forgot-password");
+    expect(screen.getByRole("link", { name: "Forgot password?" }).getAttribute("href")).toBe(
+      "/forgot-password",
+    );
     cleanup();
     render(<AuthForm mode="sign-up" demo={null} />);
     expect(screen.queryByRole("link", { name: "Forgot password?" })).toBeNull();
@@ -69,7 +71,7 @@ describe("Check your email", () => {
   it("names the address the link went to, and offers a different email or sign in", () => {
     render(<CheckEmail email="sam@example.com" />);
     expect(screen.getByRole("heading", { level: 1, name: "Check your email" })).toBeTruthy();
-    expect(screen.getByText(/sam@example\.com/)).toBeTruthy();
+    expect(screen.getByTestId("check-email-address").textContent).toBe("sam@example.com");
     expect(screen.getByRole("link", { name: "Use a different email" }).getAttribute("href")).toBe("/sign-up");
     expect(screen.getByRole("link", { name: "Sign in" }).getAttribute("href")).toBe("/sign-in");
   });
@@ -81,7 +83,17 @@ describe("Check your email", () => {
 
   it("a long address wraps instead of widening the page", () => {
     render(<CheckEmail email={LONG_EMAIL} />);
-    expect(screen.getByText(LONG_EMAIL).className).toContain("break-all");
+    const address = screen.getByTestId("check-email-address");
+    expect(address.textContent).toBe(LONG_EMAIL);
+    expect(address.className).toContain("break-words");
+    expect(address.className).not.toContain("break-all");
+    // Break chances only after @ and dots, so the address wraps at a sensible spot (auth i1 F15).
+    expect(address.querySelectorAll("wbr").length).toBe(LONG_EMAIL.split(/(?<=[@.])/).length - 1);
+  });
+
+  it("has no Send again: the sign-up has no resend to call (a recorded deviation)", () => {
+    render(<CheckEmail email="sam@example.com" />);
+    expect(screen.queryByRole("button", { name: /Send again/ })).toBeNull();
   });
 });
 
@@ -119,11 +131,31 @@ describe("Forgot password", () => {
   });
 
   it("a service that is down gets the plain sorry sentence and the button stays", async () => {
-    mocks.requestPasswordReset.mockResolvedValue({ ok: false, code: "unavailable", message: SIGN_IN_FAILED, issues: [] });
+    mocks.requestPasswordReset.mockResolvedValue({
+      ok: false,
+      code: "unavailable",
+      message: SIGN_IN_FAILED,
+      issues: [],
+    });
     render(<ForgotPasswordForm demo={null} />);
     await userEvent.type(screen.getByLabelText("Email"), "karen@harbourroofing.example");
     await userEvent.click(screen.getByRole("button", { name: "Send link" }));
     expect((await screen.findByRole("alert")).textContent).toBe("Couldn't send the link. Try again.");
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+  });
+
+  it("the answer replaces the heading and instruction, and offers Send again after a wait and a different email", async () => {
+    mocks.requestPasswordReset.mockResolvedValue({ ok: true, message: RESET_LINK_SENT });
+    render(<ForgotPasswordForm demo={null} />);
+    await userEvent.type(screen.getByLabelText("Email"), "karen@harbourroofing.example");
+    await userEvent.click(screen.getByRole("button", { name: "Send link" }));
+    expect(await screen.findByText(RESET_LINK_SENT)).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: "Check your email" })).toBeTruthy();
+    expect(screen.queryByText(/Enter your email and/)).toBeNull();
+    const again = screen.getByRole("button", { name: /Send again/ }) as HTMLButtonElement;
+    expect(again.disabled).toBe(true);
+    expect(again.textContent).toContain("30 s");
+    await userEvent.click(screen.getByRole("button", { name: "Use a different email" }));
     expect(screen.getByRole("button", { name: "Send link" })).toBeTruthy();
   });
 
@@ -131,11 +163,13 @@ describe("Forgot password", () => {
     render(<ForgotPasswordForm demo="offline" />);
     expect(screen.getByText(/Needs connection/)).toBeTruthy();
     expect((screen.getByRole("button", { name: "Send link" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getAllByText(/Needs connection/)).toHaveLength(1);
     cleanup();
     render(<ForgotPasswordForm demo="error" />);
+    // The error shows on arrival, with the button reading Try again.
+    expect(screen.getByRole("alert").textContent).toBe("Couldn't send the link. Try again.");
     await userEvent.type(screen.getByLabelText("Email"), "karen@harbourroofing.example");
-    await userEvent.click(screen.getByRole("button", { name: "Send link" }));
-    expect((await screen.findByRole("alert")).textContent).toBe("Couldn't send the link. Try again.");
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(mocks.requestPasswordReset).not.toHaveBeenCalled();
   });
 });
@@ -156,7 +190,9 @@ describe("Reset password", () => {
     render(<ResetPasswordForm token="t-1" demo={null} />);
     await userEvent.type(screen.getByLabelText("New password"), "a-long-password");
     await userEvent.click(screen.getByRole("button", { name: "Set password" }));
-    expect((await screen.findByRole("status")).textContent).toBe("Your password is set. Sign in with it now.");
+    expect((await screen.findByRole("status")).textContent).toBe(
+      "Your password is set. Sign in with it now.",
+    );
     expect(mocks.resetPassword).toHaveBeenCalledWith("t-1", "a-long-password");
     expect(screen.getByRole("link", { name: "Sign in" }).getAttribute("href")).toBe("/sign-in");
   });
@@ -167,18 +203,27 @@ describe("Reset password", () => {
     await userEvent.type(screen.getByLabelText("New password"), "a-long-password");
     await userEvent.click(screen.getByRole("button", { name: "Set password" }));
     expect((await screen.findByRole("alert")).textContent).toBe(LINK_EXPIRED);
-    expect(screen.getByRole("link", { name: "Ask for a new link" }).getAttribute("href")).toBe("/forgot-password");
+    expect(screen.getByRole("link", { name: "Ask for a new link" }).getAttribute("href")).toBe(
+      "/forgot-password",
+    );
   });
 
   it("with no token in the link, shows the expired sentence and no form", () => {
     render(<ResetPasswordForm token={null} demo={null} />);
     expect(screen.getByRole("alert").textContent).toBe(LINK_EXPIRED);
     expect(screen.queryByLabelText("New password")).toBeNull();
-    expect(screen.getByRole("link", { name: "Ask for a new link" }).getAttribute("href")).toBe("/forgot-password");
+    expect(screen.getByRole("link", { name: "Ask for a new link" }).getAttribute("href")).toBe(
+      "/forgot-password",
+    );
   });
 
   it("a service that is down gets the sorry sentence; offline blocks the button", async () => {
-    mocks.resetPassword.mockResolvedValue({ ok: false, code: "unavailable", message: SIGN_IN_FAILED, issues: [] });
+    mocks.resetPassword.mockResolvedValue({
+      ok: false,
+      code: "unavailable",
+      message: SIGN_IN_FAILED,
+      issues: [],
+    });
     render(<ResetPasswordForm token="t-1" demo={null} />);
     await userEvent.type(screen.getByLabelText("New password"), "a-long-password");
     await userEvent.click(screen.getByRole("button", { name: "Set password" }));
@@ -208,18 +253,26 @@ describe("Verify email", () => {
     mocks.verifyEmail.mockResolvedValue(gone);
     render(<VerifyEmail token="used" demo={null} />);
     expect((await screen.findByRole("alert")).textContent).toBe(LINK_EXPIRED);
-    expect(screen.getByRole("link", { name: "Sign in" }).getAttribute("href")).toBe("/sign-in");
+    expect(screen.getByRole("heading", { level: 1, name: "Link expired" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Ask for a new link" }).getAttribute("href")).toBe("/sign-in");
     expect(mocks.push).not.toHaveBeenCalled();
   });
 
-  it("with no token, shows the expired sentence without asking the service", () => {
+  it("with no token, says the link is incomplete without asking the service", () => {
     render(<VerifyEmail token={null} demo={null} />);
-    expect(screen.getByRole("alert").textContent).toBe(LINK_EXPIRED);
+    expect(screen.getByRole("alert").textContent).toBe(LINK_INCOMPLETE);
+    expect(screen.getByRole("heading", { level: 1, name: "Link incomplete" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Ask for a new link" })).toBeTruthy();
     expect(mocks.verifyEmail).not.toHaveBeenCalled();
   });
 
   it("a service that is down gets the sorry sentence and Try again, which asks again", async () => {
-    mocks.verifyEmail.mockResolvedValueOnce({ ok: false, code: "unavailable", message: SIGN_IN_FAILED, issues: [] });
+    mocks.verifyEmail.mockResolvedValueOnce({
+      ok: false,
+      code: "unavailable",
+      message: SIGN_IN_FAILED,
+      issues: [],
+    });
     mocks.verifyEmail.mockResolvedValueOnce({ ok: true, next: "/" });
     render(<VerifyEmail token="t-1" demo={null} />);
     expect((await screen.findByRole("alert")).textContent).toBe("Couldn't check your link. Try again.");

@@ -13,15 +13,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
   const params = await searchParams;
   const demo = await getDemo({ searchParams: Promise.resolve(params) });
   const state = demo.state && DEMOS.includes(demo.state) ? (demo.state as AuthDemo) : null;
-  return (
-    <>
-      <div className="flex flex-col gap-2">
-        <h1 className="font-display text-title text-ink">Enter your code</h1>
-        <p className="entry-intro text-body text-ink-2">
-          Open your authenticator app and enter the code it shows.
-        </p>
-      </div>
-      <TwoFactorStep demo={state} />
-    </>
-  );
+  return <TwoFactorStep demo={state} />;
 }

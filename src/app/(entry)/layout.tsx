@@ -5,8 +5,8 @@ export const metadata: Metadata = {
 };
 
 /**
- * Sign in, sign up and set-up: outside the app shell, so no tab bar. One galv page with one centred 448 px column on
- * every width; the wordmark sits in that column above the form, so it lines up with it on a phone, on its side and on
+ * Sign in, sign up and set-up: outside the app shell, so no tab bar. One galv page with one 448 px column, centred across
+ * the page and top-aligned on every width (a desktop starts at the top like a phone); the wordmark sits in that column above the form, so it lines up with it on a phone, on its side and on
  * a desktop. Pads with the device's safe areas.
  */
 export default function EntryLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -20,11 +20,13 @@ export default function EntryLayout({ children }: Readonly<{ children: React.Rea
         paddingRight: "env(safe-area-inset-right)",
       }}
     >
-      <div className="mx-auto flex w-full max-w-md flex-col px-4 lg:justify-center lg:py-16">
+      <div className="mx-auto flex w-full max-w-md flex-col px-4 lg:pb-16 lg:pt-12">
         <header className="entry-header flex flex-col pt-6 lg:pt-0">
           <p className="font-display text-title text-ink">Roofy</p>
         </header>
-        <main className="entry-main flex flex-1 flex-col justify-start gap-6 pb-4 pt-6 lg:flex-none lg:pb-0">{children}</main>
+        <main className="entry-main flex flex-1 flex-col justify-start gap-6 pb-4 pt-6 lg:flex-none lg:pb-0">
+          {children}
+        </main>
       </div>
     </div>
   );

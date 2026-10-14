@@ -15,8 +15,22 @@ import { NEEDS_CONNECTION, useOnline } from "./use-online";
 export type AuthDemo = "loading" | "offline" | "error" | null;
 
 const COPY = {
-  "sign-in": { action: "Sign in", busy: "Signing in", other: "New to Roofy?", otherLink: "Create an account", otherHref: "/sign-up", password: "current-password" },
-  "sign-up": { action: "Create account", busy: "Creating account", other: "Already have an account?", otherLink: "Sign in", otherHref: "/sign-in", password: "new-password" },
+  "sign-in": {
+    action: "Sign in",
+    busy: "Signing in",
+    other: "New to Roofy?",
+    otherLink: "Create an account",
+    otherHref: "/sign-up",
+    password: "current-password",
+  },
+  "sign-up": {
+    action: "Create account",
+    busy: "Creating account",
+    other: "Already have an account?",
+    otherLink: "Sign in",
+    otherHref: "/sign-in",
+    password: "new-password",
+  },
 } as const;
 
 /** Sign in or sign up: Continue with Google (the prototype goes straight on) or email and password, with errors in plain words. */
@@ -32,9 +46,15 @@ export function AuthForm({ mode, demo }: { mode: AuthMode; demo: AuthDemo }) {
   const busy = pending || demo === "loading";
 
   function finish(result: ActionResult<{ next: string }>) {
-    if (result.ok) return router.push(result.next === "/check-email" ? `/check-email?email=${encodeURIComponent(email.trim())}` : result.next);
+    if (result.ok)
+      return router.push(
+        result.next === "/check-email"
+          ? `/check-email?email=${encodeURIComponent(email.trim())}`
+          : result.next,
+      );
     const next: AuthProblems = {};
-    for (const issue of result.issues) if (issue.field === "email" || issue.field === "password") next[issue.field] ??= issue.message;
+    for (const issue of result.issues)
+      if (issue.field === "email" || issue.field === "password") next[issue.field] ??= issue.message;
     setProblems(next);
     setFormError(Object.keys(next).length === 0 ? result.message : null);
   }
@@ -73,7 +93,7 @@ export function AuthForm({ mode, demo }: { mode: AuthMode; demo: AuthDemo }) {
         or use your email
         <span className="h-px flex-1 bg-line" />
       </div>
-      <form noValidate onSubmit={submit} className="flex flex-col gap-4">
+      <form noValidate onSubmit={submit} className="entry-form flex flex-col gap-4">
         <Field
           name="email"
           label="Email"

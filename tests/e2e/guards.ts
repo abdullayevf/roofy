@@ -177,7 +177,11 @@ function collectInteractiveElements(): {
     // Cut the box down to each clipping ancestor below the page (the page's own scroll is what the guards scroll).
     let visibleTop = rect.top;
     let visibleBottom = rect.bottom;
-    for (let a: Element | null = el.parentElement; a && a !== document.body && a !== document.documentElement; a = a.parentElement) {
+    for (
+      let a: Element | null = el.parentElement;
+      a && a !== document.body && a !== document.documentElement;
+      a = a.parentElement
+    ) {
       if (/(auto|scroll|hidden|clip)/.test(getComputedStyle(a).overflowY)) {
         const ar = a.getBoundingClientRect();
         visibleTop = Math.max(visibleTop, ar.top);
@@ -721,16 +725,24 @@ export async function checkPrimaryActionPlacement(page: Page): Promise<GuardResu
   await page.waitForTimeout(100);
   const box = await primary.boundingBox();
   if (box && (box.y < 0 || box.y + box.height > viewport.height))
-    failures.push(`primary "${(await primary.innerText()).trim()}" spans ${Math.round(box.y)} to ${Math.round(box.y + box.height)} px; the first viewport ends at ${viewport.height} px`);
+    failures.push(
+      `primary "${(await primary.innerText()).trim()}" spans ${Math.round(box.y)} to ${Math.round(box.y + box.height)} px; the first viewport ends at ${viewport.height} px`,
+    );
   if (viewport.width < 1024) {
     const tabTop = await page.evaluate(() => {
-      const navs = Array.from(document.querySelectorAll("nav")).filter((n) => getComputedStyle(n).position === "fixed");
-      const tops = navs.map((n) => n.getBoundingClientRect()).filter((r) => r.height > 0 && r.bottom >= window.innerHeight - 2);
+      const navs = Array.from(document.querySelectorAll("nav")).filter(
+        (n) => getComputedStyle(n).position === "fixed",
+      );
+      const tops = navs
+        .map((n) => n.getBoundingClientRect())
+        .filter((r) => r.height > 0 && r.bottom >= window.innerHeight - 2);
       return tops.length ? Math.min(...tops.map((r) => r.top)) : null;
     });
     const bar = await page.locator('[data-slot="primary-action"]:visible').first().boundingBox();
     if (bar && tabTop !== null && bar.y + bar.height > tabTop + 1)
-      failures.push(`the pinned bar ends at ${Math.round(bar.y + bar.height)} px, under the tab bar (top ${Math.round(tabTop)} px)`);
+      failures.push(
+        `the pinned bar ends at ${Math.round(bar.y + bar.height)} px, under the tab bar (top ${Math.round(tabTop)} px)`,
+      );
   }
   return { name, ok: failures.length === 0, failures };
 }
@@ -751,17 +763,22 @@ export async function checkToastClearsBars(page: Page): Promise<GuardResult> {
     const tops: { what: string; top: number }[] = [];
     for (const nav of Array.from(document.querySelectorAll("nav"))) {
       const r = nav.getBoundingClientRect();
-      if (getComputedStyle(nav).position === "fixed" && r.height > 0 && r.bottom >= window.innerHeight - 2) tops.push({ what: "the tab bar", top: r.top });
+      if (getComputedStyle(nav).position === "fixed" && r.height > 0 && r.bottom >= window.innerHeight - 2)
+        tops.push({ what: "the tab bar", top: r.top });
     }
     const circle = document.querySelector("nav .rounded-full.bg-chalk");
-    if (circle && circle.getBoundingClientRect().height > 0) tops.push({ what: "the Log circle", top: circle.getBoundingClientRect().top });
+    if (circle && circle.getBoundingClientRect().height > 0)
+      tops.push({ what: "the Log circle", top: circle.getBoundingClientRect().top });
     for (const bar of Array.from(document.querySelectorAll('[data-slot="primary-action"]'))) {
       const r = bar.getBoundingClientRect();
-      if (getComputedStyle(bar).position === "fixed" && r.height > 0) tops.push({ what: "the pinned bar", top: r.top });
+      if (getComputedStyle(bar).position === "fixed" && r.height > 0)
+        tops.push({ what: "the pinned bar", top: r.top });
     }
     for (const t of tops)
       if (window.innerWidth < 1024 && toastBox.bottom > t.top + 0.5)
-        out.push(`the toast ends at ${Math.round(toastBox.bottom)} px, over ${t.what} (top ${Math.round(t.top)} px)`);
+        out.push(
+          `the toast ends at ${Math.round(toastBox.bottom)} px, over ${t.what} (top ${Math.round(t.top)} px)`,
+        );
     return out;
   });
   return { name, ok: failures.length === 0, failures };
@@ -857,6 +874,94 @@ export async function checkSegmentedRows(page: Page): Promise<GuardResult> {
   return { name: "segmentedRows", ok: failures.length === 0, failures };
 }
 
+/**
+ * Auth i1 D6: the helper, error and "Needs connection" lines of an entry page are the meta size (15 px on a phone, 14 px
+ * on a desktop), never the smaller 12-13 px a bare span falls back to. Opt-in: the auth specs call it.
+ */
+export async function checkEntryLinesMeta(page: Page, opts: { phone: boolean }): Promise<GuardResult> {
+  const want = opts.phone ? 15 : 14;
+  const failures = await page.evaluate((expected) => {
+    const out: string[] = [];
+    for (const el of document.querySelectorAll('[role="alert"], [role="status"]')) {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0 || !(el.textContent ?? "").trim()) continue;
+      // A confirmed result is body-sized by design (ResultNote); only the problem and connection lines are meta.
+      const meta = el.matches('[role="alert"]') || /needs connection/i.test(el.textContent ?? "");
+      if (!meta) continue;
+      const target = el.querySelector("span, p") ?? el;
+      const size = parseFloat(getComputedStyle(target).fontSize);
+      if (Math.abs(size - expected) > 0.5)
+        out.push(`"${(el.textContent ?? "").trim().slice(0, 40)}" is ${size}px, wants ${expected}px`);
+    }
+    return out;
+  }, want);
+  return { name: "entryLinesMeta", ok: failures.length === 0, failures };
+}
+
+/**
+ * Auth i1 D8 + F7: a code box is Atkinson with tabular figures and no letter-spacing, not a monospace face. Every numeric
+ * input on the page is measured.
+ */
+export async function checkCodeFieldFont(page: Page): Promise<GuardResult> {
+  const failures = await page.evaluate(() => {
+    const out: string[] = [];
+    for (const el of document.querySelectorAll('input[inputmode="numeric"]')) {
+      const st = getComputedStyle(el);
+      if (/mono|courier|consolas/i.test(st.fontFamily))
+        out.push(`code field is monospace (${st.fontFamily})`);
+      if (!/atkinson/i.test(st.fontFamily)) out.push(`code field is not Atkinson (${st.fontFamily})`);
+      if (!st.fontVariantNumeric.includes("tabular-nums")) out.push("code field has no tabular figures");
+      const spacing = st.letterSpacing === "normal" ? 0 : parseFloat(st.letterSpacing);
+      if (spacing !== 0) out.push(`code field has letter-spacing ${st.letterSpacing}`);
+    }
+    return out;
+  });
+  return { name: "codeFieldFont", ok: failures.length === 0, failures };
+}
+
+/**
+ * Auth i1 F11: an inline link on an entry page (Sign in, Back to sign in, Use a different email, Forgot password?) is at
+ * least 48 x 48 px to hit, even when its words are short. Measured on every link in main.
+ */
+export async function checkInlineLinkHit(page: Page, minPx = 48): Promise<GuardResult> {
+  const failures = await page.evaluate((min) => {
+    const out: string[] = [];
+    for (const a of document.querySelectorAll("main a[href]")) {
+      const r = a.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) continue;
+      if (r.height < min - 0.5 || r.width < min - 0.5)
+        out.push(
+          `link "${(a.textContent ?? "").trim().slice(0, 30)}" is ${Math.round(r.width)}x${Math.round(r.height)}`,
+        );
+    }
+    return out;
+  }, minPx);
+  return { name: "inlineLinkHit", ok: failures.length === 0, failures };
+}
+
+/**
+ * Auth i1 D16: "Needs connection" is one line directly under the disabled primary (less than 24 px below it), and it is
+ * said once on the page.
+ */
+export async function checkNeedsConnectionUnderPrimary(page: Page): Promise<GuardResult> {
+  const failures = await page.evaluate(() => {
+    const out: string[] = [];
+    const lines = [...document.querySelectorAll('[role="status"]')].filter((el) =>
+      /needs connection/i.test(el.textContent ?? ""),
+    );
+    if (lines.length !== 1) return [`"Needs connection" is shown ${lines.length} times, wants once`];
+    const primary = document.querySelector<HTMLElement>(
+      "main button[disabled], main button[aria-disabled='true']",
+    );
+    if (!primary) return ["no disabled primary button for the line to sit under"];
+    const gap = lines[0]!.getBoundingClientRect().top - primary.getBoundingClientRect().bottom;
+    if (gap < 0 || gap > 24)
+      out.push(`"Needs connection" is ${Math.round(gap)}px from the primary, wants under 24px`);
+    return out;
+  });
+  return { name: "needsConnectionUnderPrimary", ok: failures.length === 0, failures };
+}
+
 export type ScreenHealthOptions = {
   /** Whether target-size (48x48) is enforced; phone viewports only. */
   phone: boolean;
@@ -927,7 +1032,9 @@ export async function expectScreenHealthy(page: Page, opts: ScreenHealthOptions)
 export async function waitForHydrated(page: Page): Promise<void> {
   await page.waitForFunction(() => {
     const controls = [
-      ...document.querySelectorAll("input:not([type=radio]):not([type=checkbox]):not([type=hidden]), select, textarea"),
+      ...document.querySelectorAll(
+        "input:not([type=radio]):not([type=checkbox]):not([type=hidden]), select, textarea",
+      ),
     ];
     return controls.every((el) => Object.keys(el).some((k) => k.startsWith("__reactProps$")));
   });
@@ -1130,7 +1237,8 @@ export async function checkDatesStayWhole(page: Page, scope: string): Promise<Gu
           const range = document.createRange();
           range.setStart(node, m.index ?? 0);
           range.setEnd(node, (m.index ?? 0) + m[0].length);
-          if (range.getClientRects().length > 1) out.push(`"${m[0].replace(/ /g, " ")}" breaks across two lines`);
+          if (range.getClientRects().length > 1)
+            out.push(`"${m[0].replace(/ /g, " ")}" breaks across two lines`);
         }
       }
     }
@@ -1155,7 +1263,8 @@ export async function checkRunTotalsSum(page: Page, scope = "[data-pay-run-total
   if (rows.length === 0) failures.push(`no top-level rows in ${scope}`);
   if (total.length !== 1) failures.push(`expected one Total in ${scope}, found ${total.length}`);
   const sum = rows.reduce((a, r) => a + cents(r), 0);
-  if (total.length === 1 && sum !== cents(total[0]!)) failures.push(`rows add to ${sum} cents, Total says ${cents(total[0]!)}`);
+  if (total.length === 1 && sum !== cents(total[0]!))
+    failures.push(`rows add to ${sum} cents, Total says ${cents(total[0]!)}`);
   return { name: "run-totals-sum", ok: failures.length === 0, failures };
 }
 
@@ -1179,7 +1288,8 @@ export async function checkAbnStaysWhole(page: Page, scope: string): Promise<Gua
           const range = document.createRange();
           range.setStart(node, m.index ?? 0);
           range.setEnd(node, (m.index ?? 0) + m[0].length);
-          if (range.getClientRects().length > 1) out.push(`"${m[0].replace(/ /g, " ")}" breaks across two lines`);
+          if (range.getClientRects().length > 1)
+            out.push(`"${m[0].replace(/ /g, " ")}" breaks across two lines`);
         }
       }
     }
@@ -1208,9 +1318,9 @@ export async function checkContentClearsFixedBars(page: Page): Promise<GuardResu
     last = h;
   }
   const failures = await page.evaluate(() => {
-    const bars = Array.from(document.querySelectorAll<HTMLElement>('[data-slot="primary-action"], nav[aria-label="Primary"]')).filter(
-      (el) => getComputedStyle(el).position === "fixed" && el.getBoundingClientRect().height > 0,
-    );
+    const bars = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-slot="primary-action"], nav[aria-label="Primary"]'),
+    ).filter((el) => getComputedStyle(el).position === "fixed" && el.getBoundingClientRect().height > 0);
     if (bars.length === 0) return [];
     const top = Math.min(...bars.map((b) => b.getBoundingClientRect().top));
     const screen = document.querySelector("[data-screen]");
@@ -1220,7 +1330,9 @@ export async function checkContentClearsFixedBars(page: Page): Promise<GuardResu
       if (el.closest('[data-slot="primary-action"]')) continue;
       const r = el.getBoundingClientRect();
       if (r.height > 0 && r.bottom > top + 1)
-        out.push(`"${(el.textContent ?? "").trim().slice(0, 40)}" ends at ${Math.round(r.bottom)} px, under a fixed bar at ${Math.round(top)} px`);
+        out.push(
+          `"${(el.textContent ?? "").trim().slice(0, 40)}" ends at ${Math.round(r.bottom)} px, under a fixed bar at ${Math.round(top)} px`,
+        );
     }
     return out.slice(0, 5);
   });
@@ -1238,7 +1350,8 @@ export async function checkPinnedBarCompact(page: Page, max = 64): Promise<Guard
   const failures: string[] = [];
   const box = await bar.boundingBox();
   if (!box) failures.push("the pinned bar has no box");
-  else if (box.height > max + 0.5) failures.push(`pinned bar is ${Math.round(box.height)} px tall (max ${max})`);
+  else if (box.height > max + 0.5)
+    failures.push(`pinned bar is ${Math.round(box.height)} px tall (max ${max})`);
   const circleLoc = page.locator("nav .rounded-full.bg-chalk:visible").first();
   const circle = (await circleLoc.count()) === 0 ? null : await circleLoc.boundingBox();
   if (!circle) failures.push("no Log circle in the tab bar to measure against");
@@ -1248,24 +1361,35 @@ export async function checkPinnedBarCompact(page: Page, max = 64): Promise<Guard
     if (b && b.width > 0) parts.push({ label: (await el.innerText()).trim().slice(0, 30), b });
   }
   const hit = (a: (typeof parts)[number]["b"], c: (typeof parts)[number]["b"]) =>
-    a.x < c.x + c.width - 0.5 && a.x + a.width > c.x + 0.5 && a.y < c.y + c.height - 0.5 && a.y + a.height > c.y + 0.5;
+    a.x < c.x + c.width - 0.5 &&
+    a.x + a.width > c.x + 0.5 &&
+    a.y < c.y + c.height - 0.5 &&
+    a.y + a.height > c.y + 0.5;
   parts.forEach((p, i) => {
-    for (const q of parts.slice(i + 1)) if (hit(p.b, q.b)) failures.push(`"${p.label}" overlaps "${q.label}"`);
+    for (const q of parts.slice(i + 1))
+      if (hit(p.b, q.b)) failures.push(`"${p.label}" overlaps "${q.label}"`);
     if (circle && hit(p.b, circle)) failures.push(`"${p.label}" is under the Log circle`);
   });
   return { name, ok: failures.length === 0, failures };
 }
 
 /** From 1024 px the screen's actions end at the content's right edge (pay iter2 D17), and share one height. */
-export async function checkActionsAtContentEdge(page: Page, actions: string, screen = "[data-screen]"): Promise<GuardResult> {
+export async function checkActionsAtContentEdge(
+  page: Page,
+  actions: string,
+  screen = "[data-screen]",
+): Promise<GuardResult> {
   const name = "actions-at-content-edge";
   const s = await page.locator(screen).first().boundingBox();
-  const buttons = await page.locator(`${actions} :is(button, a)[data-variant]:visible:not([data-variant="link"])`).all();
+  const buttons = await page
+    .locator(`${actions} :is(button, a)[data-variant]:visible:not([data-variant="link"])`)
+    .all();
   const boxes = (await Promise.all(buttons.map((b) => b.boundingBox()))).filter((b) => b !== null);
   if (!s || boxes.length === 0) return { name, ok: true, failures: [] };
   const failures: string[] = [];
   const right = Math.max(...boxes.map((b) => b.x + b.width));
-  if (Math.abs(right - (s.x + s.width)) > 1) failures.push(`actions end at ${Math.round(right)} px; content edge is ${Math.round(s.x + s.width)} px`);
+  if (Math.abs(right - (s.x + s.width)) > 1)
+    failures.push(`actions end at ${Math.round(right)} px; content edge is ${Math.round(s.x + s.width)} px`);
   const heights = new Set(boxes.map((b) => Math.round(b.height)));
   if (heights.size > 1) failures.push(`action heights differ: ${[...heights].join(", ")} px`);
   const tops = new Set(boxes.map((b) => Math.round(b.y)));
@@ -1285,8 +1409,10 @@ export async function checkSidebarSpansPage(page: Page): Promise<GuardResult> {
     const rect = column.getBoundingClientRect();
     const page = document.documentElement.scrollHeight;
     const out: string[] = [];
-    if (Math.abs(rect.height - page) > 1) out.push(`the sidebar column is ${rect.height.toFixed(0)}px tall on a ${page}px page`);
-    if (getComputedStyle(column).backgroundColor === "rgba(0, 0, 0, 0)") out.push("the sidebar column has no background");
+    if (Math.abs(rect.height - page) > 1)
+      out.push(`the sidebar column is ${rect.height.toFixed(0)}px tall on a ${page}px page`);
+    if (getComputedStyle(column).backgroundColor === "rgba(0, 0, 0, 0)")
+      out.push("the sidebar column has no background");
     return out;
   });
   return { name: "sidebar-spans-page", ok: failures.length === 0, failures };
@@ -1311,7 +1437,10 @@ export async function checkOneLine(page: Page, scope: string): Promise<GuardResu
       seen += 1;
       const style = getComputedStyle(el);
       const line = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.5;
-      if (rect.height > line * 1.5) out.push(`"${(el.textContent ?? "").trim()}" wraps (${rect.height.toFixed(0)}px tall, line ${line.toFixed(0)}px)`);
+      if (rect.height > line * 1.5)
+        out.push(
+          `"${(el.textContent ?? "").trim()}" wraps (${rect.height.toFixed(0)}px tall, line ${line.toFixed(0)}px)`,
+        );
     }
     if (seen === 0) out.push(`no [data-oneline] element found in ${sel}`);
     return out;
@@ -1331,11 +1460,20 @@ export async function checkReportFirstScreen(page: Page, opts: { keyFigure: bool
     const row = Array.from(document.querySelectorAll("[data-report-row], [data-report-card]")).find(visible);
     if (!row) return ["no data row found"];
     const bottom = row.getBoundingClientRect().bottom;
-    if (bottom > window.innerHeight) out.push(`first row ends at ${bottom.toFixed(0)}px, below the first screen (${window.innerHeight}px)`);
-    const xl = Array.from(document.querySelectorAll("main .text-figure-xl, [data-screen] .text-figure-xl")).filter(visible);
-    if (xl.length !== (withFigure ? 1 : 0)) out.push(`${xl.length} figure-xl on the page, expected ${withFigure ? 1 : 0}`);
+    if (bottom > window.innerHeight)
+      out.push(`first row ends at ${bottom.toFixed(0)}px, below the first screen (${window.innerHeight}px)`);
+    const xl = Array.from(
+      document.querySelectorAll("main .text-figure-xl, [data-screen] .text-figure-xl"),
+    ).filter(visible);
+    if (xl.length !== (withFigure ? 1 : 0))
+      out.push(`${xl.length} figure-xl on the page, expected ${withFigure ? 1 : 0}`);
     const title = document.querySelector("h1");
-    if (withFigure && title && xl[0] && xl[0].getBoundingClientRect().top < title.getBoundingClientRect().bottom - 1)
+    if (
+      withFigure &&
+      title &&
+      xl[0] &&
+      xl[0].getBoundingClientRect().top < title.getBoundingClientRect().bottom - 1
+    )
       out.push("the key figure is not under the title");
     return out;
   }, opts.keyFigure);
@@ -1395,7 +1533,9 @@ export async function checkTableHeadersOneLine(page: Page): Promise<GuardResult>
 export async function checkFirstRowTop(page: Page, maxTop: number): Promise<GuardResult> {
   await polyfillEsbuildNameHelper(page);
   const failures = await page.evaluate((limit) => {
-    const row = Array.from(document.querySelectorAll("[data-report-row], [data-report-card], [data-history-row]")).find((el) => el.getBoundingClientRect().width > 0);
+    const row = Array.from(
+      document.querySelectorAll("[data-report-row], [data-report-card], [data-history-row]"),
+    ).find((el) => el.getBoundingClientRect().width > 0);
     if (!row) return ["no data row found"];
     const top = row.getBoundingClientRect().top + window.scrollY;
     return top < limit ? [] : [`the first row starts at ${top.toFixed(0)}px, expected under ${limit}px`];
@@ -1413,7 +1553,9 @@ export async function checkClearOfFixedBars(page: Page, selector: string): Promi
   await page.waitForTimeout(200);
   const failures = await page.evaluate((sel) => {
     const boxes: DOMRect[] = [];
-    for (const bar of Array.from(document.querySelectorAll<HTMLElement>('[data-slot="primary-action"], nav[aria-label="Primary"]'))) {
+    for (const bar of Array.from(
+      document.querySelectorAll<HTMLElement>('[data-slot="primary-action"], nav[aria-label="Primary"]'),
+    )) {
       if (getComputedStyle(bar).position !== "fixed" || bar.getBoundingClientRect().height === 0) continue;
       boxes.push(bar.getBoundingClientRect());
       for (const child of Array.from(bar.querySelectorAll("*"))) {
@@ -1425,8 +1567,13 @@ export async function checkClearOfFixedBars(page: Page, selector: string): Promi
     for (const el of Array.from(document.querySelectorAll(sel))) {
       const r = el.getBoundingClientRect();
       if (r.width === 0 || r.height === 0) continue;
-      const hit = boxes.find((b) => r.left < b.right - 1 && r.right > b.left + 1 && r.top < b.bottom - 1 && r.bottom > b.top + 1);
-      if (hit) out.push(`"${(el.textContent ?? "").trim().slice(0, 40)}" (${Math.round(r.top)}-${Math.round(r.bottom)}px) is under a fixed element at ${Math.round(hit.top)}-${Math.round(hit.bottom)}px`);
+      const hit = boxes.find(
+        (b) => r.left < b.right - 1 && r.right > b.left + 1 && r.top < b.bottom - 1 && r.bottom > b.top + 1,
+      );
+      if (hit)
+        out.push(
+          `"${(el.textContent ?? "").trim().slice(0, 40)}" (${Math.round(r.top)}-${Math.round(r.bottom)}px) is under a fixed element at ${Math.round(hit.top)}-${Math.round(hit.bottom)}px`,
+        );
     }
     return out.slice(0, 5);
   }, selector);
@@ -1449,7 +1596,10 @@ export async function checkNoClippedText(page: Page, scope: string): Promise<Gua
       while (anc && !/(hidden|clip)/.test(getComputedStyle(anc).overflowX)) anc = anc.parentElement;
       if (!anc) continue;
       const a = anc.getBoundingClientRect();
-      if (r.right > a.right + 1 || r.left < a.left - 1) out.push(`"${(el.textContent ?? "").trim().slice(0, 50)}" runs ${Math.round(Math.max(r.right - a.right, a.left - r.left))}px past its clipping box`);
+      if (r.right > a.right + 1 || r.left < a.left - 1)
+        out.push(
+          `"${(el.textContent ?? "").trim().slice(0, 50)}" runs ${Math.round(Math.max(r.right - a.right, a.left - r.left))}px past its clipping box`,
+        );
     }
     return out.slice(0, 5);
   }, scope);
@@ -1469,9 +1619,11 @@ export async function checkPinnedBarMatchesColumn(page: Page, column = ".pin-pad
   const [b, c] = await Promise.all([bar.boundingBox(), col.boundingBox()]);
   if (!b || !c) return { name, ok: false, failures: [`no box for ${b ? column : "the pinned bar"}`] };
   const failures: string[] = [];
-  if (Math.abs(b.x - c.x) > 1) failures.push(`the bar starts at ${Math.round(b.x)} px; the form column starts at ${Math.round(c.x)} px`);
+  if (Math.abs(b.x - c.x) > 1)
+    failures.push(`the bar starts at ${Math.round(b.x)} px; the form column starts at ${Math.round(c.x)} px`);
   const [br, cr] = [b.x + b.width, c.x + c.width];
-  if (Math.abs(br - cr) > 1) failures.push(`the bar ends at ${Math.round(br)} px; the form column ends at ${Math.round(cr)} px`);
+  if (Math.abs(br - cr) > 1)
+    failures.push(`the bar ends at ${Math.round(br)} px; the form column ends at ${Math.round(cr)} px`);
   return { name, ok: failures.length === 0, failures };
 }
 
@@ -1482,7 +1634,9 @@ export async function checkPinnedBarMatchesColumn(page: Page, column = ".pin-pad
 export async function checkErrorLineInView(page: Page): Promise<GuardResult> {
   const name = "error-line-in-view";
   const failures = await page.evaluate(() => {
-    const lines = Array.from(document.querySelectorAll<HTMLElement>("span.text-over")).filter((el) => el.querySelector("svg"));
+    const lines = Array.from(document.querySelectorAll<HTMLElement>("span.text-over")).filter((el) =>
+      el.querySelector("svg"),
+    );
     if (lines.length === 0) return ["no error line on the page"];
     const h = window.visualViewport?.height ?? window.innerHeight;
     const seen = lines.some((el) => {
@@ -1491,7 +1645,11 @@ export async function checkErrorLineInView(page: Page): Promise<GuardResult> {
       const top = document.elementFromPoint(r.left + Math.min(r.width / 2, 40), r.top + r.height / 2);
       return top !== null && el.contains(top);
     });
-    return seen ? [] : [`${lines.length} error line(s) on the page, none fully inside the first ${Math.round(h)} px and uncovered`];
+    return seen
+      ? []
+      : [
+          `${lines.length} error line(s) on the page, none fully inside the first ${Math.round(h)} px and uncovered`,
+        ];
   });
   return { name, ok: failures.length === 0, failures };
 }

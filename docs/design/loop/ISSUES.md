@@ -725,3 +725,11 @@ Open and closed issues found by the automated checks or either critic agent (`do
 | entry-settings/i3-F15 | entry-settings | P2 | sign-in-wrong-password | No Forgot password link | Deferred: password reset is not in the specs | deferred | 3 |
 | entry-settings/i3-D21+F11 | entry-settings | P3 | settings-two-factor iphone | Dead end, nothing to tap; On pill reads as a button | Secondary "Set up on a new phone" (not in specs; deferred) | deferred | 3 |
 | entry-settings/i3-misc-P3 | entry-settings | P3 | various | D19 D20 D24 D27 D31 D32 D34 D35 D36, F13 F16 F17 F20 F21 F22 | See entry-settings-iter3-{design,field}.md | open (accepted at cap) | 3 |
+| auth/i1-D1 | auth | P1 | two-factor-setup/owner/iphone/light | Turn on two-factor button half under tab bar and Log button | Save bar above tab bar or bottom padding (guard) | open | 1 |
+| auth/i1-D2+F1 | auth | P1 | verify expired/used/no-token | Copy says ask for a new one; only button is Sign in | Primary "Ask for a new link"; own no-token sentence | open | 1 |
+| auth/i1-D3+F2 | auth | P1 | invite-error, reset-password-error, two-factor-error | Error state captures look like normal state | Render error sentence + Try again; capture asserts text (guard) | open | 1 |
+| auth/i1-D4+F3 | auth | P1 | forgot-password long-email/filled/invalid, installed | Captures show empty or sent state | Fix capture steps; assert state text before shot (guard) | open | 1 |
+| auth/i1-D5 | auth | P1 | members-remove-confirm/desktop/dark | Dark scrim lightens page; dialog darker than page | Darkening scrim in dark mode | open | 1 |
+| auth/i1-D6 | auth | P1 | helper/error lines on entry pages | 13-14px, below meta size | Meta token + guard | open | 1 |
+| auth/i1-P2 | auth | P2 | various | D7-D20, F4-F12 | See .superpowers/sdd/04-db-auth/auth-iter1-{design,field}.md; fix list task-13-design-fix-1.md | open | 1 |
+| auth/i1-P3 | auth | P3 | various | D21-D23, F13-F18 | As above; F17 (Check again) declined: brief says one way out; D23 deferred as entry-settings i3 | open | 1 |

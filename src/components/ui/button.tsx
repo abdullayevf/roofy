@@ -15,6 +15,8 @@ type Shared = {
   /** Solid `over` fill — only valid with `tone="danger"`, only inside confirmation sheets. */
   filled?: boolean;
   loading?: boolean;
+  /** With `disabled`: keeps the variant's own fill at reduced opacity instead of the grey treatment (a primary blocked only by no signal still reads as the primary). */
+  dim?: boolean;
   /** The verb shown while loading, e.g. "Saving day". Defaults to the button's own label. */
   loadingLabel?: string;
   disabled?: boolean;
@@ -49,7 +51,7 @@ const SIZE = "min-h-[52px] lg:min-h-12 px-4 py-1 rounded-control text-body-stron
 const DISABLED = "bg-galv text-ink-2 border border-line";
 
 function variantClasses(props: ButtonProps): string {
-  if (props.disabled) return DISABLED;
+  if (props.disabled && !props.dim) return DISABLED;
   if (props.tone === "danger") {
     return props.filled
       ? "bg-over-fill text-on-over-fill border border-transparent"
@@ -83,6 +85,7 @@ export function Button(props: ButtonProps) {
     isLink && !props.iconOnly ? "text-body-strong" : "",
     props.iconOnly && "w-[52px] lg:w-12 px-0",
     variantClasses(props),
+    props.disabled && props.dim && "opacity-60",
     props.disabled && !props.focusableWhenDisabled && "pointer-events-none",
     focusRing(props.focusVisible),
     props.className,
@@ -134,12 +137,7 @@ export function Button(props: ButtonProps) {
       {content}
     </a>
   ) : props.href ? (
-    <Link
-      href={props.href}
-      prefetch={false}
-      data-variant={props.variant ?? "primary"}
-      className={className}
-    >
+    <Link href={props.href} prefetch={false} data-variant={props.variant ?? "primary"} className={className}>
       {content}
     </Link>
   ) : (

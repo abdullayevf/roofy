@@ -40,11 +40,18 @@ const DARK_STATES: DemoState[] = ["normal", "foreman"];
 /** The viewports a screen is shot at, from its own flags (the same rules as the design loop). */
 function viewportsOf(screen: ScreenSpec): Viewport[] {
   const all: Viewport[] = screen.viewports ?? ["iphone", "android", "desktop"];
-  return all.filter((v) => !(screen.phoneOnly && v === "desktop") && !(screen.desktopOnly && v !== "desktop"));
+  return all.filter(
+    (v) => !(screen.phoneOnly && v === "desktop") && !(screen.desktopOnly && v !== "desktop"),
+  );
 }
 
 /** Presses the screen's `steps` in order, as the design loop does, and waits for the settled outcome. */
-async function runSteps(page: Page, context: BrowserContext, screen: ScreenSpec): Promise<void> {
+async function runSteps(
+  page: Page,
+  context: BrowserContext,
+  screen: ScreenSpec,
+  state: DemoState,
+): Promise<void> {
   if (screen.goOffline) await context.setOffline(true);
   for (const step of screen.steps ?? []) {
     const fill = /^fill:(.+?)=(.*)$/.exec(step);
@@ -67,15 +74,22 @@ async function runSteps(page: Page, context: BrowserContext, screen: ScreenSpec)
       continue;
     }
     if (step.startsWith("row:")) {
-      await page.getByRole("button", { name: step.slice(4) }).first().click();
+      await page
+        .getByRole("button", { name: step.slice(4) })
+        .first()
+        .click();
       await page.waitForTimeout(600);
       continue;
     }
     const radio = step.startsWith("radio:");
-    await page.getByRole(radio ? "radio" : "button", { name: radio ? step.slice(6) : step, exact: true }).click();
+    await page
+      .getByRole(radio ? "radio" : "button", { name: radio ? step.slice(6) : step, exact: true })
+      .click();
     await page.waitForTimeout(radio ? 1200 : 300);
   }
   if (screen.expectStill) await page.getByText(screen.expectStill).first().waitFor({ timeout: 15_000 });
+  const named = screen.stateText?.[state];
+  if (named) await page.getByText(named).first().waitFor({ timeout: 15_000 });
 }
 
 /** React has attached to every field, and the web fonts are in: nothing is still arriving. */
@@ -97,11 +111,15 @@ function viewportOf(projectName: string): Viewport {
 function shotsOf(screen: ScreenSpec): { state: DemoState; scheme: Scheme }[] {
   return screen.states.flatMap((state) => [
     { state, scheme: "light" as const },
-    ...(DARK_SCREENS.has(screen.id) && DARK_STATES.includes(state) ? [{ state, scheme: "dark" as const }] : []),
+    ...(DARK_SCREENS.has(screen.id) && DARK_STATES.includes(state)
+      ? [{ state, scheme: "dark" as const }]
+      : []),
   ]);
 }
 
-const names = SCREENS.flatMap((screen) => shotsOf(screen).map(({ state, scheme }) => `${screen.id}-${state}-${scheme}`));
+const names = SCREENS.flatMap((screen) =>
+  shotsOf(screen).map(({ state, scheme }) => `${screen.id}-${state}-${scheme}`),
+);
 const duplicate = names.find((n, i) => names.indexOf(n) !== i);
 if (duplicate) throw new Error(`visual: two shots would write ${duplicate}.png`);
 
@@ -125,7 +143,7 @@ for (const scheme of ["light", "dark"] as const) {
           const response = await page.goto(url.toString(), { waitUntil: "networkidle" });
           expect(response, url.toString()).not.toBeNull();
           await settle(page);
-          await runSteps(page, context, screen);
+          await runSteps(page, context, screen, shot.state);
 
           // A full-page shot is taken until two in a row match, so a long page needs longer than the 5 s default (review
           // G2a: the design gallery timed out on android). 1.5 s per screen-height of page, never under 5 s.

@@ -49,7 +49,7 @@
  *   ROOFY_CHROMIUM_EXECUTABLE=<path>  Chromium binary to launch
  */
 
-import { chromium, devices, webkit, type Browser, type Page } from "@playwright/test";
+import { chromium, devices, webkit, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -181,6 +181,64 @@ async function assertServerReachable(base: string): Promise<void> {
   }
 }
 
+/**
+ * Screens whose shot is an outcome press their buttons first (a save, then "Log another stage"), then wait for the
+ * settled outcome (the "Done" row, not the "Exporting" spinner a fixed wait can catch) and for the text the state
+ * itself is named by, so a shot can never show another state than its name (auth iteration 1: error = normal, filled = sent).
+ * The installed-mode shot runs the same steps.
+ */
+async function runScreenSteps(
+  page: Page,
+  context: BrowserContext,
+  screen: ScreenSpec,
+  state: DemoState,
+): Promise<void> {
+  if (screen.goOffline) await context.setOffline(true);
+  for (const step of screen.steps ?? []) {
+    // "fill:Sam's share=60" types into a labelled field.
+    const fill = /^fill:(.+?)=(.*)$/.exec(step);
+    if (fill) {
+      const box = page.getByLabel(fill[1]!, { exact: true });
+      await box.fill(fill[2]!);
+      // The shot is the settled screen: the person has finished typing and put the keyboard away, so the pinned
+      // bar is back above the tab bar and the home bar (with a field focused it would sit on the keyboard).
+      await box.blur();
+      await page.waitForTimeout(450);
+      continue;
+    }
+    // "reload" opens the page again: what a person sees coming back to a saved screen.
+    if (step === "reload") {
+      await page.reload();
+      await page.evaluate(() => document.fonts.ready).catch(() => undefined);
+      continue;
+    }
+    // "wait:Logged: Jake" holds the next step until that text is on the page, so a save has landed (a fixed pause is
+    // shorter than the sync push now and then, and the next page would be drawn before the write exists).
+    if (step.startsWith("wait:")) {
+      await page.getByText(step.slice(5)).first().waitFor({ timeout: 15_000 });
+      continue;
+    }
+    // "row:Site setup" opens a list row (a button whose name is the row's whole text, so it matches on a part).
+    if (step.startsWith("row:")) {
+      await page
+        .getByRole("button", { name: step.slice(4) })
+        .first()
+        .click();
+      await page.waitForTimeout(600);
+      continue;
+    }
+    // "radio:No work" presses a segmented choice instead of a button.
+    const radio = step.startsWith("radio:");
+    await page
+      .getByRole(radio ? "radio" : "button", { name: radio ? step.slice(6) : step, exact: true })
+      .click();
+    await page.waitForTimeout(radio ? 1200 : 300);
+  }
+  if (screen.expectStill) await page.getByText(screen.expectStill).first().waitFor({ timeout: 15_000 });
+  const named = screen.stateText?.[state];
+  if (named) await page.getByText(named).first().waitFor({ timeout: 15_000 });
+}
+
 /** Which browser engine a given viewport should capture with. */
 function engineFor(viewport: Viewport, webkitAvailable: boolean): Engine {
   return viewport.name === "iphone" && webkitAvailable ? "webkit" : "chromium";
@@ -235,46 +293,7 @@ async function captureOne(opts: {
 
   await page.evaluate(() => document.fonts.ready).catch(() => undefined);
 
-  // Screens whose shot is an outcome press their buttons first (a save, then "Log another stage").
-  if (screen.goOffline) await context.setOffline(true);
-  for (const step of screen.steps ?? []) {
-    // "fill:Sam's share=60" types into a labelled field.
-    const fill = /^fill:(.+?)=(.*)$/.exec(step);
-    if (fill) {
-      const box = page.getByLabel(fill[1]!, { exact: true });
-      await box.fill(fill[2]!);
-      // The shot is the settled screen: the person has finished typing and put the keyboard away, so the pinned
-      // bar is back above the tab bar and the home bar (with a field focused it would sit on the keyboard).
-      await box.blur();
-      await page.waitForTimeout(450);
-      continue;
-    }
-    // "reload" opens the page again: what a person sees coming back to a saved screen.
-    if (step === "reload") {
-      await page.reload();
-      await page.evaluate(() => document.fonts.ready).catch(() => undefined);
-      continue;
-    }
-    // "wait:Logged: Jake" holds the next step until that text is on the page, so a save has landed (a fixed pause is
-    // shorter than the sync push now and then, and the next page would be drawn before the write exists).
-    if (step.startsWith("wait:")) {
-      await page.getByText(step.slice(5)).first().waitFor({ timeout: 15_000 });
-      continue;
-    }
-    // "row:Site setup" opens a list row (a button whose name is the row's whole text, so it matches on a part).
-    if (step.startsWith("row:")) {
-      await page.getByRole("button", { name: step.slice(4) }).first().click();
-      await page.waitForTimeout(600);
-      continue;
-    }
-    // "radio:No work" presses a segmented choice instead of a button.
-    const radio = step.startsWith("radio:");
-    await page.getByRole(radio ? "radio" : "button", { name: radio ? step.slice(6) : step, exact: true }).click();
-    await page.waitForTimeout(radio ? 1200 : 300);
-  }
-
-  // The settled outcome (the "Done" row), not the "Exporting" spinner a fixed wait can catch.
-  if (screen.expectStill) await page.getByText(screen.expectStill).first().waitFor({ timeout: 15_000 });
+  await runScreenSteps(page, context, screen, state);
 
   const fileName = `${label}.png`;
   await page.screenshot({ path: join(outDir, fileName), fullPage: true });
@@ -354,6 +373,9 @@ async function captureInstalled(opts: {
     await context.close();
     return undefined;
   }
+
+  await page.evaluate(() => document.fonts.ready).catch(() => undefined);
+  await runScreenSteps(page, context, screen, "normal");
 
   await page.evaluate(({ top, bottom, left, right }) => {
     document.documentElement.style.setProperty("--sat-sim", `${top}px`);
@@ -566,7 +588,10 @@ async function main(): Promise<void> {
 
   // The native date input takes its field order from the process language (LANGUAGE), not from the context
   // locale or --lang: without it Chromium shows 09/28/2026 on the android, landscape and desktop shots.
-  const AU_ENV = { ...process.env, LANGUAGE: "en_AU", LC_ALL: "en_AU.UTF-8", LANG: "en_AU.UTF-8" } as Record<string, string>;
+  const AU_ENV = { ...process.env, LANGUAGE: "en_AU", LC_ALL: "en_AU.UTF-8", LANG: "en_AU.UTF-8" } as Record<
+    string,
+    string
+  >;
   const chromiumBrowser = await chromium.launch({
     ...(chromiumExecutable ? { executablePath: chromiumExecutable } : {}),
     args: ["--lang=en-AU"],
@@ -600,7 +625,11 @@ async function main(): Promise<void> {
           for (const viewport of VIEWPORTS) {
             if (screen.phoneOnly && viewport.name === "desktop") continue;
             if (screen.desktopOnly && viewport.name !== "desktop") continue;
-            if (screen.viewports && !screen.viewports.includes(viewport.name as "iphone" | "android" | "desktop")) continue;
+            if (
+              screen.viewports &&
+              !screen.viewports.includes(viewport.name as "iphone" | "android" | "desktop")
+            )
+              continue;
             for (const scheme of screen.lightOnly ? (["light"] as const) : SCHEMES) {
               const result = await captureOne({
                 browsers,

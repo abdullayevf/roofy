@@ -87,6 +87,26 @@ describe("Button", () => {
   });
 });
 
+describe("Button dim", () => {
+  it("keeps the filled shape at disabled opacity when dim, and the pale outline when not", () => {
+    const { rerender } = render(
+      <Button variant="primary" disabled dim>
+        Join team
+      </Button>,
+    );
+    const dimmed = screen.getByRole("button", { name: "Join team" }).className;
+    expect(dimmed).toContain("opacity-60");
+    expect(dimmed).toContain("bg-chalk");
+    expect(dimmed).not.toContain("border-line");
+    rerender(
+      <Button variant="primary" disabled>
+        Join team
+      </Button>,
+    );
+    expect(screen.getByRole("button", { name: "Join team" }).className).toContain("border-line");
+  });
+});
+
 describe("Button as a link", () => {
   it("renders a real link when enabled", () => {
     render(<Button href="/jobs">Open jobs</Button>);
