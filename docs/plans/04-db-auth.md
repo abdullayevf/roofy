@@ -417,7 +417,7 @@ Run 1 covers settings, levels, categories and templates. Run 2 covers members, i
 - Consumes: `withActor`, `assertCan`, the shapers, `auth.api` organization calls, and `getMailer()`.
 - Produces: `createWorkspaceService(): WorkspaceService` (every method in `contracts.ts` `WorkspaceService`).
 
-- [ ] Failing integration tests first, per method, against `roofy_test`:
+- [x] Failing integration tests first, per method, against `roofy_test`:
   - `settings`/`updateSettings` round-trip timezone, pay period, working days, standard hours (hundredths) and on-cost (basis points).
   - `inviteMember` creates an invitation and one invite mail. Inviting an existing member's email is refused with "This person is already in your team.".
   - `setMemberRole`: demoting the last Owner is refused with "Your business needs at least one owner.". A Manager setting anyone to or from Owner is forbidden.
@@ -427,8 +427,8 @@ Run 1 covers settings, levels, categories and templates. Run 2 covers members, i
   - Every method called as a member of workspace B on A's ids rejects `not_found`.
   - Accountant writes reject `forbidden`.
   - **Foreman scan** (`foreman-scan.int.test.ts`): a registry of every foreman-reachable real service method (workspace and onboarding now; later phases append) runs as a foreman actor, and each result passes `expectNoMoney`. A unit-level guard fails if a `WorkspaceService` method is missing from the registry.
-- [ ] Implement on `withActor`. Every query also filters `workspace_id = actor.workspaceId` (the first layer of tenant isolation).
-- [ ] Done when the tests pass and `pnpm verify` is green.
+- [x] Implement on `withActor`. Every query also filters `workspace_id = actor.workspaceId` (the first layer of tenant isolation).
+- [x] Done when the tests pass and `pnpm verify` is green.
 
 ### Task 12: Real onboarding and auth services (opus)
 
