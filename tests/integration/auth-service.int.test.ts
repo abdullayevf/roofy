@@ -27,6 +27,7 @@ import {
 import { actorFromHeaders } from "@/server/auth/actor";
 import { APIError } from "better-auth/api";
 import { createAuth, getAuth, type Auth } from "@/server/auth/auth";
+import { codeSubjects } from "@/server/auth/throttle";
 import { createDbAuth } from "@/server/services/auth";
 import { closePools, makeWorkspace, pool, rows } from "./helpers";
 
@@ -56,11 +57,12 @@ function base32Decode(text: string): string {
 }
 
 /** One browser: its cookies, the headers it sends, and the service bound to it. */
-function browser(auth = getAuth) {
+function browser(auth = getAuth, now?: () => number) {
   const cookies = new Map<string, string>();
   const headers = () => new Headers({ cookie: [...cookies].map(([k, v]) => `${k}=${v}`).join("; ") });
   const service = createDbAuth({
     auth,
+    now,
     requestHeaders: async () => headers(),
     keepCookies: (h) => {
       for (const c of h.getSetCookie()) {
@@ -338,8 +340,8 @@ describe("db auth service", () => {
     const email = freshEmail();
     await browser().service.signUp({ email, password: PASSWORD });
     for (let i = 0; i < 4; i++)
-      expect((await refusal(browser().service.signUp({ email, password: PASSWORD }))).message).toBe(EMAIL_TAKEN);
-    const sixth = await refusal(browser().service.signUp({ email, password: PASSWORD }));
+      expect((await refusal(browser().service.signUp({ email: i % 2 ? email : email.toUpperCase(), password: PASSWORD }))).message).toBe(EMAIL_TAKEN);
+    const sixth = await refusal(browser().service.signUp({ email: email.toUpperCase(), password: PASSWORD }));
     expect([sixth.code, sixth.message]).toEqual(["invalid", TOO_MANY_TRIES]);
   });
 
@@ -349,17 +351,21 @@ describe("db auth service", () => {
     const bad = code === "000000" ? "111111" : "000000";
     for (let i = 0; i < 5; i++)
       expect((await refusal(c.service.verifyTwoFactor(bad))).issues).toEqual([{ field: "code", message: WRONG_CODE }]);
-    // A junk copy of the cookie sent beside the real one does not start a fresh count.
-    const junk = createDbAuth({
-      auth: getAuth,
-      requestHeaders: async () =>
-        new Headers({ cookie: `${c.headers().get("cookie")}; better-auth.two_factor=junk${Date.now()}` }),
-      keepCookies: () => undefined,
-    });
-    const sixth = await refusal(junk.verifyTwoFactor(code));
+    // A junk copy of the cookie sent before or after the real one does not start a fresh count.
+    const withJunk = (first: boolean) => {
+      const real = c.headers().get("cookie") ?? "";
+      const junk = `better-auth.two_factor=junk${Date.now()}`;
+      return createDbAuth({
+        auth: getAuth,
+        requestHeaders: async () => new Headers({ cookie: first ? `${junk}; ${real}` : `${real}; ${junk}` }),
+        keepCookies: () => undefined,
+      });
+    };
+    const sixth = await refusal(withJunk(true).verifyTwoFactor(code));
     expect([sixth.code, sixth.message]).toEqual(["invalid", TOO_MANY_TRIES]);
-    const seventh = await refusal(c.service.verifyTwoFactor(code));
-    expect(seventh.message).toBe(TOO_MANY_TRIES);
+    const seventh = await refusal(withJunk(false).verifyTwoFactor(code));
+    expect([seventh.code, seventh.message]).toEqual(["invalid", TOO_MANY_TRIES]);
+    expect((await refusal(c.service.verifyTwoFactor(code))).message).toBe(TOO_MANY_TRIES);
     expect((await actorFromHeaders(c.headers())).kind).toBe("signed-out");
   });
 
@@ -369,11 +375,99 @@ describe("db auth service", () => {
     const before = mailsTo(email).length;
     for (const to of [email, unknown]) {
       for (let i = 0; i < 5; i++)
-        expect(await browser().service.requestPasswordReset(to)).toEqual({ message: RESET_LINK_SENT });
-      const sixth = await refusal(browser().service.requestPasswordReset(to));
+        expect(await browser().service.requestPasswordReset(i % 2 ? to : to.toUpperCase())).toEqual({ message: RESET_LINK_SENT });
+      const sixth = await refusal(browser().service.requestPasswordReset(to.toUpperCase()));
       expect([sixth.code, sixth.message]).toEqual(["invalid", TOO_MANY_TRIES]);
     }
     expect(mailsTo(email)).toHaveLength(before + 5);
+  });
+
+  /** One request through the catch-all route, from a fresh IP each time (Better Auth's per-IP limiter never trips). */
+  let ip = 0;
+  const http = (path: string, body: object, cookie = "") =>
+    getAuth().handler(
+      new Request(`${BASE}/api/auth${path}`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: BASE,
+          "x-forwarded-for": `10.77.${Math.floor(++ip / 250) % 250}.${(ip % 250) + 1}`,
+          ...(cookie ? { cookie } : {}),
+        },
+        body: JSON.stringify(body),
+      }),
+    );
+
+  it("F1: the per-email count ends with its minute: a sign-in after it is let in and the count starts again", async () => {
+    const { email } = await verifiedUser();
+    const start = Date.now() - 61_000;
+    const then = () => start;
+    for (let i = 0; i < 5; i++)
+      expect((await refusal(browser(getAuth, then).service.signIn({ email, password: "not the password" }))).message).toBe(WRONG_PASSWORD);
+    expect((await refusal(browser(getAuth, then).service.signIn({ email, password: PASSWORD }))).message).toBe(TOO_MANY_TRIES);
+    // Reset is counted apart from sign-in: five wrong passwords do not use up its tries.
+    expect(await browser(getAuth, then).service.requestPasswordReset(email)).toEqual({ message: RESET_LINK_SENT });
+    expect((await browser().service.signIn({ email, password: PASSWORD })).next).toBe("/onboarding");
+    for (let i = 0; i < 4; i++)
+      expect((await refusal(browser().service.signIn({ email, password: "not the password" }))).message).toBe(WRONG_PASSWORD);
+    expect((await refusal(browser().service.signIn({ email, password: PASSWORD }))).message).toBe(TOO_MANY_TRIES);
+  });
+
+  it("F1: ten sign-ins at once for one email: five are checked and five are too many tries", async () => {
+    const { email } = await verifiedUser();
+    const all = await Promise.all(
+      Array.from({ length: 10 }, () => refusal(browser().service.signIn({ email, password: "not the password" }))),
+    );
+    expect(all.map((e) => e.message).sort()).toEqual([...Array(5).fill(TOO_MANY_TRIES), ...Array(5).fill(WRONG_PASSWORD)].sort());
+  });
+
+  it("F2: the HTTP route and the service share one per-email count for sign-in, sign-up and reset", async () => {
+    const { email } = await verifiedUser();
+    for (let i = 0; i < 5; i++)
+      expect((await refusal(browser().service.signIn({ email, password: "not the password" }))).message).toBe(WRONG_PASSWORD);
+    expect((await http("/sign-in/email", { email: email.toUpperCase(), password: PASSWORD })).status).toBe(429);
+
+    const { email: viaHttp } = await verifiedUser();
+    for (let i = 0; i < 5; i++)
+      expect((await http("/sign-in/email", { email: viaHttp, password: "not the password" })).status).toBe(401);
+    expect((await refusal(browser().service.signIn({ email: viaHttp, password: PASSWORD }))).message).toBe(TOO_MANY_TRIES);
+
+    const taken = freshEmail();
+    await browser().service.signUp({ email: taken, password: PASSWORD });
+    for (let i = 0; i < 4; i++) await refusal(browser().service.signUp({ email: taken, password: PASSWORD }));
+    expect((await http("/sign-up/email", { email: taken, password: PASSWORD, name: "x" })).status).toBe(429);
+
+    const before = mailsTo(email).length;
+    for (let i = 0; i < 5; i++) await browser().service.requestPasswordReset(email);
+    expect((await http("/request-password-reset", { email, redirectTo: "/reset-password" })).status).toBe(429);
+    expect(mailsTo(email)).toHaveLength(before + 5);
+  });
+
+  it("F2/F4: TOTP codes over HTTP share the count; a re-encoded copy of the cookie is the same sign-in", async () => {
+    const { c, secret } = await waitingForCode();
+    const { code } = await getAuth().api.generateTOTP({ body: { secret } });
+    const bad = code === "000000" ? "111111" : "000000";
+    for (let i = 0; i < 5; i++)
+      expect((await refusal(c.service.verifyTwoFactor(bad))).issues).toEqual([{ field: "code", message: WRONG_CODE }]);
+    // Better Auth percent-decodes cookie values, so a re-encoded copy names the same waiting sign-in and count.
+    const [name, value] = [...c.cookies].find(([k]) => k.endsWith("two_factor"))!;
+    const same = [...value].map((ch) => (/[g-z]/i.test(ch) ? `%${ch.charCodeAt(0).toString(16)}` : ch)).join("");
+    const reencoded = new Headers({ cookie: [...c.cookies].map(([k, v]) => `${k}=${k === name ? same : v}`).join("; ") });
+    expect(reencoded.get("cookie")).not.toBe(c.headers().get("cookie"));
+    expect(codeSubjects(reencoded)).toEqual(codeSubjects(c.headers()));
+    expect(codeSubjects(c.headers())).toHaveLength(1);
+    expect((await http("/two-factor/verify-totp", { code }, c.headers().get("cookie") ?? "")).status).toBe(429);
+    expect((await actorFromHeaders(c.headers())).kind).toBe("signed-out");
+  });
+
+  it("F6: a new count clears this throttle's ended counts and leaves Better Auth's own", async () => {
+    const stale = Date.now() - 120_000;
+    const [mine, theirs] = [`roofy:sign-in:stale${Date.now()}`, `stale${Date.now()}/sign-in/email`];
+    for (const key of [mine, theirs])
+      await pool("owner").query("insert into rate_limit (id, key, count, last_request) values (gen_random_uuid(), $1, 6, $2)", [key, stale]);
+    await refusal(browser().service.signIn({ email: freshEmail(), password: "not the password" }));
+    const left = await rows<{ key: string }>("owner", "select key from rate_limit where key = any($1)", [[mine, theirs]]);
+    expect(left.map((r) => r.key)).toEqual([theirs]);
   });
 
   it("R5: signIn for a member of an unfinished workspace names set-up", async () => {

@@ -18,6 +18,8 @@ import { getMailer, inviteEmail, resetEmail, verificationEmail } from "@/server/
 import { assertInvite, assertKeepsAnOwner } from "@/server/authz/members";
 import { assertCan, memberActionFor } from "@/server/authz/matrix";
 import { isRole, roleFrom } from "./role";
+import { overLimit, SIGN_IN_LIMIT, subjectsOf, THROTTLED_PATHS } from "./throttle";
+import { TOO_MANY_TRIES } from "@/lib/auth-input";
 
 const ac = createAccessControl(defaultStatements);
 
@@ -30,7 +32,7 @@ export const ROLES_AC = {
 } satisfies Record<Role, unknown>;
 
 /** Wrong passwords allowed per window (seconds) before sign-in answers 429. */
-export const SIGN_IN_LIMIT = { window: 60, max: 5 };
+export { SIGN_IN_LIMIT };
 
 async function send(to: string, content: { subject: string; text: string; html: string }): Promise<void> {
   await getMailer().send({ to, ...content });
@@ -179,6 +181,14 @@ export function createAuth() {
     socialProviders: google(),
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        // Through the catch-all route only (a direct auth.api call has no request): the service counts its own
+        // calls, so each try is counted once, in the same per-email count, whichever way it came.
+        const kind = ctx.request ? THROTTLED_PATHS[ctx.path] : undefined;
+        if (kind) {
+          for (const subject of subjectsOf(kind, ctx.body, ctx.headers ?? new Headers()))
+            if (await overLimit(kind, subject, Date.now())) throw new APIError("TOO_MANY_REQUESTS", { message: TOO_MANY_TRIES });
+          return;
+        }
         if (!MEMBER_CHANGE_PATHS.has(ctx.path)) return;
         const s = await getSessionFromCtx(ctx);
         if (!s) return;

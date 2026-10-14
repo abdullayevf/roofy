@@ -387,6 +387,41 @@ describe("db onboarding: Task 12 fix 1 guards", () => {
     expect(await count("crew_member", actor.workspaceId)).toBe(0);
   });
 
+  it("F7: two set-up saves held at the user row at once make one workspace; the second is told set-up moved on", async () => {
+    const { userId } = await newUser("Held twice");
+    // Hold the user row from another connection, so both saves are under way before either can finish.
+    const holder = await pool("owner").connect();
+    try {
+      await holder.query("begin");
+      await holder.query(`select id from "user" where id = $1 for update`, [userId]);
+      const holderPid = (await holder.query<{ pid: number }>("select pg_backend_pid() as pid")).rows[0]!.pid;
+      const saves = [1, 2].map(() =>
+        createDbOnboarding({ userId }, now)
+          .saveBusiness(setUpActor(userId), BUSINESS)
+          .then(() => "saved", (e: unknown) => e),
+      );
+      // Wait until both saves are waiting behind the held row (directly, or behind the save in front).
+      const waiting = async () =>
+        (
+          await pool("owner").query<{ n: number }>(
+            `select count(*)::int as n from pg_stat_activity
+              where datname = current_database() and pid <> $1 and cardinality(pg_blocking_pids(pid)) > 0`,
+            [holderPid],
+          )
+        ).rows[0]!.n;
+      for (let i = 0; i < 100 && (await waiting()) < 2; i++) await new Promise((r) => setTimeout(r, 20));
+      expect(await waiting()).toBeGreaterThanOrEqual(2);
+      await holder.query("commit");
+      const outcomes = await Promise.all(saves);
+      const messages = outcomes.map((o) => (o instanceof DataError ? o.message : String(o)));
+      expect(messages.sort()).toEqual([MOVED_ON, "saved"].sort());
+    } finally {
+      holder.release();
+    }
+    expect(await rows("owner", "select 1 from member where user_id = $1", [userId])).toHaveLength(1);
+    expect(await rows("owner", "select 1 from workspace w join member m on m.workspace_id = w.id where m.user_id = $1", [userId])).toHaveLength(1);
+  });
+
   it("R5: two set-up saves at once for one user make one workspace", async () => {
     const { userId } = await newUser("Twice");
     const results = await Promise.allSettled(
