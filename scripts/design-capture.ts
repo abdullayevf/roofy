@@ -59,7 +59,7 @@ import {
   KEYBOARD_HEIGHT_PX,
   type GuardResult,
 } from "../tests/e2e/guards";
-import { resolveRoute, SCREENS, type DemoState, type Role, type ScreenSpec } from "../tests/e2e/screens";
+import { installedState, resolveRoute, SCREENS, type DemoState, type Role, type ScreenSpec } from "../tests/e2e/screens";
 
 type Engine = "chromium" | "webkit";
 
@@ -350,7 +350,10 @@ async function captureInstalled(opts: {
     ...AU_PHONE,
     ...IPHONE_UA,
   });
-  if (role) await context.addCookies([{ name: "roofy_role", value: role, url: base }]);
+  // The shot is of the state the screen is named for (the two-factor set-up form exists only in `?demo=blocked`).
+  const state = installedState(screen);
+  const cookieRole = state === "foreman" ? "foreman" : role;
+  if (cookieRole) await context.addCookies([{ name: "roofy_role", value: cookieRole, url: base }]);
   const page = await context.newPage();
 
   // page.emulateMedia has no display-mode feature; CDP is the only way to
@@ -365,6 +368,7 @@ async function captureInstalled(opts: {
   }
 
   const url = new URL(resolveRoute(screen.route), base);
+  if (state !== "normal" && state !== "foreman") url.searchParams.set("demo", state);
   const response = await page.goto(url.toString(), { waitUntil: "networkidle" }).catch(() => null);
   const fileName = `${screen.id}-installed-${landscape ? "landscape" : "iphone"}.png`;
 
@@ -375,7 +379,7 @@ async function captureInstalled(opts: {
   }
 
   await page.evaluate(() => document.fonts.ready).catch(() => undefined);
-  await runScreenSteps(page, context, screen, "normal");
+  await runScreenSteps(page, context, screen, state);
 
   await page.evaluate(({ top, bottom, left, right }) => {
     document.documentElement.style.setProperty("--sat-sim", `${top}px`);
@@ -418,11 +422,11 @@ async function captureInstalled(opts: {
   }
   // Only the foreman check runs on installed shots; the other guards ran on the same route's ordinary captures.
   const record: CheckRecord | undefined =
-    role === "foreman"
+    cookieRole === "foreman"
       ? {
           screen: screen.id,
-          state: "normal",
-          role,
+          state,
+          role: cookieRole,
           viewport: "iphone",
           scheme: "light",
           engine,

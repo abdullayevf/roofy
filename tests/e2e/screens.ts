@@ -2070,6 +2070,15 @@ export function resolveRoute(route: string, ids: Record<string, string> = PLACEH
 }
 
 /**
+ * The state an installed-mode shot is of. The normal state when the screen has it; otherwise the state the screen is
+ * named for. A screen that only exists in one state (the two-factor set-up form shows only while two-factor is off,
+ * `?demo=blocked`) would otherwise be drawn as the normal page, which has no form for its steps to fill.
+ */
+export function installedState(screen: Pick<ScreenSpec, "states">): DemoState {
+  return screen.states.includes("normal") ? "normal" : (screen.states[0] ?? "normal");
+}
+
+/**
  * Alternative to the fixed id map: opens `listRoute`, finds the first link
  * whose href matches the route's static prefix (everything before the first
  * `:param`), and returns that href. Returns null if the list page has no

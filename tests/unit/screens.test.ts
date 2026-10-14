@@ -19,7 +19,7 @@ import {
   emailProblem,
   newPasswordProblem,
 } from "../../src/lib/auth-input";
-import { PLACEHOLDER_IDS, resolveRoute, SCREENS, type ScreenGroup } from "../e2e/screens";
+import { installedState, PLACEHOLDER_IDS, resolveRoute, SCREENS, type ScreenGroup } from "../e2e/screens";
 
 const KNOWN_GROUPS: ScreenGroup[] = [
   "system",
@@ -309,5 +309,22 @@ describe("auth captures", () => {
       expect(screen?.expectStill, id).toBe("Send link");
     }
     expect(auth.find((s) => s.id === "verify-no-token")?.expectStill).toBe(LINK_INCOMPLETE.slice(0, 23));
+  });
+});
+
+describe("installed-mode captures", () => {
+  it("are of the state the screen is named for, so a screen that only exists in one state (the two-factor set-up form is shown only while two-factor is off) is not drawn as the normal page", () => {
+    const byId = (id: string) => SCREENS.find((s) => s.id === id)!;
+    expect(installedState(byId("two-factor-setup-invalid"))).toBe("blocked");
+    expect(installedState(byId("settings-two-factor-invalid"))).toBe("blocked");
+    expect(installedState(byId("members-remove-offline"))).toBe("offline");
+    // A screen that lists the normal state keeps drawing it.
+    expect(installedState(byId("settings-two-factor"))).toBe("normal");
+    expect(installedState(byId("verify-expired"))).toBe("normal");
+  });
+
+  it("every screen that fills a field and is not shown in the normal state is captured installed in the state it is shown in", () => {
+    for (const screen of SCREENS.filter((s) => s.steps?.some((step) => step.startsWith("fill:")) && !s.states.includes("normal")))
+      expect(installedState(screen), screen.id).toBe(screen.states[0]);
   });
 });
