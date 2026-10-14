@@ -226,6 +226,17 @@ describe("ROOFY_DATA=db", () => {
     expect((await getOnboardingWrite()).onboarding).toBe(service);
   });
 
+  it("with only roofy_role set, no entry point mints a demo session: no roofy_demo cookie, no session store, the provider's actor", async () => {
+    jar.set("roofy_role", "foreman");
+    expect((await getData()).actor).toBe(actor);
+    expect((await getWriteData()).actor).toBe(actor);
+    expect((await getOnboarding()).actor).toBe(actor);
+    expect((await getOnboardingWrite()).actor).toBe(actor);
+    expect(jar.has("roofy_demo")).toBe(false);
+    expect([...jar.entries()]).toEqual([["roofy_role", "foreman"]]);
+    expect(sessionStoreIds()).toEqual([]);
+  });
+
   it("prototype cookies (roofy_role, roofy_demo) are ignored: the provider's actor, no cookie or demo store touched", async () => {
     const demoId = crypto.randomUUID();
     jar.set("roofy_role", "foreman");
