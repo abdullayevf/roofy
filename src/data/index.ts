@@ -22,10 +22,14 @@
  *   "N to send" badge. Layouts get no `searchParams`: call `getData()` with no argument there and
  *   the state comes from the `x-roofy-demo` header that `src/proxy.ts` copies from `?demo=`.
  *
- * `ROOFY_DATA` selects the implementation: "fake" (Phase 2). Unset means fake outside production
- * only; in production (`pnpm start`) set `ROOFY_DATA=fake` explicitly. Anything else throws — the
- * real data layer arrives in Phase 3.
+ * `ROOFY_DATA` selects the implementation: "fake" (the prototype) or "db" (Postgres and Better Auth,
+ * registered by `src/instrumentation.ts` through `./db-registry`). Unset means fake outside production
+ * only; in production (`pnpm start`) set it explicitly. Anything else throws. In db mode there are no
+ * demo states: `demo` flags are all off and `?demo=` is ignored; someone signed out (or without a
+ * workspace yet) is redirected to `/sign-in` (or `/onboarding`).
  */
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { todayIn } from "@/domain/dates";
 import type { LocalDate } from "@/domain/types";
 import type { Actor, AuthService, DataServices, OnboardingService, Role } from "./contracts";
@@ -35,6 +39,7 @@ import { createFakeServices } from "./fake/services";
 import { createFakeAuth } from "./fake/services/auth";
 import { actorFor } from "./fake/services/context";
 import { createFakeOnboarding, newWorkspaceTables } from "./fake/services/onboarding";
+import { dbData } from "./db-registry";
 import { emptyStore, FakeStore, getSeed, replaceSessionStore, sessionStore, sharedStore } from "./fake/store";
 import { ensureDemoSession, readDemoParam, readSession, type SearchParamsInput } from "./session";
 
@@ -42,7 +47,7 @@ export type { DemoFlags } from "./fake/demo";
 export { isLoadingDemo } from "./fake/demo";
 export type { SearchParamsInput } from "./session";
 
-export type DataMode = "fake";
+export type DataMode = "fake" | "db";
 
 /**
  * `ROOFY_DATA`. Unset or empty means "fake" outside production only (so `pnpm dev` needs no
@@ -59,16 +64,28 @@ export function isFakeMode(): boolean {
 export function dataMode(): DataMode {
   const mode = rawMode();
   if (mode === "") {
-    throw new Error(
-      "ROOFY_DATA isn't set: the real data layer arrives in Phase 3. Set ROOFY_DATA=fake to run the prototype.",
-    );
+    throw new Error("ROOFY_DATA isn't set. Set ROOFY_DATA=db for the database or ROOFY_DATA=fake to run the prototype.");
   }
-  if (mode !== "fake") {
-    throw new Error(
-      `ROOFY_DATA="${mode}" isn't available yet: the real data layer arrives in Phase 3. Set ROOFY_DATA=fake.`,
-    );
+  if (mode !== "fake" && mode !== "db") {
+    throw new Error(`ROOFY_DATA="${mode}" isn't a data mode. Set ROOFY_DATA=db or ROOFY_DATA=fake.`);
   }
   return mode;
+}
+
+/** Db mode has no demo states (a fresh object each time: `outbox` is an array a caller could change). */
+const noDemo = (): DemoFlags => ({ state: null, loading: false, offline: false, outbox: [] });
+
+/** The db-mode request context, or a redirect for someone signed out or without a workspace (never returns then). */
+async function dbContext(): Promise<WriteContext & { workspaceName: string }> {
+  const ctx = await dbData().context(await headers());
+  if ("redirect" in ctx) redirect(ctx.redirect);
+  return { mode: "db", data: ctx.data, actor: ctx.actor, today: ctx.today, workspaceName: ctx.workspaceName };
+}
+
+async function dbOnboarding(): Promise<OnboardingContext> {
+  const found = await dbData().onboarding(await headers());
+  if ("redirect" in found) redirect(found.redirect);
+  return { onboarding: found.service, actor: found.actor, demo: noDemo() };
 }
 
 export interface DataContext {
@@ -86,6 +103,7 @@ export interface DataContext {
 
 export async function getData(options: { searchParams?: SearchParamsInput } = {}): Promise<DataContext> {
   const mode = dataMode();
+  if (mode === "db") return { ...(await dbContext()), demo: noDemo() };
   const session = await readSession();
   const state = parseDemoState(await readDemoParam(options.searchParams));
   const store =
@@ -134,7 +152,10 @@ export function writeContext(session: { role: Role; demoSessionId: string }): Wr
  * the browser has none (Server Functions may set cookies; Server Components may not).
  */
 export async function getWriteData(): Promise<WriteContext> {
-  dataMode();
+  if (dataMode() === "db") {
+    const { mode, data, actor, today } = await dbContext();
+    return { mode, data, actor, today };
+  }
   const session = await readSession();
   const demoSessionId = await ensureDemoSession();
   return writeContext({ role: session.role, demoSessionId });
@@ -142,8 +163,7 @@ export async function getWriteData(): Promise<WriteContext> {
 
 /** Sign in and sign up: there is no signed-in person yet, so no store, actor or demo state. */
 export function getAuth(): AuthService {
-  dataMode();
-  return createFakeAuth();
+  return dataMode() === "db" ? dbData().auth() : createFakeAuth();
 }
 
 export interface OnboardingContext {
@@ -164,7 +184,7 @@ function onboardingOn(store: FakeStore, role: Role, demo: ReturnType<typeof pars
  * shown but never written. `?demo=error|noperm` refuse every call as elsewhere.
  */
 export async function getOnboarding(options: { searchParams?: SearchParamsInput } = {}): Promise<OnboardingContext> {
-  dataMode();
+  if (dataMode() === "db") return dbOnboarding();
   const session = await readSession();
   const state = parseDemoState(await readDemoParam(options.searchParams));
   const store =
@@ -182,13 +202,17 @@ export async function getOnboarding(options: { searchParams?: SearchParamsInput 
 
 /** The set-up wizard for a Server Function: always the demo session's own, writable workspace. */
 export async function getOnboardingWrite(): Promise<OnboardingContext> {
-  dataMode();
+  if (dataMode() === "db") return dbOnboarding();
   const session = await readSession();
   const id = await ensureDemoSession();
   return onboardingOn(sessionStore(id), session.role, null);
 }
 
-/** Sign-up: the demo session becomes a new, empty workspace whose set-up wizard starts at the beginning. */
+/**
+ * Sign-up (fake mode): the demo session becomes a new, empty workspace whose set-up wizard starts at the
+ * beginning. In db mode the wizard creates the workspace, so there is nothing to do here.
+ */
 export async function startNewWorkspace(): Promise<void> {
+  if (dataMode() === "db") return;
   replaceSessionStore(await ensureDemoSession(), newWorkspaceTables(getSeed()));
 }

@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { isDataError } from "../../contracts";
-import { createFakeAuth, DEMO_OWNER_EMAIL, DEMO_PASSWORD } from "./auth";
+import {
+  createFakeAuth,
+  DEMO_OWNER_EMAIL,
+  DEMO_PASSWORD,
+  INVITE_GONE,
+  LINK_EXPIRED,
+  RESET_LINK_SENT,
+  TWO_FACTOR_CODE,
+} from "./auth";
 
 const auth = createFakeAuth();
 const refusal = async (p: Promise<unknown>) => {
@@ -56,6 +64,50 @@ describe("fake auth: sign up", () => {
 describe("fake auth: Continue with Google", () => {
   it("goes straight on: Home to sign in, set-up to sign up", async () => {
     expect(await auth.continueWithGoogle("sign-in")).toEqual({ role: "owner", next: "/" });
+    expect(await auth.continueWithGoogle("sign-up")).toEqual({ role: "owner", next: "/onboarding" });
+  });
+});
+
+describe("fake auth: email, reset, two-factor and invite (Phase 3 additions)", () => {
+  it("requestPasswordReset answers the same sentence for a known and an unknown email", async () => {
+    const known = await auth.requestPasswordReset(DEMO_OWNER_EMAIL);
+    const unknown = await auth.requestPasswordReset("nobody-here@example.com");
+    expect(known).toEqual({ message: RESET_LINK_SENT });
+    expect(unknown).toEqual(known);
+  });
+  it("requestPasswordReset refuses a badly formed email, naming the field", async () => {
+    const e = await refusal(auth.requestPasswordReset("not-an-email"));
+    expect([e.code, e.message, e.issues]).toEqual([
+      "invalid",
+      "Check your email address. It should look like name@example.com.",
+      [{ field: "email", message: "Check your email address. It should look like name@example.com." }],
+    ]);
+  });
+  it("verifyEmail goes on to set-up; a blank token is an expired link", async () => {
+    expect(await auth.verifyEmail("token-1")).toEqual({ role: "owner", next: "/onboarding" });
+    const e = await refusal(auth.verifyEmail(" "));
+    expect([e.code, e.message]).toEqual(["invalid", LINK_EXPIRED]);
+  });
+  it("resetPassword takes a new password of 8 or more characters", async () => {
+    await expect(auth.resetPassword("token-1", "long-enough")).resolves.toBeUndefined();
+    const short = await refusal(auth.resetPassword("token-1", "short"));
+    expect([short.code, short.issues]).toEqual(["invalid", [{ field: "password", message: "Use at least 8 characters." }]]);
+    const gone = await refusal(auth.resetPassword("", "long-enough"));
+    expect([gone.code, gone.message]).toEqual(["invalid", LINK_EXPIRED]);
+  });
+  it("verifyTwoFactor takes 6 digits and goes Home", async () => {
+    expect(await auth.verifyTwoFactor(" 123456 ")).toEqual({ role: "owner", next: "/" });
+    for (const bad of ["12345", "abcdef", "1234567"]) {
+      const e = await refusal(auth.verifyTwoFactor(bad));
+      expect([e.code, e.issues]).toEqual(["invalid", [{ field: "code", message: TWO_FACTOR_CODE }]]);
+    }
+  });
+  it("acceptInvite joins and goes Home; a blank invite is a cancelled one", async () => {
+    expect(await auth.acceptInvite("inv-1")).toEqual({ role: "foreman", next: "/" });
+    const e = await refusal(auth.acceptInvite(""));
+    expect([e.code, e.message]).toEqual(["invalid", INVITE_GONE]);
+  });
+  it("continueWithGoogle still goes straight on in the prototype", async () => {
     expect(await auth.continueWithGoogle("sign-up")).toEqual({ role: "owner", next: "/onboarding" });
   });
 });

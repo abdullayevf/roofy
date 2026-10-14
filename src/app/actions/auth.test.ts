@@ -1,5 +1,5 @@
 /** Sign-in Server Functions: the cookies they set, the next page they name, the refusals they return. */
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { vi } from "vitest";
 
 const jar = new Map<string, string>();
@@ -12,7 +12,8 @@ vi.mock("next/headers", () => ({
 }));
 
 const { signIn, signUp, continueWithGoogle } = await import("./auth");
-const { DEMO_OWNER_EMAIL, DEMO_PASSWORD } = await import("@/data/fake/services/auth");
+const { DEMO_OWNER_EMAIL, DEMO_PASSWORD, createFakeAuth } = await import("@/data/fake/services/auth");
+const { registerDbData } = await import("@/data/db-registry");
 
 beforeEach(() => jar.clear());
 
@@ -36,5 +37,30 @@ describe("auth Server Functions", () => {
   it("Continue with Google goes straight on; an unknown mode is refused", async () => {
     expect(await continueWithGoogle("sign-up")).toEqual({ ok: true, next: "/onboarding" });
     expect((await continueWithGoogle("sign-out" as never)).ok).toBe(false);
+  });
+});
+
+describe("auth Server Functions in db mode", () => {
+  const GOOGLE = "https://accounts.google.com/o/oauth2/v2/auth?client_id=test";
+  beforeEach(() => {
+    vi.stubEnv("ROOFY_DATA", "db");
+    const fake = createFakeAuth();
+    registerDbData({
+      context: async () => ({ redirect: "/sign-in" }),
+      onboarding: async () => ({ redirect: "/sign-in" }),
+      auth: () => ({ ...fake, continueWithGoogle: async () => ({ redirectTo: GOOGLE }) }),
+    });
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    registerDbData(null);
+  });
+  it("Continue with Google names Google's authorize URL and sets no prototype cookies", async () => {
+    expect(await continueWithGoogle("sign-in")).toEqual({ ok: true, next: GOOGLE });
+    expect(jar.size).toBe(0);
+  });
+  it("sign in names the next page and sets no prototype role or demo cookies", async () => {
+    expect(await signIn(DEMO_OWNER_EMAIL, DEMO_PASSWORD)).toEqual({ ok: true, next: "/" });
+    expect(jar.size).toBe(0);
   });
 });

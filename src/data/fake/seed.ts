@@ -46,6 +46,7 @@ import type { ProjectRow, SeedTables, StageRow, WorkLogRow } from "./rows";
 import { SeedBuilder, STANDARD_DAY, TIMEZONE, type GridSpec, type TemplateItemDef } from "./seed-builder";
 import { Rng } from "./rng";
 import { generateHistory } from "./seed-history";
+import { ROOFING_DEFAULTS } from "@/lib/roofing-defaults";
 
 export const SEED_TODAY: LocalDate = "2026-09-28";
 export const SEED_NOW = new Date(DEFAULT_FAKE_NOW).toISOString();
@@ -97,96 +98,9 @@ export interface Seed extends SeedTables {
 
 // ─── Reference data ─────────────────────────────────────────────────────────
 
-const LEVELS: [string, Cents][] = [
-  ["Labourer", 2800],
-  ["Apprentice yr 1", 1800],
-  ["Apprentice yr 2", 2200],
-  ["Apprentice yr 3", 2500],
-  ["Apprentice yr 4", 2800],
-  ["Roofer", 3200],
-  ["Leading hand", 3600],
-  ["Foreman", 4000],
-];
-
-const CATEGORIES = [
-  "Materials",
-  "Equipment hire",
-  "Scaffolding",
-  "Skip/tip fees",
-  "Fuel & travel",
-  "Parking & tolls",
-  "Subcontractor (non-crew)",
-  "Permits",
-  "Other",
-];
-
-const item = (
-  name: string,
-  unit: Unit | null,
-  labourShareBp: number,
-  materialsShareBp: number,
-): TemplateItemDef => ({
-  name,
-  unit,
-  labourShareBp,
-  materialsShareBp,
-});
-
-export const TEMPLATES: Record<JobType, { name: string; items: TemplateItemDef[] }> = {
-  metal_reroof: {
-    name: "Metal re-roof",
-    items: [
-      item("Site setup & safety", null, 500, 0),
-      item("Strip & remove", null, 1500, 0),
-      item("Battens / structural repairs", null, 1500, 1000),
-      item("Sarking & insulation", null, 1000, 1500),
-      item("Sheet install", "m2", 3500, 6500),
-      item("Flashings, gutters & downpipes", "lm", 1500, 1000),
-      item("Clean-up & handover", null, 500, 0),
-    ],
-  },
-  tile_reroof: {
-    name: "Tile re-roof",
-    items: [
-      item("Site setup & safety", null, 500, 0),
-      item("Strip & remove", null, 1500, 0),
-      item("Battens", null, 1500, 1000),
-      item("Sarking", null, 1000, 1000),
-      item("Tile install", "m2", 3500, 7000),
-      item("Ridge bedding & pointing", null, 1500, 1000),
-      item("Clean-up & handover", null, 500, 0),
-    ],
-  },
-  restoration: {
-    name: "Restoration",
-    items: [
-      item("Site setup", null, 500, 0),
-      item("Pressure clean", "m2", 1500, 0),
-      item("Repairs & replacements", null, 2000, 2500),
-      item("Re-bed & re-point", null, 2500, 2500),
-      item("Coat / paint", "m2", 3000, 5000),
-      item("Clean-up", null, 500, 0),
-    ],
-  },
-  repair: {
-    name: "Repair",
-    items: [
-      item("Inspect", null, 1500, 0),
-      item("Repair", null, 7000, 10000),
-      item("Clean-up", null, 1500, 0),
-    ],
-  },
-  new_build: {
-    name: "New build",
-    items: [
-      item("Battens", null, 2000, 1500),
-      item("Sarking & insulation", null, 1500, 1500),
-      item("Roof sheeting/tiles", "m2", 3500, 5000),
-      item("Flashings", "lm", 1500, 1000),
-      item("Gutters & downpipes", "lm", 1500, 1000),
-    ],
-  },
-};
+const LEVELS = ROOFING_DEFAULTS.levels;
+const CATEGORIES = ROOFING_DEFAULTS.categories;
+export const TEMPLATES: Record<JobType, { name: string; items: TemplateItemDef[] }> = ROOFING_DEFAULTS.templates;
 
 interface CrewDef {
   key: CrewKey;
@@ -907,7 +821,7 @@ export function buildSeed(): Seed {
     members[role] = m.id;
   }
 
-  LEVELS.forEach(([name, floorRateCents], position) =>
+  LEVELS.forEach(({ name, floorRateCents }, position) =>
     t.crewLevels.push({ ...b.base(setupAt), name, floorRateCents, position }),
   );
   CATEGORIES.forEach((name, position) => t.expenseCategories.push({ ...b.base(setupAt), name, position }));

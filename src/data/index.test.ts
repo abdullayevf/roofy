@@ -9,13 +9,27 @@ vi.mock("next/headers", () => ({
   }),
   headers: async () => requestHeaders,
 }));
+/** Like Next's `redirect()`: records where to and never returns. */
+const redirects: string[] = [];
+class Redirected extends Error {}
+vi.mock("next/navigation", () => ({
+  redirect: (to: string) => {
+    redirects.push(to);
+    throw new Redirected(to);
+  },
+}));
 
-const { getData, isFakeMode, dataMode } = await import("./index");
+const { getData, getWriteData, getAuth, getOnboarding, getOnboardingWrite, startNewWorkspace, isFakeMode, dataMode } =
+  await import("./index");
+const { registerDbData } = await import("./db-registry");
+const { createFakeAuth } = await import("./fake/services/auth");
 const { clearSessionStores, sessionStoreIds, sharedStore, emptyStore } = await import("./fake/store");
 const { DataError } = await import("./contracts");
 
 beforeEach(() => {
   jar.clear();
+  redirects.length = 0;
+  registerDbData(null);
   requestHeaders.delete("x-roofy-demo");
   vi.stubEnv("ROOFY_FAKE_NOW", undefined);
 });
@@ -25,20 +39,23 @@ afterEach(() => {
 });
 
 describe("ROOFY_DATA", () => {
-  it("fake is the only implementation; unset defaults to fake outside production", () => {
+  it("fake and db are the implementations; unset defaults to fake outside production", () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("ROOFY_DATA", "fake");
     expect([isFakeMode(), dataMode()]).toEqual([true, "fake"]);
+    vi.stubEnv("ROOFY_DATA", "db");
+    expect([isFakeMode(), dataMode()]).toEqual([false, "db"]);
     vi.stubEnv("ROOFY_DATA", undefined);
     expect([isFakeMode(), dataMode()]).toEqual([true, "fake"]);
   });
 
-  it("in production an unset ROOFY_DATA is not fake: it throws until Phase 3", async () => {
+  it("in production an unset ROOFY_DATA is not fake: it throws, naming both modes", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("ROOFY_DATA", undefined);
     expect(isFakeMode()).toBe(false);
-    expect(() => dataMode()).toThrow(/ROOFY_DATA isn't set.*real data layer arrives in Phase 3/);
-    await expect(getData()).rejects.toThrow(/Phase 3/);
+    const unset = "ROOFY_DATA isn't set. Set ROOFY_DATA=db for the database or ROOFY_DATA=fake to run the prototype.";
+    expect(() => dataMode()).toThrow(new Error(unset));
+    await expect(getData()).rejects.toThrow(new Error(unset));
     vi.stubEnv("ROOFY_DATA", "");
     expect(isFakeMode()).toBe(false);
     vi.stubEnv("ROOFY_DATA", "fake");
@@ -48,8 +65,10 @@ describe("ROOFY_DATA", () => {
   it("anything else throws a clear error", async () => {
     vi.stubEnv("ROOFY_DATA", "postgres");
     expect(isFakeMode()).toBe(false);
-    expect(() => dataMode()).toThrow(/real data layer arrives in Phase 3/);
-    await expect(getData()).rejects.toThrow(/ROOFY_DATA="postgres"/);
+    const wrong = new Error('ROOFY_DATA="postgres" isn\'t a data mode. Set ROOFY_DATA=db or ROOFY_DATA=fake.');
+    expect(() => dataMode()).toThrow(wrong);
+    await expect(getData()).rejects.toThrow(wrong);
+    expect(() => getAuth()).toThrow(wrong);
   });
 });
 
@@ -112,5 +131,91 @@ describe("getData", () => {
       code: "forbidden",
       message: "You don't have access to this. Ask your manager.",
     });
+  });
+});
+
+describe("ROOFY_DATA=db", () => {
+  const actor = { userId: "u-1", workspaceId: "w-1", role: "owner" as const, name: "Ann Lee" };
+  const data = { marker: "db services" } as unknown as import("./contracts").DataServices;
+  const service = { marker: "db onboarding" } as unknown as import("./contracts").OnboardingService;
+  const auth = createFakeAuth();
+  const seen: Headers[] = [];
+  let context: Awaited<ReturnType<import("./db-registry").DbDataProvider["context"]>>;
+  let onboarding: Awaited<ReturnType<import("./db-registry").DbDataProvider["onboarding"]>>;
+
+  beforeEach(() => {
+    vi.stubEnv("ROOFY_DATA", "db");
+    seen.length = 0;
+    context = { actor, data, today: "2026-10-14", workspaceName: "Lee Roofing" };
+    onboarding = { actor, service };
+    registerDbData({
+      context: async (h) => (seen.push(h), context),
+      auth: () => auth,
+      onboarding: async (h) => (seen.push(h), onboarding),
+    });
+  });
+
+  it("getData answers the provider's actor, services, today and workspace name for this request's headers", async () => {
+    expect(await getData()).toEqual({
+      mode: "db",
+      data,
+      actor,
+      today: "2026-10-14",
+      workspaceName: "Lee Roofing",
+      demo: { state: null, loading: false, offline: false, outbox: [] },
+    });
+    expect(seen).toEqual([requestHeaders]);
+  });
+
+  it("demo flags are all off and ?demo= (param or proxy header) is ignored", async () => {
+    requestHeaders.set("x-roofy-demo", "waiting");
+    for (const demo of ["loading", "offline", "error", "noperm", "empty"]) {
+      const ctx = await getData({ searchParams: { demo } });
+      expect([ctx.demo, ctx.data]).toEqual([{ state: null, loading: false, offline: false, outbox: [] }, data]);
+    }
+    expect((await getOnboarding({ searchParams: { demo: "error" } })).demo).toEqual({
+      state: null,
+      loading: false,
+      offline: false,
+      outbox: [],
+    });
+  });
+
+  it("signed out → redirect('/sign-in'); no workspace → redirect('/onboarding'), for reads and writes", async () => {
+    context = { redirect: "/sign-in" };
+    await expect(getData()).rejects.toThrow(new Redirected("/sign-in"));
+    await expect(getWriteData()).rejects.toThrow(new Redirected("/sign-in"));
+    context = { redirect: "/onboarding" };
+    await expect(getData()).rejects.toThrow(new Redirected("/onboarding"));
+    expect(redirects).toEqual(["/sign-in", "/sign-in", "/onboarding"]);
+  });
+
+  it("getWriteData answers the same actor and services, without demo state", async () => {
+    expect(await getWriteData()).toEqual({ mode: "db", data, actor, today: "2026-10-14" });
+  });
+
+  it("getOnboarding: signed out → /sign-in, already in a workspace → /, otherwise the provider's wizard", async () => {
+    onboarding = { redirect: "/sign-in" };
+    await expect(getOnboarding()).rejects.toThrow(new Redirected("/sign-in"));
+    onboarding = { redirect: "/" };
+    await expect(getOnboardingWrite()).rejects.toThrow(new Redirected("/"));
+    expect(redirects).toEqual(["/sign-in", "/"]);
+    onboarding = { actor, service };
+    expect(await getOnboarding()).toMatchObject({ onboarding: service, actor });
+    expect((await getOnboardingWrite()).onboarding).toBe(service);
+  });
+
+  it("getAuth is the provider's auth service; sign-up makes no demo workspace", async () => {
+    expect(getAuth()).toBe(auth);
+    await startNewWorkspace();
+    expect([sessionStoreIds(), jar.size]).toEqual([[], 0]);
+  });
+
+  it("with no provider registered, every entry point says so", async () => {
+    registerDbData(null);
+    const missing = new Error("The database data layer is not registered");
+    await expect(getData()).rejects.toThrow(missing);
+    expect(() => getAuth()).toThrow(missing);
+    await expect(getOnboarding()).rejects.toThrow(missing);
   });
 });

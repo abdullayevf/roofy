@@ -1753,10 +1753,23 @@ export interface SignInInput {
 }
 export type SignUpInput = SignInInput;
 
-/** Who the person is signed in as, and where to go next: Home after signing in, set-up after signing up. */
+/**
+ * Who the person is signed in as, and where to go next: Home after signing in, set-up after signing up,
+ * "check your email" while the address is unverified, the code screen when two-factor is on.
+ */
 export interface AuthSession {
   role: Role;
-  next: "/" | "/onboarding";
+  next: "/" | "/onboarding" | "/check-email" | "/two-factor";
+}
+
+/** Google sign-in that leaves the app first: the browser goes to Google's authorize URL. */
+export interface AuthRedirect {
+  redirectTo: string;
+}
+
+/** What "Send link" answers: the same sentence whether or not the email has an account. */
+export interface PasswordResetRequested {
+  message: string;
 }
 
 /**
@@ -1766,8 +1779,21 @@ export interface AuthSession {
 export interface AuthService {
   signIn(input: SignInInput): Promise<AuthSession>;
   signUp(input: SignUpInput): Promise<AuthSession>;
-  /** Google's own screens are out of scope for the prototype: it goes straight on. */
-  continueWithGoogle(mode: "sign-in" | "sign-up"): Promise<AuthSession>;
+  /**
+   * The prototype goes straight on (Google's own screens are out of scope); the real service answers
+   * Google's authorize URL to send the browser to.
+   */
+  continueWithGoogle(mode: "sign-in" | "sign-up"): Promise<AuthSession | AuthRedirect>;
+  /** The link in the verification email. A used or expired token is `DataError("invalid")`. */
+  verifyEmail(token: string): Promise<AuthSession>;
+  /** Never reveals whether the email has an account: known and unknown emails get the same answer. */
+  requestPasswordReset(email: string): Promise<PasswordResetRequested>;
+  /** The link in the reset email plus the new password; afterwards the person signs in again. */
+  resetPassword(token: string, password: string): Promise<void>;
+  /** The 6-digit code from the authenticator app, after a sign-in answered `next: "/two-factor"`. */
+  verifyTwoFactor(code: string): Promise<AuthSession>;
+  /** Join the team an invite is for, with the invited role. A cancelled or expired invite is `DataError("invalid")`. */
+  acceptInvite(invitationId: string): Promise<AuthSession>;
 }
 
 // ─── Set-up wizard (onboarding) ─────────────────────────────────────────────

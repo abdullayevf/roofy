@@ -1,9 +1,13 @@
 "use server";
-/** Sign in and sign up (prototype): the fake auth service says who, this sets the session cookies and names where to go. */
+/**
+ * Sign in and sign up. Prototype: the fake auth service says who, this sets the demo session cookies and
+ * names where to go. Db mode: Better Auth sets its own session cookie, so this only names where to go
+ * (Google's authorize URL for Google sign-in).
+ */
 import { cookies, headers } from "next/headers";
 import { z } from "zod";
-import { getAuth, startNewWorkspace } from "@/data";
-import { isDataError, type ActionResult, type AuthService, type AuthSession } from "@/data/contracts";
+import { getAuth, isFakeMode, startNewWorkspace } from "@/data";
+import { isDataError, type ActionResult, type AuthRedirect, type AuthService, type AuthSession } from "@/data/contracts";
 import { fieldIssues, firstIssue } from "@/data/mutations";
 import { SIGN_IN_FAILED } from "@/lib/auth-input";
 import { ROLE_COOKIE, SESSION_COOKIE_OPTIONS, ensureDemoSession, isHttps } from "@/data/session";
@@ -11,9 +15,13 @@ import { ROLE_COOKIE, SESSION_COOKIE_OPTIONS, ensureDemoSession, isHttps } from 
 const credentials = z.object({ email: z.string().max(1000), password: z.string().max(1000) });
 const modeSchema = z.enum(["sign-in", "sign-up"]);
 
-async function enter(work: (auth: AuthService) => Promise<AuthSession>): Promise<ActionResult<{ next: string }>> {
+async function enter(
+  work: (auth: AuthService) => Promise<AuthSession | AuthRedirect>,
+): Promise<ActionResult<{ next: string }>> {
   try {
     const session = await work(getAuth());
+    if ("redirectTo" in session) return { ok: true, next: session.redirectTo };
+    if (!isFakeMode()) return { ok: true, next: session.next };
     await ensureDemoSession();
     if (session.next === "/onboarding") await startNewWorkspace();
     (await cookies()).set(ROLE_COOKIE, session.role, { ...SESSION_COOKIE_OPTIONS, secure: isHttps("", await headers()) });
