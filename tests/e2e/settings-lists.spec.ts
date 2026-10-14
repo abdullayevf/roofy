@@ -358,7 +358,11 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
     expect(box.height).toBeGreaterThanOrEqual(48);
   });
 
-  test("a long-name foreman fits on members and on foreman assignments", async ({ page }, info) => {
+  /**
+   * Invite a foreman with a very long name and address and wait for the toast to close. Both tests below need one,
+   * and each makes its own so neither depends on the other having run first (the fake data is shared by the run).
+   */
+  async function inviteLongNameForeman(page: Page): Promise<string> {
     const stamp = unique("long").replace(/\s/g, "");
     const longName = `Bartholomew Wolfeschlegelsteinhausenbergerdorff the third, ${stamp}`;
     await go(page, "owner", "/settings/members");
@@ -370,8 +374,22 @@ test.describe("Settings lists (templates, categories, members, assignments)", ()
     await expect(saved(page, "Invite sent.")).toBeVisible();
     // The guards read the screen at rest: a toast over the bottom of the page for its few seconds is not part of it.
     await toastGone(page, "Invite sent.");
-    const membersLog = collectConsole(page);
-    await expectScreenHealthy(page, { phone: isPhone(info.project.name), console: membersLog });
+    return longName;
+  }
+
+  // Two tests, not one: the full screen-health run (axe alone takes about 10 s on the assignments page, which has a
+  // tick box for every job under every foreman) twice in one test, after an invite, ran at 26 s of the 30 s limit.
+  test("a long-name foreman fits on members", async ({ page }, info) => {
+    await inviteLongNameForeman(page);
+    const log = collectConsole(page);
+    await expectScreenHealthy(page, { phone: isPhone(info.project.name), console: log });
+  });
+
+  test("a long-name foreman fits on foreman assignments", async ({ page }, info) => {
+    // One invite, one save and the full screen-health run on the biggest settings page: 23 s alone on iphone, with
+    // axe about 10 s of it. That is the one health run this test exists for, so it gets the longer limit.
+    test.slow();
+    const longName = await inviteLongNameForeman(page);
     await page.waitForLoadState("networkidle");
     await go(page, "owner", "/settings/assignments");
     const group = page.getByRole("group", { name: longName });

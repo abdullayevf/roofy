@@ -470,6 +470,20 @@ describe("settings", () => {
     expect(on.view === "manager" && on.ownerTwoFactor).toBe(true);
   });
 
+  it("two-factor off (?demo=blocked): a Manager turning on their own does not turn on the Owner's (F11)", async () => {
+    const owner = fakeSession("owner", { demo: "blocked" });
+    const manager = owner.as("manager");
+    await manager.data.workspace.turnOnTwoFactor(manager.actor, "123456");
+    const after = await owner.data.workspace.settings(owner.actor);
+    expect(after.view === "manager" && after.ownerTwoFactor).toBe(false);
+    const people = await owner.data.workspace.members(owner.actor);
+    expect(people.find((x) => x.role === "owner")?.twoFactorEnabled).toBe(false);
+    expect(people.find((x) => x.userId === manager.actor.userId)?.twoFactorEnabled).toBe(true);
+    await owner.data.workspace.turnOnTwoFactor(owner.actor, "123456");
+    const on = await owner.data.workspace.settings(owner.actor);
+    expect(on.view === "manager" && on.ownerTwoFactor).toBe(true);
+  });
+
   it("levels, categories and templates", async () => {
     const { data, actor } = fakeSession("manager");
     const roofer = (await data.workspace.levels(actor)).find((l) => l.name === "Roofer")!;

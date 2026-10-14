@@ -56,10 +56,13 @@ export class FakeContext {
     return todayIn(this.t.workspace.timezone, this.now());
   }
 
-  /** The workspace setting, or off when `?demo=blocked` until the Owner turns it on in this store (F7). */
+  /** The workspace setting, or off when `?demo=blocked` until the Owner turns on their own in this store (F7, F11). */
   get ownerTwoFactor(): boolean {
-    if (this.options.demo === "blocked") return this.store.mutations.some((m) => m.type === "two_factor_on");
-    return this.t.members.find((m) => m.role === "owner")?.twoFactorEnabled ?? false;
+    const owner = this.t.members.find((m) => m.role === "owner");
+    // Only the Owner's own enrolment counts; a Manager turning on theirs leaves the Owner's off (F11).
+    if (this.options.demo === "blocked")
+      return this.store.mutations.some((m) => m.type === "two_factor_on" && m.actorUserId === owner?.userId);
+    return owner?.twoFactorEnabled ?? false;
   }
 
   get fig(): Figures {
