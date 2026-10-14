@@ -559,4 +559,33 @@ describe("settings", () => {
     expect(job.view).toBe("foreman");
     expect(scanForMoney(job)).toEqual([]);
   });
+
+  it("removing a member: Owner and Manager only, an owner needs the Owner, never yourself or the last owner; the foreman's jobs go with them; audited", async () => {
+    const { data, actor, as } = fakeSession("owner");
+    const manager = as("manager");
+    const al = await data.workspace.inviteMember(actor, { email: "al.rm@b.au", name: "Al", role: "foreman" });
+    const sue = await data.workspace.inviteMember(actor, { email: "sue.rm@b.au", name: "Sue", role: "accountant" });
+    for (const r of ["foreman", "accountant"] as const) {
+      const other = as(r);
+      expect((await refusal(other.data.workspace.removeMember(other.actor, al.id))).code).toBe("forbidden");
+    }
+    const people = await data.workspace.members(actor);
+    const boss = people.find((x) => x.role === "owner")!;
+    expect((await refusal(manager.data.workspace.removeMember(manager.actor, boss.id))).code).toBe("forbidden");
+    const self = await refusal(data.workspace.removeMember(actor, boss.id));
+    expect([self.code, self.message]).toEqual(["conflict", "You can't remove yourself. Ask another owner."]);
+    const mine = people.find((x) => x.userId === manager.actor.userId);
+    if (mine) {
+      const own = await refusal(manager.data.workspace.removeMember(manager.actor, mine.id));
+      expect([own.code, own.message]).toEqual(["conflict", "You can't remove yourself. Ask another owner."]);
+    }
+    expect((await refusal(data.workspace.removeMember(actor, "no-such-member"))).code).toBe("not_found");
+    await data.workspace.setAssignments(actor, al.id, [projects.rydeHeritage]);
+    await manager.data.workspace.removeMember(manager.actor, al.id);
+    await data.workspace.removeMember(actor, sue.id);
+    const after = await data.workspace.members(actor);
+    expect(after.some((x) => x.id === al.id || x.id === sue.id)).toBe(false);
+    expect((await data.workspace.assignments(actor)).some((x) => x.memberId === al.id)).toBe(false);
+    expect((await refusal(data.workspace.removeMember(actor, al.id))).code).toBe("not_found");
+  });
 });

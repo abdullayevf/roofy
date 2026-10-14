@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DataError, type Role } from "@/data/contracts";
 import type { ActorWith2fa } from "./matrix";
-import { ALREADY_IN_TEAM, ALREADY_INVITED, NEEDS_AN_OWNER, assertInvite, assertKeepsAnOwner, assertRoleChange } from "./members";
+import { ALREADY_IN_TEAM, ALREADY_INVITED, NEEDS_AN_OWNER, assertInvite, assertKeepsAnOwner, assertRemoval, assertRoleChange } from "./members";
 
 const as = (role: Role, twoFactorEnabled = false): ActorWith2fa => ({ userId: "u", workspaceId: "w", role, name: "n", twoFactorEnabled });
 const none = { alreadyMember: false, alreadyInvited: false };
@@ -42,5 +42,14 @@ describe("member rules", () => {
     expect(code(() => assertKeepsAnOwner("owner", "manager", 2))).toBe("ok");
     expect(code(() => assertKeepsAnOwner("foreman", "manager", 1))).toBe("ok");
     expect(code(() => assertKeepsAnOwner("owner", "owner", 1))).toBe("ok");
+  });
+  it("lets Owner and Manager remove non-owners; an owner needs the Owner with two-factor; accountant and foreman never", () => {
+    expect(code(() => assertRemoval(as("owner"), "foreman"))).toBe("ok");
+    expect(code(() => assertRemoval(as("manager"), "accountant"))).toBe("ok");
+    expect(code(() => assertRemoval(as("manager", true), "owner"))).toBe("forbidden: You don't have access to this.");
+    expect(code(() => assertRemoval(as("owner"), "owner"))).toBe("forbidden: You don't have access to this.");
+    expect(code(() => assertRemoval(as("owner", true), "owner"))).toBe("ok");
+    expect(code(() => assertRemoval(as("accountant"), "foreman"))).toBe("forbidden: You don't have access to this.");
+    expect(code(() => assertRemoval(as("foreman"), "foreman"))).toBe("forbidden: You don't have access to this.");
   });
 });

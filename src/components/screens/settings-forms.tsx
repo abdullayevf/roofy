@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import type { ActionResult, Cents, CrewLevel, PayFrequency, WorkspaceSettings, WorkspaceSettingsInput } from "@/data/contracts";
-import { saveLevel, turnOnTwoFactor, updateSettings } from "@/app/actions/settings";
+import type { ActionResult, Cents, CrewLevel, PayFrequency, TwoFactorSetup, WorkspaceSettings, WorkspaceSettingsInput } from "@/data/contracts";
+import { saveLevel, startTwoFactor, turnOnTwoFactor, updateSettings } from "@/app/actions/settings";
 import { businessProblems } from "@/lib/onboarding-input";
 import { cx } from "@/lib/cx";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { Field } from "@/components/ui/field";
 import { MoneyField } from "@/components/ui/money-field";
 import { Segmented } from "@/components/ui/segmented";
 import { Select } from "@/components/ui/select";
+import { QrCode } from "@/components/ui/qr-code";
 import { Toast } from "@/components/ui/toast";
 import {
   anchorOn,
@@ -389,7 +390,59 @@ export function LevelsForm({ levels, demoOffline }: { levels: CrewLevel[]; demoO
   );
 }
 
-export function TwoFactorForm({ demoOffline }: { demoOffline: boolean }) {
+const PASSWORD_FIRST = "Enter your password to see the QR code.";
+
+/**
+ * Turn on two-factor: a QR code and set-up key for the authenticator app, then its 6-digit code. The prototype
+ * hands the key over with the page; the real sign-in asks for the password first, so `setup` is null until it is typed.
+ */
+export function TwoFactorForm({ demoOffline, setup: given }: { demoOffline: boolean; setup: TwoFactorSetup | null }) {
+  const [setup, setSetup] = useState<TwoFactorSetup | null>(given);
+  return setup ? <TwoFactorCode demoOffline={demoOffline} setup={setup} /> : <TwoFactorPassword demoOffline={demoOffline} onSetup={setSetup} />;
+}
+
+function TwoFactorPassword({ demoOffline, onSetup }: { demoOffline: boolean; onSetup: (s: TwoFactorSetup) => void }) {
+  const online = useOnline(demoOffline);
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (password.trim() === "") return setProblem(PASSWORD_FIRST);
+    setProblem(null);
+    setBusy(true);
+    try {
+      const r = await startTwoFactor(password);
+      if (r.ok) onSetup(r.setup);
+      else setProblem(r.message);
+    } catch {
+      setProblem(FAILED);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form onSubmit={submit} noValidate className="flex flex-col gap-6">
+      <div className={FORM_GRID}>
+        <Field
+          label="Your password"
+          type="password"
+          inputMode="text"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          error={problem ?? undefined}
+          hint={problem ? undefined : "Roofy asks once, before it shows the QR code."}
+        />
+      </div>
+      <Button type="submit" loading={busy} loadingLabel="Checking" disabled={!online} reason={online ? undefined : NEEDS_CONNECTION} className="w-full sm:w-auto sm:self-start">
+        Show QR code
+      </Button>
+    </form>
+  );
+}
+
+function TwoFactorCode({ demoOffline, setup }: { demoOffline: boolean; setup: TwoFactorSetup }) {
   const s = useSave(demoOffline);
   const [code, setCode] = useState("");
   const submit = () => {
@@ -402,14 +455,17 @@ export function TwoFactorForm({ demoOffline }: { demoOffline: boolean }) {
   };
   return (
     <SettingsForm s={s} onSubmit={submit} label="Turn on two-factor">
-      <ol className="flex list-decimal flex-col gap-2 pl-6 text-body text-ink">
-        <li>Open an authenticator app, like Google Authenticator or 1Password.</li>
-        <li>
-          Add Roofy with this set-up key:{" "}
-          <span className="text-body-strong tabular-nums">RFY4 7KQ2 M9TD 3XWB</span>
-        </li>
-        <li>Enter the 6-digit code the app shows.</li>
-      </ol>
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
+        <QrCode value={setup.uri} label="Scan this with your authenticator app" />
+        <ol className="flex list-decimal flex-col gap-2 pl-6 text-body text-ink">
+          <li>Open an authenticator app, like Google Authenticator or 1Password.</li>
+          <li>
+            Scan the QR code, or add Roofy with this set-up key:{" "}
+            <span className="break-words text-body-strong tabular-nums">{setup.secret}</span>
+          </li>
+          <li>Enter the 6-digit code the app shows.</li>
+        </ol>
+      </div>
       <div className={FORM_GRID}>
         <Field
           label="Code"

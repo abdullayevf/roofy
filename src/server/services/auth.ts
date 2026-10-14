@@ -34,6 +34,7 @@ import {
   TOO_MANY_TRIES,
   TWO_FACTOR_CODE,
   WRONG_CODE,
+  WRONG_OWN_PASSWORD,
   WRONG_PASSWORD,
   type AuthMode,
 } from "@/lib/auth-input";
@@ -232,6 +233,40 @@ export function createDbAuth(deps: DbAuthDeps = DEFAULT_DEPS): DbAuthService {
         });
         await deps.keepCookies(res.headers);
         return landing((res.response as { user: { id: string } }).user.id);
+      } catch (e) {
+        const found = refusalOf(e);
+        tooMany(found.status);
+        if (found.code === "INVALID_CODE") refuseField("code", WRONG_CODE);
+        throw new DataError("invalid", SIGN_IN_AGAIN);
+      }
+    },
+
+    /** Better Auth makes a new key for the signed-in person; it asks for the password unless the account has none (Google). */
+    async startTwoFactor(password) {
+      const h = await deps.requestHeaders();
+      if (!(await api().getSession({ headers: h }))) throw new DataError("invalid", SIGN_IN_AGAIN);
+      try {
+        const res = (await api().enableTwoFactor({
+          body: { method: "totp", ...(password === "" ? {} : { password }) },
+          headers: h,
+        })) as { totpURI: string };
+        const secret = new URL(res.totpURI).searchParams.get("secret") ?? "";
+        return { secret: secret.replace(/(.{4})(?=.)/g, "$1 "), uri: res.totpURI };
+      } catch (e) {
+        const found = refusalOf(e);
+        if (found.code === "INVALID_PASSWORD") refuseField("password", WRONG_OWN_PASSWORD);
+        throw new DataError("invalid", SIGN_IN_AGAIN);
+      }
+    },
+
+    /** The first code from the app: Better Auth checks it against the new key and then turns two-factor on. */
+    async confirmTwoFactor(code) {
+      if (!/^\d{6}$/.test(code.trim())) refuseField("code", TWO_FACTOR_CODE);
+      const h = await deps.requestHeaders();
+      for (const subject of codeSubjects(h)) await throttle("two-factor", subject, now());
+      try {
+        const res = await api().verifyTOTP({ body: { code: code.trim() }, headers: h, returnHeaders: true });
+        await deps.keepCookies(res.headers);
       } catch (e) {
         const found = refusalOf(e);
         tooMany(found.status);

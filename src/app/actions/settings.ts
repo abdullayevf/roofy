@@ -26,9 +26,12 @@ import type {
   Role,
   StageTemplate,
   TemplateInput,
+  TwoFactorSetup,
   WorkspaceSettings,
   WorkspaceSettingsInput,
 } from "@/data/contracts";
+import { z } from "zod";
+import { getAuth } from "@/data";
 import { act, PATHS } from "./run";
 
 /** Pay period, working days and on-cost change figures everywhere. */
@@ -91,6 +94,19 @@ export async function setMemberRole(memberId: Id, role: Role): Promise<ActionRes
   );
 }
 
+/** Owner or Manager: take someone out of the team. */
+export async function removeMember(memberId: Id): Promise<ActionResult> {
+  return act(
+    [idSchema],
+    [memberId],
+    async ({ data, actor }, id) => {
+      await data.workspace.removeMember(actor, id);
+      return {};
+    },
+    [PATHS.settings],
+  );
+}
+
 /** The jobs a foreman may log to (replaces the list). */
 export async function setAssignments(memberId: Id, projectIds: Id[]): Promise<ActionResult> {
   return act(
@@ -109,7 +125,21 @@ export async function turnOnTwoFactor(code: string): Promise<ActionResult<{ twoF
   return act(
     [codeSchema],
     [code],
-    async ({ data, actor }, c) => data.workspace.turnOnTwoFactor(actor, c),
+    async ({ data, actor }, c) => {
+      // The authenticator app's first code is checked by the sign-in service (db: Better Auth), then the page reads the result.
+      await getAuth().confirmTwoFactor(c);
+      return data.workspace.turnOnTwoFactor(actor, c);
+    },
     [PATHS.settings, PATHS.pay, PATHS.home],
+  );
+}
+
+/** Owner only: a new key and QR code for the authenticator app. The password is asked for unless the account has none. */
+export async function startTwoFactor(password: string): Promise<ActionResult<{ setup: TwoFactorSetup }>> {
+  return act(
+    [z.string().max(1000)],
+    [password],
+    async (_ctx, p) => ({ setup: await getAuth().startTwoFactor(p) }),
+    [],
   );
 }

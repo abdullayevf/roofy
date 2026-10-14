@@ -7,6 +7,7 @@ import {
   FAKE_DEAD_INVITES,
   FAKE_LOCKED_CODE,
   FAKE_WRONG_CODE,
+  DEMO_TWO_FACTOR_SETUP,
 } from "./auth";
 
 const auth = createFakeAuth();
@@ -44,6 +45,26 @@ describe("fake two-factor and invites", () => {
       await expect(auth.acceptInvite(id)).rejects.toMatchObject({ code: "invalid", message: INVITE_GONE });
     }
     await expect(auth.inviteDetails(" ")).rejects.toMatchObject({ message: INVITE_GONE });
+  });
+});
+
+describe("fake two-factor set-up (settings)", () => {
+  it("hands back the fixed demo key, and the QR link holds the same key", async () => {
+    const setup = await auth.startTwoFactor("");
+    expect(setup).toEqual(DEMO_TWO_FACTOR_SETUP);
+    expect(new URL(setup.uri).searchParams.get("secret")).toBe(setup.secret.replaceAll(" ", ""));
+  });
+
+  it("confirm: 6 digits pass, 000000 is the wrong code, anything else asks for 6 digits", async () => {
+    await expect(auth.confirmTwoFactor("482913")).resolves.toBeUndefined();
+    await expect(auth.confirmTwoFactor(FAKE_WRONG_CODE)).rejects.toMatchObject({
+      code: "invalid",
+      message: WRONG_CODE,
+      issues: [{ field: "code", message: WRONG_CODE }],
+    });
+    await expect(auth.confirmTwoFactor("12ab")).rejects.toMatchObject({
+      issues: [{ field: "code", message: TWO_FACTOR_CODE }],
+    });
   });
 });
 

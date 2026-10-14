@@ -31,7 +31,7 @@ import {
 import { dayOfWeek } from "@/domain/dates";
 import { ROOFING_DEFAULTS } from "@/lib/roofing-defaults";
 import { assertCan, type Action, type ActorWith2fa } from "@/server/authz/matrix";
-import { assertInvite, assertKeepsAnOwner, assertRoleChange, NEEDS_AN_OWNER } from "@/server/authz/members";
+import { assertInvite, assertKeepsAnOwner, assertRemoval, assertRoleChange, NEEDS_AN_OWNER, NOT_YOURSELF } from "@/server/authz/members";
 import { shapeAccess } from "@/server/authz/shape";
 import { isRole } from "@/server/auth/role";
 import { getMailer, inviteEmail } from "@/server/email";
@@ -537,6 +537,31 @@ export function createWorkspaceService(): BuiltWorkspaceService {
             .delete(projectAssignment)
             .where(and(eq(projectAssignment.workspaceId, actor.workspaceId), eq(projectAssignment.memberId, memberId)));
         return (await memberRows(tx, actor, memberId))[0]!;
+      }).catch((e: unknown) => {
+        if (isLastOwnerError(e)) throw new DataError("conflict", NEEDS_AN_OWNER);
+        throw e;
+      });
+    },
+
+    /** Owner or Manager; an Owner is an Owner change. Not yourself, not the last Owner (the trigger also holds it). */
+    async removeMember(actor: Actor, memberId: string): Promise<void> {
+      allow(actor, "member.read");
+      if (!UUID.test(memberId)) throw notFound("member");
+      await withActor(actor, async (tx) => {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`roofy_member_owner:${actor.workspaceId}`}))`);
+        const [m] = await memberRows(tx, actor, memberId);
+        if (!m) throw notFound("member");
+        assertRemoval(withTwoFactor(actor, await profiles(tx)), m.role);
+        if (m.userId === actor.userId) throw new DataError("conflict", NOT_YOURSELF);
+        const owners = await tx
+          .select({ id: member.id })
+          .from(member)
+          .where(and(eq(member.workspaceId, actor.workspaceId), eq(member.role, "owner")));
+        assertKeepsAnOwner(m.role, "foreman", owners.length);
+        await tx
+          .delete(projectAssignment)
+          .where(and(eq(projectAssignment.workspaceId, actor.workspaceId), eq(projectAssignment.memberId, memberId)));
+        await tx.delete(member).where(and(eq(member.workspaceId, actor.workspaceId), eq(member.id, memberId)));
       }).catch((e: unknown) => {
         if (isLastOwnerError(e)) throw new DataError("conflict", NEEDS_AN_OWNER);
         throw e;

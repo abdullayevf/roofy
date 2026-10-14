@@ -28,7 +28,7 @@ export const DATA_SERVICE_METHODS = {
   workspace: {
     settings: true, updateSettings: true, levels: true, saveLevel: true, categories: true, saveCategory: true,
     templates: true, saveTemplate: true, members: true, inviteMember: true, setMemberRole: true,
-    assignments: true, setAssignments: true, turnOnTwoFactor: true,
+    removeMember: true, assignments: true, setAssignments: true, turnOnTwoFactor: true,
   },
   projects: { list: true, get: true, proposeStages: true, create: true, update: true, updateStage: true, clients: true, createClient: true },
   stages: { get: true, start: true, pause: true, resume: true, doneProposal: true, confirmDone: true, reopen: true, setManualPct: true },
@@ -57,6 +57,7 @@ export const ONBOARDING_METHODS = {
 export const AUTH_METHODS = {
   signIn: true, signUp: true, continueWithGoogle: true, verifyEmail: true, requestPasswordReset: true,
   resetPassword: true, verifyTwoFactor: true, acceptInvite: true, inviteDetails: true,
+  startTwoFactor: true, confirmTwoFactor: true,
 } as const satisfies MethodsOf<AuthService>;
 
 function notReady(): Promise<never> {

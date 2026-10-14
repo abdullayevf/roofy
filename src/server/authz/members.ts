@@ -9,6 +9,7 @@ import { assertCan, memberActionFor, type ActorWith2fa } from "./matrix";
 export const ALREADY_IN_TEAM = "This person is already in your team.";
 export const ALREADY_INVITED = "This person has already been invited.";
 export const NEEDS_AN_OWNER = "Your business needs at least one owner.";
+export const NOT_YOURSELF = "You can't remove yourself. Ask another owner.";
 
 /** Inviting as Owner is an Owner change (`member.changeOwner`); any other role is `member.invite`. */
 export function assertInvite(
@@ -24,6 +25,11 @@ export function assertInvite(
 /** The matrix check for a role change, without the last-owner rule (see `assertKeepsAnOwner`). */
 export function assertRoleChange(actor: ActorWith2fa, currentRole: Role, nextRole: Role): void {
   assertCan(actor, memberActionFor(currentRole, nextRole));
+}
+
+/** The matrix check for taking a member out of the team (`member.remove`, or an Owner change for an owner). */
+export function assertRemoval(actor: ActorWith2fa, currentRole: Role): void {
+  assertCan(actor, memberActionFor(currentRole, null));
 }
 
 /** Refuses taking the Owner role away from the workspace's only Owner. */

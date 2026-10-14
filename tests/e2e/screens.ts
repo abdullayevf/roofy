@@ -1172,6 +1172,18 @@ export const SCREENS: ScreenSpec[] = [
     expectStill: "The owner is still setting this up",
   },
 
+  // Task 13 run 3: the signed-in side of auth. The members list (filled, long names, change role, invite sent and
+  // refused, empty, offline, no access) is already captured by the settings-members* screens in entry-settings; these add
+  // what run 3 built: removing a person, the Owner two-factor line, and the two-factor set-up with its QR code.
+  { id: "members-remove-confirm", group: "auth", route: "/settings/members", states: ["normal"], roles: ["owner"], steps: ["row:Priya Shah", "Remove from team"], expectStill: "They lose their access to Roofy straight away." },
+  { id: "members-removed", group: "auth", route: "/settings/members", states: ["normal"], roles: ["owner"], steps: ["row:Priya Shah", "Remove from team", "Remove from team"], expectStill: "Person removed." },
+  { id: "members-two-factor-off", group: "auth", route: "/settings/members", states: ["blocked"], roles: ["owner"] },
+  { id: "members-remove-offline", group: "auth", route: "/settings/members", states: ["offline"], roles: ["owner"], steps: ["row:Priya Shah"], expectStill: "Change role" },
+  { id: "two-factor-setup-off", group: "auth", route: "/settings/two-factor", states: ["blocked"], roles: ["owner"] },
+  { id: "two-factor-setup-invalid", group: "auth", route: "/settings/two-factor", states: ["blocked"], roles: ["owner"], steps: ["fill:Code=12ab", "Turn on two-factor"], expectStill: "Enter the 6-digit code from your app." },
+  { id: "two-factor-setup-wrong-code", group: "auth", route: "/settings/two-factor", states: ["blocked"], roles: ["owner"], steps: ["fill:Code=000000", "Turn on two-factor"], expectStill: "That code doesn't match." },
+  { id: "two-factor-setup-on", group: "auth", route: "/settings/two-factor", states: ["normal"], roles: ["owner"] },
+
   // --- entry-settings (Task 19) -----------------------------------------
   // Sign in and sign up: the form, the busy button, no signal, and the plain-words refusals.
   { id: "sign-in", group: "entry-settings", route: "/sign-in", states: AUTH_STATES, roles: [], keyboard: { field: "Password", action: "Sign in" } },

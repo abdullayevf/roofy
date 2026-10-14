@@ -94,8 +94,16 @@ describe("field-2 filled-flow captures", () => {
   it("shows the crew-day filled, saved, already-logged and saved-with-no-signal, and the outbox with all four groups", () => {
     expect(byId("log-crew-day-filled")?.route).toMatch(/^\/log\?same=1&ex=.+:50$/);
     expect(byId("log-crew-day-saved")?.steps).toEqual(["Save day"]);
-    expect(byId("log-crew-day-logged-today")?.steps).toEqual(["Save day", "wait:Logged:", "Log another stage"]);
-    expect(byId("log-crew-day-offline-saved")).toMatchObject({ states: ["offline"], goOffline: true, steps: ["Save day"] });
+    expect(byId("log-crew-day-logged-today")?.steps).toEqual([
+      "Save day",
+      "wait:Logged:",
+      "Log another stage",
+    ]);
+    expect(byId("log-crew-day-offline-saved")).toMatchObject({
+      states: ["offline"],
+      goOffline: true,
+      steps: ["Save day"],
+    });
     expect(byId("outbox")?.states).toContain("mixed");
   });
 
@@ -121,7 +129,12 @@ describe("field-2 filled-flow captures", () => {
     // "wait:" step (before the next press).
     const unproven = SCREENS.filter((s) => {
       const steps = s.steps ?? [];
-      return steps.some((step, i) => /^Save\b/.test(step) && !s.expectStill && !steps.slice(i + 1).some((next) => next.startsWith("wait:")));
+      return steps.some(
+        (step, i) =>
+          /^Save\b/.test(step) &&
+          !s.expectStill &&
+          !steps.slice(i + 1).some((next) => next.startsWith("wait:")),
+      );
     });
     expect(unproven.map((s) => s.id)).toEqual([]);
   });
@@ -131,7 +144,11 @@ describe("field-2 filled-flow captures", () => {
     expect(byId("log-crew-day-offline-saved")?.expectStill).toBe("Saved on this device:");
     expect(byId("log-progress-saved")?.expectStill).toBe("Logged:");
     expect(byId("log-no-work-saved")?.expectStill).toBe("Saved:");
-    expect(byId("log-crew-day-logged-today")?.steps).toEqual(["Save day", "wait:Logged:", "Log another stage"]);
+    expect(byId("log-crew-day-logged-today")?.steps).toEqual([
+      "Save day",
+      "wait:Logged:",
+      "Log another stage",
+    ]);
   });
 
   it("shows progress split two ways, the split that does not add up, and the saved tape", () => {
@@ -175,7 +192,8 @@ describe("resolveRoute", () => {
 
 describe("entry-settings invite captures", () => {
   const seedEmails = new Set(getSeed().members.map((m) => m.email.toLowerCase()));
-  const emailOf = (steps: string[] = []) => steps.find((s) => s.startsWith("fill:Email="))?.slice("fill:Email=".length);
+  const emailOf = (steps: string[] = []) =>
+    steps.find((s) => s.startsWith("fill:Email="))?.slice("fill:Email=".length);
   const invites = SCREENS.filter((s) => s.group === "entry-settings" && s.steps?.includes("Send invite"));
 
   it("an invite that is meant to be sent uses an email nobody in the seed already has", () => {
@@ -184,7 +202,10 @@ describe("entry-settings invite captures", () => {
     for (const screen of sent) {
       const email = emailOf(screen.steps)?.toLowerCase();
       expect(email, `${screen.id} fills an email`).toBeTruthy();
-      expect(seedEmails.has(email!), `${screen.id} invites ${email}, who is already a member, so "Invite sent." never shows`).toBe(false);
+      expect(
+        seedEmails.has(email!),
+        `${screen.id} invites ${email}, who is already a member, so "Invite sent." never shows`,
+      ).toBe(false);
     }
   });
 
@@ -206,6 +227,8 @@ describe("entry-settings invite captures", () => {
 
 describe("auth captures", () => {
   const auth = SCREENS.filter((s) => s.group === "auth");
+  // Members and two-factor set-up are Owner screens inside the app; their sentences are asserted by the e2e spec.
+  const signedIn = (id: string) => id.startsWith("members-") || id.startsWith("two-factor-setup-");
   const sentences = [
     LINK_EXPIRED,
     RESET_LINK_SENT,
@@ -218,17 +241,25 @@ describe("auth captures", () => {
   const refusals = [emailProblem(""), newPasswordProblem(""), newPasswordProblem("short"), TWO_FACTOR_CODE];
 
   it("every capture that waits for text waits for a sentence the screens really say", () => {
-    for (const screen of auth.filter((s) => s.expectStill)) {
+    for (const screen of auth.filter((s) => s.expectStill && !signedIn(s.id))) {
       const text = screen.expectStill!;
-      expect([...sentences, ...refusals].some((sentence) => sentence?.includes(text)), `${screen.id} waits for "${text}"`).toBe(true);
+      expect(
+        [...sentences, ...refusals].some((sentence) => sentence?.includes(text)),
+        `${screen.id} waits for "${text}"`,
+      ).toBe(true);
     }
   });
 
   it("every capture that presses a button waits for its result, and only the no-access screens need a role", () => {
     for (const screen of auth) {
-      if (screen.steps?.some((step) => !step.startsWith("fill:"))) expect(screen.expectStill, `${screen.id} has steps but no expectStill`).toBeTruthy();
+      if (screen.steps?.some((step) => !step.startsWith("fill:")))
+        expect(screen.expectStill, `${screen.id} has steps but no expectStill`).toBeTruthy();
       // The no-access screens are what a signed-in member sees, so they carry the role.
       const noAccess = screen.id.startsWith("onboarding-no-access-");
+      if (signedIn(screen.id)) {
+        expect(screen.roles, `${screen.id} is a signed-in settings screen`).toEqual(["owner"]);
+        continue;
+      }
       expect(screen.roles, `${screen.id} is pre-auth`).toEqual(
         noAccess ? [screen.id.replace("onboarding-no-access-", "")] : [],
       );
@@ -239,7 +270,10 @@ describe("auth captures", () => {
     const tokenOf = (route: string) => new URLSearchParams(route.split("?")[1] ?? "").get("token");
     for (const screen of auth.filter((s) => tokenOf(s.route) !== null)) {
       const says = screen.expectStill === "This link has expired";
-      expect(FAKE_DEAD_TOKENS.includes(tokenOf(screen.route)!), `${screen.id} (token ${tokenOf(screen.route)})`).toBe(says);
+      expect(
+        FAKE_DEAD_TOKENS.includes(tokenOf(screen.route)!),
+        `${screen.id} (token ${tokenOf(screen.route)})`,
+      ).toBe(says);
     }
   });
 });

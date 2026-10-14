@@ -22,6 +22,7 @@ import {
   TOO_MANY_TRIES,
   TWO_FACTOR_CODE,
   WRONG_CODE,
+  WRONG_OWN_PASSWORD,
   WRONG_PASSWORD,
 } from "@/lib/auth-input";
 import { actorFromHeaders } from "@/server/auth/actor";
@@ -223,6 +224,30 @@ describe("db auth service", () => {
 
     const none = await refusal(browser().service.verifyTwoFactor(code));
     expect([none.code, none.message]).toEqual(["invalid", SIGN_IN_AGAIN]);
+  });
+
+  it("startTwoFactor asks for the password; confirmTwoFactor turns two-factor on only for a right code", async () => {
+    const { b, userId } = await verifiedUser();
+    const twoFactorOn = async () =>
+      (await rows<{ two_factor_enabled: boolean }>("owner", `select two_factor_enabled from "user" where id = $1`, [userId]))[0]!.two_factor_enabled;
+    const signedOut = await refusal(browser().service.startTwoFactor(PASSWORD));
+    expect([signedOut.code, signedOut.message]).toEqual(["invalid", SIGN_IN_AGAIN]);
+    const wrongPassword = await refusal(b.service.startTwoFactor("not the password"));
+    expect([wrongPassword.code, wrongPassword.issues]).toEqual(["invalid", [{ field: "password", message: WRONG_OWN_PASSWORD }]]);
+    const setup = await b.service.startTwoFactor(PASSWORD);
+    expect(setup.uri).toMatch(/^otpauth:\/\/totp\//);
+    const secret = new URL(setup.uri).searchParams.get("secret") ?? "";
+    expect(setup.secret.replaceAll(" ", "")).toBe(secret);
+    expect(setup.secret).toMatch(/^([A-Z2-7]{4} )+[A-Z2-7]{1,4}$/);
+    expect(await twoFactorOn()).toBe(false);
+    const format = await refusal(b.service.confirmTwoFactor("12ab"));
+    expect([format.code, format.issues]).toEqual(["invalid", [{ field: "code", message: TWO_FACTOR_CODE }]]);
+    const { code } = await getAuth().api.generateTOTP({ body: { secret: base32Decode(secret) } });
+    const wrong = await refusal(b.service.confirmTwoFactor(code === "000000" ? "111111" : "000000"));
+    expect([wrong.code, wrong.issues]).toEqual(["invalid", [{ field: "code", message: WRONG_CODE }]]);
+    expect(await twoFactorOn()).toBe(false);
+    await b.service.confirmTwoFactor(code);
+    expect(await twoFactorOn()).toBe(true);
   });
 
   it("requestPasswordReset answers the same for known and unknown emails and mails only the known one", async () => {

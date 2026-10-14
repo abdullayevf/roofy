@@ -5,6 +5,7 @@ import type { ExpenseCategory, Id, JobType, Member, Role, StageTemplateItem } fr
 import type { Unit } from "@/domain/types";
 import {
   inviteMember,
+  removeMember,
   saveCategory,
   saveTemplate,
   setAssignments,
@@ -340,8 +341,9 @@ const roleLabel = (role: Role | "owner") => (role === "owner" ? "Owner" : (ROLES
 
 /**
  * Who is in the workspace and what each person can do: a grouped list, one row per person (name, email, role), and a row
- * opens a sheet to change that person's role. The Owner's role is fixed, so that row opens nothing. Saving a role is the
- * sheet's own action (there is no page-level Save, so Send invite below is the one primary action on the page).
+ * opens a sheet to change that person's role, or to remove them after a confirm. The Owner's role is fixed, so that row
+ * opens nothing. Saving a role is the sheet's own action (there is no page-level Save, so Send invite below is the one
+ * primary action on the page).
  */
 export function MembersForm({ members, demoOffline }: { members: Member[]; demoOffline: boolean }) {
   const s = useSave(demoOffline);
@@ -349,6 +351,8 @@ export function MembersForm({ members, demoOffline }: { members: Member[]; demoO
     Object.fromEntries(members.map((m) => [m.id, m.role])),
   );
   const [edit, setEdit] = useState<{ member: Member; role: Role } | null>(null);
+  const [removing, setRemoving] = useState<Member | null>(null);
+  const [gone, setGone] = useState<readonly string[]>([]);
   // The sheet's own refusal sentence, so one person's refusal never shows on the next person's sheet.
   const [problem, setProblem] = useState<string | null>(null);
   const current = (m: Member): Role => roles[m.id] ?? m.role;
@@ -381,10 +385,20 @@ export function MembersForm({ members, demoOffline }: { members: Member[]; demoO
       "Role changed.",
     );
   };
+  const leave = (member: Member) =>
+    s.run(
+      () => ({}),
+      async () => {
+        const r = await removeMember(member.id);
+        if (r.ok) setGone((x) => [...x, member.id]);
+        return r;
+      },
+      "Person removed.",
+    );
   return (
     <div className="flex flex-col gap-3">
       <List
-        rows={members.map((m) => ({
+        rows={members.filter((m) => !gone.includes(m.id)).map((m) => ({
           key: m.id,
           primary: m.name,
           meta: `${m.email}\n${roleLabel(current(m))}`,
@@ -396,6 +410,7 @@ export function MembersForm({ members, demoOffline }: { members: Member[]; demoO
           {NEEDS_CONNECTION}
         </p>
       )}
+      {s.failed ? <ErrorMessage>{s.failed}</ErrorMessage> : null}
       <Sheet
         open={edit !== null}
         onOpenChange={(o) => {
@@ -428,8 +443,35 @@ export function MembersForm({ members, demoOffline }: { members: Member[]; demoO
             onChange={(v) => setEdit((d) => (d ? { ...d, role: v as Role } : d))}
           />
           {problem ? <ErrorMessage>{problem}</ErrorMessage> : null}
+          <Button
+            type="button"
+            variant="ghost"
+            tone="danger"
+            className="w-full sm:w-auto sm:self-start"
+            disabled={!s.online}
+            reason={s.online ? undefined : NEEDS_CONNECTION}
+            onClick={() => {
+              setRemoving(edit?.member ?? null);
+              setEdit(null);
+            }}
+          >
+            Remove from team
+          </Button>
         </div>
       </Sheet>
+      <Dialog
+        open={removing !== null}
+        onOpenChange={(o) => {
+          if (!o) setRemoving(null);
+        }}
+        title={`Remove ${removing?.name ?? "this person"}?`}
+        description="They lose their access to Roofy straight away. Logs they made stay on the jobs."
+        confirmLabel="Remove from team"
+        tone="danger"
+        onConfirm={() => {
+          if (removing) void leave(removing);
+        }}
+      />
       <Toast open={s.saved} onOpenChange={s.setSaved} message={s.savedMessage} viewportClassName="toast-above-tabs" />
     </div>
   );

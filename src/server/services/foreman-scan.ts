@@ -27,6 +27,7 @@ export const WORKSPACE_SCAN: ScanRegistry<WorkspaceService> = {
   saveTemplate: { refused: (s, f) => s.saveTemplate(f, input<"saveTemplate">()) },
   members: { refused: (s, f) => s.members(f) },
   inviteMember: { refused: (s, f) => s.inviteMember(f, { email: "scan@example.test", name: "Scan", role: "foreman" }) },
+  removeMember: { refused: (s, f, fx) => s.removeMember(f, fx.foremanMemberId) },
   setMemberRole: { refused: (s, f, fx) => s.setMemberRole(f, fx.foremanMemberId, "manager") },
   assignments: { refused: (s, f) => s.assignments(f) },
   setAssignments: { refused: (s, f, fx) => s.setAssignments(f, fx.foremanMemberId, [fx.projectId]) },

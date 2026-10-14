@@ -3,7 +3,7 @@
  * password. Any other well-formed email signs in with a password of 8 or more characters, so a reviewer can try
  * their own address; a shorter password reads as a wrong one. Everyone who signs in is the Owner.
  */
-import { DataError, type AuthService, type InviteDetails, type AuthSession, type FieldIssue, type SignInInput } from "../../contracts";
+import { DataError, type AuthService, type InviteDetails, type AuthSession, type FieldIssue, type SignInInput, type TwoFactorSetup } from "../../contracts";
 import {
   authProblems,
   emailProblem,
@@ -41,6 +41,11 @@ const deadLink = (token: string) => token.trim() === "" || FAKE_DEAD_TOKENS.incl
 export const DEMO_TWO_FACTOR_EMAIL = "owner-2fa@harbourroofing.example";
 export const FAKE_WRONG_CODE = "000000";
 export const FAKE_LOCKED_CODE = "111111";
+/** The key the settings page shows in the prototype (base32, as an authenticator app reads it). */
+export const DEMO_TWO_FACTOR_SETUP: TwoFactorSetup = {
+  secret: "RFY4 7KQ2 MZTD 3XWB",
+  uri: "otpauth://totp/Roofy:karen%40harbourroofing.example?secret=RFY47KQ2MZTD3XWB&issuer=Roofy",
+};
 /** Invite ids the prototype treats as cancelled or expired; `long` is a team with a very long name. */
 export const FAKE_DEAD_INVITES: readonly string[] = ["expired", "used", "cancelled"];
 const LONG_TEAM = "Harbour and Bay Roofing and Waterproofing Contractors of the Northern Beaches";
@@ -103,6 +108,14 @@ export function createFakeAuth(): AuthService {
       const id = invitationId.trim();
       if (id === "" || FAKE_DEAD_INVITES.includes(id)) throw new DataError("invalid", INVITE_GONE);
       return { workspaceName: id === "long" ? LONG_TEAM : "Harbour Roofing", role: "foreman" };
+    },
+    /** The prototype's fixed demo key; the QR code holds the same key. */
+    async startTwoFactor() {
+      return DEMO_TWO_FACTOR_SETUP;
+    },
+    async confirmTwoFactor(code) {
+      if (!/^\d{6}$/.test(code.trim())) refuseField("code", TWO_FACTOR_CODE);
+      if (code.trim() === FAKE_WRONG_CODE) throw new DataError("invalid", WRONG_CODE, [{ field: "code", message: WRONG_CODE }]);
     },
     async acceptInvite(invitationId) {
       if (invitationId.trim() === "" || FAKE_DEAD_INVITES.includes(invitationId.trim())) throw new DataError("invalid", INVITE_GONE);

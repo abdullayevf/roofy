@@ -1571,6 +1571,8 @@ export interface WorkspaceService {
   members(actor: Actor): Promise<Member[]>;
   inviteMember(actor: Actor, input: MemberInput): Promise<Member>;
   setMemberRole(actor: Actor, memberId: Id, role: Role): Promise<Member>;
+  /** Owner or Manager take someone out of the team; anything touching the Owner role is an Owner change. Refuses removing yourself and the last Owner. */
+  removeMember(actor: Actor, memberId: Id): Promise<void>;
   /** Foreman project assignments. */
   assignments(actor: Actor): Promise<{ memberId: Id; name: string; projectIds: Id[] }[]>;
   setAssignments(actor: Actor, memberId: Id, projectIds: Id[]): Promise<void>;
@@ -1778,6 +1780,12 @@ export interface PasswordResetRequested {
   message: string;
 }
 
+/** What an authenticator app needs: the key to type and the otpauth link the QR code holds. */
+export interface TwoFactorSetup {
+  secret: string;
+  uri: string;
+}
+
 /**
  * Sign in and sign up (no actor yet). Refusals are `DataError("invalid")` with a plain sentence and, for a
  * blank or unusable field, `issues` naming it ("email", "password"); a wrong password has no field.
@@ -1802,6 +1810,10 @@ export interface AuthService {
   inviteDetails(invitationId: string): Promise<InviteDetails>;
   /** Join the team an invite is for, with the invited role. A cancelled or expired invite is `DataError("invalid")`. */
   acceptInvite(invitationId: string): Promise<AuthSession>;
+  /** Signed in: a new key for the authenticator app. A wrong password is `DataError("invalid")` on field "password" (a Google-only account has none). The prototype answers a fixed demo key. */
+  startTwoFactor(password: string): Promise<TwoFactorSetup>;
+  /** Signed in: the first 6-digit code from the app turns two-factor on. A wrong code is `DataError("invalid")` on field "code". */
+  confirmTwoFactor(code: string): Promise<void>;
 }
 
 // ─── Set-up wizard (onboarding) ─────────────────────────────────────────────

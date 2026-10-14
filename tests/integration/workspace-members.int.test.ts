@@ -293,3 +293,53 @@ describe("fix 1: another business's job id is not_found (spec NB1)", () => {
     expect(await refusal(ws.setAssignments(a, foremanMemberId, [projectB]))).toMatch(NOT_FOUND);
   });
 });
+
+describe("removeMember", () => {
+  const gone = async (id: string) => (await rows("owner", "select id from member where id = $1", [id])).length === 0;
+  it("a Manager removes a foreman: the member and their job assignments go, audited with the actor", async () => {
+    const f = await addMember(a.workspaceId, "foreman");
+    const id = await memberIdOf(f);
+    await ws.setAssignments(a, id, [projectA]);
+    await ws.removeMember(manager, id);
+    expect(await gone(id)).toBe(true);
+    expect(await rows("owner", "select 1 from project_assignment where member_id = $1", [id])).toEqual([]);
+    const audit = await rows("owner", "select action, actor_user_id from audit_event where workspace_id = $1 and table_name = 'member' and row_id = $2 and action = 'delete'", [a.workspaceId, id]);
+    expect(audit).toEqual([{ action: "delete", actor_user_id: manager.userId }]);
+    expect(await refusal(ws.removeMember(a, id))).toMatch(NOT_FOUND);
+  });
+  it("accountant and foreman callers are forbidden; B's actor and a bad id are not_found", async () => {
+    expect(await refusal(ws.removeMember(accountant, foremanMemberId))).toBe(FORBIDDEN);
+    expect(await refusal(ws.removeMember(foreman, foremanMemberId))).toBe(FORBIDDEN);
+    expect(await refusal(ws.removeMember(b, foremanMemberId))).toMatch(NOT_FOUND);
+    expect(await refusal(ws.removeMember(a, "nope"))).toMatch(NOT_FOUND);
+    expect(await gone(foremanMemberId)).toBe(false);
+  });
+  it("you can't remove yourself, and a Manager can't remove the Owner", async () => {
+    await setTwoFactor(a, true);
+    expect(await refusal(ws.removeMember(manager, await memberIdOf(manager)))).toBe("conflict: You can't remove yourself. Ask another owner.");
+    expect(await refusal(ws.removeMember(a, await memberIdOf(a)))).toBe("conflict: You can't remove yourself. Ask another owner.");
+    expect(await refusal(ws.removeMember(manager, await memberIdOf(a)))).toBe(FORBIDDEN);
+  });
+  it("an owner is removed only by an Owner with two-factor on, and one Owner always stays", async () => {
+    const o1 = (await makeWorkspace("Remove Owners")).ownerActor;
+    const o2 = await addMember(o1.workspaceId, "owner");
+    const [m1, m2] = [await memberIdOf(o1), await memberIdOf(o2)];
+    await setTwoFactor(o1, false);
+    expect(await refusal(ws.removeMember(o1, m2))).toBe(FORBIDDEN);
+    await setTwoFactor(o1, true);
+    await ws.removeMember(o1, m2);
+    expect(await gone(m2)).toBe(true);
+    expect(await rows("owner", "select id from member where workspace_id = $1 and role = 'owner'", [o1.workspaceId])).toEqual([{ id: m1 }]);
+    expect(await refusal(ws.removeMember(o1, m1))).toBe("conflict: You can't remove yourself. Ask another owner.");
+  });
+  it("two Owners removing each other at the same moment leave one Owner", async () => {
+    const o1 = (await makeWorkspace("Remove Race")).ownerActor;
+    const o2 = await addMember(o1.workspaceId, "owner");
+    await setTwoFactor(o1, true);
+    await setTwoFactor(o2, true);
+    const [m1, m2] = [await memberIdOf(o1), await memberIdOf(o2)];
+    const results = await Promise.allSettled([ws.removeMember(o1, m2), ws.removeMember(o2, m1)]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(await rows("owner", "select id from member where workspace_id = $1 and role = 'owner'", [o1.workspaceId])).toHaveLength(1);
+  });
+});

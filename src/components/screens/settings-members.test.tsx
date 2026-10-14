@@ -7,6 +7,7 @@ import { MembersForm } from "./settings-lists";
 
 const refresh = vi.fn();
 const setMemberRole = vi.fn();
+const removeMember = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 vi.mock("@/app/actions/settings", () => ({
   inviteMember: async () => ({ ok: true }),
@@ -14,6 +15,7 @@ vi.mock("@/app/actions/settings", () => ({
   saveTemplate: async () => ({ ok: true }),
   setAssignments: async () => ({ ok: true }),
   setMemberRole: (...args: unknown[]) => setMemberRole(...args),
+  removeMember: (...args: unknown[]) => removeMember(...args),
 }));
 
 const member = (id: string, name: string, role: Member["role"]): Member => ({
@@ -47,6 +49,8 @@ beforeEach(() => {
   refresh.mockClear();
   setMemberRole.mockReset();
   setMemberRole.mockResolvedValue({ ok: true });
+  removeMember.mockReset();
+  removeMember.mockResolvedValue({ ok: true });
 });
 
 describe("MembersForm: a person is a row, the role changes in a sheet", () => {
@@ -98,5 +102,69 @@ describe("MembersForm: a person is a row, the role changes in a sheet", () => {
     await user.click(within(sheet).getByRole("button", { name: "Save role" }));
     expect(setMemberRole).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+describe("MembersForm: removing a person asks first", () => {
+  const openRemove = async (user: ReturnType<typeof userEvent.setup>, name: RegExp) => {
+    await user.click(screen.getByRole("button", { name }));
+    const sheet = await screen.findByRole("dialog", { name: "Change role" });
+    await user.click(within(sheet).getByRole("button", { name: "Remove from team" }));
+    return screen.findByRole("dialog", { name: /^Remove .+\?$/ });
+  };
+
+  it("Remove from team in the sheet opens a confirm that names the person and nothing is removed yet", async () => {
+    const user = userEvent.setup();
+    render(<MembersForm members={MEMBERS} demoOffline={false} />);
+    const confirm = await openRemove(user, /Priya Shah/);
+    expect(confirm).toHaveAccessibleName("Remove Priya Shah?");
+    expect(confirm).toHaveTextContent("They lose their access to Roofy straight away.");
+    expect(removeMember).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /Priya Shah/, hidden: true })).toBeInTheDocument();
+  });
+
+  it("cancelling keeps the person and removes nothing", async () => {
+    const user = userEvent.setup();
+    render(<MembersForm members={MEMBERS} demoOffline={false} />);
+    const confirm = await openRemove(user, /Priya Shah/);
+    await user.click(within(confirm).getByRole("button", { name: "Cancel" }));
+    expect(removeMember).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /Priya Shah/ })).toBeVisible();
+  });
+
+  it("confirming removes that member id, drops the row and says so", async () => {
+    const user = userEvent.setup();
+    render(<MembersForm members={MEMBERS} demoOffline={false} />);
+    const confirm = await openRemove(user, /Priya Shah/);
+    await user.click(within(confirm).getByRole("button", { name: "Remove from team" }));
+    expect(removeMember).toHaveBeenCalledTimes(1);
+    expect(removeMember).toHaveBeenCalledWith("m2");
+    expect(await screen.findByText("Person removed.")).toBeVisible();
+    expect(screen.queryByRole("button", { name: /Priya Shah/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /Dean Cole/ })).toBeVisible();
+  });
+
+  it("a removal the server refuses keeps the row and shows the sentence", async () => {
+    const user = userEvent.setup();
+    removeMember.mockResolvedValue({ ok: false, code: "conflict", message: "A workspace needs at least one Owner.", issues: [] });
+    render(<MembersForm members={MEMBERS} demoOffline={false} />);
+    const confirm = await openRemove(user, /Dean Cole/);
+    await user.click(within(confirm).getByRole("button", { name: "Remove from team" }));
+    expect(await screen.findByText("A workspace needs at least one Owner.")).toBeVisible();
+    expect(screen.getByRole("button", { name: /Dean Cole/ })).toBeVisible();
+    expect(screen.queryByText("Person removed.")).toBeNull();
+  });
+
+  it("offline, the remove button is disabled and says it needs a connection", async () => {
+    const user = userEvent.setup();
+    render(<MembersForm members={MEMBERS} demoOffline />);
+    await user.click(screen.getByRole("button", { name: /Priya Shah/ }));
+    const sheet = await screen.findByRole("dialog", { name: "Change role" });
+    expect(within(sheet).getByRole("button", { name: "Remove from team" })).toBeDisabled();
+  });
+
+  it("the Owner's row has no way to remove", () => {
+    render(<MembersForm members={MEMBERS} demoOffline={false} />);
+    expect(screen.queryByRole("button", { name: /Karen Holt/ })).toBeNull();
   });
 });

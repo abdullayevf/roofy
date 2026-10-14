@@ -21,6 +21,9 @@ import type {
 import { FIELD_ACCESS, type FakeContext, forbidden, NO_ACCESS, notFound } from "./context";
 import { conflict, invalid, requireEditor, snapshot, write } from "./writes";
 
+const NEEDS_AN_OWNER = "Your business needs at least one owner.";
+const NOT_YOURSELF = "You can't remove yourself. Ask another owner.";
+
 const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 const JOB_TYPE_NAMES: Record<JobType, string> = {
@@ -322,7 +325,7 @@ export function createWorkspaceService(c: FakeContext): WorkspaceService {
       if (!m) throw notFound("member");
       if (m.role === "owner" || role === "owner") requireOwnerChange(actor);
       if (m.role === "owner" && role !== "owner" && c.t.members.filter((x) => x.role === "owner").length <= 1)
-        throw conflict("Your business needs at least one owner.");
+        throw conflict(NEEDS_AN_OWNER);
       if (m.role === role) return memberOf(m.id);
       write(c, actor, "member_role", (w) => {
         w.audit("member", m.id, "update", { role: m.role }, { role });
@@ -332,6 +335,21 @@ export function createWorkspaceService(c: FakeContext): WorkspaceService {
         m.updatedAt = w.at;
       });
       return memberOf(m.id);
+    },
+
+    /** Take a person out of the team (Owner or Manager; an Owner is an Owner change). Not yourself, not the last Owner. Audited. */
+    async removeMember(actor: Actor, memberId: Id): Promise<void> {
+      requireEditor(c, actor);
+      const m = c.t.members.find((x) => x.id === memberId);
+      if (!m) throw notFound("member");
+      if (m.role === "owner") requireOwnerChange(actor);
+      if (m.userId === actor.userId) throw conflict(NOT_YOURSELF);
+      if (m.role === "owner" && c.t.members.filter((x) => x.role === "owner").length <= 1) throw conflict(NEEDS_AN_OWNER);
+      write(c, actor, "member_remove", (w) => {
+        w.audit("member", m.id, "delete", snapshot(m), null);
+        w.t.projectAssignments = w.t.projectAssignments.filter((a) => a.memberId !== m.id);
+        w.t.members = w.t.members.filter((x) => x.id !== m.id);
+      });
     },
 
     /** The jobs a foreman is assigned to (Owner/Manager); replaces the list. */

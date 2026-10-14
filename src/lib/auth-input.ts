@@ -37,6 +37,8 @@ export const SIGN_IN_FAILED = "Couldn't sign you in. Try again.";
 
 // The sign-in copy both auth services use (the fake and the real one, Task 12), so their refusals read the same.
 export const WRONG_PASSWORD = "That email and password don't match. Check them and try again.";
+/** Two-factor set-up asks for the password of the account that is already signed in, so no email in the sentence. */
+export const WRONG_OWN_PASSWORD = "That password doesn't match. Check it and try again.";
 export const EMAIL_TAKEN = "An account with that email already exists. Sign in instead.";
 /** The one answer to "Send link", so it never reveals whether an email has an account. */
 export const RESET_LINK_SENT = "If that email has an account, we've sent a link to set a new password. Check your email.";
