@@ -17,6 +17,8 @@ import { createDbOnboarding } from "./onboarding";
 import { createWorkspaceService } from "./workspace";
 
 export { createDbOnboarding };
+/** Sign in, sign up, email links, two-factor, invites and sign-out (Task 12 run 2). */
+export { createDbAuth } from "./auth";
 
 export const NOT_READY = "This part isn't ready yet.";
 
@@ -85,7 +87,3 @@ export function createDbServices(actor: Actor): DataServices {
   return Object.fromEntries(entries) as DataServices;
 }
 
-/** Sign in, sign up, email links, two-factor and invites (Task 12: `createDbAuth()`). */
-export function createDbAuth(): AuthService {
-  return notReadyService<AuthService>(AUTH_METHODS);
-}

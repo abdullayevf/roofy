@@ -18,6 +18,8 @@ export interface DbDataProvider {
   /** The request's actor and services, or where to send someone who is signed out or has no workspace yet. */
   context(h: Headers): Promise<DataContextCore | { redirect: "/sign-in" | "/onboarding" }>;
   auth(): AuthService;
+  /** Ends the request's Better Auth session and clears its cookie (db sign-out). */
+  signOut(): Promise<void>;
   /** The set-up wizard, or where to send someone who is signed out or already in a workspace. */
   onboarding(h: Headers): Promise<{ actor: Actor; service: OnboardingService } | { redirect: "/sign-in" | "/" }>;
 }

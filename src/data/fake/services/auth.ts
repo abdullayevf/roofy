@@ -4,20 +4,32 @@
  * their own address; a shorter password reads as a wrong one. Everyone who signs in is the Owner.
  */
 import { DataError, type AuthService, type AuthSession, type FieldIssue, type SignInInput } from "../../contracts";
-import { authProblems, emailProblem, passwordProblem, type AuthMode, PASSWORD_MIN } from "@/lib/auth-input";
+import {
+  authProblems,
+  emailProblem,
+  EMAIL_TAKEN,
+  INVITE_GONE,
+  LINK_EXPIRED,
+  passwordProblem,
+  PASSWORD_MIN,
+  RESET_LINK_SENT,
+  TWO_FACTOR_CODE,
+  WRONG_PASSWORD,
+  type AuthMode,
+} from "@/lib/auth-input";
 
 export const DEMO_OWNER_EMAIL = "karen@harbourroofing.example";
 export const DEMO_PASSWORD = "roofy-demo";
 
-export const WRONG_PASSWORD = "That email and password don't match. Check them and try again.";
-export const EMAIL_TAKEN = "An account with that email already exists. Sign in instead.";
-/** The one answer to "Send link", so it never reveals whether an email has an account. */
-export const RESET_LINK_SENT = "If that email has an account, we've sent a link to set a new password. Check your email.";
-export const LINK_EXPIRED = "This link has expired or was already used. Ask for a new one.";
-export const TWO_FACTOR_CODE = "Enter the 6-digit code from your authenticator app.";
-export const INVITE_GONE = "This invite has expired or was cancelled. Ask your manager for a new one.";
-/** Signing in before the email is verified (the real service, Task 12, uses the same sentence). */
-export const EMAIL_NOT_VERIFIED = "Verify your email first. We've sent you a new link.";
+export {
+  EMAIL_NOT_VERIFIED,
+  EMAIL_TAKEN,
+  INVITE_GONE,
+  LINK_EXPIRED,
+  RESET_LINK_SENT,
+  TWO_FACTOR_CODE,
+  WRONG_PASSWORD,
+} from "@/lib/auth-input";
 
 const normal = (email: string) => email.trim().toLowerCase();
 

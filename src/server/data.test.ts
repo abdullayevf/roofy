@@ -4,7 +4,9 @@ import type { ActorResult } from "@/server/auth/actor";
 
 vi.mock("@/server/auth/actor", () => ({ actorFromHeaders: vi.fn() }));
 const { createDbDataProvider, NO_WORKSPACE_ACTOR_ID } = await import("./data");
-const { NOT_READY, ONBOARDING_METHODS } = await import("./services");
+const { AUTH_METHODS, NOT_READY, ONBOARDING_METHODS, createDbServices } = await import("./services");
+/** A placeholder method as `notReadyService` builds it (any unbuilt data service has them). */
+const notReadyMethod = (createDbServices({ userId: "u", workspaceId: "w", role: "owner", name: "" }) as unknown as Record<string, Record<string, unknown>>).projects!.list;
 
 const actor: Actor = { userId: "u-1", workspaceId: "w-1", role: "manager", name: "Ann Lee" };
 const inSydney: ActorResult = { kind: "actor", actor, timezone: "Australia/Sydney", workspaceName: "Lee Roofing", onboardingStep: "done" };
@@ -61,8 +63,11 @@ describe("db data provider: session → actor", () => {
     expect(found.actor).toEqual(actor);
   });
 
-  it("auth service is not ready yet: sign in rejects as unavailable", async () => {
-    const auth = provider(inSydney).p.auth();
-    await expect(auth.signIn({ email: "a@b.co", password: "x" })).rejects.toMatchObject({ code: "unavailable", message: NOT_READY });
+  it("auth is the real service: exactly the contract's methods plus sign-out, none a placeholder", async () => {
+    const auth = provider(inSydney).p.auth() as unknown as Record<string, unknown>;
+    expect(Object.keys(auth).sort()).toEqual([...Object.keys(AUTH_METHODS), "signOut"].sort());
+    for (const m of Object.keys(auth)) expect([m, String(auth[m])]).not.toEqual([m, String(notReadyMethod)]);
+    // Refused before Better Auth is reached: the fake's field issue, never "not ready".
+    await expect(auth.verifyTwoFactor && (auth.verifyTwoFactor as (c: string) => Promise<unknown>)("12ab")).rejects.toMatchObject({ code: "invalid", issues: [{ field: "code" }] });
   });
 });

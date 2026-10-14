@@ -11,7 +11,7 @@ vi.mock("next/headers", () => ({
   headers: async () => new Headers(),
 }));
 
-const { signIn, signUp, continueWithGoogle } = await import("./auth");
+const { signIn, signUp, continueWithGoogle, verifyTwoFactor, acceptInvite, verifyEmail, requestPasswordReset, resetPassword } = await import("./auth");
 const { DEMO_OWNER_EMAIL, DEMO_PASSWORD, createFakeAuth } = await import("@/data/fake/services/auth");
 const { registerDbData } = await import("@/data/db-registry");
 
@@ -48,7 +48,13 @@ describe("auth Server Functions in db mode", () => {
     registerDbData({
       context: async () => ({ redirect: "/sign-in" }),
       onboarding: async () => ({ redirect: "/sign-in" }),
-      auth: () => ({ ...fake, continueWithGoogle: async () => ({ redirectTo: GOOGLE }) }),
+      auth: () => ({
+        ...fake,
+        continueWithGoogle: async () => ({ redirectTo: GOOGLE }),
+        signUp: async () => ({ role: "owner", next: "/check-email" }),
+        signIn: async (input) => ({ role: "owner", next: input.password === "two-factor-on" ? "/two-factor" : "/" }),
+      }),
+      signOut: async () => {},
     });
   });
   afterEach(() => {
@@ -62,5 +68,23 @@ describe("auth Server Functions in db mode", () => {
   it("sign in names the next page and sets no prototype role or demo cookies", async () => {
     expect(await signIn(DEMO_OWNER_EMAIL, DEMO_PASSWORD)).toEqual({ ok: true, next: "/" });
     expect(jar.size).toBe(0);
+  });
+  it("passes the new next values through: /check-email after sign up, /two-factor when TOTP is on", async () => {
+    expect(await signUp("new@example.com", "a long password")).toEqual({ ok: true, next: "/check-email" });
+    expect(await signIn("a@example.com", "two-factor-on")).toEqual({ ok: true, next: "/two-factor" });
+    expect(jar.size).toBe(0);
+  });
+  it("the code, email link and invite name the next page and set no prototype cookies", async () => {
+    expect(await verifyTwoFactor("123456")).toEqual({ ok: true, next: "/" });
+    expect(await verifyEmail("a-token")).toEqual({ ok: true, next: "/onboarding" });
+    expect(await acceptInvite("inv-1")).toEqual({ ok: true, next: "/" });
+    expect(jar.size).toBe(0);
+  });
+  it("password reset answers the one sentence, then the new password; refusals keep their field", async () => {
+    const sent = await requestPasswordReset("someone@example.com");
+    expect(sent).toMatchObject({ ok: true });
+    expect(await resetPassword("a-token", "a long new password")).toEqual({ ok: true });
+    expect(await resetPassword("a-token", "short")).toMatchObject({ ok: false, code: "invalid", issues: [{ field: "password" }] });
+    expect(await verifyTwoFactor("12ab")).toMatchObject({ ok: false, code: "invalid", issues: [{ field: "code" }] });
   });
 });

@@ -29,7 +29,7 @@ beforeEach(() => {
   vi.stubEnv("ROOFY_DATA", "db");
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   const expired = async () => ({ redirect: "/sign-in" as const });
-  registerDbData({ context: expired, onboarding: expired, auth: () => createFakeAuth() });
+  registerDbData({ context: expired, onboarding: expired, auth: () => createFakeAuth(), signOut: async () => {} });
 });
 afterEach(() => {
   vi.unstubAllEnvs();

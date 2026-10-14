@@ -40,6 +40,7 @@ export function createDbDataProvider(deps: DbDataDeps): DbDataProvider {
       };
     },
     auth: () => createDbAuth(),
+    signOut: () => createDbAuth().signOut(),
     async onboarding(h) {
       const found = await deps.actorFromHeaders(h);
       if (found.kind === "signed-out") return { redirect: "/sign-in" };

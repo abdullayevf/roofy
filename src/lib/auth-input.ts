@@ -34,3 +34,21 @@ export function authProblems(mode: AuthMode, input: { email: string; password: s
 
 /** Said when sign-in or sign-up fails for a reason that is not the person's doing. */
 export const SIGN_IN_FAILED = "Couldn't sign you in. Try again.";
+
+// The sign-in copy both auth services use (the fake and the real one, Task 12), so their refusals read the same.
+export const WRONG_PASSWORD = "That email and password don't match. Check them and try again.";
+export const EMAIL_TAKEN = "An account with that email already exists. Sign in instead.";
+/** The one answer to "Send link", so it never reveals whether an email has an account. */
+export const RESET_LINK_SENT = "If that email has an account, we've sent a link to set a new password. Check your email.";
+export const LINK_EXPIRED = "This link has expired or was already used. Ask for a new one.";
+export const TWO_FACTOR_CODE = "Enter the 6-digit code from your authenticator app.";
+export const INVITE_GONE = "This invite has expired or was cancelled. Ask your manager for a new one.";
+/** Signing in before the email is verified: a new link goes out with this answer. */
+export const EMAIL_NOT_VERIFIED = "Verify your email first. We've sent you a new link.";
+/** A 6-digit code that is not the current one. */
+export const WRONG_CODE = "That code doesn't match. Enter the code your authenticator app shows now.";
+/** A step that needs a sign-in in progress (two-factor) or a session (invite) when there is none. */
+export const SIGN_IN_AGAIN = "Your sign-in has timed out. Sign in again.";
+export const INVITE_OTHER_EMAIL = "This invite is for a different email. Sign in with the email it was sent to.";
+export const GOOGLE_OFF = "Google sign-in isn't available yet. Use your email instead.";
+export const TOO_MANY_TRIES = "Too many tries. Wait a minute, then try again.";

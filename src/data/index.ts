@@ -173,6 +173,11 @@ export async function getWriteData(): Promise<WriteContext> {
 }
 
 /** Sign in and sign up: there is no signed-in person yet, so no store, actor or demo state. */
+/** Db sign-out: ends the Better Auth session of this request (its cookie goes through `nextCookies()`). */
+export async function signOutOfDb(): Promise<void> {
+  await dbData().signOut();
+}
+
 export function getAuth(): AuthService {
   return dataMode() === "db" ? dbData().auth() : createFakeAuth();
 }

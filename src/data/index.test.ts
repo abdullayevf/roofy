@@ -169,6 +169,7 @@ describe("ROOFY_DATA=db", () => {
     registerDbData({
       context: async (h) => (seen.push(h), context),
       auth: () => auth,
+      signOut: async () => {},
       onboarding: async (h) => (seen.push(h), onboarding),
     });
   });

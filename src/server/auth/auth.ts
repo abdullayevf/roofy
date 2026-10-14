@@ -171,6 +171,8 @@ export function createAuth() {
     },
     emailVerification: {
       sendOnSignUp: true,
+      // Signing in unverified sends a fresh link (the refusal says so).
+      sendOnSignIn: true,
       autoSignInAfterVerification: true,
       sendVerificationEmail: async ({ user, url }) => send(user.email, verificationEmail(url)),
     },

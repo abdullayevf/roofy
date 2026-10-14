@@ -33,7 +33,7 @@ describe("sign in and sign up pages", () => {
   it("in db mode, signed out: render the form without a redirect (no redirect loop)", async () => {
     vi.stubEnv("ROOFY_DATA", "db");
     const signedOut = async () => ({ redirect: "/sign-in" as const });
-    registerDbData({ context: signedOut, onboarding: signedOut, auth: () => createFakeAuth() });
+    registerDbData({ context: signedOut, onboarding: signedOut, auth: () => createFakeAuth(), signOut: async () => {} });
     for (const Page of [SignIn, SignUp]) {
       const el = await Page({ searchParams: Promise.resolve({ demo: "loading" }) });
       expect(formDemo(el)).toBeNull();
