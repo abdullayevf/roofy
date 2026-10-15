@@ -179,7 +179,8 @@ describe("Forgot password", () => {
     expect(await screen.findByText(RESET_LINK_SENT)).toBeTruthy();
     expect(screen.getByRole("heading", { level: 1, name: "Check your email" })).toBeTruthy();
     expect(screen.queryByText(/Enter your email and/)).toBeNull();
-    const again = screen.getByRole("button", { name: /Send again/ }) as HTMLButtonElement;
+    // The answer and the end of "Sending link" are two renders; wait for the button rather than assume they land together.
+    const again = (await screen.findByRole("button", { name: /Send again/ })) as HTMLButtonElement;
     expect(again.disabled).toBe(true);
     expect(again.textContent).toContain("30 s");
     await userEvent.click(screen.getByRole("button", { name: "Use a different email" }));

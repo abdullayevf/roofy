@@ -1592,7 +1592,7 @@ export interface WorkspaceService {
   members(actor: Actor): Promise<Member[]>;
   inviteMember(actor: Actor, input: MemberInput): Promise<Member>;
   setMemberRole(actor: Actor, memberId: Id, role: Role): Promise<Member>;
-  /** Owner or Manager take someone out of the team; anything touching the Owner role is an Owner change. Refuses removing yourself and the last Owner. */
+  /** Owner only (product spec section 3) takes someone out of the team; removing an Owner needs 2FA. Refuses removing yourself and the last Owner. */
   removeMember(actor: Actor, memberId: Id): Promise<void>;
   /** Foreman project assignments. */
   assignments(actor: Actor): Promise<{ memberId: Id; name: string; projectIds: Id[] }[]>;

@@ -39,7 +39,8 @@ const ready = { kind: "ready", invite: { workspaceName: "Harbour Roofing", role:
 
 beforeEach(() => {
   cleanup();
-  vi.clearAllMocks();
+  // reset, not clear: a mockResolvedValueOnce a test never used must not answer the next test's call.
+  vi.resetAllMocks();
 });
 
 describe("Two-factor step", () => {
@@ -70,8 +71,11 @@ describe("Two-factor step", () => {
     await userEvent.click(screen.getByRole("button", { name: "Check code" }));
     expect(await screen.findByText(WRONG_CODE)).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
+    // The message and the end of "Checking code" are two renders; a click while the button is still busy asks nothing.
+    await waitFor(() => expect((screen.getByRole("button", { name: "Check code" }) as HTMLButtonElement).disabled).toBe(false));
     mocks.verifyTwoFactor.mockResolvedValueOnce(refused("boom", "unavailable"));
     await userEvent.click(screen.getByRole("button", { name: "Check code" }));
+    await waitFor(() => expect(mocks.verifyTwoFactor).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain(TWO_FACTOR_FAILED));
     // The alert and the end of "Checking code" are two renders; wait for the button rather than assume they land together.
     expect(await screen.findByRole("button", { name: "Try again" })).toBeTruthy();

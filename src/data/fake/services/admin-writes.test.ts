@@ -577,7 +577,8 @@ describe("settings", () => {
     const self = await refusal(data.workspace.removeMember(actor, boss.id));
     expect([self.code, self.message]).toEqual(["conflict", "You can't remove yourself. Ask another owner."]);
     const mine = people.find((x) => x.userId === manager.actor.userId);
-    if (mine) expect((await refusal(manager.data.workspace.removeMember(manager.actor, mine.id))).code).toBe("forbidden");
+    expect(mine).toBeDefined();
+    expect((await refusal(manager.data.workspace.removeMember(manager.actor, mine!.id))).code).toBe("forbidden");
     expect((await refusal(data.workspace.removeMember(actor, "no-such-member"))).code).toBe("not_found");
     await data.workspace.setAssignments(actor, al.id, [projects.rydeHeritage]);
     expect((await refusal(manager.data.workspace.removeMember(manager.actor, al.id))).code).toBe("forbidden");

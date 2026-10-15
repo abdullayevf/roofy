@@ -97,7 +97,7 @@ export async function setMemberRole(memberId: Id, role: Role): Promise<ActionRes
   );
 }
 
-/** Owner or Manager: take someone out of the team. */
+/** Owner only (product spec section 3): take someone out of the team; removing an Owner needs 2FA. */
 export async function removeMember(memberId: Id): Promise<ActionResult> {
   return act(
     [idSchema],

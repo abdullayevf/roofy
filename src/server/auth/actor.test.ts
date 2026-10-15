@@ -26,7 +26,7 @@ describe("actorFromHeaders", () => {
     await import("./actor");
     expect(wrapped).toHaveLength(1);
     expect((wrapped[0] as { name: string }).name).toBe("actorFromHeaders");
-  });
+  }, 30_000); // the first dynamic import of ./actor pulls in the auth module graph: over 5 s while an e2e run holds the cores
   it("reads the session once for two calls with one request's headers", async () => {
     const { actorFromHeaders } = await import("./actor");
     getSession.mockClear();

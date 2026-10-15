@@ -114,10 +114,12 @@ function ledgerOf(s: Seed, crewId: string): LedgerEntry[] {
     .map((e) => ({ date: e.date, kind: e.kind, amountCents: e.amountCents }));
 }
 
+// The tests marked 30_000 build or walk the whole seed: 0.5 to 2.6 s alone, over the 5 s default while an e2e run holds the cores.
+// Only the wall-clock timeout is raised; the 500 ms CPU-time budget below is untouched.
 describe("seed: shape and determinism", () => {
   it("is deterministic: the same JSON hash on two builds", () => {
     expect(hash(buildSeed())).toBe(hash(seed));
-  });
+  }, 30_000);
 
   // Measured as this thread's CPU time, not wall-clock time: `pnpm verify` runs test files in
   // parallel forks on a 4-core box, and time spent waiting for a core isn't the seed's cost. Best of
@@ -132,7 +134,7 @@ describe("seed: shape and determinism", () => {
       return Math.round((cpu.user + cpu.system) / 1000);
     });
     expect(Math.min(...times), `build CPU times: ${times.join(", ")} ms`).toBeLessThan(500);
-  });
+  }, 30_000);
 
   it("is anchored at the default fake clock's work date", () => {
     vi.stubEnv("ROOFY_FAKE_NOW", undefined);
@@ -312,7 +314,7 @@ describe("seed: shape and determinism", () => {
       .filter(Array.isArray)
       .flatMap((rows) => (rows as { id: string }[]).map((r) => r.id));
     expect(new Set(all).size).toBe(all.length);
-  });
+  }, 30_000);
 });
 
 describe("seed: every figure reproduces through src/domain", () => {
@@ -618,7 +620,7 @@ describe("seed: pay runs", () => {
       );
       expect(sum(lines.map((x) => x.amountCents))).toBe(c.amountCents);
     }
-  });
+  }, 30_000);
 
   it("E6.1 + E7.1 + E15.1 Dima in last week's draft: $1,520.00 + GST $152.00 + $110.00 = $1,782.00; balance then $1,482.00", () => {
     const dima = lastWeekDraft(seed).find((p) => p.crewMemberId === seed.meta.crew.dima)!;

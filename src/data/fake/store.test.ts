@@ -14,6 +14,7 @@ import { write } from "./services/writes";
 
 afterEach(() => clearSessionStores());
 
+// The tests marked 30_000 build or clone the whole seed (0.5 to 2 s alone); under an e2e run's load they pass the 5 s default.
 describe("FakeStore", () => {
   it("builds the seed once and shares it read-only (frozen) when there is no demo session", () => {
     expect(getSeed()).toBe(getSeed());
@@ -23,7 +24,7 @@ describe("FakeStore", () => {
     expect(shared.tables).toBe(getSeed());
     expect(Object.isFrozen(shared.tables.workLogs[0])).toBe(true);
     expect(() => shared.write(() => undefined)).toThrow(/read-only/);
-  });
+  }, 30_000);
 
   it("gives each demo session its own clone, reused on later requests", () => {
     const a = sessionStore("a");
@@ -38,7 +39,7 @@ describe("FakeStore", () => {
     expect(a.tables.workspace.name).toBe("Changed");
     expect(b.tables.workspace.name).toBe("Harbour Roofing");
     expect(getSeed().workspace.name).toBe("Harbour Roofing");
-  });
+  }, 30_000);
 
   it("keeps at most 50 sessions, dropping the least recently used", () => {
     for (let i = 0; i < SESSION_STORE_LIMIT; i++) sessionStore(`s${i}`);
@@ -59,7 +60,7 @@ describe("FakeStore", () => {
     s.write(() => undefined);
     expect(s.version).toBe(v + 1);
     expect(s.indexes()).not.toBe(before);
-  });
+  }, 30_000);
 
   it("a write is all or nothing: a change that throws leaves every table exactly as it was", () => {
     const s = sessionStore("tx");
@@ -80,7 +81,7 @@ describe("FakeStore", () => {
     expect(s.tables).toEqual(before);
     expect(s.tables.workLogs[0]).toBe(log); // rows keep their identity (indexes stay valid)
     expect(s.version).toBe(v);
-  });
+  }, 30_000);
 
   it("a service write that audits then throws saves nothing: no row, no audit event, no mutation", () => {
     const s = sessionStore("tx-service");

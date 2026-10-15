@@ -60,7 +60,7 @@ const invite = (headers: Headers, email: string, role: "owner" | "manager" | "fo
   getAuth().api.createInvitation({ body: { email, role, organizationId }, headers });
 
 describe("organization hooks (T8)", () => {
-  it("refuses a Manager inviting as Owner (member.changeOwner), and an Owner without 2FA too", async () => {
+  it("refuses a Manager inviting as Owner, and an Owner without 2FA too", async () => {
     expect(await refused(invite(manager.headers, `x${n++}@example.com`, "owner"))).toMatchObject({ status: 403 });
     expect(await refused(invite(owner.headers, `y${n++}@example.com`, "owner"))).toMatchObject({
       status: 403,
