@@ -498,17 +498,17 @@ Run 1 covers settings, levels, categories and templates. Run 2 covers members, i
 
 ### Task 15: Phase gate
 
-- [ ] `pnpm db:up`, then `pnpm verify` green in full (typecheck, lint, design lint, tokens, contrast, unit + integration with coverage 100% on `src/domain`, examples).
-- [ ] Full e2e by the conductor:
+- [x] `pnpm db:up`, then `pnpm verify` green in full (typecheck, lint, design lint, tokens, contrast, unit + integration with coverage 100% on `src/domain`, examples). (Done 2026-10-16 at e6b4c33: verify green; `pnpm test:coverage` 2034 tests, 167 files, domain 100% thresholds pass.)
+- [x] Full e2e by the conductor: (Done 2026-10-16: full fake run 3748 pass, 154 fail on the pre-fix build; after rebuild the 3 non-visual failures plus settings-lists and members-two-factor on iphone/android/desktop 369 pass, 0 fail; db projects 33 pass, 3 skip (fixme), 0 fail.)
   - `pnpm test:e2e` (fake projects iphone, android, desktop, unchanged from Phase 2).
   - Db-mode projects `db-iphone`, `db-android`, `db-desktop` against the real DB, all green. Known flaky tests from PROGRESS.md are re-run once before being counted.
-- [ ] `pnpm test:visual` shows no unexpected diffs. Diffs on the screens changed in Task 13 are reviewed and baselines updated in one commit.
-- [ ] `pnpm test:coverage`: domain stays at 100%. Record the integration test count.
-- [ ] Master-plan Phase 3 test list ticked with evidence (file and test name):
+- [x] `pnpm test:visual` shows no unexpected diffs. Diffs on the screens changed in Task 13 are reviewed and baselines updated in one commit. (Done 2026-10-16: 151 diffs traced to Phase 3 commits by review `task-15-visual-report.md`; 151 updated + 169 new baselines in e01491d; full visual 1218 pass, 1 capture race fixed e6b4c33, 9/9 on re-run.)
+- [x] `pnpm test:coverage`: domain stays at 100%. Record the integration test count. (Done: integration 364.)
+- [x] Master-plan Phase 3 test list ticked with evidence (file and test name): (Done: `.superpowers/sdd/04-db-auth/task-15-evidence.md`, all 5 OK.)
   - cross-tenant attempts on every table (Task 4)
   - role × action matrix (Task 9)
   - audit before/after (Task 5)
   - locked log rejected (Task 6)
   - foreman DTO scan (Tasks 9 and 11)
-- [ ] `spec-reviewer` (opus) on `git diff master...HEAD` against architecture §3–§6, product spec §3 and §5.1, and this plan. Fix findings (at most 2 rounds), then re-review only those findings.
-- [ ] Update `docs/plans/PROGRESS.md`: "## Current" (at most 12 lines: phase 3 done, gate evidence, next is Phase 4) and the Log, plus decisions 1–9 under "Decisions and deviations". Commit the docs. Merge and push are the owner's call.
+- [x] `spec-reviewer` (opus) on `git diff master...HEAD` against architecture §3–§6, product spec §3 and §5.1, and this plan. Fix findings (at most 2 rounds), then re-review only those findings. (Done: spec-reviewer opus dd0dd55..HEAD P0=0 P1=0 P2=2; P2-1 fixed 5f5fd8c, P3s 164c3fa, re-reviews CLEAN; P2-2 carried.)
+- [x] Update `docs/plans/PROGRESS.md`: "## Current" (at most 12 lines: phase 3 done, gate evidence, next is Phase 4) and the Log, plus decisions 1–9 under "Decisions and deviations". Commit the docs. Merge and push are the owner's call. (Done 2026-10-16.)
