@@ -84,8 +84,8 @@ async function ownerAndJoinedForeman(browser: Browser, owner: Page, testInfo: Te
 
   const context = await secondContext(browser, testInfo);
   const foreman = await context.newPage();
-  // The signed-out invite page cannot be opened in db mode (see the fixme below), so the new person goes to the
-  // sign-up the invite page would have sent them to, which carries the invite path back after verifying.
+  // The new person goes straight to the sign-up the signed-out invite page links to (that page has its own test
+  // below), which carries the invite path back after verifying.
   await foreman.goto(`/sign-up?next=${encodeURIComponent(new URL(inviteLink).pathname)}`);
   await waitForHydrated(foreman);
   const beforeVerify = mailCount();
@@ -200,7 +200,7 @@ test("the Owner invites a foreman and the mailed link lets a second browser cont
 
     // The used invite link no longer offers a second join.
     await team.foreman.goto(team.inviteLink);
-    // (The page should say "This invite can't be used"; today it says it couldn't load: see the second fixme.)
+    // (The exact "This invite can't be used" page is asserted in its own test below.)
     await expect(team.foreman.getByRole("button", { name: "Join team", exact: true })).toHaveCount(0);
   } finally {
     await team.close();
@@ -274,10 +274,9 @@ test("member actions change nothing for a foreman or for another workspace's mem
   }
 });
 
-// BUG (found in Task 14 run 3): in the built db server a refused member action answers "unavailable / Couldn't save
-// this. Try again." (the server log shows `DataError: You don't have access to this.` printed by act()) instead of the
-// plain refusal: `isDataError` (instanceof) fails across the server and action bundles. The refusal itself holds.
-test.fixme("a refused member action answers with the plain code and sentence", async ({ page, browser }, testInfo) => {
+// Guards the Task 14 fix 55f7277: the db services load from instrumentation.ts with their own copy of contracts.ts, so
+// `instanceof DataError` failed and refusals answered "unavailable". isDataError now checks a shared brand.
+test("a refused member action answers with the plain code and sentence", async ({ page, browser }, testInfo) => {
   const team = await ownerAndJoinedForeman(browser, page, testInfo);
   try {
     const foremanMemberId = await memberIdOf(team.foremanEmail);
@@ -294,9 +293,8 @@ test.fixme("a refused member action answers with the plain code and sentence", a
   }
 });
 
-// BUG (found in Task 14 run 3): in db mode a signed-out visitor who opens /invite/<id> gets the "Couldn't load this
-// invite" page, not "Sign in to join". The service answers invalid/SIGN_IN_AGAIN in the integration test; the live page does not.
-test.fixme("a signed-out visitor who opens an invite link is asked to sign in or create an account", async ({ browser }, testInfo) => {
+// Guards the same fix: the signed-out invite page once showed "Couldn't load this invite" instead of "Sign in to join".
+test("a signed-out visitor who opens an invite link is asked to sign in or create an account", async ({ browser }, testInfo) => {
   const context = await secondContext(browser, testInfo);
   try {
     const visitor = await context.newPage();
@@ -309,9 +307,8 @@ test.fixme("a signed-out visitor who opens an invite link is asked to sign in or
   }
 });
 
-// BUG (same cause as above, found in Task 14 run 3): a signed-in person who opens a used invite link gets "Couldn't load
-// this invite" instead of "This invite can't be used". Both pages turn a DataError into the load-failed view.
-test.fixme("a used invite link says the invite can't be used", async ({ page, browser }, testInfo) => {
+// Guards the same fix: a used invite link once showed "Couldn't load this invite" instead of "This invite can't be used".
+test("a used invite link says the invite can't be used", async ({ page, browser }, testInfo) => {
   const team = await ownerAndJoinedForeman(browser, page, testInfo);
   try {
     await team.foreman.goto(team.inviteLink);
