@@ -481,20 +481,20 @@ Run 1 covers settings, levels, categories and templates. Run 2 covers members, i
 - Create: `tests/e2e-db/{mail.ts,onboarding.db.spec.ts,members.db.spec.ts,signin.db.spec.ts}`.
 - Modify: `playwright.config.ts`.
 
-- [ ] Projects `db-iphone`, `db-android` and `db-desktop` (same devices as iphone/android/desktop, `testDir: tests/e2e-db`). A second webServer runs `ROOFY_DATA=db ROOFY_MAIL=console ROOFY_MAIL_LOG=.superpowers/run/mail.jsonl` on port 3101, with `db:reset-test`-style setup against a dedicated `roofy_e2e` database. Create it the way `ops/dev/init.sql` creates `roofy_test`; the migration step does it if missing. The fake projects are unchanged.
-- [ ] `onboarding.db.spec.ts`:
+- [x] Projects `db-iphone`, `db-android` and `db-desktop` (same devices as iphone/android/desktop, `testDir: tests/e2e-db`). A second webServer runs `ROOFY_DATA=db ROOFY_MAIL=console ROOFY_MAIL_LOG=.superpowers/run/mail.jsonl` on port 3101, with `db:reset-test`-style setup against a dedicated `roofy_e2e` database. Create it the way `ops/dev/init.sql` creates `roofy_test`; the migration step does it if missing. The fake projects are unchanged.
+- [x] `onboarding.db.spec.ts`:
   - Sign up with a unique email, open the verification link from the mail log, then complete business → trade → defaults.
   - Add 2 crew (an employee hourly and a contractor daily), go through install, and reach done.
   - Assert the crew appear in Settings and a direct DB query finds 2 `crew_member` and 2 `rate` rows in the new workspace.
   - Time the run from sign-up to done and log it (target in §5.1).
-- [ ] `members.db.spec.ts`: the Owner invites a foreman, and the invite link from the mail log lets a second browser context join. The foreman sees no money on any page it can reach (reuse `tests/e2e/money-scan.ts`) and cannot open `/settings/members`.
-- [ ] `signin.db.spec.ts`:
+- [x] `members.db.spec.ts`: the Owner invites a foreman, and the invite link from the mail log lets a second browser context join. The foreman sees no money on any page it can reach (reuse `tests/e2e/money-scan.ts`) and cannot open `/settings/members`.
+- [x] `signin.db.spec.ts`:
   - Wrong password shows the plain error.
   - A reset link works.
   - With TOTP on, sign-in asks for the code (generate it with the test's TOTP helper from the secret shown on the setup screen).
   - A user of workspace A who opens a URL with workspace B's member id gets the not-found page.
-- [ ] The conductor runs `pnpm exec playwright test --project=db-iphone --project=db-android --project=db-desktop`.
-- [ ] Done when green on all three db projects, and `pnpm verify` is green.
+- [x] The conductor runs `pnpm exec playwright test --project=db-iphone --project=db-android --project=db-desktop`.
+- [x] Done when green on all three db projects, and `pnpm verify` is green. (Done 2026-10-16: e2e-db 33 pass, 3 skip, 0 fail on db-iphone/db-android/db-desktop; code and spec re-review clean; cross-workspace not-found test is fixme, carried to Phase 4 as R3/S1.)
 
 ### Task 15: Phase gate
 
