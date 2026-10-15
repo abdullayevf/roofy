@@ -18,7 +18,8 @@ async function returningOwner(page: Page, tag: string): Promise<string> {
 test("a wrong password says so in plain words, keeps the email, and stays on sign in", async ({ page }) => {
   const email = await returningOwner(page, "wrongpw");
   await signIn(page, email, "not-the-password-1");
-  await expect(page.getByRole("alert").getByText("Couldn't sign you in. Try again.")).toBeVisible();
+  // The refusal for a wrong password (WRONG_PASSWORD); "Couldn't sign you in" is only the unavailable fallback.
+  await expect(page.getByRole("alert").getByText("That email and password don't match. Check them and try again.")).toBeVisible();
   await expect(page).toHaveURL(/\/sign-in/);
   await expect(page.getByLabel("Email", { exact: true })).toHaveValue(email);
 });
