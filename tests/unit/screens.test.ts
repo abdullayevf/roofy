@@ -146,6 +146,18 @@ describe("field-2 filled-flow captures", () => {
     expect(unproven.map((s) => s.id)).toEqual([]);
   });
 
+  it("holds a pause, confirm or create capture until the saved outcome is on the page (Task 15 flake)", () => {
+    // stage-detail-paused-weather was shot 130 px short 2 runs in 3: the chip is optimistic, the Days lost section
+    // arrives with the refresh after the save. Pressing a saving button needs the outcome's own text before the shot.
+    const unproven = SCREENS.filter(
+      (s) =>
+        (s.steps ?? []).some((step) => ["Weather", "Confirm done", "Create job"].includes(step)) &&
+        !s.expectStill,
+    );
+    expect(unproven.map((s) => s.id)).toEqual([]);
+    expect(SCREENS.find((s) => s.id === "stage-detail-paused-weather")?.expectStill).toBe("Days lost");
+  });
+
   it("names the saved text each field-2 save capture waits for", () => {
     expect(byId("log-crew-day-saved")?.expectStill).toBe("Logged:");
     expect(byId("log-crew-day-offline-saved")?.expectStill).toBe("Saved on this device:");

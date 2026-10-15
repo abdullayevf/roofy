@@ -482,6 +482,7 @@ export const SCREENS: ScreenSpec[] = [
     states: ["normal"],
     roles: ["manager"],
     steps: ["Create job"],
+    expectStill: "Job added",
     viewports: ["iphone"],
     lightOnly: true,
     noExtras: true,
@@ -606,6 +607,8 @@ export const SCREENS: ScreenSpec[] = [
     states: ["normal"],
     roles: ["manager"],
     steps: ["Pause stage", "Weather"],
+    // The chip says Paused at once (kept on the phone); the Days lost section arrives with the refresh after the save.
+    expectStill: "Days lost",
     viewports: ["iphone"],
     lightOnly: true,
     noExtras: true,
@@ -661,6 +664,8 @@ export const SCREENS: ScreenSpec[] = [
     states: ["normal"],
     roles: ["manager"],
     steps: ["Confirm done"],
+    // The page opens after the save and a refresh: Reopen stage is the Done stage's own button.
+    expectStill: "Reopen stage",
     viewports: ["iphone"],
     lightOnly: true,
     noExtras: true,
