@@ -42,8 +42,11 @@ const SKIPPED: { match: RegExp; why: string }[] = [
   { match: /^\/prototype\//, why: "the prototype role switch: it sets a different role cookie" },
 ];
 
-/** Signed-out pages: the foreman sees the same form as anyone. */
-const ENTRY = ["/sign-in", "/sign-up"];
+/** Signed-out pages (sign-in, sign-up, email and password steps, an invite link): the foreman sees what anyone does. */
+const ENTRY = [
+  /^\/(sign-in|sign-up|check-email|verify|forgot-password|reset-password|two-factor)$/,
+  /^\/invite\/[^/]+$/,
+];
 /** Owner-only, outside the shell sections. */
 const REFUSED_OUTSIDE_SECTIONS = ["/onboarding"];
 /** Opened by typed URL only, with the foreman-shaped crew list (no balances): review CR2, crew-list.spec.ts. */
@@ -58,7 +61,7 @@ const pathnameOf = (path: string) => path.split("?")[0]!;
 function kindOf(path: string): Kind {
   const pathname = pathnameOf(path);
   if (SKIPPED.some((s) => s.match.test(pathname))) return "skip";
-  if (ENTRY.includes(pathname)) return "open";
+  if (ENTRY.some((r) => r.test(pathname))) return "open";
   if (REFUSED_OUTSIDE_SECTIONS.includes(pathname)) return "refused";
   if (OPEN_IN_REFUSED_SECTIONS.includes(pathname)) return "open";
   const section = SECTIONS[pathname.split("/")[1] ?? ""];
