@@ -94,8 +94,10 @@ test("workspace A's Members screen lists A's people and none of workspace B's", 
   await expect(page).toHaveURL(HOME);
   await page.goto("/settings/members");
   await expect(page.getByRole("heading", { level: 2, name: "People" })).toBeVisible();
-  // The row's second line is one span, "<email>" then "Owner" on the next line, so this finds A's own row and nothing else.
-  await expect(page.getByText(new RegExp(`^\\s*${email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s+Owner\\s*$`))).toBeVisible();
+  // A row's second line is one span: "<email>" then the role on the next line. The screen shows the email the server stored,
+  // which is lower-cased, while uniqueEmail() mixes case. So this finds A's own row, with A's owner email and role Owner, and nothing else.
+  const stored = email.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  await expect(page.getByText(new RegExp(`^\\s*${stored}\\s+Owner\\s*$`))).toBeVisible();
   await expect(page.getByText(b.memberName)).toHaveCount(0);
 });
 
