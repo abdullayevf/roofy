@@ -1,4 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
+import { E2E_BASE_URL, e2eServerEnv } from "./tests/e2e-db/env";
+import { selection } from "./tests/e2e-db/select";
 
 const noWebkit = process.env.ROOFY_NO_WEBKIT === "1";
 
@@ -44,6 +46,41 @@ const desktop = {
 // prefers-reduced-motion). The shots are fonts-loaded, hydrated and on the fake clock; see tests/visual/screens.spec.ts.
 const visual = { reducedMotion: "reduce" as const, colorScheme: "light" as const };
 
+// Db-mode projects (tests/e2e-db) and their server on 3101 exist only when a run names a db-* project, so a fake run
+// never starts that server or needs Postgres. The flag is exported for the workers, which do not see the CLI flags.
+const run = selection(process.argv);
+if (run.db) process.env.ROOFY_DB_PROJECTS = "1";
+
+// The same three devices, against the db server (ROOFY_DATA=db on 3101, roofy_e2e). One test is one whole journey
+// (sign up, verify, onboard), so the time limit is longer and a file's tests run in order.
+const db = { testDir: "tests/e2e-db", timeout: 90_000, fullyParallel: false };
+const dbProjects = run.db
+  ? [
+      { name: "db-iphone", ...db, use: { ...iphone, baseURL: E2E_BASE_URL } },
+      { name: "db-android", ...db, use: { ...android, baseURL: E2E_BASE_URL } },
+      { name: "db-desktop", ...db, use: { ...desktop, baseURL: E2E_BASE_URL } },
+    ]
+  : [];
+
+const fakeServer = {
+  command: "pnpm build && pnpm start",
+  url: "http://127.0.0.1:3100",
+  // Off by default so a stale server is never reused silently; opt in explicitly.
+  reuseExistingServer: process.env.ROOFY_REUSE_SERVER === "1",
+  timeout: 240_000,
+  env: { ROOFY_DATA: "fake" },
+};
+
+// Never builds: the one build comes first (the fake server above, or by hand), and ROOFY_DATA is read at runtime.
+// `pnpm db:reset-e2e` creates, drops and migrates roofy_e2e; `pnpm e2e-db:server` is `next start -p 3101`.
+const dbServer = {
+  command: "pnpm db:reset-e2e && pnpm e2e-db:server",
+  url: `${E2E_BASE_URL}/sign-in`,
+  reuseExistingServer: process.env.ROOFY_REUSE_SERVER === "1",
+  timeout: 240_000,
+  env: run.db ? e2eServerEnv() : {},
+};
+
 export default defineConfig({
   // The iphone, android and desktop projects run tests/e2e only; the visual-* projects below set their own testDir.
   testDir: "tests/e2e",
@@ -75,13 +112,8 @@ export default defineConfig({
     // runs the same file on the iPhone engine (WebKit) for everything that does not need the protocol.
     { name: "visual-pwa", testDir: "tests/visual", testMatch: "pwa.spec.ts", use: { ...android, ...visual } },
     { name: "visual-pwa-iphone", testDir: "tests/visual", testMatch: "pwa.spec.ts", use: { ...iphone, ...visual } },
+    ...dbProjects,
   ],
-  webServer: {
-    command: "pnpm build && pnpm start",
-    url: "http://127.0.0.1:3100",
-    // Off by default so a stale server is never reused silently; opt in explicitly.
-    reuseExistingServer: process.env.ROOFY_REUSE_SERVER === "1",
-    timeout: 240_000,
-    env: { ROOFY_DATA: "fake" },
-  },
+  // A fake-only run keeps exactly the one 3100 server it always had.
+  webServer: run.db ? [...(run.fake ? [fakeServer] : []), dbServer] : fakeServer,
 });

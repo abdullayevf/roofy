@@ -29,6 +29,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:roles": "tsx scripts/db-roles.ts",
     "db:reset-test": "tsx scripts/db-reset-test.ts",
+    "db:reset-e2e": "tsx scripts/db-reset-e2e.ts",
+    "e2e-db:server": "tsx scripts/e2e-db-server.ts",
     "test:integration": "vitest run --project integration",
     "icons:gen": "tsx scripts/gen-icons.ts"
   },
