@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { TWO_FACTOR_CODE } from "../../src/lib/auth-input";
 import {
   checkCodeFieldFont,
   checkDisabledPrimaryContrast,
@@ -27,7 +28,7 @@ test.describe("Two-factor step", () => {
     await open(page, "/two-factor");
     await expect(page.getByRole("heading", { level: 1, name: "Enter your code" })).toBeVisible();
     await button(page, "Check code").click();
-    await expect(page.getByText("Enter the 6-digit code from your authenticator app.")).toBeVisible();
+    await expect(page.getByText(TWO_FACTOR_CODE)).toBeVisible();
     await page.getByLabel("Code").fill("000000");
     await button(page, "Check code").click();
     await expect(page.getByText("That code doesn't match.")).toBeVisible();

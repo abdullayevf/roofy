@@ -1,5 +1,6 @@
 import { v7 as uuidv7 } from "uuid";
 import { dayOfWeek } from "@/domain/dates";
+import { TWO_FACTOR_CODE } from "@/lib/auth-input";
 import type {
   Actor,
   CategoryInput,
@@ -206,7 +207,7 @@ export function createWorkspaceService(c: FakeContext): WorkspaceService {
       c.access(actor);
       const digits = code.replace(/\s/g, "");
       if (!/^\d{6}$/.test(digits))
-        throw invalid("Enter the 6-digit code from your app.", [{ field: "code", message: "Enter the 6-digit code from your app." }]);
+        throw invalid(TWO_FACTOR_CODE, [{ field: "code", message: TWO_FACTOR_CODE }]);
       write(c, actor, "two_factor_on", (w) => {
         const own =
           w.t.members.find((m) => m.userId === actor.userId) ??

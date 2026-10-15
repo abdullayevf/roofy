@@ -8,6 +8,7 @@ import { sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DataError, type Actor, type Role } from "@/data/contracts";
+import { TWO_FACTOR_CODE } from "@/lib/auth-input";
 import { withActor } from "@/server/db/with-actor";
 import { createWorkspaceService } from "@/server/services/workspace";
 import { closePools, makeWorkspace, pool, rows } from "./helpers";
@@ -167,7 +168,7 @@ describe("turnOnTwoFactor", () => {
     expect(await refusal(ws.turnOnTwoFactor(foreman, "12 34 56"))).toBe(
       "conflict: Scan the code with your authenticator app and confirm it first.",
     );
-    expect(await refusal(ws.turnOnTwoFactor(foreman, "12345"))).toBe("invalid: Enter the 6-digit code from your app.");
+    expect(await refusal(ws.turnOnTwoFactor(foreman, "12345"))).toBe(`invalid: ${TWO_FACTOR_CODE}`);
     await setTwoFactor(foreman, true);
     expect(await ws.turnOnTwoFactor(foreman, "123456")).toEqual({ twoFactorEnabled: true });
   });

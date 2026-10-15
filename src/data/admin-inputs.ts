@@ -4,6 +4,7 @@
  * done?) stay in the services. Outputs are exactly the contract input types.
  */
 import { z } from "zod";
+import { TWO_FACTOR_CODE } from "@/lib/auth-input";
 import type {
   DoneSplit,
   CategoryInput,
@@ -275,4 +276,4 @@ export const memberSchema: z.ZodType<MemberInput> = z.object({
 export { idSchema, localDateSchema, roleSchema };
 export const idListSchema = z.array(idSchema).max(500);
 
-export const codeSchema = z.string().trim().max(20, { error: "Enter the 6-digit code from your app." });
+export const codeSchema = z.string().trim().max(20, { error: TWO_FACTOR_CODE });

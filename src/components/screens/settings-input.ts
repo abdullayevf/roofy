@@ -1,9 +1,11 @@
 import { parseDecimal } from "@/domain/money";
 import type { Cents, PayFrequency } from "@/data/contracts";
+import { TWO_FACTOR_CODE } from "@/lib/auth-input";
 
 /** flows.md "Settings changes": a floor of $0.00, blank or unreadable is refused with this sentence. */
 export const FLOOR_MISSING = "Add a floor rate before saving.";
-export const CODE_HINT = "Enter the 6-digit code from your app.";
+/** The one sentence for a code that is not 6 digits (R11): the sign-in step and set-up say the same thing. */
+export const CODE_HINT = TWO_FACTOR_CODE;
 export const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
 
 const ON_COST_RANGE = "On-cost is between 0% and 100%.";

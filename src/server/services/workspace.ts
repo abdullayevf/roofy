@@ -29,6 +29,7 @@ import {
   type WorkspaceView,
 } from "@/data/contracts";
 import { dayOfWeek } from "@/domain/dates";
+import { TWO_FACTOR_CODE } from "@/lib/auth-input";
 import { ROOFING_DEFAULTS } from "@/lib/roofing-defaults";
 import { assertCan, type Action, type ActorWith2fa } from "@/server/authz/matrix";
 import { assertInvite, assertKeepsAnOwner, assertRemoval, assertRoleChange, NEEDS_AN_OWNER, NOT_YOURSELF } from "@/server/authz/members";
@@ -609,7 +610,7 @@ export function createWorkspaceService(): BuiltWorkspaceService {
      */
     async turnOnTwoFactor(actor: Actor, code: string): Promise<{ twoFactorEnabled: true }> {
       allow(actor, "twoFactor.manage");
-      if (!/^\d{6}$/.test(code.replace(/\s/g, ""))) throw invalid("Enter the 6-digit code from your app.", "code");
+      if (!/^\d{6}$/.test(code.replace(/\s/g, ""))) throw invalid(TWO_FACTOR_CODE, "code");
       const on = await withActor(actor, async (tx) => withTwoFactor(actor, await profiles(tx)).twoFactorEnabled);
       if (!on) throw new DataError("conflict", "Scan the code with your authenticator app and confirm it first.");
       return { twoFactorEnabled: true };

@@ -45,7 +45,10 @@ export const EMAIL_TAKEN = "An account with that email already exists. Sign in i
 export const RESET_LINK_SENT =
   "If that email has an account, we've sent a link to set a new password. Check your email.";
 export const LINK_EXPIRED = "This link has expired or was already used. Ask for a new one.";
-export const TWO_FACTOR_CODE = "Enter the 6-digit code from your authenticator app.";
+/** The one refusal for a code that is not 6 digits: sign-in, set-up, the settings form and the services all use it (R11). */
+export const TWO_FACTOR_CODE = "Enter the 6-digit code from your app.";
+/** Set-up is the Owner's (Approve needs it and the page is owner only); everyone else is refused before Better Auth is asked. */
+export const TWO_FACTOR_OWNER_ONLY = "Only the Owner can turn on two-factor.";
 export const INVITE_GONE = "This invite has expired or was cancelled. Ask your manager for a new one.";
 /** Signing in before the email is verified: a new link goes out with this answer. */
 export const EMAIL_NOT_VERIFIED = "Verify your email first. We've sent you a new link.";
