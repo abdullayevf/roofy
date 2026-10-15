@@ -115,4 +115,34 @@ describe("contracts", () => {
     expect(isDataError(new Error("x"))).toBe(false);
     expect(new DataError("forbidden", "You don't have access to this. Ask your manager.").issues).toEqual([]);
   });
+
+  it("isDataError recognises a DataError from another copy of this module (instrumentation bundle)", () => {
+    // In the production build the db services are loaded from instrumentation.ts, a separate bundle with
+    // its own copy of contracts.ts, so `instanceof` against this copy fails. Simulate that copy.
+    const brand = Symbol.for("roofy.DataError");
+    class OtherCopy extends Error {
+      readonly [brand] = true;
+      readonly code: string;
+      readonly issues: readonly { field: string; message: string }[];
+      constructor(code: string, message: string) {
+        super(message);
+        this.name = "DataError";
+        this.code = code;
+        this.issues = [];
+      }
+    }
+    for (const code of ["not_found", "forbidden", "invalid", "conflict", "unavailable"])
+      expect(isDataError(new OtherCopy(code, "You don't have access to this."))).toBe(true);
+  });
+
+  it("isDataError refuses look-alikes: plain errors, unbranded names, unknown codes, non-errors", () => {
+    const brand = Symbol.for("roofy.DataError");
+    expect(isDataError(new Error("x"))).toBe(false);
+    expect(isDataError(Object.assign(new Error("x"), { name: "DataError", code: "forbidden", issues: [] }))).toBe(false);
+    expect(isDataError(Object.assign(new Error("x"), { [brand]: true, code: "teapot", issues: [] }))).toBe(false);
+    expect(isDataError(Object.assign(new Error("x"), { [brand]: true, code: "forbidden" }))).toBe(false);
+    expect(isDataError({ [brand]: true, code: "forbidden", message: "x", issues: [] })).toBe(false);
+    expect(isDataError(null)).toBe(false);
+    expect(isDataError("forbidden")).toBe(false);
+  });
 });

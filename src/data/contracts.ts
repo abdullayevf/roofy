@@ -105,7 +105,22 @@ export interface FieldIssue {
  * The one error type services throw. Messages are plain sentences safe to show to the actor
  * (never money for a foreman), e.g. "You don't have access to this. Ask your manager."
  */
+/**
+ * Brand on every DataError. `Symbol.for` is shared across module copies: in the production build the db
+ * services load from `instrumentation.ts`, a separate bundle with its own copy of this file, so
+ * `instanceof DataError` fails for errors they throw. Recognition uses the brand instead.
+ */
+const DATA_ERROR_BRAND: unique symbol = Symbol.for("roofy.DataError");
+const DATA_ERROR_CODES: ReadonlySet<string> = new Set<DataErrorCode>([
+  "not_found",
+  "forbidden",
+  "invalid",
+  "conflict",
+  "unavailable",
+]);
+
 export class DataError extends Error {
+  readonly [DATA_ERROR_BRAND] = true;
   readonly code: DataErrorCode;
   readonly issues: readonly FieldIssue[];
 
@@ -117,7 +132,12 @@ export class DataError extends Error {
   }
 }
 
-export const isDataError = (e: unknown): e is DataError => e instanceof DataError;
+/** True only for a branded Error with a known code and an issues array, from any copy of this module. */
+export const isDataError = (e: unknown): e is DataError => {
+  if (!(e instanceof Error)) return false;
+  const b = e as Error & { [DATA_ERROR_BRAND]?: unknown; code?: unknown; issues?: unknown };
+  return b[DATA_ERROR_BRAND] === true && typeof b.code === "string" && DATA_ERROR_CODES.has(b.code) && Array.isArray(b.issues);
+};
 
 // ─── Access (what a screen may offer) ───────────────────────────────────────
 
