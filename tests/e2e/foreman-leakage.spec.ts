@@ -1,6 +1,6 @@
 import { readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { REPORT_KINDS } from "../../src/components/screens/reports-text";
 import { canOpen, type Section } from "../../src/components/shell/access";
 import { DEMO_STATES } from "../../src/data/contracts";
@@ -49,6 +49,12 @@ const ENTRY = [
 ];
 /** Owner-only, outside the shell sections. */
 const REFUSED_OUTSIDE_SECTIONS = ["/onboarding"];
+/**
+ * The heading a refused page shows. Money pages say "No access"; /onboarding says the owner is still setting up
+ * (flows.md, invite flow "Related"), with one Sign out button and none of the wizard's fields.
+ */
+const REFUSAL_HEADINGS: Record<string, string> = { "/onboarding": "The owner is still setting this up" };
+const refusalHeadingOf = (path: string) => REFUSAL_HEADINGS[pathnameOf(path)] ?? "No access";
 /** Opened by typed URL only, with the foreman-shaped crew list (no balances): review CR2, crew-list.spec.ts. */
 const OPEN_IN_REFUSED_SECTIONS = ["/crew"];
 /** Money pages inside sections the foreman opens: a job's contract price, and a stage's forecast (budget and cost to date). */
@@ -210,6 +216,10 @@ test.describe("Foreman leakage: the route list", () => {
     const forecast = `/jobs/${meta.projects.smith}/stages/${meta.stages.smithSheetInstall}/forecast`;
     expect(REFUSED.has(forecast), forecast).toBe(true);
     expect(REFUSED.size).toBeGreaterThan(10);
+    // Every page with its own refusal heading is a refused page, and every other refused page says No access.
+    for (const pathname of Object.keys(REFUSAL_HEADINGS)) expect(REFUSED.has(pathname), pathname).toBe(true);
+    expect(refusalHeadingOf("/onboarding?demo=loading")).toBe("The owner is still setting this up");
+    expect(refusalHeadingOf("/pay")).toBe("No access");
   });
 
   test("every page in src/app is reached by the sweep or skipped for a reason", () => {
@@ -233,13 +243,25 @@ test.describe("Foreman leakage: pages the foreman opens have no money", () => {
   }
 });
 
+/**
+ * A refused page shows its refusal heading and no form: no text field at all, so neither the wizard nor a money
+ * form renders behind or before the refusal. The heading is awaited, so a loading state must settle into it.
+ */
+async function expectRefused(page: Page, path: string) {
+  await expect(page.getByRole("heading", { name: refusalHeadingOf(path) }), path).toBeVisible();
+  if (REFUSAL_HEADINGS[pathnameOf(path)]) {
+    await expect(page.getByRole("textbox"), path).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Sign out" }), path).toBeVisible();
+  }
+}
+
 test.describe("Foreman leakage: money pages say No access and show no figure", () => {
   for (const [pathname, paths] of REFUSED) {
     test(`${pathname} (${paths.length} states)`, async ({ page }) => {
       test.setTimeout(30_000 + paths.length * 5_000);
       for (const path of paths) {
         await expectNoMoney(page, [path]);
-        await expect(page.getByRole("heading", { name: "No access" }), path).toBeVisible();
+        await expectRefused(page, path);
       }
     });
   }
@@ -264,7 +286,7 @@ test.describe("Foreman leakage: money pages say No access and show no figure", (
     ]) {
       for (const state of ["loading", "error", "offline"]) {
         await page.goto(`${base}?demo=${state}`);
-        await expect(page.getByRole("heading", { name: "No access" }), `${base}?demo=${state}`).toBeVisible();
+        await expectRefused(page, `${base}?demo=${state}`);
       }
     }
   });
