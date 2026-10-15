@@ -142,6 +142,51 @@ describe("TwoFactorForm with the key already on the page (prototype)", () => {
     expect(await screen.findByText("Check the 6-digit code and try again.")).toBeVisible();
   });
 
+  // auth i3 N1: a field under the pinned bar or the tab bar is not on screen, however high it is on the window.
+  const rect = (top: number, bottom: number) => ({ top, bottom, left: 0, right: 200, width: 200, height: bottom - top }) as DOMRect;
+  const fixedBar = (el: Element, top: number) => {
+    (el as HTMLElement).style.position = "fixed";
+    el.getBoundingClientRect = () => rect(top, top + 68);
+  };
+
+  it("a Code field under the pinned bar counts as off screen, so the bar says what is wrong", async () => {
+    const user = userEvent.setup();
+    render(<TwoFactorForm demoOffline={false} setup={SETUP} />);
+    expect(window.innerHeight).toBeGreaterThan(740);
+    fixedBar(document.querySelector('[data-slot="primary-action"]')!, 700);
+    const code = screen.getByLabelText("Code");
+    code.getBoundingClientRect = () => rect(690, 738);
+    await user.type(code, "12ab");
+    await user.click(screen.getByRole("button", { name: "Turn on two-factor" }));
+    expect(await screen.findByText("Check the 6-digit code and try again.")).toBeVisible();
+  });
+
+  it("a Code field under the tab bar counts as off screen too", async () => {
+    const user = userEvent.setup();
+    render(<TwoFactorForm demoOffline={false} setup={SETUP} />);
+    const tabs = document.body.appendChild(document.createElement("nav"));
+    tabs.setAttribute("aria-label", "Primary");
+    fixedBar(tabs, 712);
+    const code = screen.getByLabelText("Code");
+    code.getBoundingClientRect = () => rect(700, 748);
+    await user.type(code, "12ab");
+    await user.click(screen.getByRole("button", { name: "Turn on two-factor" }));
+    expect(await screen.findByText("Check the 6-digit code and try again.")).toBeVisible();
+    tabs.remove();
+  });
+
+  it("a Code field above the pinned bar is on screen, so the bar stays quiet and the field speaks", async () => {
+    const user = userEvent.setup();
+    render(<TwoFactorForm demoOffline={false} setup={SETUP} />);
+    fixedBar(document.querySelector('[data-slot="primary-action"]')!, 700);
+    const code = screen.getByLabelText("Code");
+    code.getBoundingClientRect = () => rect(300, 348);
+    await user.type(code, "12ab");
+    await user.click(screen.getByRole("button", { name: "Turn on two-factor" }));
+    expect(await screen.findByText("Enter the 6-digit code from your app.")).toBeVisible();
+    expect(screen.queryByText("Check the 6-digit code and try again.")).toBeNull();
+  });
+
   it("a right code re-reads the page so the on state takes the form's place", async () => {
     const user = userEvent.setup();
     render(<TwoFactorForm demoOffline={false} setup={SETUP} />);

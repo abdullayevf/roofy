@@ -489,6 +489,19 @@ function CopyKey({ secret }: { secret: string }) {
   );
 }
 
+/** Where the screen's clear area ends: the top edge of the fixed pinned bar or tab bar over the bottom, else the window's height. */
+function clearBottom(): number {
+  let limit = window.innerHeight;
+  const bars = document.querySelectorAll<HTMLElement>('[data-slot="primary-action"], nav[aria-label="Primary"]');
+  for (const bar of bars) {
+    if (!["fixed", "sticky"].includes(getComputedStyle(bar).position)) continue;
+    const { top, height } = bar.getBoundingClientRect();
+    // A bar with no height is hidden at this width; one in the top half is the side menu, not a bar over the bottom.
+    if (height > 0 && top > window.innerHeight / 2) limit = Math.min(limit, top);
+  }
+  return limit;
+}
+
 function TwoFactorCode({ demoOffline, setup }: { demoOffline: boolean; setup: TwoFactorSetup }) {
   const s = useSave(demoOffline);
   const [code, setCode] = useState("");
@@ -502,7 +515,8 @@ function TwoFactorCode({ demoOffline, setup }: { demoOffline: boolean; setup: Tw
     input.scrollIntoView({ block: "center" });
     input.focus({ preventScroll: true });
     const { top, bottom } = input.getBoundingClientRect();
-    setCodeOffScreen(bottom < 0 || top > window.innerHeight);
+    // Not all of the field is clear of the top edge and of the pinned bar and tab bar over the bottom (auth i3 N1).
+    setCodeOffScreen(top < 0 || bottom > clearBottom());
   }, [s.refused]);
   const submit = () => {
     const r = readCode(code);

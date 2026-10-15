@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { checkErrorLineInView, collectConsole, expectScreenHealthy, waitForHydrated } from "./guards";
+import { checkErrorLineInView, collectConsole, expectScreenHealthy, expectStill, waitForHydrated } from "./guards";
 
 /** Task 13 run 3: removing a person from the team, the Owner two-factor line, and the two-factor set-up with its QR code. */
 
@@ -85,6 +85,8 @@ test.describe("Members: remove a person", () => {
     await expect(remove).toBeDisabled();
     const reason = sheet.getByText(/^Needs connection/);
     await expect(reason, "one reason in the sheet, not two").toHaveCount(1);
+    // The sheet slides up when it opens; read the three boxes only once it has stopped (android read Save and the reason mid-slide).
+    await expectStill(sheet);
     const [s, r, x] = [await save.boundingBox(), await reason.boundingBox(), await remove.boundingBox()];
     expect(r!.y, "the reason sits directly under Save role").toBeGreaterThanOrEqual(s!.y + s!.height - 1);
     expect(r!.y - (s!.y + s!.height), "close under it").toBeLessThanOrEqual(16);
