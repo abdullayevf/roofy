@@ -65,6 +65,22 @@ describe("sign-in and sign-up links and routing", () => {
     await userEvent.click(screen.getByRole("button", { name: "Create account" }));
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/onboarding"));
   });
+
+  it("from an invite, sign in and sign up pass the return path on, and each links to the other with it", async () => {
+    mocks.signIn.mockResolvedValue({ ok: true, next: "/invite/abc" });
+    render(<AuthForm mode="sign-in" demo={null} returnTo="/invite/abc" />);
+    expect(screen.getByRole("link", { name: "Create an account" }).getAttribute("href")).toBe(
+      "/sign-up?next=%2Finvite%2Fabc",
+    );
+    await userEvent.type(screen.getByLabelText("Email"), "sam@example.com");
+    await userEvent.type(screen.getByLabelText("Password"), "a-long-password");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/invite/abc"));
+    expect(mocks.signIn).toHaveBeenCalledWith("sam@example.com", "a-long-password", "/invite/abc");
+    cleanup();
+    render(<AuthForm mode="sign-up" demo={null} returnTo="/invite/abc" />);
+    expect(screen.getByRole("link", { name: "Sign in" }).getAttribute("href")).toBe("/sign-in?next=%2Finvite%2Fabc");
+  });
 });
 
 describe("Check your email", () => {

@@ -11,25 +11,50 @@ import { getAuth, isFakeMode, startNewWorkspace } from "@/data";
 import { isDataError, type ActionResult, type AuthRedirect, type AuthService, type AuthSession } from "@/data/contracts";
 import { fieldIssues, firstIssue } from "@/data/mutations";
 import { SIGN_IN_FAILED } from "@/lib/auth-input";
+import { RETURN_COOKIE, returnPathOf } from "@/lib/return-path";
 import { ROLE_COOKIE, SESSION_COOKIE_OPTIONS, ensureDemoSession, isHttps } from "@/data/session";
 
 const credentials = z.object({ email: z.string().max(1000), password: z.string().max(1000) });
 const modeSchema = z.enum(["sign-in", "sign-up"]);
 const short = z.string().max(1000);
 
+/** The pages an entry step can end on; a remembered return path (an invite) replaces them. */
+const FINAL_PAGES: readonly string[] = ["/", "/onboarding"];
+
+/**
+ * Sign in and sign up remember where the visitor was headed (the invite page) for an hour; the step that ends the
+ * entry (the password, the code or the email link, whichever comes last) goes there instead of Home or set-up.
+ * Calling without a path forgets an old one. Joining the invite itself never goes back to it.
+ */
+async function rememberReturn(raw: unknown): Promise<void> {
+  const jar = await cookies();
+  const path = returnPathOf(raw);
+  if (path) jar.set(RETURN_COOKIE, path, { ...SESSION_COOKIE_OPTIONS, maxAge: 60 * 60, secure: isHttps("", await headers()) });
+  else if (jar.get(RETURN_COOKIE)) jar.set(RETURN_COOKIE, "", { ...SESSION_COOKIE_OPTIONS, maxAge: 0 });
+}
+
+async function landingFor(next: string, honourReturn: boolean): Promise<string> {
+  if (!FINAL_PAGES.includes(next)) return next;
+  const jar = await cookies();
+  const remembered = jar.get(RETURN_COOKIE)?.value;
+  if (remembered !== undefined) jar.set(RETURN_COOKIE, "", { ...SESSION_COOKIE_OPTIONS, maxAge: 0 });
+  return (honourReturn ? returnPathOf(remembered) : null) ?? next;
+}
+
 async function enter(
   work: (auth: AuthService) => Promise<AuthSession | AuthRedirect>,
+  honourReturn = true,
 ): Promise<ActionResult<{ next: string }>> {
   try {
     const session = await work(getAuth());
     if ("redirectTo" in session) return { ok: true, next: session.redirectTo };
-    if (!isFakeMode()) return { ok: true, next: session.next };
+    if (!isFakeMode()) return { ok: true, next: await landingFor(session.next, honourReturn) };
     // The code comes first: nobody is signed in on the prototype until it is right.
     if (session.next === "/two-factor") return { ok: true, next: session.next };
     await ensureDemoSession();
     if (session.next === "/onboarding") await startNewWorkspace();
     (await cookies()).set(ROLE_COOKIE, session.role, { ...SESSION_COOKIE_OPTIONS, secure: isHttps("", await headers()) });
-    return { ok: true, next: session.next };
+    return { ok: true, next: await landingFor(session.next, honourReturn) };
   } catch (e) {
     if (isDataError(e)) return { ok: false, code: e.code, message: e.message, issues: [...e.issues] };
     console.error(e);
@@ -41,14 +66,18 @@ function refuse<T extends object>(error: z.ZodError): ActionResult<T> {
   return { ok: false, code: "invalid", message: firstIssue(error), issues: fieldIssues(error) };
 }
 
-export async function signIn(email: string, password: string): Promise<ActionResult<{ next: string }>> {
+export async function signIn(email: string, password: string, returnTo?: string): Promise<ActionResult<{ next: string }>> {
   const parsed = credentials.safeParse({ email, password });
-  return parsed.success ? enter((a) => a.signIn(parsed.data)) : refuse(parsed.error);
+  if (!parsed.success) return refuse(parsed.error);
+  await rememberReturn(returnTo);
+  return enter((a) => a.signIn(parsed.data));
 }
 
-export async function signUp(email: string, password: string): Promise<ActionResult<{ next: string }>> {
+export async function signUp(email: string, password: string, returnTo?: string): Promise<ActionResult<{ next: string }>> {
   const parsed = credentials.safeParse({ email, password });
-  return parsed.success ? enter((a) => a.signUp(parsed.data)) : refuse(parsed.error);
+  if (!parsed.success) return refuse(parsed.error);
+  await rememberReturn(returnTo);
+  return enter((a) => a.signUp(parsed.data));
 }
 
 export async function continueWithGoogle(mode: "sign-in" | "sign-up"): Promise<ActionResult<{ next: string }>> {
@@ -68,7 +97,7 @@ export async function verifyEmail(token: string): Promise<ActionResult<{ next: s
 
 export async function acceptInvite(invitationId: string): Promise<ActionResult<{ next: string }>> {
   const parsed = short.safeParse(invitationId);
-  return parsed.success ? enter((a) => a.acceptInvite(parsed.data)) : refuse(parsed.error);
+  return parsed.success ? enter((a) => a.acceptInvite(parsed.data), false) : refuse(parsed.error);
 }
 
 /** Runs a step that signs nobody in: its refusals read like sign-in's. */

@@ -30,7 +30,7 @@ export default async function Page({
       if (isDataError(e) && e.message === SIGN_IN_AGAIN)
         view = {
           kind: "sign-in",
-          message: "Sign in with the email this invite was sent to, then open the invite again.",
+          message: "Sign in or create an account with the email this invite was sent to. You'll come back here to join.",
         };
       else if (isDataError(e) && e.code !== "unavailable") view = { kind: "gone", message: e.message };
       else view = { kind: "failed" };

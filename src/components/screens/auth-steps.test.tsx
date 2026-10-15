@@ -6,6 +6,7 @@ import {
   INVITE_FAILED,
   INVITE_LOAD_FAILED,
   INVITE_GONE,
+  INVITE_OTHER_EMAIL,
   TOO_MANY_TRIES,
   TWO_FACTOR_CODE,
   TWO_FACTOR_FAILED,
@@ -136,6 +137,24 @@ describe("Join team", () => {
     await userEvent.click(screen.getByRole("button", { name: "Join team" }));
     expect((await screen.findByRole("alert")).textContent).toContain(INVITE_GONE);
     expect(screen.queryByRole("button", { name: "Join team" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Sign in" }).getAttribute("href")).toBe("/sign-in");
+  });
+
+  it("signed out, the invite offers Sign in and Create an account, both coming back to the invite", () => {
+    render(<InviteJoin id="abc" view={{ kind: "sign-in", message: "Sign in first." }} demo={null} />);
+    expect(screen.getByRole("link", { name: "Sign in" }).getAttribute("href")).toBe("/sign-in?next=%2Finvite%2Fabc");
+    expect(screen.getByRole("link", { name: "Create an account" }).getAttribute("href")).toBe(
+      "/sign-up?next=%2Finvite%2Fabc",
+    );
+  });
+
+  it("an invite for another email says so and signs in again coming back to the invite; an expired one just signs in", () => {
+    render(<InviteJoin id="abc" view={{ kind: "gone", message: INVITE_OTHER_EMAIL }} demo={null} />);
+    expect(screen.getByRole("alert").textContent).toContain("different email");
+    expect(screen.getByRole("link", { name: "Sign in" }).getAttribute("href")).toBe("/sign-in?next=%2Finvite%2Fabc");
+    expect(screen.queryByRole("link", { name: "Create an account" })).toBeNull();
+    cleanup();
+    render(<InviteJoin id="abc" view={{ kind: "gone", message: INVITE_GONE }} demo={null} />);
     expect(screen.getByRole("link", { name: "Sign in" }).getAttribute("href")).toBe("/sign-in");
   });
 

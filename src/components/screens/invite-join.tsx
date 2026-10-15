@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { acceptInvite } from "@/app/actions/auth";
 import type { InviteDetails } from "@/data/contracts";
-import { INVITE_FAILED, INVITE_GONE, INVITE_LOAD_FAILED } from "@/lib/auth-input";
+import { INVITE_FAILED, INVITE_GONE, INVITE_LOAD_FAILED, INVITE_OTHER_EMAIL } from "@/lib/auth-input";
+import { withReturn } from "@/lib/return-path";
 import { Button } from "@/components/ui/button";
 import type { AuthDemo } from "./auth-form";
 import { EntryHeading, NeedsConnectionLine, ProblemNote } from "./entry-parts";
@@ -58,14 +59,22 @@ export function InviteJoin({ id, view, demo }: { id: string; view: InviteView; d
   if (view.kind !== "ready" || gone) {
     const signIn = view.kind === "sign-in";
     const message = view.kind !== "ready" ? view.message : INVITE_GONE;
+    // Signing in as the right person (not signed in yet, or the wrong email) comes back to the invite; an expired one has nowhere to come back to.
+    const invitePath = `/invite/${encodeURIComponent(id)}`;
+    const comeBack = signIn || message === INVITE_OTHER_EMAIL;
     return (
       <>
         <EntryHeading title={signIn ? "Sign in to join" : "This invite can't be used"} />
         <div className="entry-main flex flex-col gap-4">
           <ProblemNote>{message}</ProblemNote>
-          <Button variant="primary" href="/sign-in">
+          <Button variant="primary" href={withReturn("/sign-in", comeBack ? invitePath : null)}>
             Sign in
           </Button>
+          {signIn ? (
+            <Button variant="secondary" href={withReturn("/sign-up", invitePath)}>
+              Create an account
+            </Button>
+          ) : null}
         </div>
       </>
     );

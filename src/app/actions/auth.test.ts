@@ -38,6 +38,15 @@ describe("auth Server Functions", () => {
     expect(await continueWithGoogle("sign-up")).toEqual({ ok: true, next: "/onboarding" });
     expect((await continueWithGoogle("sign-out" as never)).ok).toBe(false);
   });
+  it("sign in and sign up from an invite go back to it; a path off this site is ignored", async () => {
+    expect(await signIn(DEMO_OWNER_EMAIL, DEMO_PASSWORD, "/invite/abc")).toEqual({ ok: true, next: "/invite/abc" });
+    expect(await signUp("new@example.com", "longenough", "/invite/abc")).toEqual({ ok: true, next: "/invite/abc" });
+    for (const bad of ["//evil.example", "https://evil.example/invite/abc", "/\\evil.example"]) {
+      expect(await signIn(DEMO_OWNER_EMAIL, DEMO_PASSWORD, bad)).toEqual({ ok: true, next: "/" });
+      expect(await signUp("new@example.com", "longenough", bad)).toEqual({ ok: true, next: "/onboarding" });
+    }
+    expect(jar.get("roofy_return") ?? "").toBe("");
+  });
 });
 
 describe("auth Server Functions in db mode", () => {
@@ -79,6 +88,32 @@ describe("auth Server Functions in db mode", () => {
     expect(await verifyEmail("a-token")).toEqual({ ok: true, next: "/onboarding" });
     expect(await acceptInvite("inv-1")).toEqual({ ok: true, next: "/" });
     expect(jar.size).toBe(0);
+  });
+  it("a return path survives the check-email step and is followed after the email link", async () => {
+    expect(await signUp("new@example.com", "a long password", "/invite/abc")).toEqual({ ok: true, next: "/check-email" });
+    expect(jar.get("roofy_return")).toBe("/invite/abc");
+    expect(await verifyEmail("a-token")).toEqual({ ok: true, next: "/invite/abc" });
+    expect(jar.get("roofy_return")).toBe("");
+    expect(await verifyEmail("a-token")).toEqual({ ok: true, next: "/onboarding" });
+  });
+  it("a return path survives the two-factor step and is followed after the code", async () => {
+    expect(await signIn("a@example.com", "two-factor-on", "/invite/abc")).toEqual({ ok: true, next: "/two-factor" });
+    expect(await verifyTwoFactor("123456")).toEqual({ ok: true, next: "/invite/abc" });
+    expect(jar.get("roofy_return")).toBe("");
+  });
+  it("sign in without a return path drops an old one; joining the invite never goes back to the invite", async () => {
+    jar.set("roofy_return", "/invite/abc");
+    expect(await signIn(DEMO_OWNER_EMAIL, DEMO_PASSWORD)).toEqual({ ok: true, next: "/" });
+    expect(jar.get("roofy_return")).toBe("");
+    jar.set("roofy_return", "/invite/abc");
+    expect(await acceptInvite("abc")).toEqual({ ok: true, next: "/" });
+    expect(jar.get("roofy_return")).toBe("");
+  });
+  it("a return path off this site, in the call or in the cookie, is never followed", async () => {
+    expect(await signUp("new@example.com", "a long password", "//evil.example")).toEqual({ ok: true, next: "/check-email" });
+    expect(jar.get("roofy_return") ?? "").toBe("");
+    jar.set("roofy_return", "//evil.example");
+    expect(await verifyEmail("a-token")).toEqual({ ok: true, next: "/onboarding" });
   });
   it("password reset answers the one sentence, then the new password; refusals keep their field", async () => {
     const sent = await requestPasswordReset("someone@example.com");

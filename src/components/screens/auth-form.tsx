@@ -9,6 +9,7 @@ import { SIGN_IN_FAILED, authProblems, type AuthMode, type AuthProblems } from "
 import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { Field } from "@/components/ui/field";
+import { withReturn } from "@/lib/return-path";
 import { NEEDS_CONNECTION, useOnline } from "./use-online";
 
 /** The prototype's `?demo=` states that change the form: `loading` shows the button busy, `offline` blocks it, `error` refuses with the sorry sentence. */
@@ -34,7 +35,7 @@ const COPY = {
 } as const;
 
 /** Sign in or sign up: Continue with Google (the prototype goes straight on) or email and password, with errors in plain words. */
-export function AuthForm({ mode, demo }: { mode: AuthMode; demo: AuthDemo }) {
+export function AuthForm({ mode, demo, returnTo = null }: { mode: AuthMode; demo: AuthDemo; returnTo?: string | null }) {
   const copy = COPY[mode];
   const router = useRouter();
   const online = useOnline(demo === "offline");
@@ -68,7 +69,7 @@ export function AuthForm({ mode, demo }: { mode: AuthMode; demo: AuthDemo }) {
     const first = found.email ? "email" : found.password ? "password" : null;
     if (first) return (event.currentTarget.elements.namedItem(first) as HTMLInputElement | null)?.focus();
     if (demo === "error") return setFormError(SIGN_IN_FAILED);
-    start(async () => finish(await (mode === "sign-in" ? signIn(email, password) : signUp(email, password))));
+    start(async () => finish(await (mode === "sign-in" ? signIn(email, password, returnTo ?? undefined) : signUp(email, password, returnTo ?? undefined))));
   }
 
   function google() {
@@ -137,7 +138,7 @@ export function AuthForm({ mode, demo }: { mode: AuthMode; demo: AuthDemo }) {
       </form>
       <p className="flex flex-wrap items-center gap-x-2 text-body text-ink-2">
         {copy.other}
-        <Button variant="link" href={copy.otherHref}>
+        <Button variant="link" href={withReturn(copy.otherHref, returnTo)}>
           {copy.otherLink}
         </Button>
       </p>
