@@ -251,7 +251,8 @@ export function createAuth() {
             }),
           ),
       }),
-      twoFactor({ issuer: "Roofy" }),
+      // A Google-only owner has no password to type: Better Auth then skips the check, and still asks everyone who has one (S1).
+      twoFactor({ issuer: "Roofy", allowPasswordless: true }),
       nextCookies(),
     ],
   });

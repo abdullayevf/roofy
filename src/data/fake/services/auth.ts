@@ -109,6 +109,10 @@ export function createFakeAuth(): AuthService {
       if (id === "" || FAKE_DEAD_INVITES.includes(id)) throw new DataError("invalid", INVITE_GONE);
       return { workspaceName: id === "long" ? LONG_TEAM : "Harbour Roofing", role: "foreman" };
     },
+    /** The prototype's owner signed up with a password. */
+    async hasPassword() {
+      return true;
+    },
     /** The prototype's fixed demo key; the QR code holds the same key. */
     async startTwoFactor() {
       return DEMO_TWO_FACTOR_SETUP;

@@ -241,6 +241,14 @@ export function createDbAuth(deps: DbAuthDeps = DEFAULT_DEPS): DbAuthService {
       }
     },
 
+    /** A password sign-in leaves a "credential" account; a Google sign-up does not. */
+    async hasPassword() {
+      const h = await deps.requestHeaders();
+      if (!(await api().getSession({ headers: h }))) throw new DataError("invalid", SIGN_IN_AGAIN);
+      const accounts = (await api().listUserAccounts({ headers: h })) as { providerId: string }[];
+      return accounts.some((a) => a.providerId === "credential");
+    },
+
     /** Better Auth makes a new key for the signed-in person; it asks for the password unless the account has none (Google). */
     async startTwoFactor(password) {
       const h = await deps.requestHeaders();

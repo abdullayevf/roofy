@@ -397,24 +397,38 @@ const PASSWORD_FIRST = "Enter your password to see the QR code.";
 /**
  * Turn on two-factor: a QR code and set-up key for the authenticator app, then its 6-digit code. The prototype
  * hands the key over with the page; the real sign-in asks for the password first, so `setup` is null until it is typed.
+ * An account with no password (it signed in with Google) has nothing to type: `hasPassword` false skips that field.
  */
-export function TwoFactorForm({ demoOffline, setup: given }: { demoOffline: boolean; setup: TwoFactorSetup | null }) {
+export function TwoFactorForm({
+  demoOffline,
+  setup: given,
+  hasPassword = true,
+}: {
+  demoOffline: boolean;
+  setup: TwoFactorSetup | null;
+  hasPassword?: boolean;
+}) {
   const [setup, setSetup] = useState<TwoFactorSetup | null>(given);
-  return setup ? <TwoFactorCode demoOffline={demoOffline} setup={setup} /> : <TwoFactorPassword demoOffline={demoOffline} onSetup={setSetup} />;
+  return setup ? (
+    <TwoFactorCode demoOffline={demoOffline} setup={setup} />
+  ) : (
+    <TwoFactorPassword demoOffline={demoOffline} hasPassword={hasPassword} onSetup={setSetup} />
+  );
 }
 
-function TwoFactorPassword({ demoOffline, onSetup }: { demoOffline: boolean; onSetup: (s: TwoFactorSetup) => void }) {
+function TwoFactorPassword({ demoOffline, hasPassword, onSetup }: { demoOffline: boolean; hasPassword: boolean; onSetup: (s: TwoFactorSetup) => void }) {
   const online = useOnline(demoOffline);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (password.trim() === "") return setProblem(PASSWORD_FIRST);
+    if (hasPassword && password.trim() === "") return setProblem(PASSWORD_FIRST);
     setProblem(null);
     setBusy(true);
     try {
-      const r = await startTwoFactor(password);
+      // No password on the account: a blank one is what Better Auth expects (it never asks Google-only accounts).
+      const r = await startTwoFactor(hasPassword ? password : "");
       if (r.ok) onSetup(r.setup);
       else setProblem(r.message);
     } catch {
@@ -426,16 +440,23 @@ function TwoFactorPassword({ demoOffline, onSetup }: { demoOffline: boolean; onS
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-6">
       <div className={FORM_GRID}>
-        <Field
-          label="Your password"
-          type="password"
-          inputMode="text"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          error={problem ?? undefined}
-          hint={problem ? undefined : "Roofy asks once, before it shows the QR code."}
-        />
+        {hasPassword ? (
+          <Field
+            label="Your password"
+            type="password"
+            inputMode="text"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            error={problem ?? undefined}
+            hint={problem ? undefined : "Roofy asks once, before it shows the QR code."}
+          />
+        ) : (
+          <div className="flex flex-col gap-2">
+            <p className="text-body text-ink">You signed in with Google, so there is no password to type. Show the QR code to set up your authenticator app.</p>
+            {problem ? <ErrorMessage>{problem}</ErrorMessage> : null}
+          </div>
+        )}
       </div>
       <Button type="submit" loading={busy} loadingLabel="Checking" disabled={!online} reason={online ? undefined : NEEDS_CONNECTION} className="w-full sm:w-auto sm:self-start">
         Show QR code

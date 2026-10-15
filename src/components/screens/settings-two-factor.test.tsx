@@ -159,3 +159,31 @@ describe("TwoFactorForm that asks for the password first (real sign-in)", () => 
     expect(screen.getByText(/Needs connection/i)).toBeVisible();
   });
 });
+
+describe("TwoFactorForm for an account with no password (Google sign-in, review S1 + R3)", () => {
+  it("has no password field; Show QR code asks for the key with a blank password and swaps in the QR code", async () => {
+    const user = userEvent.setup();
+    startTwoFactor.mockResolvedValue({ ok: true, setup: SETUP });
+    render(<TwoFactorForm demoOffline={false} setup={null} hasPassword={false} />);
+    expect(screen.queryByLabelText("Your password")).toBeNull();
+    expect(screen.getByText(/signed in with Google/)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Show QR code" }));
+    expect(startTwoFactor).toHaveBeenCalledWith("");
+    expect(await screen.findByRole("img", QR)).toBeVisible();
+    expect(screen.getByLabelText("Code")).toBeVisible();
+  });
+
+  it("a service that is down says so and keeps the button", async () => {
+    const user = userEvent.setup();
+    startTwoFactor.mockRejectedValue(new Error("down"));
+    render(<TwoFactorForm demoOffline={false} setup={null} hasPassword={false} />);
+    await user.click(screen.getByRole("button", { name: "Show QR code" }));
+    expect(await screen.findByText(/Couldn't|try again/i)).toBeVisible();
+    expect(screen.getByRole("button", { name: "Show QR code" })).toBeEnabled();
+  });
+
+  it("offline, Show QR code is off", () => {
+    render(<TwoFactorForm demoOffline setup={null} hasPassword={false} />);
+    expect(screen.getByRole("button", { name: "Show QR code" })).toBeDisabled();
+  });
+});

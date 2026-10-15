@@ -24,7 +24,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
     ) : (
       <SettingsPageFrame title="Two-factor" intro="Turn on two-factor before you approve a pay run. It keeps your crew's pay safe if your password leaks.">
         {/* The prototype shows the QR code straight away; the real sign-in asks for the password first. */}
-        <TwoFactorForm demoOffline={offline} setup={isFakeMode() ? await getAuth().startTwoFactor("") : null} />
+        <TwoFactorForm
+          demoOffline={offline}
+          setup={isFakeMode() ? await getAuth().startTwoFactor("") : null}
+          hasPassword={await getAuth().hasPassword()}
+        />
       </SettingsPageFrame>
     ),
   );

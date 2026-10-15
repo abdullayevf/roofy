@@ -1810,7 +1810,9 @@ export interface AuthService {
   inviteDetails(invitationId: string): Promise<InviteDetails>;
   /** Join the team an invite is for, with the invited role. A cancelled or expired invite is `DataError("invalid")`. */
   acceptInvite(invitationId: string): Promise<AuthSession>;
-  /** Signed in: a new key for the authenticator app. A wrong password is `DataError("invalid")` on field "password" (a Google-only account has none). The prototype answers a fixed demo key. */
+  /** Signed in: whether this account has a password. A Google-only account has none, so two-factor set-up does not ask for one. */
+  hasPassword(): Promise<boolean>;
+  /** Signed in: a new key for the authenticator app. A wrong or blank password is `DataError("invalid")` on field "password"; a Google-only account has none and passes a blank one. The prototype answers a fixed demo key. */
   startTwoFactor(password: string): Promise<TwoFactorSetup>;
   /** Signed in: the first 6-digit code from the app turns two-factor on. A wrong code is `DataError("invalid")` on field "code". */
   confirmTwoFactor(code: string): Promise<void>;
