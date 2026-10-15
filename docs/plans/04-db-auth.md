@@ -468,11 +468,11 @@ Run 1 covers settings, levels, categories and templates. Run 2 covers members, i
   - `docs/design/flows.md` (new flows: verify email, reset password, sign-in with two-factor, accept invite; tap budgets).
   - `tests/e2e/screens.ts` (new group `auth`).
 
-- [ ] Brief carries the RUNBOOK §4 state checklist for each new screen (normal, filled, validation error, error, offline, expired link, already used link), the members screen for owner/manager/accountant, the foreman no-permission state, long names, and a pointer to `docs/design/loop/lessons.md`.
-- [ ] Failing component tests first for each form: validation messages, button verbs ("Send link", "Set password", "Check code", "Join team"), and no enumeration copy on reset.
-- [ ] Screens run in fake mode for capture through the Task 10 fake additions.
-- [ ] Design loop on group `auth` and the changed members screen (`scripts/capture-group.sh auth`): `design-critic` + `field-critic`, exit at average ≥ 90 and no P0/P1, 3-iteration cap.
-- [ ] Done when the component tests pass, the loop has exited and is recorded in `docs/design/loop/SCORES.md`, fake-mode e2e for the touched routes is green on iphone/android/desktop, and `pnpm verify` is green.
+- [x] Brief carries the RUNBOOK §4 state checklist for each new screen (normal, filled, validation error, error, offline, expired link, already used link), the members screen for owner/manager/accountant, the foreman no-permission state, long names, and a pointer to `docs/design/loop/lessons.md`.
+- [x] Failing component tests first for each form: validation messages, button verbs ("Send link", "Set password", "Check code", "Join team"), and no enumeration copy on reset.
+- [x] Screens run in fake mode for capture through the Task 10 fake additions.
+- [x] Design loop on group `auth` and the changed members screen (`scripts/capture-group.sh auth`): `design-critic` + `field-critic`, exit at average ≥ 90 and no P0/P1, 3-iteration cap.
+- [x] Done when the component tests pass, the loop has exited and is recorded in `docs/design/loop/SCORES.md`, fake-mode e2e for the touched routes is green on iphone/android/desktop, and `pnpm verify` is green. (Done 2026-10-15: loop accepted at the 3-iteration cap, avg 83, no P0; e2e green on fake projects; visual diffs carried to Task 15.)
 
 ### Task 14: Db-mode e2e — sign up to crew, members, tenancy in the browser (sonnet)
 
