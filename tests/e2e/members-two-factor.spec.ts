@@ -93,12 +93,22 @@ test.describe("Members: remove a person", () => {
     );
   });
 
-  test("a foreman is refused and sees no money; a manager is told to ask the owner", async ({ page }) => {
-    await go(page, "foreman", "/settings/members");
-    await expect(page.getByRole("button", { name: "Remove from team" })).toHaveCount(0);
-    await expect(page.locator("main")).not.toContainText(/\$\s?\d/);
-    await go(page, "manager", "/settings/members");
-    await expect(page.getByRole("button", { name: "Remove from team" })).toHaveCount(0);
+  test("members & roles is the owner's: a foreman is sent to the manager and a manager to the owner, with no member list or money", async ({
+    page,
+  }) => {
+    for (const [role, ask] of [
+      ["foreman", "your manager"],
+      ["manager", "the owner"],
+    ] as const) {
+      await go(page, role, "/settings/members");
+      await expect(
+        page.getByText(`You don't have access to this. Ask ${ask}.`, { exact: true }),
+        `${role} is told who to ask`,
+      ).toBeVisible();
+      await expect(page.getByRole("button", { name: /Priya Shah/ }), `${role} gets no member rows`).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Remove from team" })).toHaveCount(0);
+      await expect(page.locator("main")).not.toContainText(/\$\s?\d/);
+    }
   });
 });
 
