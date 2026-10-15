@@ -21,6 +21,13 @@ const SETUP: TwoFactorSetup = {
   uri: "otpauth://totp/Roofy:karen%40harbourroofing.example?secret=RFY47KQ2MZTD3XWB&issuer=Roofy",
 };
 const QR = { name: "Scan this with your authenticator app" };
+const scrollIntoView = vi.fn();
+const WRONG = {
+  ok: false,
+  code: "invalid",
+  message: "That code doesn't match.",
+  issues: [{ field: "code", message: "That code doesn't match. Check your app and try again." }],
+};
 
 beforeEach(() => {
   // The pinned Save bar measures itself.
@@ -29,6 +36,9 @@ beforeEach(() => {
     unobserve() {}
     disconnect() {}
   } as unknown as typeof ResizeObserver;
+  // jsdom has no layout, so no scrolling: the form asks the Code field to scroll itself into view.
+  Element.prototype.scrollIntoView = scrollIntoView;
+  scrollIntoView.mockClear();
   refresh.mockClear();
   startTwoFactor.mockReset();
   turnOnTwoFactor.mockReset();
@@ -87,6 +97,49 @@ describe("TwoFactorForm with the key already on the page (prototype)", () => {
     expect(turnOnTwoFactor).toHaveBeenCalledWith("000000");
     expect(refresh).not.toHaveBeenCalled();
     expect(screen.queryByText("Check the 6-digit code and try again.")).toBeNull();
+  });
+
+  // auth i3 F28 + D36: on a phone the Code field sits below the fold, so a refused code must bring it into view.
+  it("a wrong code from the server scrolls the Code field to the middle of the screen and focuses it", async () => {
+    const user = userEvent.setup();
+    turnOnTwoFactor.mockResolvedValue(WRONG);
+    render(<TwoFactorForm demoOffline={false} setup={SETUP} />);
+    const code = screen.getByLabelText("Code");
+    await user.type(code, "000000");
+    await user.click(screen.getByRole("button", { name: "Turn on two-factor" }));
+    expect(await screen.findByText("That code doesn't match. Check your app and try again.")).toBeVisible();
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "center" });
+    expect(scrollIntoView.mock.contexts.at(-1)).toBe(code);
+    expect(code).toHaveFocus();
+  });
+
+  it("a code that is not 6 digits scrolls the Code field into view and focuses it too", async () => {
+    const user = userEvent.setup();
+    render(<TwoFactorForm demoOffline={false} setup={SETUP} />);
+    const code = screen.getByLabelText("Code");
+    await user.type(code, "12ab");
+    await user.click(screen.getByRole("button", { name: "Turn on two-factor" }));
+    expect(await screen.findByText("Enter the 6-digit code from your app.")).toBeVisible();
+    expect(scrollIntoView.mock.contexts.at(-1)).toBe(code);
+    expect(code).toHaveFocus();
+  });
+
+  it("scrolls on every refusal, not only the first", async () => {
+    const user = userEvent.setup();
+    render(<TwoFactorForm demoOffline={false} setup={SETUP} />);
+    await user.click(screen.getByRole("button", { name: "Turn on two-factor" }));
+    await user.click(screen.getByRole("button", { name: "Turn on two-factor" }));
+    expect(scrollIntoView).toHaveBeenCalledTimes(2);
+  });
+
+  it("while the Code field is still off screen after the scroll, the pinned bar says what is wrong", async () => {
+    const user = userEvent.setup();
+    render(<TwoFactorForm demoOffline={false} setup={SETUP} />);
+    const code = screen.getByLabelText("Code");
+    code.getBoundingClientRect = () => ({ top: 5000, bottom: 5048, left: 0, right: 200, width: 200, height: 48 }) as DOMRect;
+    await user.type(code, "12ab");
+    await user.click(screen.getByRole("button", { name: "Turn on two-factor" }));
+    expect(await screen.findByText("Check the 6-digit code and try again.")).toBeVisible();
   });
 
   it("a right code re-reads the page so the on state takes the form's place", async () => {

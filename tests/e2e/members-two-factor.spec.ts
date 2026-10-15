@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { collectConsole, expectScreenHealthy, waitForHydrated } from "./guards";
+import { checkErrorLineInView, collectConsole, expectScreenHealthy, waitForHydrated } from "./guards";
 
 /** Task 13 run 3: removing a person from the team, the Owner two-factor line, and the two-factor set-up with its QR code. */
 
@@ -155,6 +155,12 @@ test.describe("Settings two-factor: set-up with a QR code", () => {
     await page.getByLabel("Code").fill("000000");
     await button(page, "Turn on two-factor").click();
     await expect(page.getByText("That code doesn't match.")).toBeVisible();
+    // auth i3 F28: a refused code brings the Code field to the screen, focused, clear of the pinned bar, so the error is seen.
+    await expect(page.getByLabel("Code"), "a refused code leaves the Code field focused").toBeFocused();
+    expect((await checkErrorLineInView(page)).failures, "the error line is in view").toEqual([]);
+    const field = (await page.getByLabel("Code").boundingBox())!;
+    const bar = (await button(page, "Turn on two-factor").boundingBox())!;
+    if (isPhone(testInfo.project.name)) expect(field.y + field.height, "the Code field sits above the pinned bar").toBeLessThanOrEqual(bar.y);
     await expect(page.getByText(/^Two-factor is on\. When you sign in/)).toHaveCount(0);
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });

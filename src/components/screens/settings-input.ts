@@ -101,6 +101,8 @@ export function nameLengthError(name: string, max: number): string | undefined {
 
 /** The pinned Save bar's line when a form has field errors but no sentence of its own (entry-settings i2 D8 + F2). */
 export const PIN_SUMMARY = "Some details need fixing before this saves.";
+/** The pinned bar's line for a refused code, shown only while the Code field is off screen (auth i3 F28). */
+export const TWO_FACTOR_BAR = "Check the 6-digit code and try again.";
 
 /** The bar's line for a refused levels save: the first level whose floor rate is refused, by name. */
 export function levelsSummary(levels: { id: string; name: string }[], errors: Record<string, string | undefined>): string | undefined {

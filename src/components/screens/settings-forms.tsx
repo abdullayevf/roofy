@@ -25,6 +25,7 @@ import {
   levelsSummary,
   payPeriodSummary,
   PIN_SUMMARY,
+  TWO_FACTOR_BAR,
   readCode,
   readHours,
   readOnCost,
@@ -491,6 +492,18 @@ function CopyKey({ secret }: { secret: string }) {
 function TwoFactorCode({ demoOffline, setup }: { demoOffline: boolean; setup: TwoFactorSetup }) {
   const s = useSave(demoOffline);
   const [code, setCode] = useState("");
+  const codeRef = useRef<HTMLDivElement>(null);
+  // The bar says what is wrong only while the Code field is still off screen after the scroll (one message per problem).
+  const [codeOffScreen, setCodeOffScreen] = useState(false);
+  // On a phone the Code field is below the first screen: a refused code brings it to the middle of the screen and focuses it (auth i3 F28 + D36).
+  useEffect(() => {
+    const input = codeRef.current?.querySelector("input");
+    if (!s.refused || !input) return;
+    input.scrollIntoView({ block: "center" });
+    input.focus({ preventScroll: true });
+    const { top, bottom } = input.getBoundingClientRect();
+    setCodeOffScreen(bottom < 0 || top > window.innerHeight);
+  }, [s.refused]);
   const submit = () => {
     const r = readCode(code);
     return s.run(
@@ -501,7 +514,7 @@ function TwoFactorCode({ demoOffline, setup }: { demoOffline: boolean; setup: Tw
   };
   // The form is taller than a phone's first screen, so Turn on two-factor is the pinned bar above the tab bar (D1).
   return (
-    <SettingsForm s={s} onSubmit={submit} label="Turn on two-factor" pinned summary={false}>
+    <SettingsForm s={s} onSubmit={submit} label="Turn on two-factor" pinned summary={codeOffScreen ? TWO_FACTOR_BAR : false}>
       <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
         <QrCode value={setup.uri} label="Scan this with your authenticator app" />
         <ol className="flex list-decimal flex-col gap-2 pl-6 text-body text-ink">
@@ -521,7 +534,7 @@ function TwoFactorCode({ demoOffline, setup }: { demoOffline: boolean; setup: Tw
           <li>Enter the 6-digit code the app shows.</li>
         </ol>
       </div>
-      <div className={FORM_GRID}>
+      <div ref={codeRef} className={FORM_GRID}>
         <Field
           label="Code"
           inputMode="numeric"
