@@ -16,6 +16,7 @@ import {
 } from "@/data/admin-inputs";
 import type {
   ActionResult,
+  Actor,
   CategoryInput,
   CrewLevel,
   ExpenseCategory,
@@ -32,6 +33,8 @@ import type {
 } from "@/data/contracts";
 import { z } from "zod";
 import { getAuth } from "@/data";
+import { DataError } from "@/data/contracts";
+import { TWO_FACTOR_OWNER_ONLY } from "@/lib/auth-input";
 import { act, PATHS } from "./run";
 
 /** Pay period, working days and on-cost change figures everywhere. */
@@ -120,12 +123,19 @@ export async function setAssignments(memberId: Id, projectIds: Id[]): Promise<Ac
   );
 }
 
+/** Two-factor set-up is the Owner's. The permission matrix lets every role manage their own, but the page, Approve and the spec are the Owner's. */
+function ownerOnly(actor: Actor): void {
+  if (actor.role !== "owner") throw new DataError("forbidden", TWO_FACTOR_OWNER_ONLY);
+}
+
 /** Owner only: two-factor on, so pay runs can be approved (flows.md: Owner 2FA off blocks Approve). */
 export async function turnOnTwoFactor(code: string): Promise<ActionResult<{ twoFactorEnabled: true }>> {
   return act(
     [codeSchema],
     [code],
     async ({ data, actor }, c) => {
+      // Owner first: confirming the code turns two-factor on at Better Auth, so a refused person must never reach it (R2).
+      ownerOnly(actor);
       // The authenticator app's first code is checked by the sign-in service (db: Better Auth), then the page reads the result.
       await getAuth().confirmTwoFactor(c);
       return data.workspace.turnOnTwoFactor(actor, c);
@@ -139,7 +149,11 @@ export async function startTwoFactor(password: string): Promise<ActionResult<{ s
   return act(
     [z.string().max(1000)],
     [password],
-    async (_ctx, p) => ({ setup: await getAuth().startTwoFactor(p) }),
+    async ({ actor }, p) => {
+      // Owner first: Better Auth would make a key and backup codes for anyone signed in (R1).
+      ownerOnly(actor);
+      return { setup: await getAuth().startTwoFactor(p) };
+    },
     [],
   );
 }
