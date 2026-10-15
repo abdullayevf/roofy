@@ -298,7 +298,16 @@ describe("db auth service", () => {
     const signedOut = await refusal(browser().service.acceptInvite(inv.id));
     expect([signedOut.code, signedOut.message]).toEqual(["invalid", SIGN_IN_AGAIN]);
 
+    // Reading the invite: the right person sees the team and role, someone else is told it is for another email.
+    const readByOther = await refusal(other.b.service.inviteDetails(inv.id));
+    expect([readByOther.code, readByOther.message]).toEqual(["forbidden", INVITE_OTHER_EMAIL]);
+    const readSignedOut = await refusal(browser().service.inviteDetails(inv.id));
+    expect([readSignedOut.code, readSignedOut.message]).toEqual(["invalid", SIGN_IN_AGAIN]);
+    const readUnknown = await refusal(other.b.service.inviteDetails("01900000-0000-7000-8000-000000000000"));
+    expect([readUnknown.code, readUnknown.message]).toEqual(["invalid", INVITE_GONE]);
+
     const invitee = await verifiedUser(browser(), inviteeEmail);
+    expect(await invitee.b.service.inviteDetails(inv.id)).toEqual({ workspaceName: "Invite Co", role: "foreman" });
     // The invitee also owns an unfinished workspace joined "later": the answer must be the invited one's.
     const own = await makeWorkspace("Own Co");
     await pool("owner").query(

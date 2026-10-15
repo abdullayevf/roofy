@@ -297,7 +297,8 @@ export function createDbAuth(deps: DbAuthDeps = DEFAULT_DEPS): DbAuthService {
         return { workspaceName: found.organizationName, role: found.role as Role };
       } catch (e) {
         if (e instanceof DataError) throw e;
-        refusalOf(e);
+        if (refusalOf(e).code === "YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION")
+          throw new DataError("forbidden", INVITE_OTHER_EMAIL);
         throw new DataError("invalid", INVITE_GONE);
       }
     },

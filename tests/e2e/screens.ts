@@ -1406,6 +1406,14 @@ export const SCREENS: ScreenSpec[] = [
     roles: [],
     expectStill: "This invite has expired",
   },
+  {
+    id: "invite-other-email",
+    group: "auth",
+    route: "/invite/other-email",
+    states: ["normal"],
+    roles: [],
+    expectStill: "This invite is for a different email",
+  },
 
   // A non-owner member of a workspace the owner has not finished setting up.
   {

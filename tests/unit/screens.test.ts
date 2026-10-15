@@ -5,6 +5,7 @@ import { FAKE_DEAD_TOKENS } from "../../src/data/fake/services/auth";
 import {
   INVITE_GONE,
   INVITE_LOAD_FAILED,
+  INVITE_OTHER_EMAIL,
   LINK_EXPIRED,
   LINK_INCOMPLETE,
   RESET_SEND_FAILED,
@@ -244,6 +245,7 @@ describe("auth captures", () => {
     WRONG_CODE,
     TOO_MANY_TRIES,
     INVITE_GONE,
+    INVITE_OTHER_EMAIL,
     OWNER_STILL_SETTING_UP,
   ];
   const refusals = [emailProblem(""), newPasswordProblem(""), newPasswordProblem("short"), TWO_FACTOR_CODE];

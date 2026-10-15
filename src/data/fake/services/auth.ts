@@ -9,6 +9,7 @@ import {
   emailProblem,
   EMAIL_TAKEN,
   INVITE_GONE,
+  INVITE_OTHER_EMAIL,
   LINK_EXPIRED,
   passwordProblem,
   PASSWORD_MIN,
@@ -48,6 +49,8 @@ export const DEMO_TWO_FACTOR_SETUP: TwoFactorSetup = {
 };
 /** Invite ids the prototype treats as cancelled or expired; `long` is a team with a very long name. */
 export const FAKE_DEAD_INVITES: readonly string[] = ["expired", "used", "cancelled"];
+/** The invite id the prototype treats as sent to a different email than the signed-in one. */
+export const FAKE_OTHER_EMAIL_INVITE = "other-email";
 const LONG_TEAM = "Harbour and Bay Roofing and Waterproofing Contractors of the Northern Beaches";
 
 const normal = (email: string) => email.trim().toLowerCase();
@@ -107,6 +110,7 @@ export function createFakeAuth(): AuthService {
     async inviteDetails(invitationId): Promise<InviteDetails> {
       const id = invitationId.trim();
       if (id === "" || FAKE_DEAD_INVITES.includes(id)) throw new DataError("invalid", INVITE_GONE);
+      if (id === FAKE_OTHER_EMAIL_INVITE) throw new DataError("forbidden", INVITE_OTHER_EMAIL);
       return { workspaceName: id === "long" ? LONG_TEAM : "Harbour Roofing", role: "foreman" };
     },
     /** The prototype's owner signed up with a password. */
@@ -123,6 +127,7 @@ export function createFakeAuth(): AuthService {
     },
     async acceptInvite(invitationId) {
       if (invitationId.trim() === "" || FAKE_DEAD_INVITES.includes(invitationId.trim())) throw new DataError("invalid", INVITE_GONE);
+      if (invitationId.trim() === FAKE_OTHER_EMAIL_INVITE) throw new DataError("forbidden", INVITE_OTHER_EMAIL);
       return { role: "foreman", next: "/" };
     },
   };

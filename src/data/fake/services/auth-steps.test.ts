@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { TOO_MANY_TRIES, TWO_FACTOR_CODE, WRONG_CODE, codeProblem, verifyPageUrl } from "@/lib/auth-input";
-import { INVITE_GONE } from "@/lib/auth-input";
+import { INVITE_GONE, INVITE_OTHER_EMAIL } from "@/lib/auth-input";
 import {
   createFakeAuth,
   DEMO_TWO_FACTOR_EMAIL,
   FAKE_DEAD_INVITES,
+  FAKE_OTHER_EMAIL_INVITE,
   FAKE_LOCKED_CODE,
   FAKE_WRONG_CODE,
   DEMO_TWO_FACTOR_SETUP,
@@ -45,6 +46,17 @@ describe("fake two-factor and invites", () => {
       await expect(auth.acceptInvite(id)).rejects.toMatchObject({ code: "invalid", message: INVITE_GONE });
     }
     await expect(auth.inviteDetails(" ")).rejects.toMatchObject({ message: INVITE_GONE });
+  });
+
+  it("an invite for someone else says so, to read and to join (not that it expired)", async () => {
+    await expect(auth.inviteDetails(FAKE_OTHER_EMAIL_INVITE)).rejects.toMatchObject({
+      code: "forbidden",
+      message: INVITE_OTHER_EMAIL,
+    });
+    await expect(auth.acceptInvite(FAKE_OTHER_EMAIL_INVITE)).rejects.toMatchObject({
+      code: "forbidden",
+      message: INVITE_OTHER_EMAIL,
+    });
   });
 });
 
