@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { waitForHydrated } from "../e2e/guards";
-import { ABN, choose, fillBusinessToCrew, ownerPool, signUpAndVerify, uniqueEmail } from "./journey";
+import { ABN, choose, fillBusinessToCrew, ownerPool, signUpAndVerify, uniqueEmail, uniqueName } from "./journey";
 
 // Spec 5.1: a new Owner goes from sign-up to a working crew in a few minutes. The target is logged, not asserted tight.
 const TARGET_MS = 5 * 60_000;
@@ -18,7 +18,7 @@ async function addCrew(page: Page, name: string, kind: "Employee" | "ABN contrac
 test("a new owner signs up, verifies, sets up the business and two crew, and the rows are in the database", async ({ page }) => {
   const started = Date.now();
   const email = uniqueEmail("onboard");
-  const business = `Onboard Roofing ${Date.now().toString(36)}`;
+  const business = uniqueName("Onboard Roofing");
 
   await signUpAndVerify(page, email);
   await fillBusinessToCrew(page, business);

@@ -10,6 +10,7 @@ import {
   PASSWORD,
   signUpAndVerify,
   uniqueEmail,
+  uniqueName,
 } from "./journey";
 import { mailCount, mailLink } from "./mail";
 
@@ -66,7 +67,7 @@ async function secondContext(browser: Browser, testInfo: TestInfo) {
 async function ownerAndJoinedForeman(browser: Browser, owner: Page, testInfo: TestInfo): Promise<Team> {
   const ownerEmail = uniqueEmail("owner-members");
   const foremanEmail = uniqueEmail("foreman");
-  const businessName = `Members ${Date.now().toString(36)}`;
+  const businessName = uniqueName("Members");
   await signUpAndVerify(owner, ownerEmail);
   await fillBusinessToCrew(owner, businessName);
   await finishWizard(owner);
@@ -257,13 +258,13 @@ test("member actions change nothing for a foreman or for another workspace's mem
     const call = await learnSetRoleAction(team.owner, team.foremanEmail, foremanMemberId);
 
     // A foreman cannot promote himself or change anyone: the call does not succeed and no role moves.
-    expect(await call(team.foreman, foremanMemberId, "owner")).not.toContain('"ok":true');
-    expect(await call(team.foreman, ownerMemberId, "foreman")).not.toContain('"ok":true');
+    expect(await call(team.foreman, foremanMemberId, "owner")).toContain('"code":"forbidden"');
+    expect(await call(team.foreman, ownerMemberId, "foreman")).toContain('"code":"forbidden"');
     expect(await roleOf(foremanMemberId)).toBe("foreman");
     expect(await roleOf(ownerMemberId)).toBe("owner");
 
     // The Owner of workspace A cannot reach workspace B's member id, and B's manager keeps the role.
-    expect(await call(team.owner, otherWorkspaceMemberId, "foreman")).not.toContain('"ok":true');
+    expect(await call(team.owner, otherWorkspaceMemberId, "foreman")).toContain('"code":"not_found"');
     expect(await roleOf(otherWorkspaceMemberId)).toBe("manager");
 
     // Control: the same call on A's own foreman does change the role, so the refusals above are not a dead action.

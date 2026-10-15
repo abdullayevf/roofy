@@ -42,22 +42,39 @@ export function databaseOf(url: string): string {
   return decodeURIComponent(new URL(url).pathname.replace(/^\//, ""));
 }
 
+const TEST_URL_PAIRS = [
+  ["TEST_DATABASE_URL", "DATABASE_URL"],
+  ["TEST_AUTH_DATABASE_URL", "AUTH_DATABASE_URL"],
+  ["TEST_MIGRATE_DATABASE_URL", "MIGRATE_DATABASE_URL"],
+] as const;
+
 /** The three role URLs of `.env`'s TEST_* set (host, port, role passwords) pointed at roofy_e2e. Empty when `.env` has none. */
 export function e2eDatabaseUrls(source: EnvSource = dotEnvSource()): Record<string, string> {
-  const pairs = [
-    ["TEST_DATABASE_URL", "DATABASE_URL"],
-    ["TEST_AUTH_DATABASE_URL", "AUTH_DATABASE_URL"],
-    ["TEST_MIGRATE_DATABASE_URL", "MIGRATE_DATABASE_URL"],
-  ] as const;
   const urls: Record<string, string> = {};
-  for (const [from, to] of pairs) {
+  for (const [from, to] of TEST_URL_PAIRS) {
     const url = source[from];
     if (url) urls[to] = withDatabase(url, E2E_DB_NAME);
   }
   return urls;
 }
 
-/** What the db-mode server needs to run, on top of the shell's environment. */
+/** The three role URLs, all pointed at roofy_e2e, or a thrown error naming what is missing. Isolation fails closed. */
+export function requireE2eDatabaseUrls(source: EnvSource = dotEnvSource()): Record<string, string> {
+  const urls = e2eDatabaseUrls(source);
+  const missing = TEST_URL_PAIRS.filter(([, to]) => !urls[to]).map(([from]) => from);
+  if (missing.length > 0) {
+    throw new Error(
+      `${missing.join(", ")} not set. The db e2e needs all three TEST_* database URLs (see .env.example); it never falls back to the dev database.`,
+    );
+  }
+  for (const [from, to] of TEST_URL_PAIRS) {
+    const name = databaseOf(urls[to] ?? "");
+    if (name !== E2E_DB_NAME) throw new Error(`${from} resolves to "${name}", not "${E2E_DB_NAME}".`);
+  }
+  return urls;
+}
+
+/** What the db-mode server needs to run, on top of the shell's environment. Throws unless all three database URLs point at roofy_e2e. */
 export function e2eServerEnv(source: EnvSource = dotEnvSource(), cwd = process.cwd()): Record<string, string> {
   return {
     ROOFY_DATA: "db",
@@ -65,6 +82,6 @@ export function e2eServerEnv(source: EnvSource = dotEnvSource(), cwd = process.c
     ROOFY_MAIL_LOG: mailLogPath(cwd),
     BETTER_AUTH_URL: E2E_BASE_URL,
     BETTER_AUTH_SECRET: E2E_AUTH_SECRET,
-    ...e2eDatabaseUrls(source),
+    ...requireE2eDatabaseUrls(source),
   };
 }

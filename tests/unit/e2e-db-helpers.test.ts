@@ -2,7 +2,7 @@ import { appendFileSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { E2E_BASE_URL, E2E_DB_NAME, e2eDatabaseUrls, e2eServerEnv, withDatabase } from "../e2e-db/env";
+import { E2E_BASE_URL, E2E_DB_NAME, e2eDatabaseUrls, e2eServerEnv, requireE2eDatabaseUrls, withDatabase } from "../e2e-db/env";
 import { mailCount, mailLink, newestMail, readMail, waitForMail } from "../e2e-db/mail";
 import { projectArgs, selection } from "../e2e-db/select";
 import { base32Decode, totpCode } from "../e2e-db/totp";
@@ -64,6 +64,12 @@ describe("e2e-db mail log reader", () => {
   });
 });
 
+const FULL_TEST_SET = {
+  TEST_DATABASE_URL: "postgres://roofy_app:pw1@127.0.0.1:5440/roofy_test",
+  TEST_AUTH_DATABASE_URL: "postgres://roofy_auth:pw2@127.0.0.1:5440/roofy_test",
+  TEST_MIGRATE_DATABASE_URL: "postgres://roofy:pw3@127.0.0.1:5440/roofy_test",
+};
+
 describe("e2e-db environment and project selection", () => {
   it("points all three roles of the TEST_* set at roofy_e2e and nothing else", () => {
     const source = {
@@ -82,7 +88,7 @@ describe("e2e-db environment and project selection", () => {
   });
 
   it("runs the server in db mode on 3101 with the mail log and a trusted origin", () => {
-    const env = e2eServerEnv({}, "/work/roofy");
+    const env = e2eServerEnv(FULL_TEST_SET, "/work/roofy");
     expect(env).toMatchObject({
       ROOFY_DATA: "db",
       ROOFY_MAIL: "console",
@@ -91,6 +97,19 @@ describe("e2e-db environment and project selection", () => {
     });
     expect(E2E_BASE_URL).toBe("http://127.0.0.1:3101");
     expect((env.BETTER_AUTH_SECRET ?? "").length).toBeGreaterThanOrEqual(32);
+  });
+
+  it("refuses to build a server environment unless all three TEST_* URLs are set (isolation fails closed)", () => {
+    // Only TEST_DATABASE_URL: the dev AUTH_/MIGRATE_ URLs in the shell would otherwise survive into the server.
+    const partial = { TEST_DATABASE_URL: FULL_TEST_SET.TEST_DATABASE_URL, AUTH_DATABASE_URL: "postgres://x@h:5440/roofy_dev" };
+    expect(() => e2eServerEnv(partial, "/work/roofy")).toThrow(/TEST_AUTH_DATABASE_URL, TEST_MIGRATE_DATABASE_URL/);
+    expect(() => e2eServerEnv({}, "/work/roofy")).toThrow(/TEST_DATABASE_URL, TEST_AUTH_DATABASE_URL, TEST_MIGRATE_DATABASE_URL/);
+    expect(() => requireE2eDatabaseUrls({ ...FULL_TEST_SET, TEST_AUTH_DATABASE_URL: "" })).toThrow(/TEST_AUTH_DATABASE_URL/);
+  });
+
+  it("sets every database URL of the server to roofy_e2e, whatever the dev URLs in the source say", () => {
+    const env = e2eServerEnv({ ...FULL_TEST_SET, DATABASE_URL: "postgres://a@h:5440/roofy_dev", AUTH_DATABASE_URL: "postgres://b@h:5440/roofy_dev", MIGRATE_DATABASE_URL: "postgres://c@h:5440/roofy_dev" }, "/work/roofy");
+    for (const key of ["DATABASE_URL", "AUTH_DATABASE_URL", "MIGRATE_DATABASE_URL"]) expect(env[key]).toMatch(/\/roofy_e2e$/);
   });
 
   it("adds the db projects and server only when a db-* project is named", () => {

@@ -10,7 +10,7 @@ import { organization } from "better-auth/plugins/organization";
 import { adminAc, defaultStatements, memberAc, ownerAc } from "better-auth/plugins/organization/access";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
-import { DataError, type Role } from "@/data/contracts";
+import { isDataError, type Role } from "@/data/contracts";
 import { getAuthDb } from "@/server/db/client";
 import { requireEnv } from "@/server/db/env";
 import { account, invitation, member, rateLimit, session, twoFactor as twoFactorTable, user, verification, workspace } from "@/server/db/schema";
@@ -53,8 +53,8 @@ function oneRole(role: unknown): void {
 }
 
 /** A service refusal as the Better Auth error the organization endpoints answer with. */
-function asApiError(e: unknown): unknown {
-  if (!(e instanceof DataError)) return e;
+export function asApiError(e: unknown): unknown {
+  if (!isDataError(e)) return e;
   const status = e.code === "forbidden" ? "FORBIDDEN" : "BAD_REQUEST";
   return new APIError(status, { code: e.code.toUpperCase(), message: e.message });
 }

@@ -13,6 +13,7 @@ import { APIError } from "better-auth/api";
 import { headers as nextHeaders } from "next/headers";
 import {
   DataError,
+  isDataError,
   type AuthService,
   type AuthSession,
   type FieldIssue,
@@ -175,7 +176,7 @@ export function createDbAuth(deps: DbAuthDeps = DEFAULT_DEPS): DbAuthService {
         if (!res.response.url) throw new DataError("unavailable", GOOGLE_OFF);
         return { redirectTo: res.response.url };
       } catch (e) {
-        if (e instanceof DataError) throw e;
+        if (isDataError(e)) throw e;
         const { code } = refusalOf(e);
         if (code === "PROVIDER_NOT_FOUND") throw new DataError("unavailable", GOOGLE_OFF);
         throw e;
@@ -296,7 +297,7 @@ export function createDbAuth(deps: DbAuthDeps = DEFAULT_DEPS): DbAuthService {
         if (!found || found.status !== "pending") throw new DataError("invalid", INVITE_GONE);
         return { workspaceName: found.organizationName, role: found.role as Role };
       } catch (e) {
-        if (e instanceof DataError) throw e;
+        if (isDataError(e)) throw e;
         if (refusalOf(e).code === "YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION")
           throw new DataError("forbidden", INVITE_OTHER_EMAIL);
         throw new DataError("invalid", INVITE_GONE);
@@ -319,7 +320,7 @@ export function createDbAuth(deps: DbAuthDeps = DEFAULT_DEPS): DbAuthService {
         if (!joined) throw new DataError("invalid", INVITE_GONE);
         return landing(session.user.id, joined.invitation.organizationId);
       } catch (e) {
-        if (e instanceof DataError) throw e;
+        if (isDataError(e)) throw e;
         const { code } = refusalOf(e);
         if (code === "YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION")
           throw new DataError("forbidden", INVITE_OTHER_EMAIL);

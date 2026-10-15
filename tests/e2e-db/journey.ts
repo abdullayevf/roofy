@@ -15,6 +15,12 @@ export function uniqueEmail(tag: string): string {
   return `${tag}-${Date.now().toString(36)}-${process.pid}-${counter}@e2e.roofy.test`;
 }
 
+/** A business name no other test (or parallel db project) can share, so a check on one name finds one row. */
+export function uniqueName(prefix: string): string {
+  counter += 1;
+  return `${prefix} ${Date.now().toString(36)}-${process.pid}-${counter}`;
+}
+
 /** Sign up with email and password, then open the verification link from the mail log (the real link, not a shortcut). */
 export async function signUpAndVerify(page: Page, email: string, password = PASSWORD): Promise<void> {
   const before = mailCount();

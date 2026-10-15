@@ -5,6 +5,9 @@ import { fillBusinessToCrew, finishWizard, ownerPool, PASSWORD, signIn, signUpAn
 import { mailCount, mailLink } from "./mail";
 import { totpCode } from "./totp";
 
+/** Where a returning owner with a finished set-up lands: Home, the root address (Home itself is not built on the real database yet). */
+const HOME = /^[^?#]*\/$/;
+
 /** A verified owner with a finished set-up, signed out again: what a returning person looks like. */
 async function returningOwner(page: Page, tag: string): Promise<string> {
   const email = uniqueEmail(tag);
@@ -41,13 +44,13 @@ test("a reset link sets a new password, and the new password signs in", async ({
   await page.getByRole("button", { name: "Set password", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Password changed" })).toBeVisible();
   await signIn(page, email, fresh);
-  await expect(page).not.toHaveURL(/\/sign-in/);
+  await expect(page).toHaveURL(HOME);
 });
 
 test("with two-factor on, sign in asks for the code, and the code from the set-up key lets the owner in", async ({ page }) => {
   const email = await returningOwner(page, "totp");
   await signIn(page, email);
-  await expect(page).not.toHaveURL(/\/sign-in/);
+  await expect(page).toHaveURL(HOME);
 
   await page.goto("/settings/two-factor");
   await waitForHydrated(page);
@@ -63,7 +66,7 @@ test("with two-factor on, sign in asks for the code, and the code from the set-u
   await expect(page.getByRole("heading", { level: 1, name: "Enter your code" })).toBeVisible();
   await page.getByLabel("Code", { exact: true }).fill(totpCode(key));
   await page.getByRole("button", { name: "Check code", exact: true }).click();
-  await expect(page).not.toHaveURL(/\/(sign-in|two-factor)/);
+  await expect(page).toHaveURL(HOME);
 });
 
 /** Workspace B, made straight in the database: one workspace, one crew member, one member (a user with the Manager role). */
@@ -88,10 +91,11 @@ test("workspace A's Members screen lists A's people and none of workspace B's", 
   const email = await returningOwner(page, "tenantA");
   const b = await makeWorkspaceB();
   await signIn(page, email);
-  await expect(page).not.toHaveURL(/\/sign-in/);
+  await expect(page).toHaveURL(HOME);
   await page.goto("/settings/members");
   await expect(page.getByRole("heading", { level: 2, name: "People" })).toBeVisible();
-  await expect(page.getByText(email, { exact: false }).or(page.getByText("Owner", { exact: true })).first()).toBeVisible();
+  // The row's second line is one span, "<email>" then "Owner" on the next line, so this finds A's own row and nothing else.
+  await expect(page.getByText(new RegExp(`^\\s*${email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s+Owner\\s*$`))).toBeVisible();
   await expect(page.getByText(b.memberName)).toHaveCount(0);
 });
 
