@@ -896,6 +896,8 @@ export async function checkEntryLinesMeta(page: Page, opts: { phone: boolean }):
   const failures = await page.evaluate(
     ([expected, expectedBody]) => {
       const out: string[] = [];
+      // The ink check below compares against the heading's colour: a page that lost its h1 must fail, not pass by comparing with itself.
+      if (!document.querySelector("h1")) return ["no h1 on the page"];
       const label = (el: Element) => `"${(el.textContent ?? "").trim().slice(0, 40)}"`;
       const shown = (el: Element) => {
         const r = el.getBoundingClientRect();
@@ -906,7 +908,7 @@ export async function checkEntryLinesMeta(page: Page, opts: { phone: boolean }):
         const size = parseFloat(getComputedStyle(el).fontSize);
         if (Math.abs(size - expectedBody) > 0.5) out.push(`${label(el)} is ${size}px, a page-level sentence wants ${expectedBody}px`);
         const colour = getComputedStyle(el.querySelector("span") ?? el).color;
-        const ink = document.querySelector("h1") ? getComputedStyle(document.querySelector("h1")!).color : colour;
+        const ink = getComputedStyle(document.querySelector("h1")!).color;
         if (colour !== ink) out.push(`${label(el)} text is ${colour}, wants the heading's ink ${ink}`);
       }
       const meta = [
@@ -990,14 +992,18 @@ export async function checkDisabledPrimaryContrast(page: Page, min = 4.5): Promi
 export async function checkIntroFillsWidth(page: Page, minShare = 0.8): Promise<GuardResult> {
   const failures = await page.evaluate((share) => {
     const out: string[] = [];
-    for (const p of document.querySelectorAll<HTMLElement>(".entry-intro")) {
+    const intros = document.querySelectorAll<HTMLElement>(".entry-intro");
+    if (intros.length === 0) return ["no intro paragraph (.entry-intro) on the page"];
+    for (const p of intros) {
       const box = p.getBoundingClientRect();
       if (box.width === 0) continue;
       const lineHeight = parseFloat(getComputedStyle(p).lineHeight);
       if (box.height < lineHeight * 1.5) continue;
       const range = document.createRange();
       range.selectNodeContents(p);
-      const widest = Math.max(...[...range.getClientRects()].map((r) => r.width));
+      const widths = [...range.getClientRects()].map((r) => r.width);
+      if (widths.length === 0) continue;
+      const widest = Math.max(...widths);
       if (widest < box.width * share)
         out.push(`intro "${(p.textContent ?? "").trim().slice(0, 30)}" lines reach ${Math.round(widest)} of ${Math.round(box.width)}px`);
     }
@@ -1088,8 +1094,9 @@ export async function checkNeedsConnectionUnderPrimary(page: Page): Promise<Guar
       /needs connection/i.test(el.textContent ?? ""),
     );
     if (lines.length !== 1) return [`"Needs connection" is shown ${lines.length} times, wants once`];
+    // The primary one, not the first disabled button: a disabled secondary above it must not be measured instead.
     const primary = document.querySelector<HTMLElement>(
-      "main button[disabled], main button[aria-disabled='true']",
+      "main button[data-variant='primary'][disabled], main button[data-variant='primary'][aria-disabled='true']",
     );
     if (!primary) return ["no disabled primary button for the line to sit under"];
     const gap = lines[0]!.getBoundingClientRect().top - primary.getBoundingClientRect().bottom;
@@ -1772,22 +1779,20 @@ export async function checkPinnedBarMatchesColumn(page: Page, column = ".pin-pad
 export async function checkErrorLineInView(page: Page): Promise<GuardResult> {
   const name = "error-line-in-view";
   const failures = await page.evaluate(() => {
-    const lines = Array.from(document.querySelectorAll<HTMLElement>("span.text-over")).filter((el) =>
-      el.querySelector("svg"),
+    const lines = Array.from(document.querySelectorAll<HTMLElement>("span.text-over")).filter(
+      (el) => el.querySelector("svg") && (el.textContent ?? "").trim() !== "",
     );
     if (lines.length === 0) return ["no error line on the page"];
     const h = window.visualViewport?.height ?? window.innerHeight;
-    const seen = lines.some((el) => {
+    // Every error line must be seen (auth i3 R9): one in view does not excuse a second below the fold.
+    return lines.flatMap((el) => {
       const r = el.getBoundingClientRect();
-      if (r.width === 0 || r.height === 0 || r.top < 0 || r.bottom > h) return false;
+      const at = (el.textContent ?? "").trim().slice(0, 40);
+      if (r.width === 0 || r.height === 0 || r.top < 0 || r.bottom > h)
+        return [`error line "${at}" is not fully inside the first ${Math.round(h)} px`];
       const top = document.elementFromPoint(r.left + Math.min(r.width / 2, 40), r.top + r.height / 2);
-      return top !== null && el.contains(top);
+      return top !== null && el.contains(top) ? [] : [`error line "${at}" is covered by something else`];
     });
-    return seen
-      ? []
-      : [
-          `${lines.length} error line(s) on the page, none fully inside the first ${Math.round(h)} px and uncovered`,
-        ];
   });
   return { name, ok: failures.length === 0, failures };
 }

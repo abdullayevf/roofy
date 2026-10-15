@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
 import {
   checkAxe,
+  checkEntryLinesMeta,
   checkErrorLineInView,
+  checkIntroFillsWidth,
+  checkNeedsConnectionUnderPrimary,
   checkKeyboard,
   checkNoMoney,
   checkPinnedBarMatchesColumn,
@@ -478,5 +481,37 @@ test.describe("an error line in the first viewport", () => {
     expect((await checkErrorLineInView(page)).ok).toBe(false);
     await page.setContent("<body><p>All fine</p></body>");
     expect((await checkErrorLineInView(page)).failures).toEqual(["no error line on the page"]);
+  });
+  test("every error line must be seen: one in view does not excuse another below the fold (auth i3 R9)", async ({ page }) => {
+    const line = (top: number, text: string) =>
+      `<span class="text-over" style="position:absolute;top:${top}px;left:0;display:flex"><svg width="24" height="24"></svg>${text}</span>`;
+    await page.setContent(`<!doctype html><html><body style="margin:0">${line(100, "Add a floor rate.")}${line(5000, "Add a rate for Labourer.")}</body></html>`);
+    const result = await checkErrorLineInView(page);
+    expect(result.ok).toBe(false);
+    expect(result.failures).toHaveLength(1);
+    expect(result.failures[0]).toContain("Add a rate for Labourer.");
+    await page.setContent(`<!doctype html><html><body style="margin:0">${line(100, "Add a floor rate.")}${line(160, "Add a rate for Labourer.")}</body></html>`);
+    expect((await checkErrorLineInView(page)).failures).toEqual([]);
+  });
+});
+
+test.describe("entry-page guards fail instead of passing on an empty page (auth i3 R6, R7, R8)", () => {
+  test("a problem sentence on a page with no h1 fails", async ({ page }) => {
+    await page.setContent("<body><p data-problem-note><span>Link expired.</span></p></body>");
+    expect((await checkEntryLinesMeta(page, { phone: true })).failures).toEqual(["no h1 on the page"]);
+  });
+  test("Needs connection is measured from the primary button, not a disabled secondary above it", async ({ page }) => {
+    await page.setContent(
+      `<body style="margin:0"><main><button data-variant="secondary" disabled style="display:block;height:48px;margin-bottom:200px">Back</button><button data-variant="primary" disabled style="display:block;height:48px">Continue</button><div role="status" style="margin-top:8px">Needs connection</div></main></body>`,
+    );
+    expect((await checkNeedsConnectionUnderPrimary(page)).failures).toEqual([]);
+    await page.setContent("<body><main><button data-variant='secondary' disabled>Back</button><div role='status'>Needs connection</div></main></body>");
+    expect((await checkNeedsConnectionUnderPrimary(page)).failures).toEqual(["no disabled primary button for the line to sit under"]);
+  });
+  test("a page with no intro paragraph is a clear failure, not a pass or a NaN", async ({ page }) => {
+    await page.setContent("<body><main><h1>Title</h1></main></body>");
+    expect((await checkIntroFillsWidth(page)).failures).toEqual(["no intro paragraph (.entry-intro) on the page"]);
+    await page.setContent("<body><main><p class='entry-intro' style='display:none'>Hidden on a short screen</p></main></body>");
+    expect((await checkIntroFillsWidth(page)).failures).toEqual([]);
   });
 });

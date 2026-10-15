@@ -80,7 +80,9 @@ describe("Check your email", () => {
     render(<CheckEmail email="sam@example.com" />);
     const h1 = screen.getByRole("heading", { level: 1, name: "Check your email" });
     expect(h1.nextElementSibling?.textContent).toContain("We sent a link to");
-    expect(h1.nextElementSibling?.className).toContain("entry-intro");
+    // Not "entry-intro": that class is hidden on a short screen, and these sentences are the answer, not a welcome (auth i3 F29).
+    expect(h1.nextElementSibling?.className).toContain("entry-lines");
+    expect(h1.nextElementSibling?.className).not.toContain("entry-intro");
     expect(h1.parentElement?.contains(screen.getByTestId("check-email-address"))).toBe(true);
     expect(screen.getByRole("link", { name: "Use a different email" }).getAttribute("data-variant")).toBe("secondary");
   });

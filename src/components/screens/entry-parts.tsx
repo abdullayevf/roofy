@@ -18,14 +18,14 @@ export function EntryHeading({
 }: {
   title: string;
   intro?: ReactNode;
-  /** A few short lines (a sentence, an address on its own line) that belong right under the title, 8 px below it like an intro (auth i2 D31). */
+  /** A few short lines (a sentence, an address on its own line) that belong right under the title, 8 px below it like an intro (auth i2 D31). Unlike the intro it stays on a short screen: these lines are the answer, not a welcome (auth i3 F29). */
   lines?: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-2">
       <h1 className="break-words font-display text-title text-ink">{title}</h1>
       {intro ? <p className="entry-intro text-body text-ink-2">{intro}</p> : null}
-      {lines ? <div className="entry-intro flex flex-col gap-1 text-body text-ink-2">{lines}</div> : null}
+      {lines ? <div className="entry-lines flex flex-col gap-1 text-body text-ink-2">{lines}</div> : null}
     </div>
   );
 }

@@ -67,6 +67,16 @@ test.describe("Check your email", () => {
     await expectScreenHealthy(page, { phone: isPhone(testInfo.project.name), console: consoleLog });
   });
 
+  test("on a short screen (a phone on its side) the sentences and the address are still there", async ({ page }) => {
+    // Auth i3 F29: the capture at 844x390 had lost its sentences, because they shared the welcome sentence's hide-when-short class.
+    await page.setViewportSize({ width: 844, height: 390 });
+    await open(page, `/check-email?email=${encodeURIComponent(LONG_EMAIL)}`);
+    for (const text of ["We sent a link to", "Open it to finish setting up."])
+      await expect(page.getByText(text, { exact: true }), text).toBeVisible();
+    await expect(page.getByTestId("check-email-address")).toBeVisible();
+    expect((await checkAddressBreaks(page)).failures).toEqual([]);
+  });
+
   test("without an address it still says a link was sent", async ({ page }, testInfo) => {
     const consoleLog = collectConsole(page);
     await open(page, "/check-email");
