@@ -65,9 +65,9 @@ const MANAGER: Record<Action, Cell> = {
   "workspace.delete": "deny",
   "workspace.billing": "deny",
   "member.read": "allow",
-  "member.invite": "allow",
-  "member.setRole": "allow",
-  "member.remove": "allow",
+  "member.invite": "deny",
+  "member.setRole": "deny",
+  "member.remove": "deny",
   "member.changeOwner": "deny",
   "assignment.edit": "allow",
   "project.read": "allow",
@@ -204,8 +204,15 @@ describe("permission matrix — every role × every action", () => {
 });
 
 describe("permission matrix — named rows", () => {
-  it.each(["workspace.billing", "workspace.delete", "member.changeOwner"] as const)(
-    "manager is denied %s",
+  it.each([
+    "workspace.billing",
+    "workspace.delete",
+    "member.changeOwner",
+    "member.invite",
+    "member.setRole",
+    "member.remove",
+  ] as const)(
+    "manager is denied %s (managing members is the Owner's, product spec §3)",
     (a) => {
       expect(can(actor("manager"), a)).toBe(false);
     },
@@ -260,6 +267,14 @@ describe("permission matrix — named rows", () => {
 
   it("a truthy non-boolean twoFactorEnabled is denied payRun.approve", () => {
     expect(can({ ...actor("owner"), twoFactorEnabled: "yes" as unknown as boolean }, "payRun.approve")).toBe(false);
+  });
+
+  it("manager may read the members list but not change it", () => {
+    const m = actor("manager");
+    expect(can(m, "member.read")).toBe(true);
+    for (const a of ["member.invite", "member.setRole", "member.remove", "member.changeOwner"] as const) {
+      expect(can(m, a)).toBe(false);
+    }
   });
 
   it("manager payRun.approve is allowed (with or without 2FA)", () => {
@@ -335,11 +350,13 @@ describe("memberActionFor", () => {
     for (const r of others) expect(memberActionFor(r, null)).toBe("member.remove");
   });
 
-  it("a manager can never change or remove the owner", () => {
+  it("a manager can never change or remove anyone, the owner or not", () => {
     const m = actor("manager");
     expect(can(m, memberActionFor("owner", "manager"))).toBe(false);
     expect(can(m, memberActionFor("foreman", "owner"))).toBe(false);
     expect(can(m, memberActionFor("owner", null))).toBe(false);
-    expect(can(m, memberActionFor("foreman", "accountant"))).toBe(true);
+    expect(can(m, memberActionFor("foreman", "accountant"))).toBe(false);
+    expect(can(m, memberActionFor("foreman", null))).toBe(false);
+    expect(can(actor("owner"), memberActionFor("foreman", "accountant"))).toBe(true);
   });
 });

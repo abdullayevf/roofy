@@ -106,18 +106,23 @@ describe("inviteMember", () => {
     const inv = await rows("owner", "select email, role, status, inviter_id from invitation where id = $1 and workspace_id = $2", [invited.id, a.workspaceId]);
     expect(inv).toEqual([{ email: lower, role: "foreman", status: "pending", inviter_id: a.userId }]);
     expect(mailsTo(lower)).toHaveLength(1);
-    expect(await refusal(ws.inviteMember(manager, { email, name: "Again", role: "foreman" }))).toBe("conflict: This person has already been invited.");
+    expect(await refusal(ws.inviteMember(a, { email, name: "Again", role: "foreman" }))).toBe("conflict: This person has already been invited.");
     expect(mailsTo(lower)).toHaveLength(1);
   });
   it("refuses an existing member's email, in any case", async () => {
     const email = `MANAGER-${manager.userId}@example.test`;
     expect(await refusal(ws.inviteMember(a, { email, name: "Dup", role: "foreman" }))).toBe("conflict: This person is already in your team.");
   });
-  it("lets a Manager invite non-owners but never as Owner; accountant and foreman are forbidden", async () => {
-    await ws.inviteMember(manager, { email: `m-${uuidv7()}@example.test`, name: "By manager", role: "accountant" });
+  it("lets only the Owner invite; a Manager (even for a foreman), accountant and foreman are forbidden", async () => {
+    const email = `m-${uuidv7()}@example.test`;
+    expect(await refusal(ws.inviteMember(manager, { email, name: "By manager", role: "foreman" }))).toBe(FORBIDDEN);
     expect(await refusal(ws.inviteMember(manager, { email: `o-${uuidv7()}@example.test`, name: "X", role: "owner" }))).toBe(FORBIDDEN);
+    expect(await rows("owner", "select id from invitation where lower(email) = $1", [email])).toEqual([]);
+    expect(mailsTo(email)).toHaveLength(0);
     expect(await refusal(ws.inviteMember(accountant, { email: `x-${uuidv7()}@example.test`, name: "X", role: "foreman" }))).toBe(FORBIDDEN);
     expect(await refusal(ws.inviteMember(foreman, { email: `y-${uuidv7()}@example.test`, name: "X", role: "foreman" }))).toBe(FORBIDDEN);
+    await ws.inviteMember(a, { email, name: "By owner", role: "accountant" });
+    expect(mailsTo(email)).toHaveLength(1);
   });
 });
 
@@ -126,16 +131,19 @@ describe("setMemberRole", () => {
     await setTwoFactor(a, true);
     expect(await refusal(ws.setMemberRole(a, await memberIdOf(a), "manager"))).toBe("conflict: Your business needs at least one owner.");
   });
-  it("forbids a Manager setting anyone to or from Owner", async () => {
+  it("forbids a Manager every role change, to or from Owner or not", async () => {
+    const acc = await memberIdOf(accountant);
     expect(await refusal(ws.setMemberRole(manager, await memberIdOf(a), "manager"))).toBe(FORBIDDEN);
     expect(await refusal(ws.setMemberRole(manager, foremanMemberId, "owner"))).toBe(FORBIDDEN);
+    expect(await refusal(ws.setMemberRole(manager, acc, "manager"))).toBe(FORBIDDEN);
+    expect(await rows("owner", "select role from member where id = $1", [acc])).toEqual([{ role: "accountant" }]);
   });
-  it("lets a Manager change other roles, audited with the actor", async () => {
+  it("lets the Owner change other roles, audited with the actor", async () => {
     const acc = await memberIdOf(accountant);
-    expect(await ws.setMemberRole(manager, acc, "manager")).toMatchObject({ id: acc, role: "manager" });
+    expect(await ws.setMemberRole(a, acc, "manager")).toMatchObject({ id: acc, role: "manager" });
     const audit = await rows("owner", "select action, actor_user_id from audit_event where workspace_id = $1 and table_name = 'member' and row_id = $2 and action = 'update'", [a.workspaceId, acc]);
-    expect(audit).toEqual([{ action: "update", actor_user_id: manager.userId }]);
-    await ws.setMemberRole(manager, acc, "accountant");
+    expect(audit).toEqual([{ action: "update", actor_user_id: a.userId }]);
+    await ws.setMemberRole(a, acc, "accountant");
   });
   it("B on A's member and a bad id reject not_found; accountant writes are forbidden", async () => {
     expect(await refusal(ws.setMemberRole(b, foremanMemberId, "manager"))).toMatch(NOT_FOUND);
@@ -297,27 +305,30 @@ describe("fix 1: another business's job id is not_found (spec NB1)", () => {
 
 describe("removeMember", () => {
   const gone = async (id: string) => (await rows("owner", "select id from member where id = $1", [id])).length === 0;
-  it("a Manager removes a foreman: the member and their job assignments go, audited with the actor", async () => {
+  it("a Manager cannot remove a foreman; the Owner can: the member and their job assignments go, audited with the actor", async () => {
     const f = await addMember(a.workspaceId, "foreman");
     const id = await memberIdOf(f);
     await ws.setAssignments(a, id, [projectA]);
-    await ws.removeMember(manager, id);
+    expect(await refusal(ws.removeMember(manager, id))).toBe(FORBIDDEN);
+    expect(await gone(id)).toBe(false);
+    await ws.removeMember(a, id);
     expect(await gone(id)).toBe(true);
     expect(await rows("owner", "select 1 from project_assignment where member_id = $1", [id])).toEqual([]);
     const audit = await rows("owner", "select action, actor_user_id from audit_event where workspace_id = $1 and table_name = 'member' and row_id = $2 and action = 'delete'", [a.workspaceId, id]);
-    expect(audit).toEqual([{ action: "delete", actor_user_id: manager.userId }]);
+    expect(audit).toEqual([{ action: "delete", actor_user_id: a.userId }]);
     expect(await refusal(ws.removeMember(a, id))).toMatch(NOT_FOUND);
   });
-  it("accountant and foreman callers are forbidden; B's actor and a bad id are not_found", async () => {
+  it("manager, accountant and foreman callers are forbidden; B's actor and a bad id are not_found", async () => {
+    expect(await refusal(ws.removeMember(manager, foremanMemberId))).toBe(FORBIDDEN);
     expect(await refusal(ws.removeMember(accountant, foremanMemberId))).toBe(FORBIDDEN);
     expect(await refusal(ws.removeMember(foreman, foremanMemberId))).toBe(FORBIDDEN);
     expect(await refusal(ws.removeMember(b, foremanMemberId))).toMatch(NOT_FOUND);
     expect(await refusal(ws.removeMember(a, "nope"))).toMatch(NOT_FOUND);
     expect(await gone(foremanMemberId)).toBe(false);
   });
-  it("you can't remove yourself, and a Manager can't remove the Owner", async () => {
+  it("you can't remove yourself, and a Manager can't remove the Owner or themselves", async () => {
     await setTwoFactor(a, true);
-    expect(await refusal(ws.removeMember(manager, await memberIdOf(manager)))).toBe("conflict: You can't remove yourself. Ask another owner.");
+    expect(await refusal(ws.removeMember(manager, await memberIdOf(manager)))).toBe(FORBIDDEN);
     expect(await refusal(ws.removeMember(a, await memberIdOf(a)))).toBe("conflict: You can't remove yourself. Ask another owner.");
     expect(await refusal(ws.removeMember(manager, await memberIdOf(a)))).toBe(FORBIDDEN);
   });

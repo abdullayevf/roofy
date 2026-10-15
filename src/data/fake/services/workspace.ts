@@ -20,7 +20,7 @@ import type {
   WorkspaceView,
 } from "../../contracts";
 import { FIELD_ACCESS, type FakeContext, forbidden, NO_ACCESS, notFound } from "./context";
-import { conflict, invalid, requireEditor, snapshot, write } from "./writes";
+import { conflict, invalid, requireEditor, requireOwner, snapshot, write } from "./writes";
 
 const NEEDS_AN_OWNER = "Your business needs at least one owner.";
 const NOT_YOURSELF = "You can't remove yourself. Ask another owner.";
@@ -297,9 +297,9 @@ export function createWorkspaceService(c: FakeContext): WorkspaceService {
       return templates().find((x) => x.id === id)!;
     },
 
-    /** Invite someone (Owner or Manager); inviting as Owner is an Owner change. */
+    /** Invite someone (Owner only, product spec section 3); inviting as Owner needs 2FA. */
     async inviteMember(actor: Actor, input: MemberInput): Promise<Member> {
-      requireEditor(c, actor);
+      requireOwner(c, actor);
       if (input.role === "owner") requireOwnerChange(actor);
       if (c.t.members.some((m) => sameName(m.email, input.email)))
         throw conflict("This person is already in your team.");
@@ -319,9 +319,9 @@ export function createWorkspaceService(c: FakeContext): WorkspaceService {
       return memberOf(id);
     },
 
-    /** Change a member's role (Owner or Manager); anything touching the Owner role is an Owner change. */
+    /** Change a member's role (Owner only); anything touching the Owner role needs 2FA. */
     async setMemberRole(actor: Actor, memberId: Id, role: Role): Promise<Member> {
-      requireEditor(c, actor);
+      requireOwner(c, actor);
       const m = c.t.members.find((x) => x.id === memberId);
       if (!m) throw notFound("member");
       if (m.role === "owner" || role === "owner") requireOwnerChange(actor);
@@ -338,9 +338,9 @@ export function createWorkspaceService(c: FakeContext): WorkspaceService {
       return memberOf(m.id);
     },
 
-    /** Take a person out of the team (Owner or Manager; an Owner is an Owner change). Not yourself, not the last Owner. Audited. */
+    /** Take a person out of the team (Owner only; removing an Owner needs 2FA). Not yourself, not the last Owner. Audited. */
     async removeMember(actor: Actor, memberId: Id): Promise<void> {
-      requireEditor(c, actor);
+      requireOwner(c, actor);
       const m = c.t.members.find((x) => x.id === memberId);
       if (!m) throw notFound("member");
       if (m.role === "owner") requireOwnerChange(actor);

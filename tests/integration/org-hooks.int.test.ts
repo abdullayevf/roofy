@@ -5,7 +5,7 @@ import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { getAuth, guardInvite, guardKeepsAnOwner, guardMemberChange } from "../../src/server/auth/auth";
+import { getAuth, ROLES_AC, guardInvite, guardKeepsAnOwner, guardMemberChange } from "../../src/server/auth/auth";
 import { closePools, rows } from "./helpers";
 
 const PASSWORD = "correct horse battery";
@@ -67,10 +67,47 @@ describe("organization hooks (T8)", () => {
       message: "You don't have access to this.",
     });
   });
-  it("lets a Manager invite a foreman, then refuses the same email again", async () => {
+  it("lets an Owner invite a foreman, then refuses the same email again", async () => {
     const email = `z${n++}@example.com`;
-    await invite(manager.headers, email, "foreman");
+    await invite(owner.headers, email, "foreman");
     expect((await refused(invite(owner.headers, email, "foreman"))).status).toBe(400);
+  });
+  // Task 15 fix F1: managing members is the Owner's alone (product spec section 3). A Manager may
+  // read the team but every write path over the direct API is refused, and nothing is written.
+  it("refuses a Manager inviting anyone, even a foreman", async () => {
+    const email = `mi${n++}@example.com`;
+    expect(await refused(invite(manager.headers, email, "foreman"))).toMatchObject({ status: 403 });
+    expect(await rows("owner", "select id from invitation where lower(email) = $1", [email])).toEqual([]);
+  });
+  it("refuses a Manager changing a foreman's role or removing them, and cancelling an invitation", async () => {
+    const third = await signUp();
+    await getAuth().api.addMember({ body: { userId: third.userId, role: "foreman", organizationId } });
+    const [t] = await rows<{ id: string }>("owner", "select id from member where user_id = $1", [third.userId]);
+    const roleOf = async () => (await rows<{ role: string }>("owner", "select role from member where id = $1", [t!.id]))[0]?.role;
+    expect(
+      await refused(getAuth().api.updateMemberRole({ body: { memberId: t!.id, role: "accountant", organizationId }, headers: manager.headers })),
+    ).toMatchObject({ status: 403 });
+    expect(await refused(getAuth().api.removeMember({ body: { memberIdOrEmail: t!.id, organizationId }, headers: manager.headers }))).toMatchObject({ status: 403 });
+    expect(await roleOf()).toBe("foreman");
+    const email = `mc${n++}@example.com`;
+    const inv = await invite(owner.headers, email, "foreman");
+    expect(await refused(getAuth().api.cancelInvitation({ body: { invitationId: inv.id }, headers: manager.headers }))).toMatchObject({ status: 403 });
+    expect(await rows("owner", "select status from invitation where id = $1", [inv.id])).toEqual([{ status: "pending" }]);
+    // The Owner can still do all three.
+    await getAuth().api.updateMemberRole({ body: { memberId: t!.id, role: "accountant", organizationId }, headers: owner.headers });
+    expect(await roleOf()).toBe("accountant");
+    await getAuth().api.removeMember({ body: { memberIdOrEmail: t!.id, organizationId }, headers: owner.headers });
+    expect(await roleOf()).toBeUndefined();
+  });
+  it("gives the Better Auth manager role no member or invitation powers, and no other role gains them", () => {
+    const can = (role: keyof typeof ROLES_AC, permissions: Record<string, string[]>) => ROLES_AC[role].authorize(permissions).success;
+    const grants: Record<string, string[]>[] = [{ member: ["create"] }, { member: ["update"] }, { member: ["delete"] }, { invitation: ["create"] }, { invitation: ["cancel"] }];
+    for (const permissions of grants) {
+      expect(can("owner", permissions)).toBe(true);
+      for (const role of ["manager", "foreman", "accountant"] as const) expect(can(role, permissions)).toBe(false);
+    }
+    expect(can("manager", { organization: ["update"] })).toBe(true);
+    expect(can("manager", { organization: ["delete"] })).toBe(false);
   });
   it("refuses inviting someone already in the team", async () => {
     expect((await refused(invite(owner.headers, manager.email, "foreman"))).status).toBe(400);
@@ -96,13 +133,16 @@ describe("organization hooks (T8)", () => {
 
   // Fix 1 (F4): Better Auth refuses these before beforeCreateInvitation runs, so the hook's own
   // branches are pinned by calling it directly; deleting a branch turns these red.
-  it("guardInvite: Manager as Owner, already in the team (any case), already invited", async () => {
+  it("guardInvite: Manager never, then (as Owner) already in the team (any case), already invited", async () => {
     await rows("owner", `update member set role = 'manager' where user_id = $1`, [manager.userId]);
-    const base = { organizationId, inviterId: manager.userId };
-    expect(await refused(guardInvite({ ...base, email: `g${n++}@example.com`, role: "owner" }))).toMatchObject({
-      status: 403,
-      message: "You don't have access to this.",
-    });
+    const asManager = { organizationId, inviterId: manager.userId };
+    for (const role of ["owner", "foreman"] as const) {
+      expect(await refused(guardInvite({ ...asManager, email: `g${n++}@example.com`, role }))).toMatchObject({
+        status: 403,
+        message: "You don't have access to this.",
+      });
+    }
+    const base = { organizationId, inviterId: owner.userId };
     expect(await refused(guardInvite({ ...base, email: owner.email.toUpperCase(), role: "foreman" }))).toMatchObject({
       status: 400,
       message: "This person is already in your team.",

@@ -72,10 +72,13 @@ const RULES: Record<Role, Record<Action, Rule>> = {
     "workspace.delete": "twoFactor",
     "member.changeOwner": "twoFactor",
   }),
-  /** Everything except billing, deleting the workspace and changing the Owner. */
+  /** Everything except billing, deleting the workspace and managing members (read-only list); spec §3. */
   manager: all("yes", {
     "workspace.billing": "no",
     "workspace.delete": "no",
+    "member.invite": "no",
+    "member.setRole": "no",
+    "member.remove": "no",
     "member.changeOwner": "no",
   }),
   /** Field entries on assigned projects only; no money, no Done. */

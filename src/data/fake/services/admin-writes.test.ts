@@ -517,18 +517,20 @@ describe("settings", () => {
     ).toBe("Labour shares must add up to 100%.");
   });
 
-  it("members and roles follow the matrix (Owner and Manager; Owner changes need the Owner); assignments open a job to the foreman", async () => {
+  it("members and roles follow the matrix (Owner only; Owner changes need 2FA); assignments open a job to the foreman", async () => {
     const { data, actor, as } = fakeSession("owner");
     const manager = as("manager");
-    const al = await manager.data.workspace.inviteMember(manager.actor, { email: "al@b.au", name: "Al", role: "foreman" });
+    for (const role of ["foreman", "owner"] as const) {
+      expect((await refusal(manager.data.workspace.inviteMember(manager.actor, { email: "mi@b.au", name: "Mi", role }))).code).toBe("forbidden");
+    }
+    const al = await data.workspace.inviteMember(actor, { email: "al@b.au", name: "Al", role: "foreman" });
     expect(al.role).toBe("foreman");
-    expect(
-      (await refusal(manager.data.workspace.inviteMember(manager.actor, { email: "o@b.au", name: "O", role: "owner" }))).code,
-    ).toBe("forbidden");
-    expect((await manager.data.workspace.setMemberRole(manager.actor, al.id, "accountant")).role).toBe("accountant");
+    expect((await refusal(manager.data.workspace.setMemberRole(manager.actor, al.id, "accountant"))).code).toBe("forbidden");
+    expect((await data.workspace.setMemberRole(actor, al.id, "accountant")).role).toBe("accountant");
     const boss = (await data.workspace.members(actor)).find((x) => x.role === "owner")!;
     expect((await refusal(manager.data.workspace.setMemberRole(manager.actor, boss.id, "manager"))).code).toBe("forbidden");
     expect((await refusal(manager.data.workspace.setMemberRole(manager.actor, al.id, "owner"))).code).toBe("forbidden");
+    expect((await manager.data.workspace.members(manager.actor)).some((x) => x.id === al.id)).toBe(true);
     for (const r of ["foreman", "accountant"] as const) {
       const other = as(r);
       expect((await refusal(other.data.workspace.inviteMember(other.actor, { email: "x@b.au", name: "X", role: "foreman" }))).code).toBe("forbidden");
@@ -560,7 +562,7 @@ describe("settings", () => {
     expect(scanForMoney(job)).toEqual([]);
   });
 
-  it("removing a member: Owner and Manager only, an owner needs the Owner, never yourself or the last owner; the foreman's jobs go with them; audited", async () => {
+  it("removing a member: the Owner only, an owner needs 2FA, never yourself or the last owner; the foreman's jobs go with them; audited", async () => {
     const { data, actor, as } = fakeSession("owner");
     const manager = as("manager");
     const al = await data.workspace.inviteMember(actor, { email: "al.rm@b.au", name: "Al", role: "foreman" });
@@ -575,13 +577,11 @@ describe("settings", () => {
     const self = await refusal(data.workspace.removeMember(actor, boss.id));
     expect([self.code, self.message]).toEqual(["conflict", "You can't remove yourself. Ask another owner."]);
     const mine = people.find((x) => x.userId === manager.actor.userId);
-    if (mine) {
-      const own = await refusal(manager.data.workspace.removeMember(manager.actor, mine.id));
-      expect([own.code, own.message]).toEqual(["conflict", "You can't remove yourself. Ask another owner."]);
-    }
+    if (mine) expect((await refusal(manager.data.workspace.removeMember(manager.actor, mine.id))).code).toBe("forbidden");
     expect((await refusal(data.workspace.removeMember(actor, "no-such-member"))).code).toBe("not_found");
     await data.workspace.setAssignments(actor, al.id, [projects.rydeHeritage]);
-    await manager.data.workspace.removeMember(manager.actor, al.id);
+    expect((await refusal(manager.data.workspace.removeMember(manager.actor, al.id))).code).toBe("forbidden");
+    await data.workspace.removeMember(actor, al.id);
     await data.workspace.removeMember(actor, sue.id);
     const after = await data.workspace.members(actor);
     expect(after.some((x) => x.id === al.id || x.id === sue.id)).toBe(false);

@@ -51,7 +51,7 @@ export function requireApprover(c: FakeContext, actor: Actor): Access {
   return access;
 }
 
-/** Members and roles: the Owner. */
+/** Members and roles (invite, change role, remove): the Owner only. A Manager may read the team. */
 export function requireOwner(c: FakeContext, actor: Actor): Access {
   const access = c.access(actor);
   if (!access.canAdminister) throw forbidden("Only the Owner can change members and roles.");

@@ -16,9 +16,9 @@ const code = (fn: () => void): string => {
 };
 
 describe("member rules", () => {
-  it("lets Owner and Manager invite non-owners; foreman and accountant are forbidden", () => {
+  it("lets only the Owner invite non-owners; manager, foreman and accountant are forbidden", () => {
     expect(code(() => assertInvite(as("owner"), "foreman", none))).toBe("ok");
-    expect(code(() => assertInvite(as("manager"), "accountant", none))).toBe("ok");
+    expect(code(() => assertInvite(as("manager"), "accountant", none))).toBe("forbidden: You don't have access to this.");
     expect(code(() => assertInvite(as("foreman"), "foreman", none))).toBe("forbidden: You don't have access to this.");
     expect(code(() => assertInvite(as("accountant"), "manager", none))).toBe("forbidden: You don't have access to this.");
   });
@@ -31,10 +31,11 @@ describe("member rules", () => {
     expect(code(() => assertInvite(as("owner"), "foreman", { alreadyMember: true, alreadyInvited: true }))).toBe(`conflict: ${ALREADY_IN_TEAM}`);
     expect(code(() => assertInvite(as("owner"), "foreman", { alreadyMember: false, alreadyInvited: true }))).toBe(`conflict: ${ALREADY_INVITED}`);
   });
-  it("forbids a Manager setting anyone to or from Owner, and lets them change other roles", () => {
+  it("forbids a Manager every role change, to or from Owner or not", () => {
     expect(code(() => assertRoleChange(as("manager", true), "owner", "manager"))).toBe("forbidden: You don't have access to this.");
     expect(code(() => assertRoleChange(as("manager", true), "foreman", "owner"))).toBe("forbidden: You don't have access to this.");
-    expect(code(() => assertRoleChange(as("manager"), "foreman", "accountant"))).toBe("ok");
+    expect(code(() => assertRoleChange(as("manager"), "foreman", "accountant"))).toBe("forbidden: You don't have access to this.");
+    expect(code(() => assertRoleChange(as("owner"), "foreman", "accountant"))).toBe("ok");
     expect(code(() => assertRoleChange(as("owner", true), "owner", "manager"))).toBe("ok");
   });
   it("refuses demoting the last Owner only", () => {
@@ -43,9 +44,9 @@ describe("member rules", () => {
     expect(code(() => assertKeepsAnOwner("foreman", "manager", 1))).toBe("ok");
     expect(code(() => assertKeepsAnOwner("owner", "owner", 1))).toBe("ok");
   });
-  it("lets Owner and Manager remove non-owners; an owner needs the Owner with two-factor; accountant and foreman never", () => {
+  it("lets only the Owner remove non-owners; an owner needs the Owner with two-factor; manager, accountant and foreman never", () => {
     expect(code(() => assertRemoval(as("owner"), "foreman"))).toBe("ok");
-    expect(code(() => assertRemoval(as("manager"), "accountant"))).toBe("ok");
+    expect(code(() => assertRemoval(as("manager"), "accountant"))).toBe("forbidden: You don't have access to this.");
     expect(code(() => assertRemoval(as("manager", true), "owner"))).toBe("forbidden: You don't have access to this.");
     expect(code(() => assertRemoval(as("owner"), "owner"))).toBe("forbidden: You don't have access to this.");
     expect(code(() => assertRemoval(as("owner", true), "owner"))).toBe("ok");

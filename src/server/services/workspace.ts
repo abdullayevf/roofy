@@ -459,7 +459,7 @@ export function createWorkspaceService(): BuiltWorkspaceService {
       return withActor(actor, (tx) => memberRows(tx, actor));
     },
 
-    /** Owner or Manager; inviting as Owner needs an Owner with 2FA. One pending invite per email. */
+    /** Owner only (product spec section 3); inviting as Owner needs 2FA. One pending invite per email. */
     async inviteMember(actor: Actor, input: MemberInput): Promise<Member> {
       allow(actor, "member.invite");
       const email = input.email.trim().toLowerCase();
@@ -512,7 +512,7 @@ export function createWorkspaceService(): BuiltWorkspaceService {
       return { id, userId: "", name: input.name.trim(), email, role: input.role, twoFactorEnabled: false, projectIds: [] };
     },
 
-    /** Owner or Manager; anything touching the Owner role is an Owner change. Keeps one Owner. */
+    /** Owner only (product spec section 3); anything touching the Owner role needs 2FA. Keeps one Owner. */
     async setMemberRole(actor: Actor, memberId: string, role: Role): Promise<Member> {
       allow(actor, "member.setRole");
       if (!isRole(role)) throw invalid("Pick a role from the list.", "role");
@@ -544,9 +544,9 @@ export function createWorkspaceService(): BuiltWorkspaceService {
       });
     },
 
-    /** Owner or Manager; an Owner is an Owner change. Not yourself, not the last Owner (the trigger also holds it). */
+    /** Owner only (product spec section 3); removing an Owner needs 2FA. Not yourself, not the last Owner (the trigger also holds it). */
     async removeMember(actor: Actor, memberId: string): Promise<void> {
-      allow(actor, "member.read");
+      allow(actor, "member.remove");
       if (!UUID.test(memberId)) throw notFound("member");
       await withActor(actor, async (tx) => {
         await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`roofy_member_owner:${actor.workspaceId}`}))`);

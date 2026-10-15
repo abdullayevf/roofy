@@ -23,10 +23,15 @@ import { TOO_MANY_TRIES, verifyPageUrl } from "@/lib/auth-input";
 
 const ac = createAccessControl(defaultStatements);
 
-/** The organization access-control roles, one per Roofy `Role`. What each may do lives in authz. */
+/**
+ * The organization access-control roles, one per Roofy `Role`. What each may do lives in authz.
+ * Managing members (invite, change role, remove, cancel an invitation) is the Owner's alone
+ * (product spec section 3), so the manager role keeps only what adminAc gives beyond members:
+ * editing the organization. It can still read the team.
+ */
 export const ROLES_AC = {
   owner: ac.newRole(ownerAc.statements),
-  manager: ac.newRole(adminAc.statements),
+  manager: ac.newRole({ ...adminAc.statements, member: [], invitation: [] }),
   foreman: ac.newRole(memberAc.statements),
   accountant: ac.newRole(memberAc.statements),
 } satisfies Record<Role, unknown>;
