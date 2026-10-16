@@ -2,11 +2,11 @@
 
 ## Current
 
-- **Phase 3 (database, auth, tenancy, audit) is done; the phase gate passed 2026-10-16.** Plan `docs/plans/04-db-auth.md` (15 tasks ticked). Ledger `.superpowers/sdd/04-db-auth/progress.md`. Work is on `master`, not pushed.
+- **Phase 3 (database, auth, tenancy, audit) is done; the phase gate passed 2026-10-16.** Plan `docs/plans/04-db-auth.md` (15 tasks ticked). Ledger `.superpowers/sdd/04-db-auth/progress.md`. `master` merged and **pushed to origin/master** 2026-10-16 (ff, a938f3e..635fc5f); stale merged branch `phase/2-design-prototype` deleted locally.
 - Gate evidence (details under "Gate evidence"): verify green; coverage 2034 tests, domain 100%; integration 364; fake e2e green after rebuild; db e2e 33 pass, 0 fail; visual 1218 pass with new baselines e01491d; spec review P2-1 fixed, P2-2 carried; all re-reviews clean.
 - Done and reviewed: Phase 2 Tasks 1–23; Phase 3 Tasks 1–15 (commit list per task in the ledger and the plan).
 - Carried to later phases (see "Decisions and deviations", 2026-10-16 Task 15): P2-2 Google invitee becomes Owner (fix with a test before setting GOOGLE_CLIENT_ID; Phase 9 deploy checklist), P3-2..P3-5, T14 R3/S1 cross-workspace not-found.
-- **Next (owner):** decide merge/push of `master` and approve Phase 4. Phase 4 (jobs, stages, crew, rates) needs its plan `docs/plans/05-jobs-crew.md` written first (scope: `docs/plans/00-master-plan.md:89`); do not start it unprompted.
+- **Next (owner approved 2026-10-16: merge/push done, Phase 4 approved).** Engineer: write Phase 4's plan `docs/plans/05-jobs-crew.md` (scope `docs/plans/00-master-plan.md:89`; jobs, stages, crew, rates), get the owner's nod only if a spec contradiction appears, then start Phase 4 Task 1.
 - Known flaky (iphone, load): flows/no-work-marker.spec.ts:6, log-progress.spec.ts:135, design-page.spec.ts:45, settings-lists.spec.ts:64; unit "reads fast" timing tests in home.test.ts and seed.test.ts at load ≥ 14.
 - Environment: real WebKit works on the VPS. Never stop a server with `pkill -f "next start"`; kill the PID from `ss -ltnp | grep 3100`. Background servers stop at the tool's time limit (use the 2 h max).
 
@@ -15,6 +15,7 @@
 `docs/plans/RUNBOOK.md` (2026-10-01) replaces the 2026-09-30 token budget rules 1–10 and keeps their substance: critics read slices only and split by lens, opus only where it earns it, focused e2e while iterating, short briefs by file, 3-iteration design-loop cap. New: step caps, conductor stays thin, changed-slices-only critics, capture by script.
 
 ## Log
+- 2026-10-16 owner decision: merge + push `master` to origin (ff, a938f3e..635fc5f) and approve Phase 4. Merge/push and the local `phase/2-design-prototype` cleanup done owner-side (loop is barred from push/merge); remote branch `origin/phase/2-design-prototype` and `origin/claude/funny-feynman-1r94tn` left in place. `.superpowers/STOP` cleared; Phase 4 approved — next is writing `docs/plans/05-jobs-crew.md` then Task 1.
 - 2026-10-16 Task 15 (phase gate) slice: gate reviews closed (5f5fd8c members owner-only, 164c3fa P3 cleanup); full fake e2e 3748 pass, 154 fail (3 non-visual iphone, 151 visual diffs) on the pre-fix build; rebuild, db e2e and visual baselines left.
 - 2026-10-13 owner decision: merge `phase/2-design-prototype` → `master` and start Phase 3 (no budget concern, "just get me my product done good"). Phase 2 merged (ff, dd0dd55); `.superpowers/STOP` cleared; phase 3 begins.
 - Detail moved out of Current on 2026-10-01 (so session start reads less):
